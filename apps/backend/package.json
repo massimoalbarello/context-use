@@ -11,15 +11,19 @@
     "./mcp-client-authorization": "./src/models/mcp-client-authorizations/model.ts",
     "./page": "./src/models/knowledge-pages/model.ts",
     "./runtime-config": "./src/lib/runtime-config.ts",
+    "./sync": "./src/models/syncs/model.ts",
     "./temporal-coverage": "./src/models/knowledge-pages/temporal-coverage.ts",
     "./types": "./src/types.ts"
   },
   "scripts": {
     "dev": "bun run scripts/dev.ts",
     "build": "bun run scripts/build.ts",
+    "update:delivery-contract": "bun run scripts/update-record-delivery-contract.ts",
+    "generate:delivery-contract": "bun run scripts/generate-record-delivery-contract.ts",
+    "check:delivery-contract": "bun run scripts/generate-record-delivery-contract.ts --check",
     "generate:queries": "bun bun-sqlgen generate 'src/repositories/**/*.ts' --migrations src/db/migrations",
     "check:queries": "bun run generate:queries --check",
-    "check:types": "bun run check:queries && bun run --bun tsc -b",
+    "check:types": "bun run check:queries && bun run check:delivery-contract && bun run --bun tsc -b",
     "test": "bun test --pass-with-no-tests"
   },
   "dependencies": {
@@ -44,7 +48,10 @@
     "@modelcontextprotocol/client": "^2",
     "@repo/typescript-config": "workspace:*",
     "@types/mdast": "^4.0.0",
+    "json-schema-to-typescript": "^16.0.0",
+    "json-schema-to-zod": "^2.8.1",
     "openapi-types": "^12.1.3",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "yaml": "^2.9.0"
   }
 }

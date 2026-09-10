@@ -24,6 +24,7 @@ import { HypermediaService } from '#services/hypermedia/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import { unusedRecordSyncsService, unusedRecordsService } from '../../support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -109,6 +110,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       ),
       pagesService: new KnowledgePagesService({ pages: pagesRepository, storage }),
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
+      recordsService: unusedRecordsService,
+      syncsService: unusedRecordSyncsService,
     });
 
     const pngBytes = Buffer.from(

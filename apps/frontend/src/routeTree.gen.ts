@@ -15,6 +15,7 @@ import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as HypermediaRouteImport } from './routes/hypermedia'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PagesRouteImport } from './routes/pages'
+import { Route as RecordsRouteImport } from './routes/records'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AssetsIndexRouteImport } from './routes/assets.index'
@@ -27,7 +28,10 @@ import { Route as McpAuthorizeRouteImport } from './routes/mcp.authorize'
 import { Route as PagesIndexRouteImport } from './routes/pages.index'
 import { Route as PagesIdRouteImport } from './routes/pages.$id'
 import { Route as PagesNewRouteImport } from './routes/pages.new'
+import { Route as RecordsIndexRouteImport } from './routes/records.index'
+import { Route as RecordsIdRouteImport } from './routes/records.$id'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsSyncsRouteImport } from './routes/settings.syncs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -57,6 +61,11 @@ const LoginRoute = LoginRouteImport.update({
 const PagesRoute = PagesRouteImport.update({
   id: '/pages',
   path: '/pages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecordsRoute = RecordsRouteImport.update({
+  id: '/records',
+  path: '/records',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -119,9 +128,24 @@ const PagesNewRoute = PagesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => PagesRoute,
 } as any)
+const RecordsIndexRoute = RecordsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RecordsRoute,
+} as any)
+const RecordsIdRoute = RecordsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => RecordsRoute,
+} as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsSyncsRoute = SettingsSyncsRouteImport.update({
+  id: '/syncs',
+  path: '/syncs',
   getParentRoute: () => SettingsRoute,
 } as any)
 
@@ -132,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/hypermedia': typeof HypermediaRoute
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
+  '/records': typeof RecordsRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
@@ -141,9 +166,12 @@ export interface FileRoutesByFullPath {
   '/mcp/authorize': typeof McpAuthorizeRoute
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
+  '/records/$id': typeof RecordsIdRoute
+  '/settings/syncs': typeof SettingsSyncsRoute
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
+  '/records/': typeof RecordsIndexRoute
   '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -158,9 +186,12 @@ export interface FileRoutesByTo {
   '/mcp/authorize': typeof McpAuthorizeRoute
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
+  '/records/$id': typeof RecordsIdRoute
+  '/settings/syncs': typeof SettingsSyncsRoute
   '/assets': typeof AssetsIndexRoute
   '/entities': typeof EntitiesIndexRoute
   '/pages': typeof PagesIndexRoute
+  '/records': typeof RecordsIndexRoute
   '/settings': typeof SettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -171,6 +202,7 @@ export interface FileRoutesById {
   '/hypermedia': typeof HypermediaRoute
   '/login': typeof LoginRoute
   '/pages': typeof PagesRouteWithChildren
+  '/records': typeof RecordsRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
   '/setup': typeof SetupRoute
   '/assets/$id': typeof AssetsIdRoute
@@ -180,9 +212,12 @@ export interface FileRoutesById {
   '/mcp/authorize': typeof McpAuthorizeRoute
   '/pages/$id': typeof PagesIdRoute
   '/pages/new': typeof PagesNewRoute
+  '/records/$id': typeof RecordsIdRoute
+  '/settings/syncs': typeof SettingsSyncsRoute
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
   '/pages/': typeof PagesIndexRoute
+  '/records/': typeof RecordsIndexRoute
   '/settings/': typeof SettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -194,6 +229,7 @@ export interface FileRouteTypes {
     | '/hypermedia'
     | '/login'
     | '/pages'
+    | '/records'
     | '/settings'
     | '/setup'
     | '/assets/$id'
@@ -203,9 +239,12 @@ export interface FileRouteTypes {
     | '/mcp/authorize'
     | '/pages/$id'
     | '/pages/new'
+    | '/records/$id'
+    | '/settings/syncs'
     | '/assets/'
     | '/entities/'
     | '/pages/'
+    | '/records/'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -220,9 +259,12 @@ export interface FileRouteTypes {
     | '/mcp/authorize'
     | '/pages/$id'
     | '/pages/new'
+    | '/records/$id'
+    | '/settings/syncs'
     | '/assets'
     | '/entities'
     | '/pages'
+    | '/records'
     | '/settings'
   id:
     | '__root__'
@@ -232,6 +274,7 @@ export interface FileRouteTypes {
     | '/hypermedia'
     | '/login'
     | '/pages'
+    | '/records'
     | '/settings'
     | '/setup'
     | '/assets/$id'
@@ -241,9 +284,12 @@ export interface FileRouteTypes {
     | '/mcp/authorize'
     | '/pages/$id'
     | '/pages/new'
+    | '/records/$id'
+    | '/settings/syncs'
     | '/assets/'
     | '/entities/'
     | '/pages/'
+    | '/records/'
     | '/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -254,6 +300,7 @@ export interface RootRouteChildren {
   HypermediaRoute: typeof HypermediaRoute
   LoginRoute: typeof LoginRoute
   PagesRoute: typeof PagesRouteWithChildren
+  RecordsRoute: typeof RecordsRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
   SetupRoute: typeof SetupRoute
   McpAuthorizeRoute: typeof McpAuthorizeRoute
@@ -301,6 +348,13 @@ declare module '@tanstack/react-router' {
       path: '/pages'
       fullPath: '/pages'
       preLoaderRoute: typeof PagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/records': {
+      id: '/records'
+      path: '/records'
+      fullPath: '/records'
+      preLoaderRoute: typeof RecordsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -387,11 +441,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagesNewRouteImport
       parentRoute: typeof PagesRoute
     }
+    '/records/': {
+      id: '/records/'
+      path: '/'
+      fullPath: '/records/'
+      preLoaderRoute: typeof RecordsIndexRouteImport
+      parentRoute: typeof RecordsRoute
+    }
+    '/records/$id': {
+      id: '/records/$id'
+      path: '/$id'
+      fullPath: '/records/$id'
+      preLoaderRoute: typeof RecordsIdRouteImport
+      parentRoute: typeof RecordsRoute
+    }
     '/settings/': {
       id: '/settings/'
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/syncs': {
+      id: '/settings/syncs'
+      path: '/syncs'
+      fullPath: '/settings/syncs'
+      preLoaderRoute: typeof SettingsSyncsRouteImport
       parentRoute: typeof SettingsRoute
     }
   }
@@ -442,11 +517,26 @@ const PagesRouteChildren: PagesRouteChildren = {
 
 const PagesRouteWithChildren = PagesRoute._addFileChildren(PagesRouteChildren)
 
+interface RecordsRouteChildren {
+  RecordsIdRoute: typeof RecordsIdRoute
+  RecordsIndexRoute: typeof RecordsIndexRoute
+}
+
+const RecordsRouteChildren: RecordsRouteChildren = {
+  RecordsIdRoute: RecordsIdRoute,
+  RecordsIndexRoute: RecordsIndexRoute,
+}
+
+const RecordsRouteWithChildren =
+  RecordsRoute._addFileChildren(RecordsRouteChildren)
+
 interface SettingsRouteChildren {
+  SettingsSyncsRoute: typeof SettingsSyncsRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsSyncsRoute: SettingsSyncsRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 
@@ -461,6 +551,7 @@ const rootRouteChildren: RootRouteChildren = {
   HypermediaRoute: HypermediaRoute,
   LoginRoute: LoginRoute,
   PagesRoute: PagesRouteWithChildren,
+  RecordsRoute: RecordsRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
   SetupRoute: SetupRoute,
   McpAuthorizeRoute: McpAuthorizeRoute,

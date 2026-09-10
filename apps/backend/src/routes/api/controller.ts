@@ -13,6 +13,9 @@ import { createOwnerRegistrationController } from '#routes/api/owner-registratio
 import { createPageReadableIdController } from '#routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#routes/api/profile/controller.ts';
+import { createRecordReadableIdController } from '#routes/api/records/[recordReadableId]/controller.ts';
+import { createRecordsController } from '#routes/api/records/controller.ts';
+import { createRecordSyncsController } from '#routes/api/syncs/controller.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
@@ -21,6 +24,8 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
+import type { RecordResourcesServiceContract } from '#services/records/service.ts';
+import type { RecordSyncsServiceContract } from '#services/syncs/service.ts';
 
 // The `/api` prefix is applied here, so child controllers keep bare path strings.
 export function createApiController({
@@ -34,6 +39,8 @@ export function createApiController({
   ownerRegistrationService,
   pagesService,
   profilesService,
+  recordsService,
+  syncsService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
@@ -45,6 +52,8 @@ export function createApiController({
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
+  recordsService: RecordResourcesServiceContract;
+  syncsService: RecordSyncsServiceContract;
 }) {
   return new Elysia({ prefix: API_PATH })
     .use(createAuthController({ auth }))
@@ -63,6 +72,9 @@ export function createApiController({
     .use(createHypermediaController({ auth, hypermediaService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
+    .use(createRecordsController({ auth, recordsService }))
+    .use(createRecordReadableIdController({ auth, recordsService }))
+    .use(createRecordSyncsController({ auth, syncsService }))
     .use(createKnowledgeProfileController({ auth, profilesService }))
     .use(createHealthController({ healthService }));
 }

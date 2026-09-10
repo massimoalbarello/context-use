@@ -37,11 +37,15 @@ describe('knowledge navigation', () => {
       collection: 'assets',
       readableId: 'quarterly-chart',
     });
+    expect(knowledgeResourceFromPath('/records/github-pr-42')).toEqual({
+      collection: 'records',
+      readableId: 'github-pr-42',
+    });
     expect(knowledgeResourceFromPath('/pages/new')).toBeNull();
     expect(knowledgeResourceFromPath('/pages')).toBeNull();
   });
 
-  test('keeps the last entity, page, and asset together for one owner', () => {
+  test('keeps the last entity, page, asset, and record together for one owner', () => {
     const storage = memoryStorage();
 
     writeRememberedKnowledgeResource({
@@ -62,6 +66,12 @@ describe('knowledge navigation', () => {
       collection: 'assets',
       readableId: 'quarterly-chart',
     });
+    writeRememberedKnowledgeResource({
+      storage,
+      ownerEntityReadableId: 'owner',
+      collection: 'records',
+      readableId: 'github-pr-42',
+    });
 
     expect(
       readRememberedKnowledgeResource({
@@ -70,6 +80,13 @@ describe('knowledge navigation', () => {
         collection: 'assets',
       }),
     ).toBe('quarterly-chart');
+    expect(
+      readRememberedKnowledgeResource({
+        storage,
+        ownerEntityReadableId: 'owner',
+        collection: 'records',
+      }),
+    ).toBe('github-pr-42');
     expect(
       readRememberedKnowledgeResource({
         storage,

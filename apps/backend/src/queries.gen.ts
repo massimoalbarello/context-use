@@ -600,6 +600,76 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindCurrentRecordRevision`. */
+export interface IFindCurrentRecordRevisionResult {
+    revision: number;
+    operation: string;
+    contentHash: string;
+    markdown: string | null;
+}
+
+/** Result of query `ApplyRecordRevision`. */
+export interface IApplyRecordRevisionResult {
+}
+
+/** Result of query `FindActiveRecordSyncForAcceptance`. */
+export interface IFindActiveRecordSyncForAcceptanceResult {
+    id: string;
+    ownerId: string;
+}
+
+/** Result of query `ListRecordResources`. */
+export interface IListRecordResourcesResult {
+    syncReadableId: string;
+    syncName: string;
+    readableId: string;
+    kind: string;
+    recordId: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `FindRecordResource`. */
+export interface IFindRecordResourceResult {
+    syncReadableId: string;
+    syncName: string;
+    readableId: string;
+    kind: string;
+    recordId: string;
+    markdown: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `FindActiveRecordSyncByName`. */
+export interface IFindActiveRecordSyncByNameResult {
+    id: string;
+}
+
+/** Result of query `CreateRecordSync`. */
+export interface ICreateRecordSyncResult {
+    id: string | null;
+}
+
+/** Result of query `ListRecordSyncs`. */
+export interface IListRecordSyncsResult {
+    readableId: string;
+    name: string;
+    createdAt: string;
+    revokedAt: string | null;
+}
+
+/** Result of query `RevokeRecordSync`. */
+export interface IRevokeRecordSyncResult {
+    id: string | null;
+}
+
+/** Result of query `AuthenticateRecordSyncApiKey`. */
+export interface IAuthenticateRecordSyncApiKeyResult {
+    syncId: string;
+    ownerId: string;
+}
+
 export interface Queries {
     CreateAsset: ICreateAssetResult;
     SearchAssets: ISearchAssetsResult;
@@ -657,6 +727,16 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
+    ApplyRecordRevision: IApplyRecordRevisionResult;
+    FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
+    ListRecordResources: IListRecordResourcesResult;
+    FindRecordResource: IFindRecordResourceResult;
+    FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;
+    CreateRecordSync: ICreateRecordSyncResult;
+    ListRecordSyncs: IListRecordSyncsResult;
+    RevokeRecordSync: IRevokeRecordSyncResult;
+    AuthenticateRecordSyncApiKey: IAuthenticateRecordSyncApiKeyResult;
 }
 
 declare module "@ilbertt/bun-sqlgen" {

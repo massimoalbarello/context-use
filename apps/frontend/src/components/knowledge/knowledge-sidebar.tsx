@@ -10,6 +10,25 @@ import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation
 import { KnowledgeSidebarFooter, KnowledgeSidebarHeader } from './knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 
+type KnowledgeSidebarCreation =
+  | {
+      createTo: '/entities/new' | '/pages/new' | '/assets/new';
+      createLabel: string;
+    }
+  | { createTo?: never; createLabel?: never };
+
+type KnowledgeSidebarProps = KnowledgeSidebarCreation & {
+  collection: KnowledgeCollection;
+  count: number;
+  profile: KnowledgeProfile;
+  error?: Error | null;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  loadMore: () => Promise<unknown>;
+  actions?: ReactNode;
+  children: ReactNode;
+};
+
 export function KnowledgeSidebar({
   collection,
   count,
@@ -22,19 +41,7 @@ export function KnowledgeSidebar({
   loadMore,
   actions,
   children,
-}: {
-  collection: KnowledgeCollection;
-  count: number;
-  createTo: '/entities/new' | '/pages/new' | '/assets/new';
-  createLabel: string;
-  profile: KnowledgeProfile;
-  error?: Error | null;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
-  loadMore: () => Promise<unknown>;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
+}: KnowledgeSidebarProps) {
   const { collapsed } = useKnowledgeWorkspace();
   const initialLoadFailed = Boolean(error && count === 0);
 
@@ -60,17 +67,21 @@ export function KnowledgeSidebar({
             collection={collection}
             ownerEntityReadableId={profile.selfEntity.readableId}
           />
-          <div className="flex shrink-0 items-center gap-1">
-            {actions}
-            <Link
-              className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
-              to={createTo}
-              aria-label={createLabel}
-              title={createLabel}
-            >
-              <Plus aria-hidden="true" />
-            </Link>
-          </div>
+          {(actions || (createTo && createLabel)) && (
+            <div className="flex shrink-0 items-center gap-1">
+              {actions}
+              {createTo && createLabel && (
+                <Link
+                  className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
+                  to={createTo}
+                  aria-label={createLabel}
+                  title={createLabel}
+                >
+                  <Plus aria-hidden="true" />
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-2 min-h-0 flex-1 overflow-y-auto px-3 pb-2" data-sidebar-scroll>

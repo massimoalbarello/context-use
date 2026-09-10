@@ -11,6 +11,7 @@ import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
+import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/delivery-contract.generated.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
@@ -20,6 +21,8 @@ import { KnowledgePagesRepository } from '#repositories/knowledge-pages/reposito
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
+import { RecordsRepository } from '#repositories/records/repository.ts';
+import { RecordSyncsRepository } from '#repositories/syncs/repository.ts';
 import { AssetTransferCapabilities } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService } from '#services/assets/service.ts';
@@ -31,6 +34,8 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
+import { RecordsService } from '#services/records/service.ts';
+import { RecordSyncsService } from '#services/syncs/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;
@@ -73,6 +78,11 @@ try {
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
   );
+  const recordsRepository = new RecordsRepository(database);
+  const recordsService = new RecordsService({ records: recordsRepository });
+  const syncsService = new RecordSyncsService({
+    syncs: new RecordSyncsRepository(database),
+  });
   const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
@@ -110,6 +120,8 @@ try {
     ownerRegistrationService,
     pagesService,
     profilesService,
+    recordsService,
+    syncsService,
   }).onStop(async () => {
     await database.close();
   });
@@ -117,7 +129,8 @@ try {
     port: env.PORT,
     hostname: '0.0.0.0',
     maxRequestBodySize:
-      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES) + REQUEST_BODY_OVERHEAD_BYTES,
+      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES, MAX_RECORD_DELIVERY_BYTES) +
+      REQUEST_BODY_OVERHEAD_BYTES,
   });
 
   logger.info(`listening on ${server!.url.origin}`);

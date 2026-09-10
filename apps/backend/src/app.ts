@@ -5,6 +5,10 @@ import { elysiaErrorHandler } from '#lib/errors.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import { createRequestResponsePlugin } from '#lib/request-response.ts';
 import { createApiController } from '#routes/api/controller.ts';
+import {
+  createRecordDeliveryController,
+  recordSyncSecuritySchemes,
+} from '#routes/api/records/delivery-controller.ts';
 import { createAuthDiscoveryController } from '#routes/auth-discovery/controller.ts';
 import {
   createFrontendAssetsController,
@@ -22,6 +26,14 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
+import type {
+  RecordDeliveryAcceptanceContract,
+  RecordResourcesServiceContract,
+} from '#services/records/service.ts';
+import type {
+  RecordSyncAuthenticationContract,
+  RecordSyncsServiceContract,
+} from '#services/syncs/service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
@@ -41,6 +53,8 @@ export function createApp({
   ownerRegistrationService,
   pagesService,
   profilesService,
+  recordsService,
+  syncsService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
@@ -55,6 +69,8 @@ export function createApp({
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
+  recordsService: RecordDeliveryAcceptanceContract & RecordResourcesServiceContract;
+  syncsService: RecordSyncAuthenticationContract & RecordSyncsServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
@@ -85,6 +101,10 @@ export function createApp({
               description: 'Versioned Markdown knowledge pages and their links.',
             },
             {
+              name: 'Records',
+              description: 'Markdown records delivered by trusted external services.',
+            },
+            {
               name: 'MCP clients',
               description: 'Owner-approved MCP clients and their authorization lifecycle.',
             },
@@ -104,9 +124,16 @@ export function createApp({
               name: 'Hypermedia',
               description: 'Bounded resource neighborhoods and their connected knowledge pages.',
             },
+            {
+              name: 'Syncs',
+              description: 'External services authorized to deliver records.',
+            },
           ],
           components: {
-            securitySchemes: sessionSecuritySchemes,
+            securitySchemes: {
+              ...sessionSecuritySchemes,
+              ...recordSyncSecuritySchemes,
+            },
           },
         },
       }),
@@ -137,8 +164,11 @@ export function createApp({
         ownerRegistrationService,
         pagesService,
         profilesService,
+        recordsService,
+        syncsService,
       }),
     )
+    .use(createRecordDeliveryController({ recordsService, syncsService }))
     .onStop(() => mcpTransport.close())
     .use(createFrontendFallbackController({ frontendAssetsService }));
 }

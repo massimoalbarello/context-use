@@ -19,6 +19,7 @@ const COLLECTIONS: Array<{ value: KnowledgeCollection; label: string }> = [
   { value: 'entities', label: 'Entities' },
   { value: 'pages', label: 'Pages' },
   { value: 'assets', label: 'Assets' },
+  { value: 'records', label: 'Records' },
 ];
 
 export function KnowledgeCollectionNavigation({
@@ -68,18 +69,26 @@ export function KnowledgeCollectionNavigation({
 
   function openCollection(next: KnowledgeCollection) {
     const readableId = rememberedResources[next];
-    if (next === 'entities') {
-      void (readableId
-        ? navigate({ to: '/entities/$id', params: { id: readableId } })
-        : navigate({ to: '/entities' }));
-    } else if (next === 'pages') {
-      void (readableId
-        ? navigate({ to: '/pages/$id', params: { id: readableId }, search: { view: 'preview' } })
-        : navigate({ to: '/pages' }));
-    } else {
-      void (readableId
-        ? navigate({ to: '/assets/$id', params: { id: readableId } })
-        : navigate({ to: '/assets' }));
+    switch (next) {
+      case 'entities':
+        void (readableId
+          ? navigate({ to: '/entities/$id', params: { id: readableId } })
+          : navigate({ to: '/entities' }));
+        return;
+      case 'pages':
+        void (readableId
+          ? navigate({ to: '/pages/$id', params: { id: readableId }, search: { view: 'preview' } })
+          : navigate({ to: '/pages' }));
+        return;
+      case 'assets':
+        void (readableId
+          ? navigate({ to: '/assets/$id', params: { id: readableId } })
+          : navigate({ to: '/assets' }));
+        return;
+      case 'records':
+        void (readableId
+          ? navigate({ to: '/records/$id', params: { id: readableId } })
+          : navigate({ to: '/records' }));
     }
   }
 
