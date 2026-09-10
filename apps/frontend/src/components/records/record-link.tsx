@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router';
 import { FileInput } from 'lucide-react';
-import { cn } from '../../lib/class-names';
 import type { ExternalRecordSummary } from '../../queries/records';
 import { resourceCardVariants } from '../knowledge/resource-list';
 
@@ -37,7 +36,7 @@ export function RecordLink({
 }) {
   return (
     <Link
-      className={cn(resourceCardVariants(), 'h-auto min-h-24 transition')}
+      className={`${resourceCardVariants()} h-auto min-h-24`}
       to="/records/$id"
       params={{ id: record.readableId }}
       activeOptions={{ exact: true }}

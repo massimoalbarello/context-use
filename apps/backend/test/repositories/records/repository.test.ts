@@ -237,7 +237,7 @@ test('a batch atomically applies owner-bound current records', async () => {
             ],
           }),
         }),
-      ).toEqual({ state: 'conflict', reason: 'record_revision' });
+      ).toEqual({ state: 'conflict' });
       expect(await recordCount(database)).toBe(beforeConflict);
 
       expect(

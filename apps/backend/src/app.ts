@@ -74,7 +74,7 @@ export function createApp({
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
-  const app = new Elysia()
+  return new Elysia()
     .use(createFrontendAssetsController({ frontendAssetsService }))
     .onError(elysiaErrorHandler)
     .use(createRequestResponsePlugin())
@@ -169,7 +169,6 @@ export function createApp({
       }),
     )
     .use(createRecordDeliveryController({ recordsService, syncsService }))
-    .onStop(() => mcpTransport.close());
-
-  return app.use(createFrontendFallbackController({ frontendAssetsService }));
+    .onStop(() => mcpTransport.close())
+    .use(createFrontendFallbackController({ frontendAssetsService }));
 }

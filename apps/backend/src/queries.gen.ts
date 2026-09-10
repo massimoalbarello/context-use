@@ -623,7 +623,6 @@ export interface IListRecordResourcesResult {
     syncReadableId: string;
     syncName: string;
     readableId: string;
-    sourceId: string;
     kind: string;
     recordId: string;
     createdAt: string;
@@ -635,7 +634,6 @@ export interface IFindRecordResourceResult {
     syncReadableId: string;
     syncName: string;
     readableId: string;
-    sourceId: string;
     kind: string;
     recordId: string;
     markdown: string;
@@ -656,7 +654,6 @@ export interface ICreateRecordSyncResult {
 /** Result of query `ListRecordSyncs`. */
 export interface IListRecordSyncsResult {
     readableId: string;
-    ownerId: string;
     name: string;
     createdAt: string;
     revokedAt: string | null;
@@ -670,9 +667,7 @@ export interface IRevokeRecordSyncResult {
 /** Result of query `AuthenticateRecordSyncApiKey`. */
 export interface IAuthenticateRecordSyncApiKeyResult {
     syncId: string;
-    syncReadableId: string;
     ownerId: string;
-    name: string;
 }
 
 export interface Queries {

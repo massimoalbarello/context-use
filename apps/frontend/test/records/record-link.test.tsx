@@ -15,7 +15,6 @@ afterEach(cleanup);
 
 const record: ExternalRecordSummary = {
   readableId: 'context-use-pr-57-a1b2c3',
-  sourceId: 'massimoalbarello/context-use',
   kind: 'pull-request',
   recordId: '57',
   sync: { readableId: 'example-sync-a1b2c3', name: 'Example sync' },

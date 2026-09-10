@@ -15,13 +15,13 @@ export function RecordList({ records }: { records: ExternalRecordSummary[] }) {
   if (records.length === 0) {
     return (
       <ResourceListEmpty title="No synced records yet.">
-        Records appear here after an external service is connected and delivers them.
+        Records appear here after an authorized sync delivers them.
       </ResourceListEmpty>
     );
   }
 
   return (
-    <ResourceList className="gap-2">
+    <ResourceList>
       {records.map((record) => (
         <li key={record.readableId}>
           <RecordLink record={record} active={record.readableId === activeRecordId} />

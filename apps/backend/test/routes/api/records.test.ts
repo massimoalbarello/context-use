@@ -216,7 +216,6 @@ test('record API lists active owner records and returns Markdown detail with syn
       const list = (await listResponse.json()) as {
         items: Array<{
           readableId: string;
-          sourceId: string;
           kind: string;
           recordId: string;
           sync: { readableId: string; name: string };
@@ -228,7 +227,6 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(visible).toEqual(
         expect.objectContaining({
           readableId: expect.stringMatching(/^pull-request-visible-[a-f0-9]{24}$/),
-          sourceId: 'github.example',
           kind: 'pull-request',
           recordId: 'visible',
           sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
@@ -245,7 +243,6 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(detail).toEqual(
         expect.objectContaining({
           readableId: visible!.readableId,
-          sourceId: 'github.example',
           kind: 'pull-request',
           recordId: 'visible',
           markdown,
@@ -283,7 +280,6 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(await renamedResponse.json()).toEqual(
         expect.objectContaining({
           readableId: visible!.readableId,
-          sourceId: 'github.example',
           kind: 'pull-request',
           recordId: 'visible',
           markdown: '# Renamed title\n\nA replacement excerpt.',

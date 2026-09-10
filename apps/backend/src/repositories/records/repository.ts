@@ -39,7 +39,6 @@ function recordSummaryFrom({
   syncReadableId,
   syncName,
   readableId,
-  sourceId,
   kind,
   recordId,
   createdAt,
@@ -48,7 +47,6 @@ function recordSummaryFrom({
   syncReadableId: string;
   syncName: string;
   readableId: string;
-  sourceId: string;
   kind: string;
   recordId: string;
   createdAt: string;
@@ -56,7 +54,6 @@ function recordSummaryFrom({
 }): RecordSummary {
   return {
     readableId,
-    sourceId,
     kind,
     recordId,
     sync: { readableId: syncReadableId, name: syncName },
@@ -155,7 +152,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
       return await this.serialize(() => this.sql.begin((db) => acceptDelivery({ db, input })));
     } catch (error) {
       if (error instanceof RecordAcceptanceConflict) {
-        return { state: 'conflict', reason: 'record_revision' };
+        return { state: 'conflict' };
       }
       throw error;
     }
@@ -172,10 +169,9 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }): Promise<RecordPage> {
     return await this.serialize(async () => {
       const rows = await this.sql.ListRecordResources`
-        /* @notNull syncReadableId syncName readableId sourceId kind recordId createdAt updatedAt */
+        /* @notNull syncReadableId syncName readableId kind recordId createdAt updatedAt */
         select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."source_id" as "sourceId", record."kind",
-          record."record_id" as "recordId",
+          record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
           record."created_at" as "createdAt", record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync
@@ -200,10 +196,10 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }): Promise<RecordResource | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
-        /* @notNull syncReadableId syncName readableId sourceId kind recordId markdown createdAt updatedAt */
+        /* @notNull syncReadableId syncName readableId kind recordId markdown createdAt updatedAt */
         select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."source_id" as "sourceId", record."kind",
-          record."record_id" as "recordId", record."markdown", record."created_at" as "createdAt",
+          record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
+          record."markdown", record."created_at" as "createdAt",
           record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync

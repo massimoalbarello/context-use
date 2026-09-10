@@ -1,13 +1,5 @@
-export type RecordIdentity = {
-  syncId: string;
-  sourceId: string;
-  kind: string;
-  recordId: string;
-};
-
 export type RecordSummary = {
   readableId: string;
-  sourceId: string;
   kind: string;
   recordId: string;
   sync: { readableId: string; name: string };
@@ -27,4 +19,4 @@ export type RecordPage = {
 export type RecordAcceptanceResult =
   | { state: 'accepted' }
   | { state: 'inactive_sync' }
-  | { state: 'conflict'; reason: 'record_revision' };
+  | { state: 'conflict' };

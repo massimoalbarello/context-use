@@ -97,9 +97,7 @@ test('sync API issues one UUIDv7 credential whose hash determines record provena
       expect(JSON.stringify(stored)).not.toContain(API_KEY);
       expect(await service.authenticate({ apiKey: API_KEY })).toEqual({
         syncId: SYNC_ID,
-        syncReadableId: created.sync.readableId,
         ownerId: OWNER_USER_ID,
-        name: 'Engineering activity',
       });
 
       const listResponse = await app.handle(new Request('http://localhost/api/syncs'));

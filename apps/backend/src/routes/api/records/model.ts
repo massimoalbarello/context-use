@@ -10,7 +10,6 @@ export const RecordSyncReferenceSchema = t.Object({
 
 export const RecordSummarySchema = t.Object({
   readableId: ReadableIdSchema,
-  sourceId: t.String({ minLength: 1 }),
   kind: t.String({ minLength: 1 }),
   recordId: t.String({ minLength: 1 }),
   sync: RecordSyncReferenceSchema,

@@ -5,7 +5,6 @@ export const UUID_V7_PATTERN =
 
 export type RecordSync = {
   readableId: string;
-  ownerId: string;
   name: string;
   createdAt: string;
   revokedAt: string | null;
@@ -13,9 +12,7 @@ export type RecordSync = {
 
 export type RecordSyncPrincipal = {
   syncId: string;
-  syncReadableId: string;
   ownerId: string;
-  name: string;
 };
 
 export function normalizeSyncName(value: string): string | null {

@@ -65,7 +65,6 @@ export class RecordSyncsRepository implements RecordSyncsRepositoryContract {
         state: 'created',
         sync: {
           readableId: input.readableId,
-          ownerId: input.ownerId,
           name: input.name,
           createdAt: input.createdAt,
           revokedAt: null,
@@ -76,9 +75,9 @@ export class RecordSyncsRepository implements RecordSyncsRepositoryContract {
 
   async list({ ownerId }: { ownerId: string }): Promise<RecordSync[]> {
     return await this.sql.ListRecordSyncs`
-      /* @notNull readableId ownerId name createdAt */
-      select "readable_id" as "readableId", "owner_id" as "ownerId", "name",
-        "created_at" as "createdAt", "revoked_at" as "revokedAt"
+      /* @notNull readableId name createdAt */
+      select "readable_id" as "readableId", "name", "created_at" as "createdAt",
+        "revoked_at" as "revokedAt"
       from "record_sync"
       where "owner_id" = ${ownerId}
       order by ("revoked_at" is null) desc, "created_at" desc, "readable_id"
@@ -109,9 +108,8 @@ export class RecordSyncsRepository implements RecordSyncsRepositoryContract {
     apiKeySha256: string;
   }): Promise<RecordSyncPrincipal | null> {
     const rows = await this.sql.AuthenticateRecordSyncApiKey`
-      /* @notNull syncId syncReadableId ownerId name */
-      select "id" as "syncId", "readable_id" as "syncReadableId",
-        "owner_id" as "ownerId", "name"
+      /* @notNull syncId ownerId */
+      select "id" as "syncId", "owner_id" as "ownerId"
       from "record_sync"
       where "api_key_sha256" = ${apiKeySha256} and "revoked_at" is null
       limit 1

@@ -15,7 +15,6 @@ import type { RecordDeliveryAcceptanceContract } from '#services/records/service
 import type { RecordSyncAuthenticationContract } from '#services/syncs/service.ts';
 
 const syncId = '01991f43-0c00-7000-8000-000000000001';
-const syncReadableId = 'github-sync';
 const ownerId = 'owner-id';
 const apiKey = '01991f43-0c00-7000-8000-000000000002';
 const batchId = '01991f43-0c00-7000-8000-000000000003';
@@ -86,7 +85,7 @@ function request({
 function controller({
   accept = async () => ({ state: 'accepted' }),
   authenticate = async ({ apiKey: presented }) =>
-    presented === apiKey ? { syncId, syncReadableId, ownerId, name: 'GitHub sync' } : null,
+    presented === apiKey ? { syncId, ownerId } : null,
 }: {
   accept?: RecordDeliveryAcceptanceContract['accept'];
   authenticate?: RecordSyncAuthenticationContract['authenticate'];
@@ -214,7 +213,7 @@ test('rejects sender-supplied sync identity because provenance comes only from t
 
 test('returns fixed responses for record conflicts and revoked syncs', async () => {
   const conflict = await controller({
-    accept: async () => ({ state: 'conflict', reason: 'record_revision' }),
+    accept: async () => ({ state: 'conflict' }),
   }).handle(request({ body: JSON.stringify(validEnvelope()) }));
   expect(conflict.status).toBe(StatusMap.Conflict);
   expect(await conflict.json()).toEqual({ error: 'Conflicting record delivery' });

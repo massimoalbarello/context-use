@@ -106,9 +106,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
         apiKey === deliveryApiKey
           ? {
               syncId: '01991f43-0c00-7000-8000-000000000011',
-              syncReadableId: 'github-sync-7df8e8f7f2dc5a00b4408901',
               ownerId: 'context-use-owner',
-              name: 'GitHub sync',
             }
           : null,
       create: unexpectedCall,

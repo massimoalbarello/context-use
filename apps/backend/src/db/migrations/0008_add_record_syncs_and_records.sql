@@ -58,4 +58,4 @@ create table "record" (
   check (length(trim("updated_at")) > 0)
 );
 
-create index "record_owner_kind_idx" on "record" ("owner_id", "kind", "updated_at" desc);
+create index "record_owner_updated_at_idx" on "record" ("owner_id", "updated_at" desc);

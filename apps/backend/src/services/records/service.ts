@@ -1,11 +1,9 @@
 import { readableIdFrom, readableIdWithSuffix } from '#models/readable-ids/model.ts';
-import type { RecordDeliveryEnvelope } from '#models/records/delivery-contract.generated.ts';
 import type {
-  RecordAcceptanceResult,
-  RecordIdentity,
-  RecordPage,
-  RecordResource,
-} from '#models/records/model.ts';
+  DeliveredRecord,
+  RecordDeliveryEnvelope,
+} from '#models/records/delivery-contract.generated.ts';
+import type { RecordAcceptanceResult, RecordPage, RecordResource } from '#models/records/model.ts';
 import type { RecordsRepositoryContract } from '#repositories/records/repository.ts';
 
 const RECORD_READABLE_ID_SUFFIX_LENGTH = 24;
@@ -14,12 +12,15 @@ function sha256(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
 }
 
-function recordReadableId({ syncId, sourceId, kind, recordId }: RecordIdentity): string {
-  const suffix = sha256(JSON.stringify([syncId, sourceId, kind, recordId])).slice(
+function recordReadableId({ syncId, record }: { syncId: string; record: DeliveredRecord }): string {
+  const suffix = sha256(JSON.stringify([syncId, record.sourceId, record.kind, record.id])).slice(
     0,
     RECORD_READABLE_ID_SUFFIX_LENGTH,
   );
-  return readableIdWithSuffix({ readableId: readableIdFrom(`${kind}-${recordId}`), suffix });
+  return readableIdWithSuffix({
+    readableId: readableIdFrom(`${record.kind}-${record.id}`),
+    suffix,
+  });
 }
 
 export class RecordsService {
@@ -53,12 +54,7 @@ export class RecordsService {
         const markdown = record.operation === 'deleted' ? null : record.content.body;
         return {
           record,
-          readableId: recordReadableId({
-            syncId,
-            sourceId: record.sourceId,
-            kind: record.kind,
-            recordId: record.id,
-          }),
+          readableId: recordReadableId({ syncId, record }),
           markdown,
         };
       }),

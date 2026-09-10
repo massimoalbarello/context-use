@@ -18,7 +18,7 @@ function RecordsIndexRoute() {
     <WorkspaceEmpty
       eyebrow="Records"
       title="No synced records yet"
-      description="Records appear here after an external service is connected and delivers them."
+      description="Records appear here after an authorized sync delivers them."
     />
   );
 }
