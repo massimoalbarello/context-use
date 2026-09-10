@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { keepPreviousData } from '@tanstack/react-query';
 import {
   buildHypermediaLayout,
   type HypermediaLayoutResource,
@@ -72,14 +73,14 @@ describe('Hypermedia resource type filter', () => {
     expect(toggleDisplayedHypermediaResourceKind({ kinds: assets, kind: 'asset' })).toBe(assets);
   });
 
-  test('removes hidden resource nodes and page connections from both projections', () => {
+  test('removes hidden resource nodes and page connections from both views', () => {
     const filtered = filterHypermedia({
       resources,
       pages: [page],
       kinds: ['entity'],
     });
-    const semantic = buildHypermediaLayout(filtered.resources, filtered.pages);
-    const temporal = buildTemporalHypermediaLayout({
+    const map = buildHypermediaLayout(filtered.resources, filtered.pages);
+    const timeline = buildTemporalHypermediaLayout({
       ...filtered,
       extent: {
         start: Date.parse('2026-01-01T00:00:00.000Z'),
@@ -87,21 +88,21 @@ describe('Hypermedia resource type filter', () => {
       },
     });
 
-    expect(semantic.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(semantic.pages[0]?.resourceKeys).toEqual(['entity:owner']);
-    expect(temporal.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(temporal.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+    expect(map.resources.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(map.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+    expect(timeline.resources.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(timeline.pages[0]?.resourceKeys).toEqual(['entity:owner']);
   });
 
-  test('keeps only keyword-matching resource nodes and connections in both projections', () => {
+  test('keeps only keyword-matching resource nodes and connections in both views', () => {
     const filtered = filterHypermedia({
       resources,
       pages: [page],
       kinds: ['entity', 'asset'],
       query: 'the OWNER',
     });
-    const semantic = buildHypermediaLayout(filtered.resources, filtered.pages);
-    const temporal = buildTemporalHypermediaLayout({
+    const map = buildHypermediaLayout(filtered.resources, filtered.pages);
+    const timeline = buildTemporalHypermediaLayout({
       ...filtered,
       extent: {
         start: Date.parse('2026-01-01T00:00:00.000Z'),
@@ -109,10 +110,10 @@ describe('Hypermedia resource type filter', () => {
       },
     });
 
-    expect(semantic.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(semantic.pages[0]?.resourceKeys).toEqual(['entity:owner']);
-    expect(temporal.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(temporal.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+    expect(map.resources.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(map.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+    expect(timeline.resources.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(timeline.pages[0]?.resourceKeys).toEqual(['entity:owner']);
 
     const cleared = filterHypermedia({
       resources,
@@ -134,17 +135,31 @@ describe('Hypermedia resource type filter', () => {
       kinds: ['asset'],
     });
     const entityPages = hypermediaPagesQueryOptions({
-      projection: 'semantic',
+      interval: 'without',
       resources: [],
+      visibleResources: [],
       kinds: ['entity'],
     });
     const allPages = hypermediaPagesQueryOptions({
-      projection: 'semantic',
+      interval: 'without',
       resources: [],
+      visibleResources: [],
       kinds: ['entity', 'asset'],
     });
 
     expect(entityNeighborhood.queryKey).not.toEqual(assetNeighborhood.queryKey);
     expect(entityPages.queryKey).not.toEqual(allPages.queryKey);
+  });
+
+  test('retains the displayed page set while a changed interval loads', () => {
+    const pages = hypermediaPagesQueryOptions({
+      interval: 'with',
+      resources: [],
+      visibleResources: [],
+      kinds: ['entity'],
+      month: '2026-09',
+    });
+
+    expect(pages.placeholderData).toBe(keepPreviousData);
   });
 });

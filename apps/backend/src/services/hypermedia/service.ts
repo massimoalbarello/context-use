@@ -1,5 +1,5 @@
 import type {
-  HypermediaPageProjection,
+  HypermediaPageInterval,
   HypermediaResourceContinuation,
   HypermediaResourceKind,
   HypermediaResourceReference,
@@ -23,11 +23,12 @@ export class HypermediaService {
   pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
+    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     query?: string;
-    projection?: HypermediaPageProjection;
     temporalBounds?: TemporalBounds;
   }) {
     return this.hypermedia.pages(input);

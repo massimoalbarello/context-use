@@ -5,7 +5,7 @@ import {
 } from '#models/knowledge-pages/markdown.ts';
 import type {
   KnowledgePage,
-  KnowledgePageKind,
+  KnowledgePageIntervalFilter,
   KnowledgePagePreview,
   KnowledgePageRevisionActor,
   KnowledgePageSummary,
@@ -124,7 +124,7 @@ export class KnowledgePagesService {
     limit: number;
     offset: number;
     query?: string;
-    kind?: KnowledgePageKind;
+    interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }) {
     return this.pages.list(input);

@@ -5,7 +5,6 @@ import {
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
   buildTemporalHypermediaLayout,
-  temporalRangeForViewport,
   temporalScrollTopForRange,
 } from '../../src/components/hypermedia/hypermedia-temporal-layout';
 import type { HypermediaPage } from '../../src/queries/hypermedia';
@@ -157,12 +156,19 @@ describe('temporal Hypermedia side projection', () => {
         expect(verticalGap).toBeGreaterThanOrEqual(MINIMUM_CLOUD_GAP);
       }
     }
-    const pageDates = layout.pages.map(
-      ({ label }) =>
-        temporalRangeForViewport({ layout, scrollTop: label.y, viewportHeight: 0 }).from,
+    const newerEdge = temporalScrollTopForRange({
+      layout,
+      range: { from: '2025-08-31', to: '2025-08-31' },
+      viewportHeight: 0,
+    });
+    const olderEdge = temporalScrollTopForRange({
+      layout,
+      range: { from: '2025-03-01', to: '2025-03-01' },
+      viewportHeight: 0,
+    });
+    expect(layout.pages.every(({ label }) => label.y >= newerEdge && label.y <= olderEdge)).toBe(
+      true,
     );
-
-    expect(pageDates.every((date) => date >= '2025-03-01' && date <= '2025-08-31')).toBe(true);
     expect(layout.hasOverlappingPages).toBe(false);
     expect(layout.pageLoadBoundaryY).toBe(
       Math.max(...layout.pages.map(({ bounds }) => bounds.bottom)),
@@ -205,18 +211,11 @@ describe('temporal Hypermedia side projection', () => {
       extent,
     });
 
-    expect(
-      layout.pages.map(({ label }) =>
-        temporalRangeForViewport({ layout, scrollTop: label.y, viewportHeight: 0 }),
-      ),
-    ).toEqual([
-      { from: '2025-08-25', to: '2025-08-25' },
-      { from: '2025-08-25', to: '2025-08-25' },
-    ]);
+    expect(layout.pages[0]?.label.y).toBe(layout.pages[1]?.label.y);
     expect(layout.hasOverlappingPages).toBe(true);
   });
 
-  test('maps vertical scrolling to a reverse-chronological date interval', () => {
+  test('maps selected intervals to reverse-chronological vertical positions', () => {
     const layout = buildTemporalHypermediaLayout({
       resources: [entity('self')],
       pages: [
@@ -229,22 +228,19 @@ describe('temporal Hypermedia side projection', () => {
       extent,
     });
     const viewportHeight = 640;
-    const range = { from: '2024-06-01', to: '2024-07-01' };
-    const scrollTop = temporalScrollTopForRange({ layout, range, viewportHeight });
-    const visible = temporalRangeForViewport({ layout, scrollTop, viewportHeight });
+    const recent = temporalScrollTopForRange({
+      layout,
+      range: { from: '2025-06-01', to: '2025-06-30' },
+      viewportHeight,
+    });
+    const older = temporalScrollTopForRange({
+      layout,
+      range: { from: '2024-06-01', to: '2024-06-30' },
+      viewportHeight,
+    });
 
-    expect(visible.from <= range.from).toBe(true);
-    expect(visible.to >= range.to).toBe(true);
-    expect(temporalRangeForViewport({ layout, scrollTop: 0, viewportHeight }).to).toBe(
-      '2026-12-31',
-    );
-    expect(
-      temporalRangeForViewport({
-        layout,
-        scrollTop: layout.height - viewportHeight,
-        viewportHeight,
-      }).from,
-    ).toBe('2020-01-01');
+    expect(temporalScrollTopForRange({ layout, viewportHeight })).toBe(0);
+    expect(older).toBeGreaterThan(recent);
   });
 
   test('keeps a page visual identity stable across both projections', () => {

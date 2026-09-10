@@ -2,17 +2,33 @@
 // biome-ignore-all lint/complexity/useMaxParams: Small render and event callbacks remain clearer inline.
 
 import { FileText, Layers2 } from 'lucide-react';
-import { type UIEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type UIEvent,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  type CalendarMonth,
+  calendarMonthRange,
+  mapMonthAfterScroll,
+} from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
-import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import type { HypermediaPages, HypermediaResourceReference } from '../../queries/hypermedia';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import {
+  HYPERMEDIA_TIMELINE_HEADER_HEIGHT,
+  HypermediaIntervalIndicator,
+} from './hypermedia-interval-indicator';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import {
   buildTemporalHypermediaLayout,
+  type TemporalHypermediaLayout,
   type TemporalHypermediaResource,
-  temporalRangeForViewport,
   temporalScrollTopForRange,
 } from './hypermedia-temporal-layout';
 import {
@@ -25,12 +41,11 @@ import {
   type HypermediaViewProps,
   useHypermediaViewState,
 } from './hypermedia-view';
+import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
 
-const RANGE_SETTLE_MS = 280;
 const RESOURCE_SETTLE_MS = 280;
 const RESOURCE_DISCOVERY_DISTANCE = 360;
 const PAGE_DISCOVERY_DISTANCE = 360;
-const RESOURCE_HEADER_HEIGHT = 112;
 const PAGE_FADE_DISTANCE = 96;
 const OVERLAPPING_PAGES_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 
@@ -46,7 +61,7 @@ function temporalPageOpacity({
   if (!viewport) {
     return 1;
   }
-  const topEdge = viewport.scrollTop + RESOURCE_HEADER_HEIGHT;
+  const topEdge = viewport.scrollTop + HYPERMEDIA_TIMELINE_HEADER_HEIGHT;
   const bottomEdge = viewport.scrollTop + viewport.height;
   const distanceFromTop = bounds.bottom - topEdge;
   const distanceFromBottom = bottomEdge - bounds.top;
@@ -88,7 +103,10 @@ function TemporalResourceHeaders({
   onPreviewEnd: (key: string) => void;
 }) {
   return (
-    <div className="pointer-events-none sticky top-0 z-30 h-28 border-b bg-card" style={{ width }}>
+    <div
+      className="pointer-events-none sticky top-0 z-30 border-b bg-card"
+      style={{ width, height: HYPERMEDIA_TIMELINE_HEADER_HEIGHT }}
+    >
       {resources.map((resource) => {
         const active = activeKey === resource.key || selectedResourceKeys.has(resource.key);
         const preview = resourcePreview(resource);
@@ -101,7 +119,7 @@ function TemporalResourceHeaders({
             <Button
               type="button"
               variant="ghost"
-              className="pointer-events-auto h-28 w-[72px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
+              className="pointer-events-auto h-full w-[72px] rounded-none p-0 hover:bg-transparent dark:hover:bg-transparent"
               aria-label={resource.label}
               aria-pressed={selectedResourceKeys.has(resource.key)}
               onPointerEnter={() => preview && onPreview(preview)}
@@ -110,7 +128,11 @@ function TemporalResourceHeaders({
               onBlur={() => onPreviewEnd(resource.key)}
               onClick={() => onSelect({ kind: resource.kind, readableId: resource.readableId })}
             >
-              <svg className="size-full overflow-visible" viewBox="0 0 72 112" aria-hidden="true">
+              <svg
+                className="size-full overflow-visible"
+                viewBox={`0 0 72 ${HYPERMEDIA_TIMELINE_HEADER_HEIGHT}`}
+                aria-hidden="true"
+              >
                 <HypermediaResourceNode
                   point={{ x: 36, y: 31 }}
                   resource={resource.resource ?? resource}
@@ -126,54 +148,66 @@ function TemporalResourceHeaders({
   );
 }
 
-function TemporalTimeLabels({
-  ticks,
-  width,
+function temporalScrollTopForMonth({
+  layout,
+  month,
+  progress,
+  viewportHeight,
 }: {
-  ticks: Array<{ y: number; label: string }>;
-  width: number;
-}) {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-10">
-      {ticks.map((tick) => (
-        <div key={tick.y} className="absolute left-0 h-px" style={{ top: tick.y, width }}>
-          <time className="sticky left-3 inline-block -translate-y-1/2 rounded-md bg-card/90 px-2 py-1 font-medium text-muted-foreground text-xs tabular-nums backdrop-blur">
-            {tick.label}
-          </time>
-        </div>
-      ))}
-    </div>
-  );
+  layout: TemporalHypermediaLayout;
+  month?: CalendarMonth;
+  progress: number;
+  viewportHeight: number;
+}): number {
+  const current = temporalScrollTopForRange({
+    layout,
+    range: month ? calendarMonthRange(month) : undefined,
+    viewportHeight,
+  });
+  if (progress === 0) {
+    return current;
+  }
+  const adjacentMonth = mapMonthAfterScroll({
+    month,
+    direction: progress > 0 ? 'older' : 'newer',
+  });
+  if (!adjacentMonth) {
+    return current;
+  }
+  const adjacent = temporalScrollTopForRange({
+    layout,
+    range: calendarMonthRange(adjacentMonth),
+    viewportHeight,
+  });
+  return current + (adjacent - current) * Math.min(1, Math.abs(progress));
 }
 
-export function HypermediaTemporalCanvas({
+export function HypermediaTimelineCanvas({
   resources,
   pages,
   extent,
-  dateRange,
+  month,
   selectedResources,
   selectedKey,
   onSelect,
-  onDateRangeApply,
+  onMonthChange,
+  onIntervalScrollingChange,
   onViewportSettled,
   hasNextPage,
   isFetchingNextPage,
   onDiscoverMorePages,
 }: HypermediaViewProps & {
   extent: HypermediaPages['temporalExtent'];
-  dateRange?: CalendarDateRange;
-  onDateRangeApply: (dateRange?: CalendarDateRange) => void;
+  month?: CalendarMonth;
+  onMonthChange: (month?: CalendarMonth) => void;
+  onIntervalScrollingChange: (scrolling: boolean) => void;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onDiscoverMorePages: () => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resourceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastScrollTop = useRef<number | null>(null);
   const lastScrollLeft = useRef<number | null>(null);
-  const initializedView = useRef<string | null>(null);
-  const pageDiscoveryPending = useRef(false);
   const [pageViewport, setPageViewport] = useState<TemporalPageViewport | null>(null);
   const layout = useMemo(
     () => (extent ? buildTemporalHypermediaLayout({ resources, pages, extent }) : null),
@@ -181,44 +215,16 @@ export function HypermediaTemporalCanvas({
   );
   const { activeKey, clearPreview, preview, selectedResourceKeys, setPreview } =
     useHypermediaViewState({ selectedResources, selectedKey });
+  const intervalScroll = useHypermediaIntervalScroll({
+    month,
+    allowPagesWithoutInterval: false,
+    onMonthChange,
+    onIntervalScrollingChange,
+  });
   const resourceByKey = useMemo(
     () => new Map(layout?.resources.map((resource) => [resource.key, resource]) ?? []),
     [layout],
   );
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!layout || !scroller) {
-      return;
-    }
-    const rangeKey = dateRange ? `${dateRange.from}:${dateRange.to}` : 'latest';
-    const viewKey = `${layout.extent.start}:${layout.extent.end}:${rangeKey}`;
-    if (initializedView.current === viewKey) {
-      return;
-    }
-    initializedView.current = viewKey;
-    const scrollTop = temporalScrollTopForRange({
-      layout,
-      range: dateRange,
-      viewportHeight: scroller.clientHeight,
-    });
-    scroller.scrollTop = scrollTop;
-    lastScrollTop.current = scrollTop;
-    lastScrollLeft.current = scroller.scrollLeft;
-    setPageViewport({ scrollTop, height: scroller.clientHeight });
-  }, [dateRange, layout]);
-
-  useEffect(
-    () => () => {
-      if (rangeTimer.current) {
-        clearTimeout(rangeTimer.current);
-      }
-      if (resourceTimer.current) {
-        clearTimeout(resourceTimer.current);
-      }
-    },
-    [],
-  );
-
   const publishVisibleResources = useCallback(
     (scroller: HTMLDivElement) => {
       if (!layout) {
@@ -247,13 +253,11 @@ export function HypermediaTemporalCanvas({
         !layout ||
         !hasNextPage ||
         isFetchingNextPage ||
-        pageDiscoveryPending.current ||
         scroller.scrollTop + scroller.clientHeight + PAGE_DISCOVERY_DISTANCE <
           layout.pageLoadBoundaryY
       ) {
         return;
       }
-      pageDiscoveryPending.current = true;
       onDiscoverMorePages();
     },
     [hasNextPage, isFetchingNextPage, layout, onDiscoverMorePages],
@@ -261,21 +265,27 @@ export function HypermediaTemporalCanvas({
 
   useEffect(() => {
     const scroller = scrollerRef.current;
+    if (!layout || !scroller) {
+      return;
+    }
+    const scrollTop = temporalScrollTopForMonth({
+      layout,
+      month: intervalScroll.displayedMonth,
+      progress: intervalScroll.progress,
+      viewportHeight: scroller.clientHeight,
+    });
+    scroller.scrollTop = scrollTop;
+    lastScrollLeft.current = scroller.scrollLeft;
+    setPageViewport({ scrollTop, height: scroller.clientHeight });
+    discoverMorePages(scroller);
+  }, [intervalScroll.displayedMonth, intervalScroll.progress, layout, discoverMorePages]);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
     if (layout && scroller) {
       publishVisibleResources(scroller);
     }
   }, [layout, publishVisibleResources]);
-
-  useEffect(() => {
-    if (isFetchingNextPage) {
-      return;
-    }
-    pageDiscoveryPending.current = false;
-    const scroller = scrollerRef.current;
-    if (layout && scroller) {
-      discoverMorePages(scroller);
-    }
-  }, [discoverMorePages, isFetchingNextPage, layout]);
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const scroller = event.currentTarget;
@@ -289,32 +299,46 @@ export function HypermediaTemporalCanvas({
         RESOURCE_SETTLE_MS,
       );
     }
-    if (!layout || lastScrollTop.current === scroller.scrollTop) {
+    if (layout) {
+      setPageViewport({ scrollTop: scroller.scrollTop, height: scroller.clientHeight });
+      discoverMorePages(scroller);
+    }
+  }
+
+  const handleWheel = useEffectEvent((event: globalThis.WheelEvent) => {
+    if (!event.ctrlKey && (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY))) {
       return;
     }
-    lastScrollTop.current = scroller.scrollTop;
-    setPageViewport({ scrollTop: scroller.scrollTop, height: scroller.clientHeight });
-    discoverMorePages(scroller);
-    const nextRange = temporalRangeForViewport({
-      layout,
-      scrollTop: scroller.scrollTop,
-      viewportHeight: scroller.clientHeight,
-    });
-    if (rangeTimer.current) {
-      clearTimeout(rangeTimer.current);
+    event.preventDefault();
+    if (event.ctrlKey) {
+      return;
     }
-    rangeTimer.current = setTimeout(() => onDateRangeApply(nextRange), RANGE_SETTLE_MS);
-  }
+    intervalScroll.handleWheel({ event, viewportHeight: scrollerRef.current?.clientHeight ?? 1 });
+  });
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!layout || !scroller) {
+      return;
+    }
+    scroller.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      scroller.removeEventListener('wheel', handleWheel);
+      if (resourceTimer.current) {
+        clearTimeout(resourceTimer.current);
+      }
+    };
+  }, [layout]);
 
   if (!layout) {
     return (
       <section
         className="grid size-full min-h-[28rem] place-items-center bg-card"
-        aria-label="Temporal Hypermedia"
+        aria-label="Hypermedia timeline"
       >
         <div className="max-w-sm text-center">
           <FileText className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-          <h2 className="mt-3 font-semibold">No temporal pages yet</h2>
+          <h2 className="mt-3 font-semibold">No pages with intervals yet</h2>
           <p className="mt-1 text-muted-foreground text-sm">
             Add a time interval to a knowledge page to place it in this view.
           </p>
@@ -326,25 +350,25 @@ export function HypermediaTemporalCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden bg-card"
-      aria-label={`Temporal Hypermedia with ${layout.pages.length} knowledge pages and ${layout.resources.length} entities and assets`}
+      aria-label={`Hypermedia timeline with ${layout.pages.length} knowledge pages and ${layout.resources.length} entities and assets`}
     >
       <section
         ref={scrollerRef}
-        className="relative size-full overflow-auto"
-        aria-label="Temporal timeline viewport"
+        className="relative size-full overflow-x-auto overflow-y-hidden overscroll-none"
+        aria-label="Timeline viewport"
         onScroll={handleScroll}
       >
         <div className="relative" style={{ width: layout.width, height: layout.height }}>
           <svg
             className="absolute inset-0 size-full select-none"
-            aria-label="Scrollable temporal page timeline"
+            aria-label="Scrollable page timeline"
             viewBox={`0 0 ${layout.width} ${layout.height}`}
             preserveAspectRatio="none"
           >
             {layout.ticks.map((tick) => (
               <line
                 key={tick.time}
-                x1={88}
+                x1={0}
                 y1={tick.y}
                 x2={layout.width - 64}
                 y2={tick.y}
@@ -388,7 +412,7 @@ export function HypermediaTemporalCanvas({
                   style={{
                     opacity: temporalPageOpacity({ bounds: item.bounds, viewport: pageViewport }),
                   }}
-                  aria-label={`Open temporal knowledge page ${item.page.title}`}
+                  aria-label={`Open knowledge page ${item.page.title}`}
                   onSelect={onSelect}
                   onPreview={setPreview}
                   onPreviewEnd={clearPreview}
@@ -414,7 +438,6 @@ export function HypermediaTemporalCanvas({
               );
             })}
           </svg>
-          <TemporalTimeLabels ticks={layout.ticks} width={layout.width} />
           <TemporalResourceHeaders
             resources={layout.resources}
             width={layout.width}
@@ -426,6 +449,12 @@ export function HypermediaTemporalCanvas({
           />
         </div>
       </section>
+      {!selectedKey && (
+        <HypermediaIntervalIndicator
+          month={intervalScroll.displayedMonth}
+          scrollProgress={intervalScroll.progress}
+        />
+      )}
       <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-32" />
       {layout.hasOverlappingPages && (
         <Badge

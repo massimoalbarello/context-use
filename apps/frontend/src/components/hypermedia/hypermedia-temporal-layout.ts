@@ -4,7 +4,6 @@
 import { parseTemporalCoverage } from '@repo/backend/temporal-coverage';
 import {
   type CalendarDateRange,
-  calendarDateFromEpochDay,
   epochDayFromCalendarDate,
   temporalCoverageExpression,
 } from '../../lib/temporal-coverage';
@@ -27,7 +26,7 @@ const MINIMUM_CANVAS_WIDTH = 1_200;
 const MINIMUM_TIMELINE_HEIGHT = 7_200;
 const MAXIMUM_TIMELINE_HEIGHT = 24_000;
 const PIXELS_PER_DAY = 1.25;
-const RESOURCE_COLUMN_START_X = 112;
+const RESOURCE_COLUMN_START_X = 80;
 const RESOURCE_COLUMN_SPACING = 72;
 const RESOURCE_RIGHT_PADDING = 64;
 const TIMELINE_START_Y = 144;
@@ -61,7 +60,6 @@ export type TemporalHypermediaPage = {
 export type TemporalHypermediaTick = {
   y: number;
   time: number;
-  label: string;
 };
 
 export type TemporalHypermediaLayout = {
@@ -137,16 +135,6 @@ function timeY({
   return startY + progress * (endY - startY);
 }
 
-function timeAtY({ y, layout }: { y: number; layout: TemporalHypermediaLayout }): number {
-  if (layout.timelineStartY === layout.timelineEndY) {
-    return layout.extent.end;
-  }
-  const progress =
-    (clamp(y, layout.timelineStartY, layout.timelineEndY) - layout.timelineStartY) /
-    (layout.timelineEndY - layout.timelineStartY);
-  return layout.extent.end - progress * (layout.extent.end - layout.extent.start);
-}
-
 function capsulePath({ left, right, top, bottom }: Bounds): string {
   const radius = (bottom - top) / 2;
   const centerY = top + radius;
@@ -160,14 +148,6 @@ function capsulePath({ left, right, top, bottom }: Bounds): string {
     `A ${radius} ${radius} 0 0 1 ${left + radius} ${top}`,
     'Z',
   ].join(' ');
-}
-
-function tickLabel(time: number, span: number): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    month: span > MILLISECONDS_PER_DAY * 365 * 5 ? undefined : 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(time));
 }
 
 function resourceColumns({
@@ -476,7 +456,6 @@ export function buildTemporalHypermediaLayout({
     return {
       y: timeY({ time, extent, startY: TIMELINE_START_Y, endY: timelineEndY }),
       time,
-      label: tickLabel(time, span),
     };
   });
   return {
@@ -490,23 +469,6 @@ export function buildTemporalHypermediaLayout({
     resources: columns,
     pages: laidOutPages,
     ticks,
-  };
-}
-
-export function temporalRangeForViewport({
-  layout,
-  scrollTop,
-  viewportHeight,
-}: {
-  layout: TemporalHypermediaLayout;
-  scrollTop: number;
-  viewportHeight: number;
-}): CalendarDateRange {
-  const newer = timeAtY({ y: scrollTop, layout });
-  const older = timeAtY({ y: scrollTop + viewportHeight, layout });
-  return {
-    from: calendarDateFromEpochDay(Math.floor(older / MILLISECONDS_PER_DAY)),
-    to: calendarDateFromEpochDay(Math.floor(newer / MILLISECONDS_PER_DAY)),
   };
 }
 

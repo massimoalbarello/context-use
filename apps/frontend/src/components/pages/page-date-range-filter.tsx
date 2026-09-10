@@ -63,7 +63,7 @@ export function PageDateRangeFilter({
   value,
   onApply,
   className,
-  hint = 'Semantic pages stay visible.',
+  hint = 'Pages without an interval are excluded.',
 }: {
   value?: CalendarDateRange;
   onApply: (value?: CalendarDateRange) => void;

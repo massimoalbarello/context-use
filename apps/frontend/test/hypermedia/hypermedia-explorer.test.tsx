@@ -5,14 +5,15 @@ import { HypermediaPageStatus } from '../../src/components/hypermedia/hypermedia
 
 afterEach(cleanup);
 
-test('semantic Hypermedia exposes the next page batch without hiding incomplete connections', async () => {
+test('Map exposes the next page batch without hiding incomplete connections', async () => {
   const onLoadMore = mock(() => undefined);
   const user = userEvent.setup();
   render(
     <HypermediaPageStatus
-      projection="semantic"
+      view="map"
       pageCount={32}
       loading={false}
+      suppressed={false}
       error={null}
       hasNextPage={true}
       referencesTruncated={true}
@@ -28,12 +29,13 @@ test('semantic Hypermedia exposes the next page batch without hiding incomplete 
   expect(onLoadMore).toHaveBeenCalledTimes(1);
 });
 
-test('temporal Hypermedia reports incomplete page connections without a manual paging action', () => {
+test('Timeline reports incomplete page connections without a manual paging action', () => {
   render(
     <HypermediaPageStatus
-      projection="temporal"
+      view="timeline"
       pageCount={32}
       loading={false}
+      suppressed={false}
       error={null}
       hasNextPage={true}
       referencesTruncated={true}
@@ -44,4 +46,22 @@ test('temporal Hypermedia reports incomplete page connections without a manual p
 
   expect(screen.getByText('Some page connections are hidden.')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Load more pages' })).toBeNull();
+});
+
+test('Interval navigation suppresses stale page status until the next query settles', () => {
+  render(
+    <HypermediaPageStatus
+      view="map"
+      pageCount={0}
+      loading={false}
+      suppressed={true}
+      error={null}
+      hasNextPage={false}
+      referencesTruncated={false}
+      onRetry={() => undefined}
+      onLoadMore={() => undefined}
+    />,
+  );
+
+  expect(screen.queryByRole('status')).toBeNull();
 });

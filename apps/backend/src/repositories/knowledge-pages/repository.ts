@@ -4,7 +4,7 @@ import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type {
   KnowledgePageAssetUsage,
-  KnowledgePageKind,
+  KnowledgePageIntervalFilter,
   KnowledgePageLinkSet,
   KnowledgePageReference,
   KnowledgePageRevisionActor,
@@ -65,7 +65,7 @@ export interface KnowledgePagesRepositoryContract {
     limit: number;
     offset: number;
     query?: string;
-    kind?: KnowledgePageKind;
+    interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }): Promise<Page<KnowledgePageSummary>>;
   listByEntity(input: {
@@ -530,14 +530,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     limit,
     offset,
     query,
-    kind,
+    interval,
     temporalBounds,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
     query?: string;
-    kind?: KnowledgePageKind;
+    interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }) {
     const normalizedQuery = query?.trim() || null;
@@ -559,14 +559,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           or instr(page."readable_id", lower(${normalizedQuery})) > 0
         )
         and (
-          ${kind} is null
-          or (${kind} = 'semantic' and revision."temporal_coverage" is null)
-          or (${kind} = 'temporal' and revision."temporal_coverage" is not null)
+          ${interval} is null
+          or (${interval} = 'without' and revision."temporal_coverage" is null)
+          or (${interval} = 'with' and revision."temporal_coverage" is not null)
         )
         and (
           ${filterStart} is null
-          or revision."temporal_coverage" is null
           or (
+            revision."temporal_coverage" is not null
+            and
             (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
             and (
               revision."temporal_end_exclusive_ms" is null
@@ -609,14 +610,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           or instr(page."readable_id", lower(${normalizedQuery})) > 0
         )
         and (
-          ${kind} is null
-          or (${kind} = 'semantic' and revision."temporal_coverage" is null)
-          or (${kind} = 'temporal' and revision."temporal_coverage" is not null)
+          ${interval} is null
+          or (${interval} = 'without' and revision."temporal_coverage" is null)
+          or (${interval} = 'with' and revision."temporal_coverage" is not null)
         )
         and (
           ${filterStart} is null
-          or revision."temporal_coverage" is null
           or (
+            revision."temporal_coverage" is not null
+            and
             (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
             and (
               revision."temporal_end_exclusive_ms" is null

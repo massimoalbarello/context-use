@@ -372,7 +372,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
 
     const filteredAssetPagesResponse = await app.handle(
       new Request(
-        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&kinds=entity,asset&query=Quarterly%20chart',
+        'http://localhost/api/hypermedia/pages?interval=without&resources=asset:quarterly-chart&kinds=entity,asset&query=Quarterly%20chart',
       ),
     );
     expect(filteredAssetPagesResponse.status).toBe(StatusMap.OK);
@@ -392,7 +392,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
 
     const entityOnlyAssetPagesResponse = await app.handle(
       new Request(
-        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&kinds=entity&query=Quarterly%20chart',
+        'http://localhost/api/hypermedia/pages?interval=without&resources=asset:quarterly-chart&kinds=entity&query=Quarterly%20chart',
       ),
     );
     expect(entityOnlyAssetPagesResponse.status).toBe(StatusMap.OK);

@@ -1,39 +1,35 @@
 import { expect, test } from 'bun:test';
 import { displayedHypermediaResourceKinds } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import {
-  hypermediaProjection,
+  hypermediaActiveMonth,
   hypermediaSearch,
   hypermediaSearchAfterEscape,
-  hypermediaSearchWithDateRange,
+  hypermediaView,
 } from '../../src/routes/hypermedia';
 
-test('Hypermedia projection and temporal viewport are canonical URL state', () => {
-  const temporalSearch = hypermediaSearch({
-    view: 'temporal',
-    from: '2025-03-01',
-    to: '2025-08-31',
+test('Hypermedia view and month are canonical URL state', () => {
+  const timelineSearch = hypermediaSearch({
+    view: 'timeline',
+    month: '2025-03',
   });
-  expect(hypermediaProjection(temporalSearch)).toBe('temporal');
-  expect(temporalSearch).toMatchObject({
-    view: 'temporal',
-    from: '2025-03-01',
-    to: '2025-08-31',
+  expect(hypermediaView(timelineSearch)).toBe('timeline');
+  expect(hypermediaActiveMonth({ search: timelineSearch })).toBe('2025-03');
+  expect(timelineSearch).toMatchObject({
+    view: 'timeline',
+    month: '2025-03',
   });
 
   const defaultSearch = hypermediaSearch({ view: 'unknown' });
-  expect(hypermediaProjection(defaultSearch)).toBe('semantic');
+  expect(hypermediaView(defaultSearch)).toBe('map');
+  expect(hypermediaActiveMonth({ search: defaultSearch })).toBeUndefined();
   expect(defaultSearch.view).toBeUndefined();
   expect(
-    hypermediaSearchWithDateRange({
-      previous: { view: 'temporal', q: 'launch' },
-      nextRange: { from: '2024-01-01', to: '2024-12-31' },
+    hypermediaActiveMonth({
+      search: hypermediaSearch({ view: 'timeline' }),
+      now: new Date('2026-09-10T12:00:00.000Z'),
     }),
-  ).toEqual({
-    view: 'temporal',
-    q: 'launch',
-    from: '2024-01-01',
-    to: '2024-12-31',
-  });
+  ).toBe('2026-09');
+  expect(hypermediaSearch({ month: '2025-13' }).month).toBeUndefined();
 });
 
 test('Hypermedia resource visibility is canonical URL state with entities as the default', () => {

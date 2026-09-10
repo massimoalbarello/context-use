@@ -1,4 +1,4 @@
-import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
 
@@ -17,9 +17,10 @@ export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
 type HypermediaPagesRequest = NonNullable<Parameters<(typeof api.api.hypermedia.pages)['get']>[0]>;
-export type HypermediaPageProjection = NonNullable<
-  NonNullable<HypermediaPagesRequest['query']>['projection']
+export type HypermediaPageInterval = NonNullable<
+  NonNullable<HypermediaPagesRequest['query']>['interval']
 >;
+export type HypermediaView = 'map' | 'timeline';
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
 export const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;
@@ -74,21 +75,26 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 }
 
 export type HypermediaPageQuery = {
-  projection: HypermediaPageProjection;
+  interval: HypermediaPageInterval;
   resources: HypermediaResourceReference[];
+  visibleResources: HypermediaResourceReference[];
   kinds: HypermediaResourceKind[];
+  month?: string;
   query?: string;
 };
 
 export const HYPERMEDIA_PAGE_LIMIT = 32;
 
 export function hypermediaPagesQueryOptions({
-  projection,
+  interval,
   resources,
+  visibleResources,
   kinds,
+  month,
   query,
 }: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
+  const visibleResourceKeys = visibleResources.map(hypermediaResourceKey).sort();
   const resourceKinds = [...kinds].sort();
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
@@ -96,21 +102,26 @@ export function hypermediaPagesQueryOptions({
       ...hypermediaQueryKey,
       'pages',
       {
-        projection,
+        interval,
         resources: resourceKeys,
+        visibleResources: visibleResourceKeys,
         kinds: resourceKinds,
+        month: month ?? null,
         query: normalizedQuery ?? null,
       },
     ] as const,
     initialPageParam: 0,
+    placeholderData: keepPreviousData,
     queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
-          projection,
+          interval,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
+          visible: visibleResourceKeys.length > 0 ? visibleResourceKeys.join(',') : undefined,
           kinds: resourceKinds.join(','),
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,
+          time: month,
           query: normalizedQuery,
         },
         fetch: { signal },

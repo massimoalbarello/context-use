@@ -24,8 +24,8 @@ const pages = [
     updatedAt: timestamp,
   },
   {
-    readableId: 'semantic-guidance',
-    title: 'Semantic guidance',
+    readableId: 'general-guidance',
+    title: 'General guidance',
     excerpt: 'No single time asserted.',
     temporalCoverage: null,
     revisionNumber: 1,
@@ -45,13 +45,12 @@ async function renderWithRouter(content: ReactNode): Promise<string> {
   return renderToStaticMarkup(<RouterProvider router={router} />);
 }
 
-test('Pages presents semantic and temporal pages in one list with intervals where present', async () => {
+test('Pages presents every page in one list with intervals where present', async () => {
   const html = await renderWithRouter(<KnowledgePageList pages={pages} />);
 
   expect(html).toContain('Since March 2025? · ongoing');
   expect(html).toContain('Ongoing work');
-  expect(html).toContain('Semantic guidance');
-  expect(html).not.toContain('General knowledge');
+  expect(html).toContain('General guidance');
 });
 
 test('Pages renders a date-only interval revived by the API transport', async () => {
@@ -68,13 +67,12 @@ test('Pages renders a date-only interval revived by the API transport', async ()
   expect(html).toContain('Design critique');
 });
 
-test('entity-related pages use Temporal and Semantic sections', async () => {
+test('entity-related pages use one list with intervals where present', async () => {
   const html = await renderWithRouter(<EntityPageSections pages={pages} />);
 
   expect(html).toContain('Mentioned by');
-  expect(html).toContain('Temporal');
-  expect(html).toContain('Semantic');
-  expect(html).not.toContain('Timeline');
-  expect(html).not.toContain('General knowledge');
+  expect(html).not.toContain('With interval');
+  expect(html).not.toContain('Without interval');
+  expect(html).toContain('General guidance');
   expect(html).toContain('Since March 2025? · ongoing');
 });

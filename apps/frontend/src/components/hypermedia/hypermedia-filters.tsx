@@ -1,29 +1,26 @@
 import { Check, X } from 'lucide-react';
-import type {
-  HypermediaPageProjection,
-  HypermediaResourceReference,
-} from '../../queries/hypermedia';
+import type { HypermediaResourceReference, HypermediaView } from '../../queries/hypermedia';
 import { KeywordFilter } from '../knowledge/keyword-filter';
-import { PageTypeFilter } from '../pages/page-type-filter';
 import { Button } from '../ui/button';
 import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
+import { HypermediaViewFilter } from './hypermedia-view-filter';
 
 export function HypermediaFilters({
-  projection,
+  view,
   resourceKinds,
   query,
   selectedResources,
-  onProjectionChange,
+  onViewChange,
   onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
-  projection: HypermediaPageProjection;
+  view: HypermediaView;
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
-  onProjectionChange: (projection: HypermediaPageProjection) => void;
+  onViewChange: (view: HypermediaView) => void;
   onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
@@ -31,18 +28,10 @@ export function HypermediaFilters({
   return (
     <section aria-labelledby="hypermedia-filters-heading">
       <h2 id="hypermedia-filters-heading" className="font-medium text-sm">
-        Filter hypermedia
+        Explore hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
-        <PageTypeFilter
-          value={projection}
-          includeAll={false}
-          onValueChange={(value) => {
-            if (value !== 'all') {
-              onProjectionChange(value);
-            }
-          }}
-        />
+        <HypermediaViewFilter value={view} onValueChange={onViewChange} />
         <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
           <legend className="font-medium text-xs">Visualize</legend>
           <div className="grid grid-cols-2 gap-2">

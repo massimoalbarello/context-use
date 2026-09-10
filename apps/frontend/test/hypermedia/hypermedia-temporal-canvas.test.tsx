@@ -1,16 +1,22 @@
 import { afterEach, expect, mock, test } from 'bun:test';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import type { HypermediaSelection } from '../../src/components/hypermedia/hypermedia-selection';
-import { HypermediaTemporalCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
+import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
+import {
+  calendarMonthLabel,
+  currentCalendarMonth,
+  shiftCalendarMonth,
+} from '../../src/lib/calendar-month';
 import type { HypermediaPage } from '../../src/queries/hypermedia';
 
 afterEach(cleanup);
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const INTERVAL_SETTLE_WAIT_MS = 160;
 const PAGE_DISCOVERY_SCROLL_TOP = 10_000;
 const OVERLAP_NOTE = 'Overlapping clouds mark pages on the same or nearby dates';
 const self: HypermediaLayoutResource = {
@@ -63,23 +69,29 @@ const continuedPage: HypermediaPage = {
 
 function TemporalPaginationFixture({
   onSelect,
+  onMonthChange = () => undefined,
+  onIntervalScrollingChange = () => undefined,
 }: {
   onSelect: (selection: HypermediaSelection) => void;
+  onMonthChange?: (month?: `${number}-${string}`) => void;
+  onIntervalScrollingChange?: (scrolling: boolean) => void;
 }) {
   const [continued, setContinued] = useState(false);
   return (
     <KnowledgeWorkspace>
       <div />
-      <HypermediaTemporalCanvas
+      <HypermediaTimelineCanvas
         resources={[self, projectPlan]}
         pages={continued ? [temporalPage, continuedPage] : [temporalPage]}
         extent={{
           start: Date.parse('2024-01-01T00:00:00.000Z'),
           end: Date.parse('2026-12-31T00:00:00.000Z'),
         }}
+        month={currentCalendarMonth()}
         selectedResources={[{ kind: 'entity', readableId: 'self' }]}
         onSelect={onSelect}
-        onDateRangeApply={() => undefined}
+        onMonthChange={onMonthChange}
+        onIntervalScrollingChange={onIntervalScrollingChange}
         onViewportSettled={() => undefined}
         hasNextPage={!continued}
         isFetchingNextPage={false}
@@ -89,10 +101,18 @@ function TemporalPaginationFixture({
   );
 }
 
-test('temporal canvas keeps resource filtering and page preview selection accessible', async () => {
+test('timeline keeps resource filtering and page preview selection accessible', async () => {
   const onSelect = mock(() => undefined);
+  const onMonthChange = mock(() => undefined);
+  const onIntervalScrollingChange = mock(() => undefined);
   const user = userEvent.setup();
-  render(<TemporalPaginationFixture onSelect={onSelect} />);
+  render(
+    <TemporalPaginationFixture
+      onSelect={onSelect}
+      onMonthChange={onMonthChange}
+      onIntervalScrollingChange={onIntervalScrollingChange}
+    />,
+  );
 
   const entityButton = screen.getByRole('button', { name: /Self Entity/ });
   expect(entityButton.getAttribute('aria-pressed')).toBe('true');
@@ -109,15 +129,30 @@ test('temporal canvas keeps resource filtering and page preview selection access
   await user.click(entityButton);
   expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'self' });
 
-  const scroller = screen.getByRole('region', { name: 'Temporal timeline viewport' });
+  const scroller = screen.getByRole('region', { name: 'Timeline viewport' });
+  const present = currentCalendarMonth();
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
+  expect(screen.queryByText('Dec 2026')).toBeNull();
+  fireEvent.wheel(scroller, { deltaY: 120 });
+  fireEvent.wheel(scroller, { deltaY: 40 });
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
+  const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
+  expect(onMonthChange).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(previousMonth)}` }),
+  ).toBeTruthy();
+  // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
+  await act(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS)));
+  expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
   scroller.scrollTop = PAGE_DISCOVERY_SCROLL_TOP;
   fireEvent.scroll(scroller);
-  expect(
-    screen.getByRole('link', { name: 'Open temporal knowledge page Earlier period' }),
-  ).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Open knowledge page Earlier period' })).toBeTruthy();
 
   const pageLink = screen.getByRole('link', {
-    name: 'Open temporal knowledge page Launch period',
+    name: 'Open knowledge page Launch period',
   });
   await user.hover(pageLink);
   expect(screen.getByText('A temporal page.')).toBeTruthy();
@@ -128,7 +163,7 @@ test('temporal canvas keeps resource filtering and page preview selection access
   expect(screen.queryByRole('note', { name: OVERLAP_NOTE })).toBeNull();
 });
 
-test('temporal canvas explains unavoidable page overlap', () => {
+test('timeline explains unavoidable page overlap', () => {
   const overlappingPages = ['first-page', 'second-page'].map(
     (readableId): HypermediaPage => ({
       ...temporalPage,
@@ -141,16 +176,18 @@ test('temporal canvas explains unavoidable page overlap', () => {
   render(
     <KnowledgeWorkspace>
       <div />
-      <HypermediaTemporalCanvas
+      <HypermediaTimelineCanvas
         resources={[self]}
         pages={overlappingPages}
         extent={{
           start: Date.parse('2025-01-01T00:00:00.000Z'),
           end: Date.parse('2025-12-31T00:00:00.000Z'),
         }}
+        month={currentCalendarMonth()}
         selectedResources={[]}
         onSelect={() => undefined}
-        onDateRangeApply={() => undefined}
+        onMonthChange={() => undefined}
+        onIntervalScrollingChange={() => undefined}
         onViewportSettled={() => undefined}
         hasNextPage={false}
         isFetchingNextPage={false}

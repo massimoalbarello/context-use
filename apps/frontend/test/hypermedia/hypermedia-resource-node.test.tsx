@@ -1,11 +1,29 @@
-import { afterEach, expect, test } from 'bun:test';
-import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, expect, mock, test } from 'bun:test';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
-import { HypermediaTemporalCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
+import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
+import {
+  type CalendarMonth,
+  calendarMonthLabel,
+  currentCalendarMonth,
+  shiftCalendarMonth,
+} from '../../src/lib/calendar-month';
 
 afterEach(cleanup);
+
+const INTERVAL_SETTLE_WAIT_MS = 160;
+const MAX_RESPONSIVE_PINCH_WIDTH_RATIO = 0.72;
+
+async function settleIntervalScroll() {
+  // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
+  await act(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS)));
+}
+
+function intervalIndicatorPosition(name: string): string {
+  return screen.getByRole('img', { name }).style.getPropertyValue('--interval-position');
+}
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const portrait = {
@@ -121,41 +139,193 @@ function expectResourceIdentities(role: InteractiveRole) {
   expect(brief.querySelector('svg.lucide-file-text')).toBeTruthy();
 }
 
-test('semantic Hypermedia distinguishes entity and asset identities', () => {
-  render(
+function HypermediaMapFixture({
+  onMonthChange,
+  onIntervalScrollingChange = () => undefined,
+  month,
+  selectedKey,
+}: {
+  onMonthChange: (month?: `${number}-${string}`) => void;
+  onIntervalScrollingChange?: (scrolling: boolean) => void;
+  month?: CalendarMonth;
+  selectedKey?: string;
+}) {
+  return (
     <KnowledgeWorkspace>
       <div />
       <HypermediaCanvas
         resources={resources}
         pages={[]}
         selectedResources={[{ kind: 'entity', readableId: 'grace-hopper' }]}
+        selectedKey={selectedKey}
+        month={month}
         onSelect={() => undefined}
         onViewportSettled={() => undefined}
+        onMonthChange={onMonthChange}
+        onIntervalScrollingChange={onIntervalScrollingChange}
         canExplore={false}
         isInitialLoading={false}
         neighborhoodError={null}
         onRetryNeighborhood={() => undefined}
       />
-    </KnowledgeWorkspace>,
+    </KnowledgeWorkspace>
+  );
+}
+
+test('Map distinguishes resource identities and retains partial progress between months', async () => {
+  const onMonthChange = mock(() => undefined);
+  const onIntervalScrollingChange = mock(() => undefined);
+  render(
+    <HypermediaMapFixture
+      onMonthChange={onMonthChange}
+      onIntervalScrollingChange={onIntervalScrollingChange}
+    />,
   );
 
   expectResourceIdentities('link');
+  const canvas = screen.getByLabelText('Interactive Hypermedia');
+
+  expect(screen.getByText('Undated')).toBeTruthy();
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  const undatedPosition = intervalIndicatorPosition('Pages without a time interval');
+
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
+  const partialPosition = intervalIndicatorPosition('Pages without a time interval');
+  await settleIntervalScroll();
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
+  expect(intervalIndicatorPosition('Pages without a time interval')).toBe(partialPosition);
+  expect(onMonthChange).not.toHaveBeenCalled();
+
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(onMonthChange).not.toHaveBeenCalled();
+
+  fireEvent.wheel(canvas, { deltaY: 80 });
+  const present = currentCalendarMonth();
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
+  const presentPosition = intervalIndicatorPosition(
+    `Selected interval: ${calendarMonthLabel(present)}`,
+  );
+  expect(onMonthChange).not.toHaveBeenCalled();
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(present);
+  expect(screen.getByText('Past')).toBeTruthy();
+
+  fireEvent.wheel(canvas, { deltaY: 120 });
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
+  const previousPosition = intervalIndicatorPosition(
+    `Selected interval: ${calendarMonthLabel(previousMonth)}`,
+  );
+  expect(previousPosition).not.toBe(presentPosition);
+  expect(onMonthChange).toHaveBeenCalledTimes(1);
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
+  expect(onMonthChange).toHaveBeenCalledTimes(2);
+
+  fireEvent.wheel(canvas, { deltaY: -120 });
+  fireEvent.wheel(canvas, { deltaY: -40 });
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
+  ).toBeTruthy();
+  await settleIntervalScroll();
+
+  fireEvent.wheel(canvas, { deltaY: -40 });
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(screen.getByText('Undated')).toBeTruthy();
+  expect(intervalIndicatorPosition('Pages without a time interval')).not.toBe(undatedPosition);
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
+
+  fireEvent.wheel(canvas, { deltaY: -120 });
+  await settleIntervalScroll();
+  expect(screen.getByText('Undated')).toBeTruthy();
+  expect(screen.getByText('Now')).toBeTruthy();
+  expect(screen.getByText('Past')).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
+  expect(intervalIndicatorPosition('Pages without a time interval')).toBe(undatedPosition);
+  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
 });
 
-test('temporal Hypermedia uses the same entity and asset identities', () => {
+test('Map keeps the indicator at Past while older month labels continue changing', async () => {
+  const onMonthChange = mock(() => undefined);
+  const oldMonth = shiftCalendarMonth({ value: currentCalendarMonth(), offset: -24 });
+  render(<HypermediaMapFixture onMonthChange={onMonthChange} month={oldMonth} />);
+
+  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const oldPosition = intervalIndicatorPosition(
+    `Selected interval: ${calendarMonthLabel(oldMonth)}`,
+  );
+  fireEvent.wheel(canvas, { deltaY: 120 });
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  const olderMonth = shiftCalendarMonth({ value: oldMonth, offset: -1 });
+
+  expect(
+    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(olderMonth)}` }),
+  ).toBeTruthy();
+  expect(intervalIndicatorPosition(`Selected interval: ${calendarMonthLabel(olderMonth)}`)).toBe(
+    oldPosition,
+  );
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith(olderMonth);
+});
+
+test('Map hides the interval indicator while a detail card is open', () => {
+  const present = currentCalendarMonth();
+  render(
+    <HypermediaMapFixture
+      onMonthChange={() => undefined}
+      month={present}
+      selectedKey="entity:grace-hopper"
+    />,
+  );
+
+  expect(screen.queryByText(calendarMonthLabel(present))).toBeNull();
+  expect(screen.queryByText('Now')).toBeNull();
+  expect(screen.queryByText('Past')).toBeNull();
+  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
+});
+
+test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
+  const onMonthChange = mock(() => undefined);
+  render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
+  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+  const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });
+  Object.defineProperty(pinch, 'ctrlKey', { value: true });
+
+  expect(fireEvent(canvas, pinch)).toBe(false);
+  expect(onMonthChange).not.toHaveBeenCalled();
+  const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+  expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
+});
+
+test('Timeline uses the same entity and asset identities', () => {
   render(
     <KnowledgeWorkspace>
       <div />
-      <HypermediaTemporalCanvas
+      <HypermediaTimelineCanvas
         resources={resources}
         pages={[]}
         extent={{
           start: Date.parse('2025-01-01T00:00:00.000Z'),
           end: Date.parse('2026-01-01T00:00:00.000Z'),
         }}
+        month={currentCalendarMonth()}
         selectedResources={[]}
         onSelect={() => undefined}
-        onDateRangeApply={() => undefined}
+        onMonthChange={() => undefined}
+        onIntervalScrollingChange={() => undefined}
         onViewportSettled={() => undefined}
         hasNextPage={false}
         isFetchingNextPage={false}

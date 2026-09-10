@@ -1,4 +1,7 @@
-import { type KnowledgePageKind, MAX_KNOWLEDGE_PAGE_TITLE_LENGTH } from '@repo/backend/page';
+import {
+  type KnowledgePageIntervalFilter,
+  MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
+} from '@repo/backend/page';
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
@@ -11,7 +14,7 @@ import { type KnowledgePageListFilters, pagesQueryOptions } from '../queries/pag
 
 export type PageSearch = Partial<CalendarDateRange> & {
   q?: string;
-  pageType?: KnowledgePageKind;
+  interval?: KnowledgePageIntervalFilter;
 };
 
 export function pageSearch(search: Record<string, unknown>): PageSearch {
@@ -19,8 +22,8 @@ export function pageSearch(search: Record<string, unknown>): PageSearch {
   if (typeof search.q === 'string' && search.q.trim()) {
     result.q = search.q.trim().slice(0, MAX_KNOWLEDGE_PAGE_TITLE_LENGTH);
   }
-  if (search.pageType === 'semantic' || search.pageType === 'temporal') {
-    result.pageType = search.pageType;
+  if (search.interval === 'with' || search.interval === 'without') {
+    result.interval = search.interval;
   }
   return result;
 }
@@ -29,7 +32,7 @@ export function pageListFilters(search: PageSearch): KnowledgePageListFilters {
   return {
     dateRange: calendarDateRangeFromSearch(search),
     query: search.q,
-    kind: search.pageType,
+    interval: search.interval,
   };
 }
 
@@ -48,11 +51,11 @@ export const Route = createFileRoute('/pages')({
 
 function PageFilterControl({ search }: { search: PageSearch }) {
   const navigate = Route.useNavigate();
-  const { q = '', pageType } = search;
+  const { q = '', interval } = search;
   const dateRange = calendarDateRangeFromSearch(search);
   const commonSearch = {
     q: search.q,
-    pageType,
+    interval,
     from: dateRange?.from,
     to: dateRange?.to,
   };
@@ -60,7 +63,7 @@ function PageFilterControl({ search }: { search: PageSearch }) {
   return (
     <PageFilters
       query={q}
-      kind={pageType}
+      interval={interval}
       dateRange={dateRange}
       onQueryApply={(query) => {
         void navigate({
@@ -69,14 +72,14 @@ function PageFilterControl({ search }: { search: PageSearch }) {
           replace: true,
         });
       }}
-      onKindChange={(nextKind) => {
+      onIntervalChange={(nextInterval) => {
         void navigate({
           to: '/pages',
           search: {
             ...commonSearch,
-            pageType: nextKind,
-            from: nextKind === 'semantic' ? undefined : commonSearch.from,
-            to: nextKind === 'semantic' ? undefined : commonSearch.to,
+            interval: nextInterval,
+            from: nextInterval === 'without' ? undefined : commonSearch.from,
+            to: nextInterval === 'without' ? undefined : commonSearch.to,
           },
           replace: true,
         });
@@ -117,7 +120,7 @@ function PagesLayout() {
       >
         <KnowledgePageList
           pages={pages}
-          filtered={Boolean(filters.dateRange || filters.query || filters.kind)}
+          filtered={Boolean(filters.dateRange || filters.query || filters.interval)}
         />
       </KnowledgeSidebar>
       <KnowledgeWorkspaceDetail>

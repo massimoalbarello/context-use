@@ -30,6 +30,10 @@ the architectural tradeoff has been discussed.
 - Use an effect only to synchronize with an external system. Data fetching, derivation, user
   actions, form operations, navigation, and application workflows belong to their established
   owners rather than `useEffect`.
+- Prefer lifecycle and transition state exposed by the owning system over elapsed-time guesses.
+  Use a timer only when time itself is part of the interaction contract, such as debouncing,
+  animation pacing, or an explicit timeout—not to infer that a query, navigation, or render has
+  finished.
 
 ## Contracts and trust
 

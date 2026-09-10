@@ -1,18 +1,20 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
-import { Minus, Move, Plus, Scan } from 'lucide-react';
+import { Move } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
-  type WheelEvent,
 } from 'react';
+import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
 import { Button } from '../ui/button';
+import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
   buildHypermediaLayout,
   type CanvasBounds,
@@ -22,7 +24,6 @@ import {
   hypermediaLayoutResourceLabel,
   hypermediaLayoutResourceReference,
   initialHypermediaViewBox,
-  spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
@@ -42,13 +43,12 @@ import {
   nearestBoundaryResource,
   viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
+import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
 
 type ViewBox = CanvasBounds;
 
-const BUTTON_ZOOM_IN_FACTOR = 0.9;
-const BUTTON_ZOOM_OUT_FACTOR = 1.1;
 const MAX_WHEEL_ZOOM_DELTA = 80;
-const WHEEL_ZOOM_RATE = 0.001;
+const WHEEL_ZOOM_RATE = 0.0046;
 const VIEWPORT_SETTLE_MS = 280;
 
 function ResourceDot({
@@ -89,7 +89,7 @@ function ResourceDot({
   );
 }
 
-const HypermediaLayers = memo(function HypermediaLayers({
+const HypermediaScene = memo(function HypermediaScene({
   layout,
   activeKey,
   selectedResourceKeys,
@@ -206,7 +206,7 @@ function HypermediaExplorationCue({
       ) : (
         <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
           <Move className="size-3.5" aria-hidden="true" />
-          Drag and zoom to explore the hypermedia.
+          Drag to move, pinch to zoom, and scroll through time.
         </p>
       )}
     </div>
@@ -216,10 +216,13 @@ function HypermediaExplorationCue({
 export function HypermediaCanvas({
   resources,
   pages,
+  month,
   selectedResources,
   selectedKey,
   onSelect,
   onViewportSettled,
+  onMonthChange,
+  onIntervalScrollingChange,
   canExplore,
   isInitialLoading,
   neighborhoodError,
@@ -229,6 +232,9 @@ export function HypermediaCanvas({
   isInitialLoading: boolean;
   neighborhoodError: Error | null;
   onRetryNeighborhood: () => void;
+  month?: CalendarMonth;
+  onMonthChange: (month?: CalendarMonth) => void;
+  onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
@@ -238,8 +244,13 @@ export function HypermediaCanvas({
   const spotlightActive = selectedResources.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
-  const fitActive = useRef(false);
+  const canvasRef = useRef<SVGSVGElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intervalScroll = useHypermediaIntervalScroll({
+    month,
+    onMonthChange,
+    onIntervalScrollingChange,
+  });
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
   const suppressNextCloudClick = useRef(false);
@@ -306,20 +317,16 @@ export function HypermediaCanvas({
     if (spotlightActive) {
       return;
     }
-    const viewport = fitActive.current ? layout.resourceBounds : viewBoxRef.current;
-    if (fitActive.current) {
-      updateViewBox(viewport);
-    }
+    const viewport = viewBoxRef.current;
     publishViewport({ viewport, includeBoundary: true });
     return () => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
     };
-  }, [layout.resourceBounds, publishViewport, spotlightActive, updateViewBox]);
+  }, [publishViewport, spotlightActive]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
-    fitActive.current = false;
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
@@ -340,26 +347,12 @@ export function HypermediaCanvas({
     }
   }
 
-  function fitHypermedia() {
-    setShowExplorationHint(false);
-    if (spotlightActive) {
-      fitActive.current = false;
-      const current = viewBoxRef.current;
-      updateViewBox(
-        spotlightHypermediaViewBox(layout, current.height / current.width, [
-          ...selectedResourceKeys,
-        ]),
-      );
+  function handlePinchZoom(event: globalThis.WheelEvent) {
+    const canvas = canvasRef.current;
+    if (!canvas) {
       return;
     }
-    fitActive.current = true;
-    updateViewBox(layout.resourceBounds);
-    scheduleViewport({ viewport: layout.resourceBounds, includeBoundary: true });
-  }
-
-  function handleWheel(event: WheelEvent<SVGSVGElement>) {
-    event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     const boundedDelta = Math.max(
       -MAX_WHEEL_ZOOM_DELTA,
       Math.min(MAX_WHEEL_ZOOM_DELTA, event.deltaY),
@@ -370,11 +363,29 @@ export function HypermediaCanvas({
     });
   }
 
+  const handleWheel = useEffectEvent((event: globalThis.WheelEvent) => {
+    event.preventDefault();
+    if (event.ctrlKey) {
+      handlePinchZoom(event);
+      return;
+    }
+    intervalScroll.handleWheel({ event, viewportHeight: canvasRef.current?.clientHeight ?? 1 });
+    setShowExplorationHint(false);
+  });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', handleWheel);
+  }, []);
+
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
     if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
       return;
     }
-    fitActive.current = false;
     suppressNextCloudClick.current = false;
     const cloudReadableId = (event.target as Element)
       .closest('[data-hypermedia-cloud]')
@@ -448,10 +459,11 @@ export function HypermediaCanvas({
 
   return (
     <section
-      className="relative size-full min-h-[28rem] overflow-hidden bg-card"
+      className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
       aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities and assets`}
     >
       <svg
+        ref={canvasRef}
         className={cn(
           'size-full touch-none select-none bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:22px_22px]',
           panning ? 'cursor-grabbing' : 'cursor-grab',
@@ -459,14 +471,12 @@ export function HypermediaCanvas({
         aria-label="Interactive Hypermedia"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         preserveAspectRatio="xMidYMid meet"
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
-        onDoubleClick={fitHypermedia}
       >
-        <HypermediaLayers
+        <HypermediaScene
           layout={visibleLayout}
           activeKey={activeKey}
           selectedResourceKeys={selectedResourceKeys}
@@ -477,39 +487,16 @@ export function HypermediaCanvas({
         />
       </svg>
 
+      {!selectedKey && (
+        <HypermediaIntervalIndicator
+          month={intervalScroll.displayedMonth}
+          scrollProgress={intervalScroll.progress}
+        />
+      )}
+
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
-
-      <div className="absolute bottom-4 left-4 flex flex-col gap-1 rounded-xl border bg-card/92 p-1 shadow-sm backdrop-blur">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Zoom in"
-          onClick={() => zoom(BUTTON_ZOOM_IN_FACTOR)}
-        >
-          <Plus aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Zoom out"
-          onClick={() => zoom(BUTTON_ZOOM_OUT_FACTOR)}
-        >
-          <Minus aria-hidden="true" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="Fit Hypermedia"
-          onClick={fitHypermedia}
-        >
-          <Scan aria-hidden="true" />
-        </Button>
-      </div>
 
       {isInitialLoading && (
         <div

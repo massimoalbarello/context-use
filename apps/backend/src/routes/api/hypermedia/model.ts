@@ -71,13 +71,19 @@ export const HypermediaResourceNeighborhoodSchema = t.Object({
 });
 
 export const HypermediaPagesQuerySchema = t.Object({
-  projection: t.Optional(t.Union([t.Literal('semantic'), t.Literal('temporal')])),
+  interval: t.Union([t.Literal('with'), t.Literal('without')]),
   kinds: t.String({
     minLength: 'asset'.length,
     maxLength: 'entity,asset'.length,
     pattern: RESOURCE_KINDS_PATTERN,
   }),
   resources: t.Optional(
+    t.String({
+      minLength: MIN_RESOURCE_KEY_LENGTH,
+      maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
+    }),
+  ),
+  visible: t.Optional(
     t.String({
       minLength: MIN_RESOURCE_KEY_LENGTH,
       maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
