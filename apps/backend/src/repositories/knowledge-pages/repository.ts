@@ -349,6 +349,33 @@ async function insertLinks({
   }
 }
 
+async function deleteLinks({
+  db,
+  ownerId,
+  revisionId,
+}: {
+  db: TypedSQL<Queries>;
+  ownerId: string;
+  revisionId: string;
+}): Promise<void> {
+  await db`
+    delete from "knowledge_page_entity_mention"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+  await db`
+    delete from "knowledge_page_reference"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+  await db`
+    delete from "knowledge_page_record_reference"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+  await db`
+    delete from "knowledge_page_asset_usage"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+}
+
 export class KnowledgePagesRepository implements KnowledgePagesRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
 
@@ -505,26 +532,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         return resolved;
       }
       const revisionNumber = current.revisionNumber + 1;
-      await db`
-        delete from "knowledge_page_entity_mention"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_reference"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_record_reference"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_asset_usage"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
+      await deleteLinks({ db, ownerId: input.ownerId, revisionId: current.currentRevisionId });
       const author = await revisionAuthorColumns({
         db,
         ownerId: input.ownerId,
@@ -799,26 +807,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       if (blockers.length > 0) {
         return { state: 'resource_in_use' as const, blockers };
       }
-      await db`
-        delete from "knowledge_page_entity_mention"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_reference"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_record_reference"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_asset_usage"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
+      await deleteLinks({ db, ownerId, revisionId: target.currentRevisionId });
       await db`
         update "knowledge_page"
         set "archived_at" = ${archivedAt}
