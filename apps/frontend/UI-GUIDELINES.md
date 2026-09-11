@@ -40,8 +40,8 @@ Each resource type owns one reusable identity treatment:
 - Pages are document-led: document cue, title, and a short body excerpt when space permits.
 - Assets are file-led: safe thumbnail or file cue, meaningful name, format, and size when space
   permits.
-- Records are source-led: document cue, sync-supplied title, provider, kind, source dates, and the
-  sync that delivered them. Source identifiers remain available in detail. Delivered Markdown
+- Records are source-led: document cue, sync-supplied title, provider, kind, and the sync that
+  delivered them. Source dates and identifiers belong in detail metadata. Delivered Markdown
   remains content and is not interpreted as record identity.
 
 Call the relationship overview **Hypermedia**. In the compact collection selector, use the

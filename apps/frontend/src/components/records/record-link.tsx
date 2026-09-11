@@ -2,7 +2,6 @@ import { Link } from '@tanstack/react-router';
 import { FileInput } from 'lucide-react';
 import type { ExternalRecordSummary } from '../../queries/records';
 import { resourceCardVariants } from '../knowledge/resource-list';
-import { RecordTimestamp } from './record-timestamp';
 
 export function RecordCardContent({ record }: { record: ExternalRecordSummary }) {
   return (
@@ -24,12 +23,6 @@ export function RecordCardContent({ record }: { record: ExternalRecordSummary })
           {record.provider} · {record.kind}
         </small>
         <small className="truncate text-muted-foreground text-xs leading-relaxed">
-          Created <RecordTimestamp value={record.sourceCreatedAt} compact />
-        </small>
-        <small className="truncate text-muted-foreground text-xs leading-relaxed">
-          Updated <RecordTimestamp value={record.sourceUpdatedAt} compact />
-        </small>
-        <small className="truncate text-muted-foreground text-xs leading-relaxed">
           Synced by {record.sync.name}
         </small>
       </span>
@@ -49,8 +42,8 @@ export function RecordLink({
       className={`${resourceCardVariants()} h-auto min-h-24`}
       to="/records/$id"
       params={{ id: record.readableId }}
-      search={(previous) => previous}
-      activeOptions={{ exact: true }}
+      search={(previous) => ({ ...previous, view: 'preview' })}
+      activeOptions={{ exact: true, includeSearch: false }}
       data-route-selected={active ? 'true' : undefined}
       aria-current={active ? 'page' : undefined}
     >

@@ -31,8 +31,8 @@ test('record cards identify their content and syncing external service', () => {
 
   expect(screen.getByText(record.title)).toBeTruthy();
   expect(screen.getByText('github · pull-request')).toBeTruthy();
-  expect(screen.getByText('Not provided')).toBeTruthy();
-  expect(document.querySelector('time')?.getAttribute('datetime')).toBe('2026-09-01T10:00:00.000Z');
+  expect(screen.queryByText('Not provided')).toBeNull();
+  expect(document.querySelector('time')).toBeNull();
   expect(screen.queryByText(record.recordId)).toBeNull();
   expect(screen.getByText('Synced by Example sync')).toBeTruthy();
   expect(screen.queryByText(record.sync.readableId)).toBeNull();
@@ -48,7 +48,7 @@ test('record links navigate by local readable ID and expose their selected state
   const router = createRouter({
     routeTree: rootRoute.addChildren([recordRoute]),
     history: createMemoryHistory({
-      initialEntries: [`/records/${record.readableId}?provider=github&sortBy=kind`],
+      initialEntries: [`/records/${record.readableId}?provider=github&sortBy=kind&view=metadata`],
     }),
   });
   await router.load();
@@ -56,7 +56,7 @@ test('record links navigate by local readable ID and expose their selected state
 
   const link = screen.getByRole('link', { name: new RegExp(record.kind, 'i') });
   expect(link.getAttribute('href')).toBe(
-    `/records/${record.readableId}?provider=github&sortBy=kind`,
+    `/records/${record.readableId}?provider=github&sortBy=kind&view=preview`,
   );
   expect(link.getAttribute('aria-current')).toBe('page');
 });
