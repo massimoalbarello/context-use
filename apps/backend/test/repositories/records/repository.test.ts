@@ -1,166 +1,36 @@
 import { expect, test } from 'bun:test';
-import type { SQL } from 'bun';
-import { OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
-import type {
-  DeliveredRecord,
-  RecordContent,
-  RecordDeliveryEnvelope,
-} from '#models/records/delivery-contract.generated.ts';
+import { createLocalStorage } from '#lib/storage/client.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordsService } from '#services/records/service.ts';
-import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
-
-const OWNER_ID = OWNER_USER_ID;
-const SECOND_OWNER_ID = 'owner-b';
-const SYNC_ID = '01991f43-0c00-7000-8000-000000000001';
-const SYNC_READABLE_ID = 'receiver-a';
-const SECOND_SYNC_ID = '01991f43-0c00-7000-8000-000000000002';
-const SECOND_SYNC_READABLE_ID = 'receiver-b';
-const RECEIVED_AT = new Date('2026-09-08T08:00:00.000Z');
-const INITIAL_REVISION = 1;
-const STALE_REVISION = 2;
-const CURRENT_REVISION = 3;
-const DELETED_REVISION = 4;
-
-function digest(value: string): string {
-  return new Bun.CryptoHasher('sha256').update(value).digest('hex');
-}
-
-function content(body: string): RecordContent {
-  return {
-    body,
-    sourceUrl: 'https://example.invalid/records/record-1',
-    sourceCreatedAt: '2025-01-02T03:04:05-04:00',
-    sourceUpdatedAt: '2026-08-09T10:11:12+05:30',
-    participants: [
-      {
-        identities: [{ namespace: 'github', id: 'octocat' }],
-        roles: ['author'],
-        name: 'Octo Cat',
-      },
-    ],
-    attributes: { nested: { answer: 42, enabled: true } },
-  };
-}
-
-function activeRecord({
-  eventId,
-  recordId = 'record-1',
-  revision = INITIAL_REVISION,
-  body = 'initial Markdown body',
-}: {
-  eventId: string;
-  recordId?: string;
-  revision?: number;
-  body?: string;
-}): DeliveredRecord {
-  const recordContent = content(body);
-  return {
-    eventId,
-    provider: 'github',
-    sourceId: 'github.example',
-    kind: 'pull-request',
-    id: recordId,
-    revision,
-    operation: revision === INITIAL_REVISION ? 'added' : 'updated',
-    contentHash: digest(JSON.stringify(recordContent)),
-    committedAt: '2026-08-09T10:11:12+05:30',
-    content: recordContent,
-  };
-}
-
-function deletedRecord({ eventId, revision }: { eventId: string; revision: number }) {
-  return {
-    eventId,
-    provider: 'github',
-    sourceId: 'github.example',
-    kind: 'pull-request',
-    id: 'record-1',
-    revision,
-    operation: 'deleted',
-    contentHash: digest('deleted'),
-    committedAt: '2026-09-01T02:03:04-07:00',
-  } satisfies DeliveredRecord;
-}
-
-function envelope({
-  batchId,
-  records,
-}: {
-  batchId: string;
-  records: DeliveredRecord[];
-}): RecordDeliveryEnvelope {
-  return { version: 1, batchId, records };
-}
-
-async function insertOwner({
-  database,
-  ownerId,
-}: {
-  database: SQL;
-  ownerId: string;
-}): Promise<void> {
-  const timestamp = RECEIVED_AT.toISOString();
-  await database`
-    insert into "auth_user"
-      ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
-    values (${ownerId}, ${ownerId}, ${`${ownerId}@example.invalid`}, 1, ${timestamp}, ${timestamp})
-  `;
-}
-
-async function insertSync({
-  database,
-  syncId = SYNC_ID,
-  readableId = SYNC_READABLE_ID,
-  ownerId = OWNER_ID,
-}: {
-  database: SQL;
-  syncId?: string;
-  readableId?: string;
-  ownerId?: string;
-}): Promise<void> {
-  await database`
-    insert into "record_sync"
-      ("id", "owner_id", "readable_id", "name", "api_key_sha256", "created_at")
-    values
-      (${syncId}, ${ownerId}, ${readableId}, ${readableId}, ${digest(`${syncId}-key`)},
-       ${RECEIVED_AT.toISOString()})
-  `;
-}
-
-async function recordCount(database: SQL): Promise<number> {
-  const [count] = await database<Array<{ total: number }>>`
-    select count(*) as "total" from "record"
-  `;
-  return Number(count?.total ?? 0);
-}
-
-async function storedRecord({
-  database,
-  syncId = SYNC_ID,
-  recordId = 'record-1',
-}: {
-  database: SQL;
-  syncId?: string;
-  recordId?: string;
-}) {
-  const [record] = await database<
-    Array<{ ownerId: string; revision: number; operation: string; markdown: string | null }>
-  >`
-    select "owner_id" as "ownerId", "revision", "operation", "markdown"
-    from "record"
-    where "sync_id" = ${syncId} and "record_id" = ${recordId}
-  `;
-  return record;
-}
+import { withRecordTestDatabase } from './database.ts';
+import {
+  activeRecord,
+  CURRENT_REVISION,
+  DELETED_REVISION,
+  deletedRecord,
+  envelope,
+  INITIAL_REVISION,
+  insertOwner,
+  insertSync,
+  OWNER_ID,
+  RECEIVED_AT,
+  recordCount,
+  SECOND_OWNER_ID,
+  SECOND_SYNC_ID,
+  SECOND_SYNC_READABLE_ID,
+  STALE_REVISION,
+  SYNC_ID,
+  storedRecord,
+} from './fixtures.ts';
 
 test('a batch atomically applies owner-bound current records', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertOwner({ database, ownerId: SECOND_OWNER_ID });
       const service = new RecordsService({
-        records: new RecordsRepository(database),
+        records: new RecordsRepository({ sql: database, storage }),
         now: () => RECEIVED_AT,
       });
 
@@ -180,7 +50,7 @@ test('a batch atomically applies owner-bound current records', async () => {
         await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
       expect(await recordCount(database)).toBe(1);
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         ownerId: OWNER_ID,
         revision: INITIAL_REVISION,
         operation: 'added',
@@ -215,7 +85,7 @@ test('a batch atomically applies owner-bound current records', async () => {
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         revision: CURRENT_REVISION,
         markdown: 'newest Markdown body',
       });
@@ -267,7 +137,7 @@ test('a batch atomically applies owner-bound current records', async () => {
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         revision: DELETED_REVISION,
         operation: 'deleted',
         markdown: null,
@@ -285,7 +155,7 @@ test('a batch atomically applies owner-bound current records', async () => {
           envelope: firstEnvelope,
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database, syncId: SECOND_SYNC_ID })).toMatchObject({
+      expect(await storedRecord({ database, storage, syncId: SECOND_SYNC_ID })).toMatchObject({
         ownerId: OWNER_ID,
         revision: INITIAL_REVISION,
       });
@@ -294,12 +164,13 @@ test('a batch atomically applies owner-bound current records', async () => {
 });
 
 test('one batch can converge multiple changes for the same record on its highest revision', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertSync({ database });
       const service = new RecordsService({
-        records: new RecordsRepository(database),
+        records: new RecordsRepository({ sql: database, storage }),
         now: () => RECEIVED_AT,
       });
 
@@ -320,7 +191,7 @@ test('one batch can converge multiple changes for the same record on its highest
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         revision: STALE_REVISION,
         markdown: 'second revision',
       });
@@ -329,12 +200,13 @@ test('one batch can converge multiple changes for the same record on its highest
 });
 
 test('concurrent retries are harmless and converge on the highest record revision', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertSync({ database });
       const service = new RecordsService({
-        records: new RecordsRepository(database),
+        records: new RecordsRepository({ sql: database, storage }),
         now: () => RECEIVED_AT,
       });
       const duplicateInput = {
@@ -382,7 +254,7 @@ test('concurrent retries are harmless and converge on the highest record revisio
           }),
         }),
       ]);
-      expect(await storedRecord({ database, recordId })).toMatchObject({
+      expect(await storedRecord({ database, storage, recordId })).toMatchObject({
         revision: STALE_REVISION,
         markdown: 'concurrent high revision',
       });
@@ -391,18 +263,19 @@ test('concurrent retries are harmless and converge on the highest record revisio
 });
 
 test('a record storage failure rolls back the whole batch before a later retry succeeds', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertSync({ database });
       const service = new RecordsService({
-        records: new RecordsRepository(database),
+        records: new RecordsRepository({ sql: database, storage }),
         now: () => RECEIVED_AT,
       });
       await database`
         create trigger "record_test_reject_second_record"
-        before insert on "record"
-        when new."record_id" = 'rejected-record'
+        before insert on "record_delivery_head"
+        when new."readable_id" like 'pull-request-rejected-record-%'
         begin
           select raise(abort, 'simulated record storage failure');
         end

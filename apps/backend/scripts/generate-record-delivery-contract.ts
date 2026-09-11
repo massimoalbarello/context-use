@@ -7,10 +7,7 @@ import { parse } from 'yaml';
 import { backendDirectory, readPinnedContract } from './record-delivery-contract-source.ts';
 
 const modelOutputPath = join(backendDirectory, 'src/models/records/delivery-contract.generated.ts');
-const routeOutputPath = join(
-  backendDirectory,
-  'src/routes/api/records/delivery-model.generated.ts',
-);
+const schemaOutputPath = join(backendDirectory, 'src/models/records/delivery-schema.generated.ts');
 const { source } = await readPinnedContract();
 const document = parse(source) as OpenApiDocument;
 const envelope = requireSchema({ document, name: 'RecordDeliveryEnvelope' });
@@ -70,8 +67,8 @@ const zodModule = jsonSchemaToZod(runtimeSchema, {
   zodVersion: 4,
 });
 const zodSchema = zodModule.replace(/^import \{ z \} from ['"]zod['"];?\n+/, '');
-const routeSource = formatGenerated({
-  path: routeOutputPath,
+const schemaSource = formatGenerated({
+  path: schemaOutputPath,
   source: `/** Generated from the pinned OpenConnector OpenAPI contract. Do not edit. */
 /* biome-ignore-all lint: Generated code mirrors the external contract. */
 import { z } from 'zod';
@@ -80,6 +77,8 @@ import {
   MAX_RECORD_CONTENT_BYTES,
 } from '#models/records/delivery-contract.generated.ts';
 ${zodSchema}
+
+export const DeliveredRecordSchema = BaseRecordDeliveryEnvelopeSchema.shape.records.element;
 
 export const RecordDeliveryEnvelopeSchema = BaseRecordDeliveryEnvelopeSchema.superRefine(
   (envelope, context) => {
@@ -101,7 +100,7 @@ export const RecordDeliveryEnvelopeSchema = BaseRecordDeliveryEnvelopeSchema.sup
 });
 
 await writeOrCheck({ path: modelOutputPath, content: modelSource });
-await writeOrCheck({ path: routeOutputPath, content: routeSource });
+await writeOrCheck({ path: schemaOutputPath, content: schemaSource });
 
 interface OpenApiDocument {
   components: { schemas: Record<string, OpenApiSchema> };

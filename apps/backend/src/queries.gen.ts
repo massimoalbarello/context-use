@@ -599,43 +599,55 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
-/** Result of query `FindCurrentRecordRevision`. */
-export interface IFindCurrentRecordRevisionResult {
-    revision: number;
-    operation: string;
-    contentHash: string;
-    markdown: string | null;
-}
-
-/** Result of query `ApplyRecordRevision`. */
-export interface IApplyRecordRevisionResult {
-}
-
 /** Result of query `FindActiveRecordSyncForAcceptance`. */
 export interface IFindActiveRecordSyncForAcceptanceResult {
     id: string;
-    ownerId: string;
+}
+
+/** Result of query `FindCurrentRecordRevision`. */
+export interface IFindCurrentRecordRevisionResult {
+    revision: number;
+    revisionHash: string;
+    readableId: string;
+    storageKey: string;
+}
+
+/** Result of query `PublishRecordRevision`. */
+export interface IPublishRecordRevisionResult {
 }
 
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
+    ownerId: string;
+    syncId: string;
+    identityKey: string;
+    readableId: string;
+    revision: number;
+    operation: string;
+    revisionHash: string;
+    storageKey: string;
+    blobHash: string;
+    sizeBytes: number;
     syncReadableId: string;
     syncName: string;
-    readableId: string;
-    kind: string;
-    recordId: string;
     createdAt: string;
     updatedAt: string;
 }
 
 /** Result of query `FindRecordResource`. */
 export interface IFindRecordResourceResult {
+    ownerId: string;
+    syncId: string;
+    identityKey: string;
+    readableId: string;
+    revision: number;
+    operation: string;
+    revisionHash: string;
+    storageKey: string;
+    blobHash: string;
+    sizeBytes: number;
     syncReadableId: string;
     syncName: string;
-    readableId: string;
-    kind: string;
-    recordId: string;
-    markdown: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -726,9 +738,9 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
-    FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
-    ApplyRecordRevision: IApplyRecordRevisionResult;
     FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
+    FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
+    PublishRecordRevision: IPublishRecordRevisionResult;
     ListRecordResources: IListRecordResourcesResult;
     FindRecordResource: IFindRecordResourceResult;
     FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;

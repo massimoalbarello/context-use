@@ -1,161 +1,68 @@
-import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
-import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
+import type { Storage } from '#lib/storage/storage.ts';
 import type {
   RecordAcceptanceResult,
   RecordPage,
   RecordResource,
   RecordSummary,
 } from '#models/records/model.ts';
-import type { Queries } from '#queries.gen.ts';
+import { type CatalogRecord, RecordCatalog } from './catalog.ts';
+import type { AcceptRecordsInput, RecordsRepositoryContract } from './contract.ts';
+import { type RecordFileReference, RecordFiles } from './files.ts';
 
-class RecordAcceptanceConflict extends Error {
-  constructor() {
-    super('A record revision conflicts with stored content');
-    this.name = 'RecordAcceptanceConflict';
-  }
-}
-
-export type AcceptedRecord = {
-  record: DeliveredRecord;
-  readableId: string;
-  markdown: string | null;
-};
-
-export type AcceptRecordsInput = {
-  syncId: string;
-  ownerId: string;
-  records: AcceptedRecord[];
-  receivedAt: string;
-};
-
-export interface RecordsRepositoryContract {
-  accept(input: AcceptRecordsInput): Promise<RecordAcceptanceResult>;
-  listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage>;
-  findResource(input: { ownerId: string; readableId: string }): Promise<RecordResource | null>;
-}
-
-function recordSummaryFrom({
-  syncReadableId,
-  syncName,
-  readableId,
-  kind,
-  recordId,
-  createdAt,
-  updatedAt,
+function summary({
+  head,
+  record,
 }: {
-  syncReadableId: string;
-  syncName: string;
-  readableId: string;
-  kind: string;
-  recordId: string;
-  createdAt: string;
-  updatedAt: string;
+  head: CatalogRecord;
+  record: RecordResource['record'];
 }): RecordSummary {
   return {
-    readableId,
-    kind,
-    recordId,
-    sync: { readableId: syncReadableId, name: syncName },
-    createdAt,
-    updatedAt,
+    readableId: head.readableId,
+    kind: record.kind,
+    recordId: record.id,
+    sync: { readableId: head.syncReadableId, name: head.syncName },
+    createdAt: head.createdAt,
+    updatedAt: head.updatedAt,
   };
 }
 
-async function applyRecord({
-  db,
-  input,
-  accepted,
-}: {
-  db: TypedSQL<Queries>;
-  input: AcceptRecordsInput;
-  accepted: AcceptedRecord;
-}): Promise<void> {
-  const { record } = accepted;
-  const currentRows = await db.FindCurrentRecordRevision`
-    /* @notNull revision operation contentHash */
-    select "revision", "operation", "content_hash" as "contentHash", "markdown"
-    from "record"
-    where "sync_id" = ${input.syncId}
-      and "source_id" = ${record.sourceId}
-      and "kind" = ${record.kind}
-      and "record_id" = ${record.id}
-  `;
-  const current = currentRows[0];
-  if (current) {
-    const currentRevision = Number(current.revision);
-    if (
-      currentRevision === record.revision &&
-      (current.operation !== record.operation ||
-        current.contentHash !== record.contentHash ||
-        current.markdown !== accepted.markdown)
-    ) {
-      throw new RecordAcceptanceConflict();
-    }
-    if (currentRevision >= record.revision) {
-      return;
-    }
-  }
-
-  await db.ApplyRecordRevision`
-    insert into "record"
-      ("sync_id", "owner_id", "readable_id", "source_id", "kind", "record_id", "revision",
-       "operation", "content_hash", "markdown", "created_at", "updated_at")
-    values
-      (${input.syncId}, ${input.ownerId}, ${accepted.readableId}, ${record.sourceId}, ${record.kind},
-       ${record.id}, ${record.revision}, ${record.operation}, ${record.contentHash},
-       ${accepted.markdown}, ${input.receivedAt}, ${input.receivedAt})
-    on conflict ("sync_id", "source_id", "kind", "record_id") do update set
-      "owner_id" = excluded."owner_id",
-      "revision" = excluded."revision",
-      "operation" = excluded."operation",
-      "content_hash" = excluded."content_hash",
-      "markdown" = excluded."markdown",
-      "updated_at" = excluded."updated_at"
-    where excluded."revision" > "record"."revision"
-  `;
-}
-
-async function acceptDelivery({
-  db,
-  input,
-}: {
-  db: TypedSQL<Queries>;
-  input: AcceptRecordsInput;
-}): Promise<Exclude<RecordAcceptanceResult, { state: 'conflict' }>> {
-  const syncs = await db.FindActiveRecordSyncForAcceptance`
-    /* @notNull id ownerId */
-    select "id", "owner_id" as "ownerId"
-    from "record_sync"
-    where "id" = ${input.syncId} and "owner_id" = ${input.ownerId} and "revoked_at" is null
-  `;
-  if (!syncs[0]) {
-    return { state: 'inactive_sync' };
-  }
-
-  for (const record of input.records) {
-    await applyRecord({ db, input, accepted: record });
-  }
-  return { state: 'accepted' };
-}
-
 export class RecordsRepository implements RecordsRepositoryContract {
-  private readonly sql: TypedSQL<Queries>;
-  private operationTail: Promise<void> = Promise.resolve();
+  private readonly catalog: RecordCatalog;
+  private readonly files: RecordFiles;
 
-  constructor(sql: SQL) {
-    this.sql = withTypes<Queries>(sql);
+  constructor({ sql, storage }: { sql: SQL; storage: Storage }) {
+    this.catalog = new RecordCatalog(sql);
+    this.files = new RecordFiles(storage);
   }
 
   async accept(input: AcceptRecordsInput): Promise<RecordAcceptanceResult> {
+    if (!(await this.catalog.isActive(input))) {
+      return { state: 'inactive_sync' };
+    }
+    const attemptedKeys = new Set<string>();
+    let result: RecordAcceptanceResult;
     try {
-      return await this.serialize(() => this.sql.begin((db) => acceptDelivery({ db, input })));
+      const staged: RecordFileReference[] = [];
+      for (const accepted of input.records) {
+        staged.push(await this.files.stage({ input, accepted, attemptedKeys }));
+      }
+      const publication = await this.catalog.publish({ input, files: staged });
+      // Never delete a published file, even if cleanup of other candidates fails.
+      for (const key of publication.publishedKeys) {
+        attemptedKeys.delete(key);
+      }
+      result = publication.result;
     } catch (error) {
-      if (error instanceof RecordAcceptanceConflict) {
-        return { state: 'conflict' };
+      try {
+        await this.files.discard(attemptedKeys);
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Record acceptance and cleanup failed');
       }
       throw error;
     }
+    await this.files.discard(attemptedKeys);
+    return result;
   }
 
   async listResources({
@@ -167,59 +74,31 @@ export class RecordsRepository implements RecordsRepositoryContract {
     limit: number;
     offset: number;
   }): Promise<RecordPage> {
-    return await this.serialize(async () => {
-      const rows = await this.sql.ListRecordResources`
-        /* @notNull syncReadableId syncName readableId kind recordId createdAt updatedAt */
-        select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
-          record."created_at" as "createdAt", record."updated_at" as "updatedAt"
-        from "record" record
-        join "record_sync" sync
-          on sync."id" = record."sync_id"
-         and sync."owner_id" = record."owner_id"
-        where record."owner_id" = ${ownerId} and record."operation" <> 'deleted'
-        order by record."updated_at" desc, record."readable_id"
-        limit ${limit + 1} offset ${offset}
-      `;
-      const hasNextPage = rows.length > limit;
-      const items = rows.slice(0, limit).map(recordSummaryFrom);
-      return { items, nextOffset: hasNextPage ? offset + items.length : null };
-    });
+    const heads = await this.catalog.list({ ownerId, limit: limit + 1, offset });
+    const items: RecordSummary[] = [];
+    for (const head of heads.slice(0, limit)) {
+      items.push(summary({ head, record: await this.readActive(head) }));
+    }
+    return { items, nextOffset: heads.length > limit ? offset + items.length : null };
   }
 
-  async findResource({
-    ownerId,
-    readableId,
-  }: {
+  async findResource(input: {
     ownerId: string;
     readableId: string;
   }): Promise<RecordResource | null> {
-    return await this.serialize(async () => {
-      const rows = await this.sql.FindRecordResource`
-        /* @notNull syncReadableId syncName readableId kind recordId markdown createdAt updatedAt */
-        select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
-          record."markdown", record."created_at" as "createdAt",
-          record."updated_at" as "updatedAt"
-        from "record" record
-        join "record_sync" sync
-          on sync."id" = record."sync_id"
-         and sync."owner_id" = record."owner_id"
-        where record."owner_id" = ${ownerId} and record."readable_id" = ${readableId}
-          and record."operation" <> 'deleted'
-        limit 1
-      `;
-      const row = rows[0];
-      return row ? { ...recordSummaryFrom(row), markdown: row.markdown } : null;
-    });
+    const head = await this.catalog.find(input);
+    if (!head) {
+      return null;
+    }
+    const record = await this.readActive(head);
+    return { ...summary({ head, record }), markdown: record.content.body, record };
   }
 
-  private serialize<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.operationTail.then(operation);
-    this.operationTail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
+  private async readActive(head: CatalogRecord): Promise<RecordResource['record']> {
+    const record = await this.files.read(head);
+    if (record.operation === 'deleted') {
+      throw new Error('An active catalog record references a tombstone');
+    }
+    return record;
   }
 }

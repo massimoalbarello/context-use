@@ -4,7 +4,7 @@ import type {
   RecordDeliveryEnvelope,
 } from '#models/records/delivery-contract.generated.ts';
 import type { RecordAcceptanceResult, RecordPage, RecordResource } from '#models/records/model.ts';
-import type { RecordsRepositoryContract } from '#repositories/records/repository.ts';
+import type { RecordsRepositoryContract } from '#repositories/records/contract.ts';
 
 const RECORD_READABLE_ID_SUFFIX_LENGTH = 24;
 
@@ -51,11 +51,9 @@ export class RecordsService {
       syncId,
       ownerId,
       records: envelope.records.map((record) => {
-        const markdown = record.operation === 'deleted' ? null : record.content.body;
         return {
           record,
           readableId: recordReadableId({ syncId, record }),
-          markdown,
         };
       }),
       receivedAt: this.now().toISOString(),

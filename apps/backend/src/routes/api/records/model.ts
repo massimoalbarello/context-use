@@ -32,7 +32,10 @@ export const RecordParamsSchema = t.Object({ recordReadableId: ReadableIdSchema 
 
 export function recordSummaryResponse(record: RecordSummary) {
   return {
-    ...record,
+    readableId: record.readableId,
+    kind: record.kind,
+    recordId: record.recordId,
+    sync: record.sync,
     createdAt: new Date(record.createdAt),
     updatedAt: new Date(record.updatedAt),
   };

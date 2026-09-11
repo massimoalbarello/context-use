@@ -1,3 +1,4 @@
+import type { SQL } from 'bun';
 import { createApp } from '#app.ts';
 import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
@@ -55,6 +56,7 @@ if (authSecret.source.kind === 'environment') {
   logger.info(`using auth secret from ${authSecret.source.path}`);
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+let recordsDatabase: SQL | undefined;
 
 try {
   await runMigrations({ db: database });
@@ -78,7 +80,10 @@ try {
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
   );
-  const recordsRepository = new RecordsRepository(database);
+  // Bun SQLite exposes in-flight transactions to unrelated queries on the same connection.
+  // RecordCatalog serializes its own operations; other capabilities use the primary connection.
+  recordsDatabase = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+  const recordsRepository = new RecordsRepository({ sql: recordsDatabase, storage });
   const recordsService = new RecordsService({ records: recordsRepository });
   const syncsService = new RecordSyncsService({
     syncs: new RecordSyncsRepository(database),
@@ -123,7 +128,7 @@ try {
     recordsService,
     syncsService,
   }).onStop(async () => {
-    await database.close();
+    await Promise.all([database.close(), recordsDatabase?.close()]);
   });
   const { server } = app.listen({
     port: env.PORT,
@@ -135,6 +140,6 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await database.close();
+  await Promise.all([database.close(), recordsDatabase?.close()]);
   throw error;
 }

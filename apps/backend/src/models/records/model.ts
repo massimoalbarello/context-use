@@ -1,3 +1,5 @@
+import type { DeliveredRecord } from './delivery-contract.generated.ts';
+
 export type RecordSummary = {
   readableId: string;
   kind: string;
@@ -9,6 +11,7 @@ export type RecordSummary = {
 
 export type RecordResource = RecordSummary & {
   markdown: string;
+  record: Exclude<DeliveredRecord, { operation: 'deleted' }>;
 };
 
 export type RecordPage = {

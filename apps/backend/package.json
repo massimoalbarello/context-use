@@ -36,6 +36,7 @@
     "@ilbertt/bun-sqlgen": "^0.5.1",
     "@modelcontextprotocol/server": "^2",
     "better-auth": "catalog:",
+    "canonicalize": "^5.0.0",
     "elysia": "^1.4.30",
     "file-type": "^22.0.2",
     "mdast-util-from-markdown": "^2.0.3",
