@@ -92,12 +92,10 @@ async function publishRecord({
 }
 
 export class RecordCatalog {
-  private static readonly operationTails = new WeakMap<SQL, Promise<void>>();
-  private readonly connection: SQL;
+  private operationTail: Promise<void> = Promise.resolve();
   private readonly sql: TypedSQL<Queries>;
 
   constructor(sql: SQL) {
-    this.connection = sql;
     this.sql = withTypes<Queries>(sql);
   }
 
@@ -179,15 +177,10 @@ export class RecordCatalog {
   }
 
   private serialize<T>(operation: () => Promise<T>): Promise<T> {
-    const result = (RecordCatalog.operationTails.get(this.connection) ?? Promise.resolve()).then(
-      operation,
-    );
-    RecordCatalog.operationTails.set(
-      this.connection,
-      result.then(
-        () => undefined,
-        () => undefined,
-      ),
+    const result = this.operationTail.then(operation);
+    this.operationTail = result.then(
+      () => undefined,
+      () => undefined,
     );
     return result;
   }

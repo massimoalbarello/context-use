@@ -50,12 +50,10 @@ export class RecordsService {
     return await this.records.accept({
       syncId,
       ownerId,
-      records: envelope.records.map((record) => {
-        return {
-          record,
-          readableId: recordReadableId({ syncId, record }),
-        };
-      }),
+      records: envelope.records.map((record) => ({
+        record,
+        readableId: recordReadableId({ syncId, record }),
+      })),
       receivedAt: this.now().toISOString(),
     });
   }

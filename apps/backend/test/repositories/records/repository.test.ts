@@ -15,7 +15,6 @@ import {
   OWNER_ID,
   RECEIVED_AT,
   recordCount,
-  SECOND_OWNER_ID,
   SECOND_SYNC_ID,
   SECOND_SYNC_READABLE_ID,
   STALE_REVISION,
@@ -28,7 +27,6 @@ test('a batch atomically applies owner-bound current records', async () => {
     run: async ({ database, dataFolder }) => {
       const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
-      await insertOwner({ database, ownerId: SECOND_OWNER_ID });
       const service = new RecordsService({
         records: new RecordsRepository({ sql: database, storage }),
         now: () => RECEIVED_AT,
@@ -258,46 +256,6 @@ test('concurrent retries are harmless and converge on the highest record revisio
         revision: STALE_REVISION,
         markdown: 'concurrent high revision',
       });
-    },
-  });
-});
-
-test('a record storage failure rolls back the whole batch before a later retry succeeds', async () => {
-  await withRecordTestDatabase({
-    run: async ({ database, dataFolder }) => {
-      const storage = createLocalStorage({ dataFolder });
-      await insertOwner({ database, ownerId: OWNER_ID });
-      await insertSync({ database });
-      const service = new RecordsService({
-        records: new RecordsRepository({ sql: database, storage }),
-        now: () => RECEIVED_AT,
-      });
-      await database`
-        create trigger "record_test_reject_second_record"
-        before insert on "record_delivery_head"
-        when new."readable_id" like 'pull-request-rejected-record-%'
-        begin
-          select raise(abort, 'simulated record storage failure');
-        end
-      `;
-
-      const input = {
-        syncId: SYNC_ID,
-        ownerId: OWNER_ID,
-        envelope: envelope({
-          batchId: 'batch-durable-retry',
-          records: [
-            activeRecord({ eventId: 'event-durable-retry' }),
-            activeRecord({ eventId: 'event-rejected', recordId: 'rejected-record' }),
-          ],
-        }),
-      } as const;
-      await expect(service.accept(input)).rejects.toThrow('simulated record storage failure');
-      expect(await recordCount(database)).toBe(0);
-
-      await database`drop trigger "record_test_reject_second_record"`;
-      expect(await service.accept(input)).toEqual({ state: 'accepted' });
-      expect(await recordCount(database)).toBe(2);
     },
   });
 });

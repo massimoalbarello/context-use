@@ -12,7 +12,7 @@ const UUID_SUFFIX_LENGTH = 12;
 export const OWNER_ID = OWNER_USER_ID;
 export const SECOND_OWNER_ID = 'owner-b';
 export const SYNC_ID = '01991f43-0c00-7000-8000-000000000001';
-export const SYNC_READABLE_ID = 'receiver-a';
+const SYNC_READABLE_ID = 'receiver-a';
 export const SECOND_SYNC_ID = '01991f43-0c00-7000-8000-000000000002';
 export const SECOND_SYNC_READABLE_ID = 'receiver-b';
 export const RECEIVED_AT = new Date('2026-09-08T08:00:00.000Z');
@@ -25,7 +25,7 @@ export function digest(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
 }
 
-export function content(body: string): RecordContent {
+function content(body: string): RecordContent {
   return {
     body,
     sourceUrl: 'https://example.invalid/records/record-1',

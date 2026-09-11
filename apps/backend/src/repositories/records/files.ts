@@ -109,6 +109,8 @@ export class RecordFiles {
     return record;
   }
 
+  // Only discard this attempt's unpublished files. Unreferenced files can also be retained
+  // committed revisions, so a crash-recovery scan cannot safely delete them all.
   async discard(keys: Iterable<string>): Promise<void> {
     const results = await Promise.allSettled(
       Array.from(keys, async (key) => {

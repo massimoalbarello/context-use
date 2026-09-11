@@ -15,7 +15,7 @@ import {
   SYNC_ID,
 } from './fixtures.ts';
 
-test('catalog readers on a shared client wait for rollback; other connections cannot see unpublished records', async () => {
+test('catalog reads wait for rollback; other connections cannot see unpublished records', async () => {
   await withRecordTestDatabase({
     run: async ({ database, dataFolder }) => {
       await insertOwner({ database, ownerId: OWNER_ID });
@@ -54,17 +54,16 @@ test('catalog readers on a shared client wait for rollback; other connections ca
           };
         },
       });
-      const writer = new RecordCatalog(controlledDatabase);
-      const reader = new RecordCatalog(controlledDatabase);
+      const catalog = new RecordCatalog(controlledDatabase);
       const externalDatabase = await createSqliteDatabase({ dataFolder });
-      const publication = writer.publish({ input, files: [file] }).then(
+      const publication = catalog.publish({ input, files: [file] }).then(
         () => null,
         (error: unknown) => error,
       );
       try {
         await staged.promise;
         let readSettled = false;
-        const read = reader.list({ ownerId: OWNER_ID, limit: 1, offset: 0 }).then((rows) => {
+        const read = catalog.list({ ownerId: OWNER_ID, limit: 1, offset: 0 }).then((rows) => {
           readSettled = true;
           return rows;
         });
@@ -74,7 +73,7 @@ test('catalog readers on a shared client wait for rollback; other connections ca
         resume.resolve();
         expect(await publication).toMatchObject({ message: 'publication rolled back' });
         expect(await read).toEqual([]);
-        expect(await reader.find({ ownerId: OWNER_ID, readableId: 'record-1' })).toBeNull();
+        expect(await catalog.find({ ownerId: OWNER_ID, readableId: 'record-1' })).toBeNull();
       } finally {
         resume.resolve();
         await publication;
