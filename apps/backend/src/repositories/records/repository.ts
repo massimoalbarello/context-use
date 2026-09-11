@@ -3,6 +3,7 @@ import type { SQL } from 'bun';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import type {
   RecordAcceptanceResult,
+  RecordFilterOptions,
   RecordListFilters,
   RecordPage,
   RecordSummary,
@@ -44,6 +45,7 @@ export type ListRecordsInput = RecordListFilters & {
 export interface RecordsRepositoryContract {
   accept(input: AcceptRecordsInput): Promise<RecordPublication>;
   listResources(input: ListRecordsInput): Promise<RecordPage>;
+  filterOptions(input: { ownerId: string }): Promise<RecordFilterOptions>;
   findResource(input: { ownerId: string; readableId: string }): Promise<StoredRecord | null>;
 }
 
@@ -236,30 +238,34 @@ export class RecordsRepository implements RecordsRepositoryContract {
             when 'sourceUpdatedAt' then julianday(record."source_updated_at") is null else 0 end,
           case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end asc,
           case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end asc,
-          case when ${sortDirection} = 'asc' and ${sortBy} = 'provider' then record."provider" end asc,
-          case when ${sortDirection} = 'asc' and ${sortBy} = 'kind' then record."kind" end asc,
           case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end desc,
           case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end desc,
-          case when ${sortDirection} = 'desc' and ${sortBy} = 'provider' then record."provider" end desc,
-          case when ${sortDirection} = 'desc' and ${sortBy} = 'kind' then record."kind" end desc,
         record."readable_id"
         limit ${limit + 1} offset ${offset}
-      `;
-      const options = await this.sql.RecordFilterOptions`
-        select distinct "provider", "kind" from "record"
-        where "owner_id" = ${ownerId} and "operation" <> 'deleted'
-        order by "provider", "kind"
       `;
       const items = rows.slice(0, limit).map(recordSummaryFrom);
       return {
         items,
         nextOffset: rows.length > limit ? offset + items.length : null,
-        filterOptions: {
-          providers: [...new Set(options.map((row) => row.provider))],
-          kinds: [...new Set(options.map((row) => row.kind))].sort(),
-        },
+        filterOptions: await this.readFilterOptions(ownerId),
       };
     });
+  }
+
+  filterOptions({ ownerId }: { ownerId: string }): Promise<RecordFilterOptions> {
+    return this.serialize(() => this.readFilterOptions(ownerId));
+  }
+
+  private async readFilterOptions(ownerId: string): Promise<RecordFilterOptions> {
+    const options = await this.sql.RecordFilterOptions`
+      select distinct "provider", "kind" from "record"
+      where "owner_id" = ${ownerId} and "operation" <> 'deleted'
+      order by "provider", "kind"
+    `;
+    return {
+      providers: [...new Set(options.map((row) => row.provider))],
+      kinds: [...new Set(options.map((row) => row.kind))].sort(),
+    };
   }
 
   async findResource({

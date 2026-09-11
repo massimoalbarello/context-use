@@ -17,7 +17,11 @@ import {
 import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
-import { RecordSummarySchema, recordSummaryResponse } from '#routes/api/records/model.ts';
+import {
+  RecordListQuerySchema,
+  RecordSummarySchema,
+  recordSummaryResponse,
+} from '#routes/api/records/model.ts';
 
 const RecordFilterValueSchema = t.Optional(
   t.String({
@@ -48,6 +52,10 @@ export const HypermediaSearchQuerySchema = t.Object({
   recordProvider: RecordFilterValueSchema,
   recordKind: RecordFilterValueSchema,
   participantName: RecordFilterValueSchema,
+  recordCreatedFrom: RecordListQuerySchema.properties.createdFrom,
+  recordCreatedTo: RecordListQuerySchema.properties.createdTo,
+  recordUpdatedFrom: RecordListQuerySchema.properties.updatedFrom,
+  recordUpdatedTo: RecordListQuerySchema.properties.updatedTo,
 });
 
 const PreviewProperties = {

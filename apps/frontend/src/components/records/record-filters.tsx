@@ -1,8 +1,10 @@
 import type { RecordFilterOptions, RecordSortField } from '@repo/backend/record';
+import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '@repo/backend/retrieval';
 import type { ReactNode } from 'react';
 import { type RecordSearch, recordsAreFiltered } from '../../lib/record-filters';
 import { calendarDateRangeFromSearch } from '../../lib/temporal-coverage';
 import { DateRangeFilter } from '../knowledge/date-range-filter';
+import { KeywordFilter } from '../knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -10,8 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 const sortLabels: Record<RecordSortField, string> = {
   sourceUpdatedAt: 'Source updated',
   sourceCreatedAt: 'Source created',
-  provider: 'Provider',
-  kind: 'Data kind',
 };
 
 function FilterSelect({
@@ -28,10 +28,10 @@ function FilterSelect({
   onChange: (value: string | null) => void;
 }) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid min-w-0 gap-1.5">
       <span className="font-medium text-xs">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full" aria-label={label}>
+        <SelectTrigger className="w-full min-w-0" aria-label={label}>
           <SelectValue placeholder={`All ${label === 'Provider' ? 'providers' : 'kinds'}`}>
             {selectedLabel}
           </SelectValue>
@@ -54,9 +54,17 @@ export function RecordFilters({
   const created = calendarDateRangeFromSearch({ from: search.createdFrom, to: search.createdTo });
   const updated = calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo });
   const sortBy = search.sortBy ?? 'sourceUpdatedAt';
-  const chronological = sortBy === 'sourceUpdatedAt' || sortBy === 'sourceCreatedAt';
   return (
     <KnowledgeFilterPopover title="Filter and sort records" filtered={recordsAreFiltered(search)}>
+      <KeywordFilter
+        key={search.q ?? ''}
+        inputId="record-keyword"
+        value={search.q ?? ''}
+        placeholder="Search records"
+        maxLength={MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH}
+        autoFocus
+        onApply={(query) => onChange({ ...search, q: query || undefined })}
+      />
       <FilterSelect
         label="Provider"
         value={search.provider ?? null}
@@ -83,45 +91,41 @@ export function RecordFilters({
           </SelectItem>
         ))}
       </FilterSelect>
-      <div className="grid grid-cols-2 gap-2">
-        <FilterSelect
-          label="Order by"
-          value={sortBy}
-          selectedLabel={sortLabels[sortBy]}
-          onChange={(value) => {
-            if (value) {
-              onChange({ ...search, sortBy: value as RecordSortField });
-            }
-          }}
-        >
-          {Object.entries(sortLabels).map(([value, label]) => (
-            <SelectItem key={value} value={value}>
-              {label}
-            </SelectItem>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          label="Direction"
-          value={search.sortDirection ?? 'desc'}
-          selectedLabel={
-            search.sortDirection === 'asc'
-              ? chronological
-                ? 'Oldest first'
-                : 'A to Z'
-              : chronological
-                ? 'Newest first'
-                : 'Z to A'
-          }
-          onChange={(value) => {
-            if (value === 'asc' || value === 'desc') {
-              onChange({ ...search, sortDirection: value });
-            }
-          }}
-        >
-          <SelectItem value="desc">{chronological ? 'Newest first' : 'Z to A'}</SelectItem>
-          <SelectItem value="asc">{chronological ? 'Oldest first' : 'A to Z'}</SelectItem>
-        </FilterSelect>
-      </div>
+      {search.q ? (
+        <p className="text-muted-foreground text-xs">Ordered by relevance.</p>
+      ) : (
+        <div className="grid gap-3">
+          <FilterSelect
+            label="Order by"
+            value={sortBy}
+            selectedLabel={sortLabels[sortBy]}
+            onChange={(value) => {
+              if (value) {
+                onChange({ ...search, sortBy: value as RecordSortField });
+              }
+            }}
+          >
+            {Object.entries(sortLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </FilterSelect>
+          <FilterSelect
+            label="Direction"
+            value={search.sortDirection ?? 'desc'}
+            selectedLabel={search.sortDirection === 'asc' ? 'Oldest first' : 'Newest first'}
+            onChange={(value) => {
+              if (value === 'asc' || value === 'desc') {
+                onChange({ ...search, sortDirection: value });
+              }
+            }}
+          >
+            <SelectItem value="desc">Newest first</SelectItem>
+            <SelectItem value="asc">Oldest first</SelectItem>
+          </FilterSelect>
+        </div>
+      )}
       <DateRangeFilter
         title="Source created"
         value={created}
@@ -134,9 +138,6 @@ export function RecordFilters({
         hint={null}
         onApply={(range) => onChange({ ...search, updatedFrom: range?.from, updatedTo: range?.to })}
       />
-      <p className="text-muted-foreground text-xs">
-        Dates use UTC. A date filter excludes records without that source date.
-      </p>
       <Button type="button" variant="ghost" size="sm" onClick={() => onChange({})}>
         Reset filters and order
       </Button>

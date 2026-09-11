@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
+import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '@repo/backend/retrieval';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
@@ -10,6 +11,7 @@ afterEach(cleanup);
 
 test('record URL state validates ranges and gives each server filter a distinct paginated cache', () => {
   const search = recordSearch({
+    q: ' launch ',
     provider: ' github ',
     kind: ' pull-request ',
     createdFrom: '2026-02-28',
@@ -21,6 +23,7 @@ test('record URL state validates ranges and gives each server filter a distinct 
   });
   const filters = recordListFilters(search);
   expect(filters).toEqual({
+    query: 'launch',
     provider: 'github',
     kind: 'pull-request',
     createdFrom: '2026-02-28T00:00:00.000Z',
@@ -42,6 +45,12 @@ test('record URL state validates ranges and gives each server filter a distinct 
       updatedTo: '2026-01-01',
     }),
   ).toEqual({});
+  expect(recordSearch({ sortBy: 'provider' })).toEqual({});
+  expect(recordSearch({ sortBy: 'kind' })).toEqual({});
+  expect(recordSearch({ q: ' ' })).toEqual({});
+  expect(recordSearch({ q: 'a'.repeat(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH + 1) }).q).toHaveLength(
+    MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH,
+  );
   for (const field of Object.keys(filters) as (keyof typeof filters)[]) {
     expect(recordsQueryOptions(filters).queryKey).not.toEqual(
       recordsQueryOptions({ ...filters, [field]: undefined }).queryKey,
@@ -75,21 +84,38 @@ test('record controls select metadata, sort direction, and reset the current vie
   await user.click(screen.getByRole('combobox', { name: 'Data kind' }));
   await user.click(await screen.findByRole('option', { name: 'message' }));
   await user.click(screen.getByRole('combobox', { name: 'Order by' }));
-  await user.click(await screen.findByRole('option', { name: 'Provider' }));
+  expect(screen.queryByRole('option', { name: 'Provider' })).toBeNull();
+  expect(screen.queryByRole('option', { name: 'Data kind' })).toBeNull();
+  await user.click(await screen.findByRole('option', { name: 'Source created' }));
   await user.click(screen.getByRole('combobox', { name: 'Direction' }));
-  await user.click(await screen.findByRole('option', { name: 'A to Z' }));
-  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain('Provider');
-  expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('A to Z');
+  await user.click(await screen.findByRole('option', { name: 'Oldest first' }));
+  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain(
+    'Source created',
+  );
+  expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('Oldest first');
   expect(screen.getByLabelText('Selected filters').textContent).toBe(
     JSON.stringify({
       provider: 'slack',
       kind: 'message',
-      sortBy: 'provider',
+      sortBy: 'sourceCreatedAt',
       sortDirection: 'asc',
     }),
   );
   expect(screen.getByRole('button', { name: 'Source created: Choose dates' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Source updated: Choose dates' })).toBeTruthy();
+  await user.type(screen.getByRole('searchbox', { name: 'Keyword' }), '  launch  ');
+  await user.click(screen.getByRole('button', { name: 'Apply' }));
+  expect(JSON.parse(screen.getByLabelText('Selected filters').textContent!)).toMatchObject({
+    q: 'launch',
+    provider: 'slack',
+    kind: 'message',
+  });
+  expect(screen.queryByRole('combobox', { name: 'Order by' })).toBeNull();
+  expect(screen.getByText('Ordered by relevance.')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Clear' }));
+  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain(
+    'Source created',
+  );
   await user.click(screen.getByRole('button', { name: 'Reset filters and order' }));
   expect(screen.getByLabelText('Selected filters').textContent).toBe('{}');
 });

@@ -49,7 +49,12 @@ export function KnowledgeFilterPopover({
       >
         <ListFilter aria-hidden="true" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3">
+      <PopoverContent
+        side="right"
+        align="start"
+        collisionAvoidance={{ side: 'shift', align: 'shift' }}
+        className="max-h-[min(var(--available-height),calc(100dvh-1rem))] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-3"
+      >
         <section aria-labelledby={headingId}>
           <h2 id={headingId} className="font-medium text-sm">
             {title}

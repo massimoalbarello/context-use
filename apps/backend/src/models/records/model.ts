@@ -26,21 +26,19 @@ export function recordParticipantNames(record: RecordResource['record']): string
   ];
 }
 
-export const RECORD_SORT_FIELDS = [
-  'sourceCreatedAt',
-  'sourceUpdatedAt',
-  'provider',
-  'kind',
-] as const;
+export const RECORD_SORT_FIELDS = ['sourceCreatedAt', 'sourceUpdatedAt'] as const;
 export type RecordSortField = (typeof RECORD_SORT_FIELDS)[number];
 
-export type RecordListFilters = {
+export type RecordSourceFilters = {
   provider?: string;
   kind?: string;
   createdFrom?: string;
   createdTo?: string;
   updatedFrom?: string;
   updatedTo?: string;
+};
+
+export type RecordListFilters = RecordSourceFilters & {
   sortBy?: RecordSortField;
   sortDirection?: 'asc' | 'desc';
 };

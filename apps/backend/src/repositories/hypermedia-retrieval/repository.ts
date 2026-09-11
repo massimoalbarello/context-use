@@ -219,6 +219,10 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     const provider = filters?.record?.provider ?? null;
     const recordKind = filters?.record?.kind ?? null;
     const participantName = filters?.record?.participantName ?? null;
+    const createdFrom = filters?.record?.createdFrom ?? null;
+    const createdTo = filters?.record?.createdTo ?? null;
+    const updatedFrom = filters?.record?.updatedFrom ?? null;
+    const updatedTo = filters?.record?.updatedTo ?? null;
     const boundedLimit = Math.min(Math.max(limit, 1), MAX_HYPERMEDIA_SEARCH_LIMIT);
     // One statement pins rank, count, metadata and immutable file references to the same snapshot.
     // File reads happen after it completes, so they never hold a database transaction open.
@@ -269,6 +273,10 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
           and (${recordsOnly} = false or document."resource_type" = 'record')
           and (${provider} is null or record."provider" = ${provider})
           and (${recordKind} is null or record."kind" = ${recordKind})
+          and (${createdFrom} is null or julianday(record."source_created_at") >= julianday(${createdFrom}))
+          and (${createdTo} is null or julianday(record."source_created_at") < julianday(${createdTo}))
+          and (${updatedFrom} is null or julianday(record."source_updated_at") >= julianday(${updatedFrom}))
+          and (${updatedTo} is null or julianday(record."source_updated_at") < julianday(${updatedTo}))
           and (${participantName} is null or exists (
             select 1 from json_each(document."participant_names") participant
             where lower(trim(participant."value")) = lower(trim(${participantName}))

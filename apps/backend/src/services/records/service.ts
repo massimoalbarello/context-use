@@ -111,6 +111,10 @@ export class RecordsService {
     return this.records.listResources(input);
   }
 
+  filterOptions(input: { ownerId: string }) {
+    return this.records.filterOptions(input);
+  }
+
   async findResource(input: {
     ownerId: string;
     readableId: string;
@@ -154,4 +158,7 @@ export class RecordsService {
 }
 
 export type RecordDeliveryAcceptanceContract = Pick<RecordsService, 'accept'>;
-export type RecordResourcesServiceContract = Pick<RecordsService, 'findResource' | 'listResources'>;
+export type RecordResourcesServiceContract = Pick<
+  RecordsService,
+  'findResource' | 'listResources' | 'filterOptions'
+>;

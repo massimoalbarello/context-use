@@ -154,7 +154,15 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
         filters: {
           knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
           asset: { kind: 'entity_image' },
-          record: { provider: 'granola', kind: 'meeting', participantName: 'Luca' },
+          record: {
+            provider: 'granola',
+            kind: 'meeting',
+            participantName: 'Luca',
+            createdFrom: '2026-01-01T00:00:00.000Z',
+            createdTo: '2026-02-01T00:00:00.000Z',
+            updatedFrom: '2026-03-01T00:00:00.000Z',
+            updatedTo: '2026-04-01T00:00:00.000Z',
+          },
         },
       });
       return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
@@ -170,6 +178,10 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
     recordProvider: ' granola ',
     recordKind: ' meeting ',
     participantName: ' Luca ',
+    recordCreatedFrom: '2025-12-31T19:00:00-05:00',
+    recordCreatedTo: '2026-02-01T00:00:00Z',
+    recordUpdatedFrom: '2026-03-01T00:00:00Z',
+    recordUpdatedTo: '2026-04-01T00:00:00Z',
   });
   const response = await app.handle(
     new Request(`http://localhost/hypermedia/search?${query}`, {
@@ -200,6 +212,9 @@ test('HTTP search rejects unauthenticated or invalid queries before reaching the
     'query=research&resourceTypes=entity,object',
     'query=research&time=invalid',
     'query=research&recordKind=%20',
+    'query=research&recordCreatedFrom=invalid',
+    'query=research&recordCreatedFrom=2026-02-01&recordCreatedTo=2026-01-01',
+    'query=research&recordUpdatedFrom=2026-01-01&recordUpdatedTo=2026-01-01',
   ]) {
     const response = await app.handle(
       new Request(`http://localhost/hypermedia/search?${query}`, {
@@ -208,4 +223,19 @@ test('HTTP search rejects unauthenticated or invalid queries before reaching the
     );
     expect(response.status).toBe(StatusMap['Bad Request']);
   }
+});
+
+test('a source date alone restricts the shared pipeline to records', async () => {
+  const app = searchApp({
+    search: (input) => {
+      expect(input.filters?.record).toMatchObject({ createdFrom: '2026-01-01T00:00:00.000Z' });
+      return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+    },
+  });
+  const response = await app.handle(
+    new Request('http://localhost/hypermedia/search?query=research&recordCreatedFrom=2026-01-01', {
+      headers: { 'test-owner': 'owner-a' },
+    }),
+  );
+  expect(response.status).toBe(StatusMap.OK);
 });

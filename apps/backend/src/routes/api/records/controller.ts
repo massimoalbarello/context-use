@@ -4,6 +4,8 @@ import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { DEFAULT_LIST_LIMIT } from '#routes/api/model.ts';
 import {
+  invalidRecordDateRange,
+  RecordFilterOptionsSchema,
   RecordListQuerySchema,
   RecordListSchema,
   recordSummaryResponse,
@@ -21,11 +23,19 @@ export function createRecordsController({
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .get(
+      '/records/filter-options',
+      ({ user }) => recordsService.filterOptions({ ownerId: user.id }),
+      {
+        detail: { tags: ['Records'], summary: 'List available record filters' },
+        response: { [StatusMap.OK]: RecordFilterOptionsSchema },
+      },
+    )
+    .get(
       '/records',
       async ({ query, user, status }) => {
         if (
-          (query.createdFrom && query.createdTo && query.createdFrom >= query.createdTo) ||
-          (query.updatedFrom && query.updatedTo && query.updatedFrom >= query.updatedTo)
+          invalidRecordDateRange({ from: query.createdFrom, to: query.createdTo }) ||
+          invalidRecordDateRange({ from: query.updatedFrom, to: query.updatedTo })
         ) {
           return status(StatusMap['Bad Request'], {
             error: 'The end of a source date range must be after its start.',

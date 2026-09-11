@@ -101,6 +101,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       },
       findResource: unexpectedCall,
       listResources: unexpectedCall,
+      filterOptions: unexpectedCall,
     },
     syncsService: {
       authenticate: async ({ apiKey }) =>

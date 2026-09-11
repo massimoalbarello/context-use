@@ -5,7 +5,7 @@ import type {
   KnowledgePageSummary,
 } from '#models/knowledge-pages/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
-import type { RecordSummary } from '#models/records/model.ts';
+import type { RecordSourceFilters, RecordSummary } from '#models/records/model.ts';
 
 export const HYPERMEDIA_RESOURCE_TYPES = ['entity', 'knowledge_page', 'asset', 'record'] as const;
 export const DEFAULT_HYPERMEDIA_SEARCH_LIMIT = 30;
@@ -50,5 +50,5 @@ export interface HypermediaRetrievalFilters {
   };
   asset?: { kind?: 'entity_image' };
   /** When present, restrict retrieval to records satisfying every supplied field. */
-  record?: { provider?: string; kind?: string; participantName?: string };
+  record?: RecordSourceFilters & { participantName?: string };
 }

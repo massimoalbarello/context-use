@@ -32,8 +32,13 @@ export const RecordSchema = t.Object({
   participantNames: t.Array(t.String()),
 });
 
+export const RecordFilterOptionsSchema = t.Object({
+  providers: t.Array(t.String()),
+  kinds: t.Array(t.String()),
+});
+
 export const RecordListSchema = t.Object({
-  filterOptions: t.Object({ providers: t.Array(t.String()), kinds: t.Array(t.String()) }),
+  filterOptions: RecordFilterOptionsSchema,
   items: t.Array(RecordSummarySchema),
   nextOffset: t.Nullable(t.Integer({ minimum: 0 })),
 });
@@ -50,6 +55,10 @@ export const RecordListQuerySchema = t.Object({
   sortDirection: t.Optional(t.Union([t.Literal('asc'), t.Literal('desc')])),
 });
 export const RecordParamsSchema = t.Object({ recordReadableId: ReadableIdSchema });
+
+export function invalidRecordDateRange({ from, to }: { from?: Date; to?: Date }): boolean {
+  return from !== undefined && to !== undefined && from >= to;
+}
 
 export function recordSummaryResponse(record: RecordSummary) {
   return {
