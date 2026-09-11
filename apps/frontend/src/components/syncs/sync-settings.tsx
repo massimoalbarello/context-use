@@ -1,6 +1,6 @@
 import { MAX_SYNC_NAME_LENGTH } from '@repo/backend/sync';
 import { useForm } from '@tanstack/react-form';
-import { Check, Copy, RefreshCw, RefreshCwOff } from 'lucide-react';
+import { Check, Copy, Plus, RefreshCwOff } from 'lucide-react';
 import { useId, useState } from 'react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { CreatedRecordSync, RecordSync } from '../../queries/syncs';
@@ -132,7 +132,7 @@ export function CreateSyncForm({
           Cancel
         </Button>
         <Button type="submit" size="lg" disabled={pending}>
-          <RefreshCw data-icon="inline-start" aria-hidden="true" />
+          <Plus data-icon="inline-start" aria-hidden="true" />
           {pending ? 'Adding…' : 'Add sync'}
         </Button>
       </div>
@@ -266,7 +266,7 @@ export function SyncSettings({
                 setAdding(true);
               }}
             >
-              <RefreshCw data-icon="inline-start" aria-hidden="true" />
+              <Plus data-icon="inline-start" aria-hidden="true" />
               Add sync
             </Button>
           )}
