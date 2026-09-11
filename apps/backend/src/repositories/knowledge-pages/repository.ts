@@ -92,22 +92,6 @@ export interface KnowledgePagesRepositoryContract {
     assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
   } | null>;
-  listCurrent(input: {
-    ownerId: string;
-    afterReadableId: string | null;
-    limit: number;
-  }): Promise<StoredKnowledgePage[]>;
-  replaceCurrentIndex(input: {
-    ownerId: string;
-    readableId: string;
-    expectedRevisionId: string;
-    title: string;
-    excerpt: string;
-    searchableText: string;
-    links: KnowledgePageLinkSet;
-  }): Promise<
-    { state: 'replaced' | 'revision_changed' } | { state: 'link_target_not_found'; target: string }
-  >;
 }
 
 type StoredPageRow = Queries['FindKnowledgePage'];
@@ -868,114 +852,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       assetUsages,
       revisions: revisions.map(revisionSummaryFrom),
     };
-  }
-
-  async listCurrent({
-    ownerId,
-    afterReadableId,
-    limit,
-  }: {
-    ownerId: string;
-    afterReadableId: string | null;
-    limit: number;
-  }): Promise<StoredKnowledgePage[]> {
-    const rows = await this.sql.ListCurrentKnowledgePages`
-      /* @notNull id ownerId readableId currentRevisionId revisionNumber title excerpt storageKey contentHash sizeBytes createdAt updatedAt */
-      select page."id", page."owner_id" as "ownerId", page."readable_id" as "readableId",
-        page."current_revision_id" as "currentRevisionId",
-        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-        revision."temporal_coverage" as "temporalCoverage",
-        revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
-        revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
-        page."updated_at" as "updatedAt"
-      from "knowledge_page" page
-      join "knowledge_page_revision" revision
-        on revision."id" = page."current_revision_id"
-       and revision."page_id" = page."id"
-       and revision."owner_id" = page."owner_id"
-      where page."owner_id" = ${ownerId} and page."archived_at" is null
-        and (${afterReadableId} is null or page."readable_id" > ${afterReadableId})
-      order by page."readable_id"
-      limit ${limit}
-    `;
-    return rows.map(storedPageFrom);
-  }
-
-  replaceCurrentIndex({
-    ownerId,
-    readableId,
-    expectedRevisionId,
-    title,
-    excerpt,
-    searchableText,
-    links,
-  }: {
-    ownerId: string;
-    readableId: string;
-    expectedRevisionId: string;
-    title: string;
-    excerpt: string;
-    searchableText: string;
-    links: KnowledgePageLinkSet;
-  }): Promise<
-    { state: 'replaced' | 'revision_changed' } | { state: 'link_target_not_found'; target: string }
-  > {
-    return this.sql.begin(async (db) => {
-      const pages = await db.FindKnowledgePageForIndexReplacement`
-        /* @notNull id currentRevisionId */
-        select "id", "current_revision_id" as "currentRevisionId"
-        from "knowledge_page"
-        where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
-          and "archived_at" is null
-      `;
-      const page = pages[0];
-      if (!page || page.currentRevisionId !== expectedRevisionId) {
-        return { state: 'revision_changed' as const };
-      }
-      const resolved = await resolveLinks({
-        db,
-        ownerId,
-        links,
-        self: { id: page.id, readableId },
-      });
-      if (resolved.state !== 'resolved') {
-        return resolved;
-      }
-      await db`
-        update "knowledge_page_revision"
-        set "title" = ${title}, "excerpt" = ${excerpt}
-        where "owner_id" = ${ownerId} and "id" = ${page.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_entity_mention"
-        where "owner_id" = ${ownerId} and "source_revision_id" = ${page.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_reference"
-        where "owner_id" = ${ownerId} and "source_revision_id" = ${page.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_asset_usage"
-        where "owner_id" = ${ownerId} and "source_revision_id" = ${page.currentRevisionId}
-      `;
-      await insertLinks({
-        db,
-        ownerId,
-        revisionId: page.currentRevisionId,
-        entityIds: resolved.entityIds,
-        pageReferences: resolved.pageReferences,
-        assetUsages: resolved.assetUsages,
-      });
-      await db.RebuildKnowledgePageSearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values
-          (${ownerId}, 'knowledge_page', ${readableId}, ${title}, ${excerpt}, ${searchableText})
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
-      `;
-      return { state: 'replaced' as const };
-    });
   }
 
   private async listActiveReferringPages({

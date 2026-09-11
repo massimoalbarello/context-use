@@ -29,12 +29,13 @@ export function registerHypermediaRetrievalTools({
       outputSchema: SearchHypermediaOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
-    async ({ query, resourceTypes, limit = DEFAULT_HYPERMEDIA_SEARCH_LIMIT }) => {
+    async ({ query, resourceTypes, recordFilter, limit = DEFAULT_HYPERMEDIA_SEARCH_LIMIT }) => {
       const result = await retrievalService.search({
         ownerId: principal.ownerId,
         query,
         resourceTypes,
         limit,
+        filters: recordFilter ? { record: recordFilter } : undefined,
       });
       return mcpToolSuccess({
         results: result.results.map(mcpHypermediaRetrievalResult),

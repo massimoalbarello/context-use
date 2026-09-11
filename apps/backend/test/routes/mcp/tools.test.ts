@@ -424,6 +424,7 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('story is derived from its evidence, not a replacement');
       expect(guide).toContain('explain the blockers to the user');
       expect(guide).toContain('search_hypermedia');
+      expect(guide).toContain('`recordFilter`');
       expect(guide).toContain('names, aliases, identifiers, and topic phrases');
       expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
 
@@ -452,12 +453,14 @@ test('record search previews have exact owner-scoped read paths without imported
       search: (input) => {
         expect(input.ownerId).toBe(principal.ownerId);
         expect(input.resourceTypes).toEqual(['record']);
+        expect(input.filters).toEqual({
+          record: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
+        });
         return Promise.resolve({
           results: [
             {
               resourceType: 'record',
               record,
-              title: 'Planning meeting',
               matchExcerpt: 'Meeting with Samantha.',
             },
           ],
@@ -479,7 +482,11 @@ test('record search previews have exact owner-scoped read paths without imported
     run: async (client) => {
       const found = await client.callTool({
         name: 'search_hypermedia',
-        arguments: { query: 'Samantha', resourceTypes: ['record'] },
+        arguments: {
+          query: 'meeting',
+          resourceTypes: ['record'],
+          recordFilter: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
+        },
       });
       expect(found.isError).not.toBe(true);
       expect(found.structuredContent).toEqual({
@@ -491,7 +498,6 @@ test('record search previews have exact owner-scoped read paths without imported
             kind: record.kind,
             recordId: record.recordId,
             sync: record.sync,
-            title: 'Planning meeting',
             matchExcerpt: 'Meeting with Samantha.',
           },
         ],
@@ -499,6 +505,14 @@ test('record search previews have exact owner-scoped read paths without imported
       });
       expectNoInternalResourceIds(found.structuredContent);
       expect(JSON.stringify(found.structuredContent)).not.toContain(markdown);
+      expect(JSON.stringify(found.structuredContent)).not.toContain('"title"');
+      for (const recordFilter of [{ participantName: ' ' }, { unsupported: 'value' }]) {
+        const invalid = await client.callTool({
+          name: 'search_hypermedia',
+          arguments: { query: 'meeting', recordFilter },
+        });
+        expect(invalid.isError).toBe(true);
+      }
       const read = await client.callTool({
         name: 'read_record',
         arguments: { address: 'context-use://record/calendar-meeting-42' },

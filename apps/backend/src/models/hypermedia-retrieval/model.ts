@@ -12,7 +12,6 @@ export const DEFAULT_HYPERMEDIA_SEARCH_LIMIT = 30;
 export const MAX_HYPERMEDIA_SEARCH_LIMIT = 50;
 export const MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH = 1_000;
 export const MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH = 480;
-export const MAX_RECORD_TITLE_PREVIEW_LENGTH = 160;
 
 export type HypermediaResourceType = (typeof HYPERMEDIA_RESOURCE_TYPES)[number];
 
@@ -35,7 +34,6 @@ export type HypermediaRetrievalResult =
   | {
       resourceType: 'record';
       record: RecordSummary;
-      title: string | null;
       matchExcerpt: string | null;
     };
 
@@ -51,4 +49,6 @@ export interface HypermediaRetrievalFilters {
     temporalBounds?: TemporalBounds;
   };
   asset?: { kind?: 'entity_image' };
+  /** When present, restrict retrieval to records satisfying every supplied field. */
+  record?: { provider?: string; kind?: string; participantName?: string };
 }

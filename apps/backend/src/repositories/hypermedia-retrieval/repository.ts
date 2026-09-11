@@ -9,7 +9,6 @@ import type {
 import {
   MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH,
   MAX_HYPERMEDIA_SEARCH_LIMIT,
-  MAX_RECORD_TITLE_PREVIEW_LENGTH,
 } from '#models/hypermedia-retrieval/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import type { HypermediaRetrievalRepositoryContract } from './contract.ts';
@@ -120,7 +119,6 @@ function resultFrom(row: SearchRow): HypermediaRetrievalResult {
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       },
-      title: row.recordTitle || null,
       matchExcerpt: excerpt,
     };
   }
@@ -172,6 +170,10 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     const filterStart = filters?.knowledgePage?.temporalBounds?.start ?? null;
     const filterEnd = filters?.knowledgePage?.temporalBounds?.end ?? null;
     const assetKind = filters?.asset?.kind ?? null;
+    const recordsOnly = filters?.record !== undefined;
+    const provider = filters?.record?.provider ?? null;
+    const recordKind = filters?.record?.kind ?? null;
+    const participantName = filters?.record?.participantName ?? null;
     const boundedLimit = Math.min(Math.max(limit, 1), MAX_HYPERMEDIA_SEARCH_LIMIT);
     const [rows, counts] = await this.sql.begin((db) =>
       Promise.all([
@@ -183,13 +185,12 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       /* @type rawMatchExcerpt string */
       /* @type createdAt string */
       /* @type updatedAt string */
-      /* @type recordTitle string */
       with selected_type as (
         select value as "resourceType" from json_each(${selectedTypes})
       )
       select document."resource_type" as "resourceType",
         document."readable_id" as "readableId",
-        snippet("hypermedia_search_fts", case when document."resource_type" = 'record' then -1 else 3 end, ${MATCH_START}, ${MATCH_END}, ${MATCH_ELLIPSIS},
+        snippet("hypermedia_search_fts", 3, ${MATCH_START}, ${MATCH_END}, ${MATCH_ELLIPSIS},
           ${MATCH_EXCERPT_TOKENS}) as "rawMatchExcerpt",
         entity."id" as "entityId", entity."name" as "entityName",
         entity."description" as "entityDescription",
@@ -205,7 +206,6 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         asset."media_type" as "mediaType", asset."extension" as "assetExtension",
         asset."size_bytes" as "assetSizeBytes",
         record."kind" as "recordKind", record."record_id" as "recordId",
-        substr(document."label", 1, ${MAX_RECORD_TITLE_PREVIEW_LENGTH}) as "recordTitle",
         sync."readable_id" as "syncReadableId", sync."name" as "syncName",
         case document."resource_type"
           when 'entity' then entity."created_at"
@@ -254,6 +254,13 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       where "hypermedia_search_fts" match ${expression}
         and document."owner_id" = ${ownerId}
         and document."resource_type" in (select "resourceType" from selected_type)
+        and (${recordsOnly} = false or document."resource_type" = 'record')
+        and (${provider} is null or json_extract(record."metadata", '$.provider') = ${provider})
+        and (${recordKind} is null or record."kind" = ${recordKind})
+        and (${participantName} is null or exists (
+          select 1 from json_each(record."metadata", '$.participants') participant
+          where lower(trim(json_extract(participant."value", '$.name'))) = lower(trim(${participantName}))
+        ))
         and (
           (document."resource_type" = 'entity' and entity."id" is not null)
           or (document."resource_type" = 'knowledge_page' and page."id" is not null)
@@ -329,6 +336,13 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         where "hypermedia_search_fts" match ${expression}
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
+          and (${recordsOnly} = false or document."resource_type" = 'record')
+          and (${provider} is null or json_extract(record."metadata", '$.provider') = ${provider})
+          and (${recordKind} is null or record."kind" = ${recordKind})
+          and (${participantName} is null or exists (
+            select 1 from json_each(record."metadata", '$.participants') participant
+            where lower(trim(json_extract(participant."value", '$.name'))) = lower(trim(${participantName}))
+          ))
           and (
             (document."resource_type" = 'entity' and entity."id" is not null)
             or (document."resource_type" = 'knowledge_page' and page."id" is not null)
@@ -372,86 +386,5 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       totalMatches,
       truncated: totalMatches > boundedLimit,
     };
-  }
-
-  async rebuildIndex({ ownerId }: { ownerId: string }): Promise<void> {
-    await this.sql.begin(async (db) => {
-      const owners = await db.FindSearchRebuildOwner`
-        select "id" from "auth_user" where "id" = ${ownerId}
-      `;
-      if (!owners[0]) {
-        throw new Error('The search rebuild owner does not exist.');
-      }
-      // Repair postings first so projection replacement also recovers from a damaged index.
-      await db.RebuildHypermediaSearchIndex`
-        insert into "hypermedia_search_fts" ("hypermedia_search_fts") values ('rebuild')
-      `;
-      await db.RebuildEntitySearchDocuments`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body", "metadata")
-        select "owner_id", 'entity', "readable_id", "name", "description", '', ''
-        from "entity" where "owner_id" = ${ownerId} and "archived_at" is null
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary",
-          "body" = excluded."body", "metadata" = excluded."metadata"
-      `;
-      await db.RebuildAssetSearchDocuments`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body", "metadata")
-        select "owner_id", 'asset', "readable_id", "name", '', '',
-          trim("media_type" || ' ' || coalesce("extension", ''))
-        from "asset" where "owner_id" = ${ownerId} and "archived_at" is null
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary",
-          "body" = excluded."body", "metadata" = excluded."metadata"
-      `;
-      await db.PruneHypermediaSearchDocuments`
-        with active_resource as (
-          select 'entity' as "type", "readable_id" from "entity"
-            where "owner_id" = ${ownerId} and "archived_at" is null
-          union all select 'asset', "readable_id" from "asset"
-            where "owner_id" = ${ownerId} and "archived_at" is null
-          union all select 'knowledge_page', "readable_id" from "knowledge_page"
-            where "owner_id" = ${ownerId} and "archived_at" is null
-          union all select 'record', "readable_id" from "record"
-            where "owner_id" = ${ownerId} and "operation" <> 'deleted'
-        )
-        delete from "hypermedia_search_document" as document
-        where document."owner_id" = ${ownerId} and not exists (
-          select 1 from active_resource resource
-          where resource."type" = document."resource_type"
-            and resource."readable_id" = document."readable_id"
-        )
-      `;
-    });
-  }
-
-  async verifyIndex({ ownerId }: { ownerId: string }): Promise<void> {
-    await this.sql.begin(async (db) => {
-      const missing = await db.CountMissingMarkdownSearchDocuments`
-        /* @notNull total */
-        /* @type total number */
-        with markdown_resource as (
-          select 'knowledge_page' as "type", "readable_id" from "knowledge_page"
-            where "owner_id" = ${ownerId} and "archived_at" is null
-          union all select 'record', "readable_id" from "record"
-            where "owner_id" = ${ownerId} and "operation" <> 'deleted'
-        )
-        select count(*) as "total" from markdown_resource resource
-        where not exists (
-          select 1 from "hypermedia_search_document" document
-          where document."owner_id" = ${ownerId} and document."resource_type" = resource."type"
-            and document."readable_id" = resource."readable_id"
-        )
-      `;
-      if (Number(missing[0]?.total ?? 0) > 0) {
-        throw new Error(
-          'Search rebuild is incomplete; rebuild page and record text before finishing.',
-        );
-      }
-      await db.CheckHypermediaSearchIndex`
-        insert into "hypermedia_search_fts" ("hypermedia_search_fts", "rank") values ('integrity-check', 1)
-      `;
-    });
   }
 }

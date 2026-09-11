@@ -16,17 +16,14 @@ import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
-import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
-import { RecordsRepository } from '#repositories/records/repository.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { HypermediaService } from '#services/hypermedia/service.ts';
-import { HypermediaSearchMaintenanceService } from '#services/hypermedia-retrieval/maintenance.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
@@ -96,7 +93,7 @@ function jsonRequest({
   });
 }
 
-test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph', async () => {
+test('entity and page APIs maintain an owner-scoped hypermedia graph', async () => {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-knowledge-test-'));
   const database = await createSqliteDatabase({ dataFolder });
 
@@ -904,35 +901,6 @@ Revise the current knowledge instead of appending snapshots.`,
       }),
     );
     expect(staleUpdateResponse.status).toBe(StatusMap.Conflict);
-
-    await database`delete from "knowledge_page_entity_mention"`;
-    await database`delete from "knowledge_page_reference"`;
-    await database`
-      update "knowledge_page_revision"
-      set "excerpt" = 'stale derived excerpt'
-      where "id" = (
-        select "current_revision_id" from "knowledge_page"
-        where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
-      )
-    `;
-    await new HypermediaSearchMaintenanceService({
-      pages: pagesRepository,
-      storage,
-      records: new RecordsRepository(database),
-      retrieval: new HypermediaRetrievalRepository(database),
-    }).rebuild({ ownerId: OWNER_USER_ID });
-
-    const rebuiltResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),
-    );
-    const rebuilt = (await rebuiltResponse.json()) as {
-      excerpt: string;
-      mentions: Array<{ readableId: string }>;
-      backlinks: Array<{ page: { readableId: string } }>;
-    };
-    expect(rebuilt.excerpt).toBe('Luca owns the live account.');
-    expect(rebuilt.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
-    expect(rebuilt.backlinks.map(({ page }) => page.readableId)).toEqual(['operating-rhythm']);
 
     const entityDetailResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities/luca-bianchi' }),

@@ -12,6 +12,4 @@ export interface HypermediaRetrievalRepositoryContract {
     limit: number;
     filters?: HypermediaRetrievalFilters;
   }): Promise<HypermediaRetrievalResults>;
-  rebuildIndex(input: { ownerId: string }): Promise<void>;
-  verifyIndex(input: { ownerId: string }): Promise<void>;
 }

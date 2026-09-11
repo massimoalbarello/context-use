@@ -5,7 +5,6 @@ import {
   MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH,
   MAX_HYPERMEDIA_SEARCH_LIMIT,
   MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH,
-  MAX_RECORD_TITLE_PREVIEW_LENGTH,
 } from '#models/hypermedia-retrieval/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import {
@@ -34,6 +33,33 @@ export const SearchHypermediaInputSchema = z.object({
     .optional()
     .describe('Optional typed resource filter; omit to search every hypermedia resource type'),
   limit: z.number().int().min(1).max(MAX_HYPERMEDIA_SEARCH_LIMIT).optional(),
+  recordFilter: z
+    .object({
+      provider: z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
+        .optional()
+        .describe('Exact provider value supplied by the record source'),
+      kind: z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
+        .optional()
+        .describe('Exact record kind supplied by the source, such as email or meeting'),
+      participantName: z
+        .string()
+        .trim()
+        .min(1)
+        .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
+        .optional()
+        .describe('Complete participant name, ignoring ASCII letter case; not proof of identity'),
+    })
+    .strict()
+    .optional()
+    .describe('Restrict results to records. All supplied fields must match, before taking top K.'),
 });
 
 const MatchExcerptSchema = z
@@ -78,7 +104,6 @@ const RecordResultSchema = z.object({
   kind: z.string(),
   recordId: z.string(),
   sync: z.object({ readableId: McpReadableIdSchema, name: z.string() }),
-  title: z.string().max(MAX_RECORD_TITLE_PREVIEW_LENGTH).nullable(),
   matchExcerpt: MatchExcerptSchema,
 });
 
@@ -124,7 +149,6 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
       kind: result.record.kind,
       recordId: result.record.recordId,
       sync: { readableId: result.record.sync.readableId, name: result.record.sync.name },
-      title: result.title,
       matchExcerpt: result.matchExcerpt,
     };
   }

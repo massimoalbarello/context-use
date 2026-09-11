@@ -1,5 +1,4 @@
 import type { StorageClient } from '#lib/storage/storage.ts';
-import { readVerifiedText } from '#lib/storage/verified-text.ts';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
@@ -286,12 +285,15 @@ export class KnowledgePagesService {
     }
   }
 
-  private readMarkdown(page: StoredKnowledgePage): Promise<string> {
-    return readVerifiedText({
-      storage: this.storage,
-      key: page.storageKey,
-      contentHash: page.contentHash,
-    });
+  private async readMarkdown(page: StoredKnowledgePage): Promise<string> {
+    if (!(await this.storage.exists(page.storageKey))) {
+      throw new Error(`Knowledge page blob ${page.currentRevisionId} is missing`);
+    }
+    const markdown = await this.storage.file(page.storageKey).text();
+    if (contentHash(markdown) !== page.contentHash) {
+      throw new Error(`Knowledge page blob ${page.currentRevisionId} failed its integrity check`);
+    }
+    return markdown;
   }
 
   private storageKey({

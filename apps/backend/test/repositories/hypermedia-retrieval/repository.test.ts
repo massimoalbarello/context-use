@@ -2,13 +2,11 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { SQL } from 'bun';
 import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH } from '#models/hypermedia-retrieval/model.ts';
-import { parseKnowledgePageMarkdown } from '#models/knowledge-pages/markdown.ts';
 import type {
   DeliveredRecord,
   RecordContent,
@@ -18,7 +16,6 @@ import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
-import { HypermediaSearchMaintenanceService } from '#services/hypermedia-retrieval/maintenance.ts';
 import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { RecordsService } from '#services/records/service.ts';
@@ -97,7 +94,6 @@ interface RetrievalTestContext {
   pages: KnowledgePagesService;
   retrieval: HypermediaRetrievalService;
   records: RecordsService;
-  maintenance: HypermediaSearchMaintenanceService;
 }
 
 async function withRetrievalTest(
@@ -133,12 +129,6 @@ async function withRetrievalTest(
       entities: new EntitiesRepository(database),
       pages,
       records: new RecordsService({ records: recordsRepository }),
-      maintenance: new HypermediaSearchMaintenanceService({
-        pages: pagesRepository,
-        storage: new LocalStorage(join(dataFolder, 'objects')),
-        records: recordsRepository,
-        retrieval: retrievalRepository,
-      }),
       retrieval,
     });
   } finally {
@@ -383,8 +373,8 @@ test('retrieval isolates owners, replaces changed documents, and excludes archiv
     ]);
   }));
 
-test('top-K ordering is deterministic and explicit maintenance repairs damaged postings', () =>
-  withRetrievalTest(async ({ assets, database, retrieval, maintenance }) => {
+test('top-K ordering is deterministic', () =>
+  withRetrievalTest(async ({ assets, retrieval }) => {
     for (const suffix of ['alpha', 'beta', 'gamma']) {
       await createAsset({ assets, readableId: `signal-${suffix}`, name: `Signal ${suffix}` });
     }
@@ -411,62 +401,9 @@ test('top-K ordering is deterministic and explicit maintenance repairs damaged p
         result.resourceType === 'asset' ? [result.asset.readableId] : [],
       ),
     );
-
-    const [document] = await database<
-      Array<{
-        id: number;
-        readableId: string;
-        label: string;
-        summary: string;
-        body: string;
-        metadata: string;
-      }>
-    >`
-      select "id", "readable_id" as "readableId", "label", "summary", "body", "metadata"
-      from "hypermedia_search_document"
-      where "owner_id" = ${OWNER_A} and "resource_type" = 'asset'
-        and "readable_id" = 'signal-alpha'
-    `;
-    if (!document) {
-      throw new Error('Missing search projection');
-    }
-    await database`
-      insert into "hypermedia_search_fts"
-        ("hypermedia_search_fts", "rowid", "readable_id", "label", "summary", "body", "metadata")
-      values
-        ('delete', ${document.id}, ${document.readableId}, ${document.label}, ${document.summary},
-         ${document.body}, ${document.metadata})
-    `;
-    const damaged = await retrieval.search({
-      ownerId: OWNER_A,
-      query: 'alpha',
-      resourceTypes: ['asset'],
-      limit: 10,
-    });
-    expect(damaged.results).toEqual([]);
-
-    await maintenance.rebuild({ ownerId: OWNER_A });
-    await maintenance.rebuild({ ownerId: OWNER_A });
-    const rebuilt = await retrieval.search({
-      ownerId: OWNER_A,
-      query: 'alpha',
-      resourceTypes: ['asset'],
-      limit: 10,
-    });
-    expect(rebuilt.results).toEqual([
-      expect.objectContaining({
-        resourceType: 'asset',
-        asset: expect.objectContaining({ readableId: 'signal-alpha' }),
-      }),
-    ]);
-    const counts = await database<Array<{ total: number }>>`
-      select count(*) as "total" from "hypermedia_search_document"
-      where "owner_id" = ${OWNER_A}
-    `;
-    expect(Number(counts[0]?.total ?? 0)).toBe(SIGNAL_ASSET_COUNT);
   }));
 
-test('all four types are searchable, including deep record Markdown and useful metadata', () =>
+test('all four types are searchable, with record Markdown structure left intact', () =>
   withRetrievalTest(async ({ database, records, entities, assets, pages, retrieval }) => {
     const syncId = await createRecordSync({ database });
     const record = deliveredRecord({
@@ -511,19 +448,7 @@ test('all four types are searchable, including deep record Markdown and useful m
       'knowledge_page',
       'record',
     ]);
-    for (const query of [
-      'tailneedle',
-      'decisions',
-      'visiblelabel',
-      'photoalt',
-      'negotiating',
-      'samantha',
-      'sam@example.net',
-      'organizer',
-      'calendar',
-      'irrigation',
-      'meeting-42',
-    ]) {
+    for (const query of ['tailneedle', 'decisions', 'visiblelabel', 'photoalt', 'negotiating']) {
       const result = await retrieval.search({
         ownerId: OWNER_A,
         query,
@@ -533,7 +458,6 @@ test('all four types are searchable, including deep record Markdown and useful m
       expect(result.results).toHaveLength(1);
       expect(result.results[0]).toMatchObject({
         resourceType: 'record',
-        title: 'Orchard meeting',
         matchExcerpt: expect.any(String),
       });
     }
@@ -544,6 +468,11 @@ test('all four types are searchable, including deep record Markdown and useful m
       'excludedinline',
       'excludedfence',
       'nestedignored',
+      'samantha',
+      'sam@example.net',
+      'organizer',
+      'calendar',
+      'irrigation',
       'private-source-id',
     ]) {
       expect(
@@ -591,6 +520,112 @@ test('all four types are searchable, including deep record Markdown and useful m
     }
   }));
 
+test('record filters narrow candidates before top K without turning metadata into lexical matches', () =>
+  withRetrievalTest(async ({ database, records, entities, retrieval }) => {
+    const syncId = await createRecordSync({ database });
+    const otherSync = await createRecordSync({ database, ownerId: OWNER_B });
+    const deliveries = [
+      ['mail-1', 'gmail', 'email', 'Alex Morgan'],
+      ['mail-2', 'gmail', 'email', 'Samantha Wells'],
+      ['notes-3', 'granola', 'meeting', 'Samantha Wells'],
+      ['change-4', 'github', 'pull_request', 'Samantha Wells'],
+    ].map(([id, provider, kind, name]) => ({
+      ...deliveredRecord({
+        id,
+        content: {
+          body: 'Scopeword discussed here.',
+          participants: [{ name: name!, roles: [], identities: [] }],
+        },
+      }),
+      provider: provider!,
+      kind: kind!,
+    }));
+    await acceptRecords({ records, syncId, deliveries });
+    await acceptRecords({ records, syncId: otherSync, ownerId: OWNER_B, deliveries });
+    await createEntity({
+      entities,
+      readableId: 'scopeword',
+      name: 'Scopeword',
+      description: 'Scopeword.',
+    });
+    const search = (record: { provider?: string; kind?: string; participantName?: string }) =>
+      retrieval.search({ ownerId: OWNER_A, query: 'scopeword', limit: 1, filters: { record } });
+    await database`pragma query_only = on`;
+    try {
+      expect(await search({ provider: 'gmail' })).toMatchObject({
+        totalMatches: 2,
+        truncated: true,
+      });
+      expect(await search({ kind: 'email' })).toMatchObject({ totalMatches: 2, truncated: true });
+      expect(await search({ participantName: 'samantha wells' })).toMatchObject({
+        totalMatches: 3,
+      });
+      for (const [provider, kind, recordId] of [
+        ['gmail', 'email', 'mail-2'],
+        ['granola', 'meeting', 'notes-3'],
+        ['github', 'pull_request', 'change-4'],
+      ]) {
+        expect(await search({ provider, kind, participantName: 'Samantha Wells' })).toMatchObject({
+          results: [{ resourceType: 'record', record: { recordId } }],
+          totalMatches: 1,
+          truncated: false,
+        });
+      }
+      for (const record of [
+        { provider: 'gmail', kind: 'meeting' },
+        { participantName: 'Samantha' },
+        { participantName: "Samantha Wells' OR 1=1 --" },
+        { provider: 'missing' },
+      ]) {
+        expect(await search(record)).toEqual({ results: [], totalMatches: 0, truncated: false });
+      }
+      expect(
+        await retrieval.search({
+          ownerId: OWNER_A,
+          query: 'scopeword',
+          limit: 1,
+          resourceTypes: ['entity'],
+          filters: { record: { provider: 'gmail' } },
+        }),
+      ).toEqual({ results: [], totalMatches: 0, truncated: false });
+      expect(
+        await retrieval.search({
+          ownerId: OWNER_A,
+          query: 'gmail granola github Samantha',
+          limit: 10,
+          resourceTypes: ['record'],
+        }),
+      ).toEqual({ results: [], totalMatches: 0, truncated: false });
+    } finally {
+      await database`pragma query_only = off`;
+    }
+
+    const revised = {
+      ...deliveredRecord({
+        id: 'notes-3',
+        revision: 2,
+        content: {
+          body: 'Scopeword updated.',
+          participants: [{ name: 'Alex Morgan', roles: [], identities: [] }],
+        },
+      }),
+      provider: 'granola',
+    };
+    await acceptRecords({ records, syncId, deliveries: [revised, deliveries[2]!] });
+    expect(await search({ provider: 'granola', participantName: 'Samantha Wells' })).toMatchObject({
+      totalMatches: 0,
+    });
+    expect(await search({ provider: 'granola', participantName: 'Alex Morgan' })).toMatchObject({
+      totalMatches: 1,
+    });
+    await acceptRecords({
+      records,
+      syncId,
+      deliveries: [{ ...deliveredRecord({ id: 'notes-3', revision: 3 }), provider: 'granola' }],
+    });
+    expect(await search({ provider: 'granola' })).toMatchObject({ totalMatches: 0 });
+  }));
+
 test('record search tracks accepted revisions atomically, rejects conflicting metadata, and isolates owners', () =>
   withRetrievalTest(async ({ database, records, retrieval }) => {
     const syncId = await createRecordSync({ database });
@@ -612,7 +647,7 @@ test('record search tracks accepted revisions atomically, rejects conflicting me
       throw new Error('Missing record search result');
     }
     const readableId = first.record.readableId;
-    expect(first.title).toBeNull();
+    expect(first).not.toHaveProperty('title');
     expect(await records.findResource({ ownerId: OWNER_B, readableId })).toBeNull();
 
     const stored = await records.findResource({ ownerId: OWNER_A, readableId });
@@ -623,7 +658,7 @@ test('record search tracks accepted revisions atomically, rejects conflicting me
     // An identical replay preserves both canonical content and its searchable projection.
     await acceptRecords({ records, syncId, deliveries: [initial] });
     expect(await records.findResource({ ownerId: OWNER_A, readableId })).toEqual(stored);
-    expect((await search('oldmetadata')).results).toHaveLength(1);
+    expect((await search('originalneedle')).results).toHaveLength(1);
 
     const updated = deliveredRecord({
       revision: 2,
@@ -650,7 +685,7 @@ test('record search tracks accepted revisions atomically, rejects conflicting me
       }),
     ).toEqual({ state: 'conflict' });
     expect((await search('rollbackneedle conflictingmetadata')).results).toEqual([]);
-    expect((await search('newmetadata')).results).toHaveLength(1);
+    expect((await search('replacementneedle')).results).toHaveLength(1);
     await database`
       create trigger "fail_record_search_projection" before insert on "hypermedia_search_document"
       when new."resource_type" = 'record'
@@ -667,7 +702,7 @@ test('record search tracks accepted revisions atomically, rejects conflicting me
       'Replacementneedle.',
     );
     expect((await search('failedindexneedle')).results).toEqual([]);
-    expect((await search('newmetadata')).results).toHaveLength(1);
+    expect((await search('replacementneedle')).results).toHaveLength(1);
     await database`drop trigger "fail_record_search_projection"`;
     // Revoking a delivery credential does not archive its previously received evidence.
     await database`update "record_sync" set "revoked_at" = ${NOW} where "id" = ${syncId}`;
@@ -686,100 +721,6 @@ test('record search tracks accepted revisions atomically, rejects conflicting me
       (await retrieval.search({ ownerId: OWNER_B, query: 'originalneedle', limit: 10 })).results,
     ).toHaveLength(1);
   }));
-
-test('explicit, restartable rebuild converges from canonical resources without rewriting another owner', () =>
-  withRetrievalTest(
-    async ({ database, dataFolder, records, entities, assets, pages, retrieval, maintenance }) => {
-      const syncId = await createRecordSync({ database });
-      await acceptRecords({
-        records,
-        syncId,
-        deliveries: [deliveredRecord({ content: { body: 'Convergenceneedle from a record.' } })],
-      });
-      await createEntity({
-        entities,
-        readableId: 'convergence-person',
-        name: 'Convergenceneedle',
-        description: 'An indexed entity.',
-      });
-      await createAsset({ assets, readableId: 'convergence-asset', name: 'Convergenceneedle' });
-      await pages.create({
-        ownerId: OWNER_A,
-        actor: { kind: 'owner' },
-        markdown: '# Convergence page\n\nSummary.\n\nConvergenceneedle in the full body.',
-      });
-      await createEntity({
-        entities,
-        ownerId: OWNER_B,
-        readableId: 'unaffected',
-        name: 'Other',
-        description: 'Other-owner evidence.',
-      });
-      const expected = await retrieval.search({
-        ownerId: OWNER_A,
-        query: 'convergenceneedle',
-        limit: 10,
-      });
-      const otherBefore =
-        await database`select * from "hypermedia_search_document" where "owner_id" = ${OWNER_B}`;
-      await database`delete from "hypermedia_search_document" where "owner_id" = ${OWNER_A}`;
-      await database`
-      insert into "hypermedia_search_document" ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-      values (${OWNER_A}, 'record', 'stale-record', 'Convergenceneedle', '', '')
-    `;
-      expect(
-        (await retrieval.search({ ownerId: OWNER_A, query: 'convergenceneedle', limit: 10 }))
-          .results,
-      ).toEqual([]);
-      let afterPage: string | undefined;
-      await expect(
-        maintenance.rebuild({
-          ownerId: OWNER_A,
-          onProgress: (progress) => {
-            if (progress.resourceType === 'knowledge_page') {
-              afterPage = progress.readableId;
-              throw new Error('simulated interruption');
-            }
-          },
-        }),
-      ).rejects.toThrow('simulated interruption');
-      await maintenance.rebuild({ ownerId: OWNER_A, afterPage });
-      expect(
-        await database`select "id" from "hypermedia_search_document" where "owner_id" = ${OWNER_A} and "readable_id" = 'stale-record'`,
-      ).toHaveLength(0);
-      expect(
-        await retrieval.search({ ownerId: OWNER_A, query: 'convergenceneedle', limit: 10 }),
-      ).toEqual(expected);
-      await maintenance.rebuild({ ownerId: OWNER_A });
-      expect(
-        await retrieval.search({ ownerId: OWNER_A, query: 'convergenceneedle', limit: 10 }),
-      ).toEqual(expected);
-      expect(
-        await database`select * from "hypermedia_search_document" where "owner_id" = ${OWNER_B}`,
-      ).toEqual(otherBefore);
-      const job = Bun.spawn(
-        [
-          process.execPath,
-          fileURLToPath(new URL('../../../scripts/rebuild-hypermedia-search.ts', import.meta.url)),
-          '--data-folder',
-          dataFolder,
-          '--owner-id',
-          OWNER_A,
-        ],
-        { stdout: 'pipe', stderr: 'pipe' },
-      );
-      const [stdout, stderr, exitCode] = await Promise.all([
-        new Response(job.stdout).text(),
-        new Response(job.stderr).text(),
-        job.exited,
-      ]);
-      expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: '' });
-      expect(stdout).toContain('index integrity verified');
-      expect(
-        await retrieval.search({ ownerId: OWNER_A, query: 'convergenceneedle', limit: 10 }),
-      ).toEqual(expected);
-    },
-  ));
 
 test('page search applies the current interval contract before taking top K', () =>
   withRetrievalTest(async ({ pages, retrieval }) => {
@@ -828,41 +769,6 @@ test('page search applies the current interval contract before taking top K', ()
       totalMatches: 1,
       results: [{ knowledgePage: { readableId: 'undated-intervalneedle' } }],
     });
-  }));
-
-test('maintenance cannot replace a newer page revision with a stale Markdown snapshot', () =>
-  withRetrievalTest(async ({ database, pages, retrieval }) => {
-    const markdown = '# Revision race\n\nA brief summary.\n\nOldsnapshotneedle.';
-    await pages.create({ ownerId: OWNER_A, actor: { kind: 'owner' }, markdown });
-    const repository = new KnowledgePagesRepository(database);
-    const snapshot = await repository.find({ ownerId: OWNER_A, readableId: 'revision-race' });
-    if (!snapshot) {
-      throw new Error('Missing page snapshot');
-    }
-    expect(
-      await pages.update({
-        ownerId: OWNER_A,
-        actor: { kind: 'owner' },
-        readableId: snapshot.readableId,
-        expectedRevisionNumber: 1,
-        markdown: markdown.replace('Oldsnapshotneedle', 'Currentsnapshotneedle'),
-      }),
-    ).toMatchObject({ state: 'saved' });
-    expect(
-      await repository.replaceCurrentIndex({
-        ownerId: OWNER_A,
-        readableId: snapshot.readableId,
-        expectedRevisionId: snapshot.currentRevisionId,
-        ...parseKnowledgePageMarkdown(markdown),
-      }),
-    ).toEqual({ state: 'revision_changed' });
-    expect(
-      (await retrieval.search({ ownerId: OWNER_A, query: 'oldsnapshotneedle', limit: 10 })).results,
-    ).toEqual([]);
-    expect(
-      (await retrieval.search({ ownerId: OWNER_A, query: 'currentsnapshotneedle', limit: 10 }))
-        .results,
-    ).toHaveLength(1);
   }));
 
 test('record snippets stay compact even when one matching token is very long', () =>
