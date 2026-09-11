@@ -24,11 +24,17 @@ pickers, so the story is immediately nearby. This frontend calendar override is 
 the seeded development launcher and is ignored in production builds. Authentication, ingestion
 and database timestamps still use the real clock. Ordinary development uses the current date.
 
-The complete story loads by default: **one profile, 23 other entities, 32 pages, eight page updates,
+The complete story loads by default: **one profile, 23 other entities, 38 pages, eight page updates,
 29 records and six assets**. The existing `--all` option loads the same complete corpus; there is
 no separate set of filler resources. Stop another development server before starting this one.
 The data lives in a newly allocated temporary directory and is deleted when the isolated process
 stops. It does not overwrite an ordinary local database. Restart the command for a fresh copy.
+
+The default undated map contains seven connected reference pages: collaborators, Apple and Pixar,
+the digital-hub model, the store experience, product form and use, evidence interpretation, and
+reference images. They provide entry points into the dated story. Events and chronological
+syntheses keep their historical intervals; the reference notes leave coverage unset because their
+purpose is orientation rather than an assertion that something happened or applied on a date.
 
 ## Follow the changes
 

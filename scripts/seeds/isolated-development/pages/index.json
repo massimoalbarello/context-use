@@ -234,6 +234,42 @@
     "temporalCoverage": "2000-01-05/2001-11-02"
   },
   {
+    "readableId": "steves-circle-of-collaborators",
+    "path": "pages/steves-circle-of-collaborators.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "apple-and-pixar-in-steves-world",
+    "path": "pages/apple-and-pixar-in-steves-world.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "what-a-digital-hub-connects",
+    "path": "pages/what-a-digital-hub-connects.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "the-store-as-a-place-to-learn",
+    "path": "pages/the-store-as-a-place-to-learn.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "product-form-and-everyday-use",
+    "path": "pages/product-form-and-everyday-use.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "reading-the-evidence-around-steve",
+    "path": "pages/reading-the-evidence-around-steve.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
     "readableId": "steve-jobs-2000-to-2001",
     "path": "pages/steve-jobs-2000-to-2001.md",
     "asOf": "2001-12-31",

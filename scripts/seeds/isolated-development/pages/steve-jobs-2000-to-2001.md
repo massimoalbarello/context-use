@@ -2,6 +2,8 @@
 
 This chapter follows [Steve Jobs](context-use://entity/steve-jobs) from [two CEO roles](context-use://page/two-ceo-roles) into a period of product renewal and uneven results. It is a researched historical reconstruction, not his own private archive.
 
+For orientation, start with [Steve’s collaborators](context-use://page/steves-circle-of-collaborators), [his two creative worlds](context-use://page/apple-and-pixar-in-steves-world) and [how to read the evidence](context-use://page/reading-the-evidence-around-steve). The [digital-hub model](context-use://page/what-a-digital-hub-connects), [store experience](context-use://page/the-store-as-a-place-to-learn) and [product-design reading lens](context-use://page/product-form-and-everyday-use) are undated reference notes that lead into the chronology below.
+
 ## Rebuilding the Mac’s usefulness
 
 The [OS X transition](context-use://page/moving-the-mac-to-os-x) changes the software foundation. The [digital hub](context-use://page/the-mac-as-a-digital-hub) connects that computer to music and movies, with the [iPod team](context-use://page/who-made-the-first-ipod-possible) supplying a new device. The [Cube’s trajectory](context-use://page/the-cube-bet) keeps a failed commercial bet inside the account.
