@@ -7,6 +7,7 @@ import type { RecordContent } from '#models/records/delivery-contract.generated.
 import type { RecordListFilters } from '#models/records/model.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordsService } from '#services/records/service.ts';
+import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import { withRecordTestDatabase } from './database.ts';
 
 const OWNER_ID = OWNER_USER_ID;
@@ -83,7 +84,11 @@ async function withRecords(
       }
       const storage = createLocalStorage({ dataFolder });
       const repository = new RecordsRepository(database);
-      const service = new RecordsService({ records: repository, storage, now: () => RECEIVED_AT });
+      const service = new RecordsService({
+        records: repository,
+        storage,
+        now: () => RECEIVED_AT,
+      });
       await service.accept({
         ownerId: OWNER_ID,
         syncId: SYNC_ID,
@@ -130,17 +135,13 @@ async function withRecords(
   });
 }
 
-test('orders source dates, provider and kind before pagination, with missing dates last in either direction', async () => {
+test('orders source dates before pagination, with missing dates last in either direction', async () => {
   await withRecords(async ({ repository }) => {
     const cases: [RecordListFilters, string[]][] = [
       [{ sortBy: 'sourceCreatedAt', sortDirection: 'asc' }, ['b', 'a', 'c', 'missing']],
       [{ sortBy: 'sourceCreatedAt', sortDirection: 'desc' }, ['c', 'a', 'b', 'missing']],
       [{ sortBy: 'sourceUpdatedAt', sortDirection: 'asc' }, ['c', 'b', 'a', 'missing']],
       [{ sortBy: 'sourceUpdatedAt', sortDirection: 'desc' }, ['a', 'b', 'c', 'missing']],
-      [{ sortBy: 'provider', sortDirection: 'asc' }, ['a', 'c', 'missing', 'b']],
-      [{ sortBy: 'provider', sortDirection: 'desc' }, ['b', 'missing', 'a', 'c']],
-      [{ sortBy: 'kind', sortDirection: 'asc' }, ['a', 'missing', 'b', 'c']],
-      [{ sortBy: 'kind', sortDirection: 'desc' }, ['c', 'b', 'missing', 'a']],
     ];
     for (const [filters, ids] of cases) {
       const first = await repository.listResources({
@@ -217,6 +218,48 @@ test('combines exact metadata and source date bounds across the collection witho
           updatedFrom: '2020-01-01T00:00:00Z',
         })
       ).items,
+    ).toEqual([]);
+  });
+});
+
+test('record keyword retrieval applies source date bounds before top K', async () => {
+  await withRecords(async ({ database, storage }) => {
+    const retrieval = createTestHypermediaRetrievalService({ database, storage });
+    const search = (filters: RecordListFilters) =>
+      retrieval.search({
+        ownerId: OWNER_ID,
+        query: 'Title',
+        resourceTypes: ['record'],
+        limit: 1,
+        filters: { record: filters },
+      });
+    const cases: [RecordListFilters, string][] = [
+      [{ createdFrom: '2026-01-03T00:00:00Z' }, 'c'],
+      [{ createdTo: '2026-01-02T00:00:00Z' }, 'b'],
+      [{ updatedFrom: '2026-01-03T00:00:00Z' }, 'a'],
+      [{ updatedTo: '2026-01-02T00:00:00Z' }, 'c'],
+      [{ provider: 'slack' }, 'b'],
+      [{ kind: 'meeting' }, 'missing'],
+      [
+        {
+          provider: 'github',
+          kind: 'pull-request',
+          createdFrom: '2026-01-02T19:00:00-05:00',
+          createdTo: '2026-01-04T00:00:00Z',
+          updatedFrom: '2026-01-01T00:00:00Z',
+          updatedTo: '2026-01-02T00:00:00Z',
+        },
+        'c',
+      ],
+    ];
+    for (const [filters, id] of cases) {
+      const result = await search(filters);
+      expect(result.results).toMatchObject([{ resourceType: 'record', record: { recordId: id } }]);
+      expect(result.totalMatches).toBe(1);
+      expect(result.truncated).toBe(false);
+    }
+    expect(
+      (await search({ provider: 'granola', createdFrom: '2020-01-01T00:00:00Z' })).results,
     ).toEqual([]);
   });
 });

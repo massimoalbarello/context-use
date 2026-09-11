@@ -1,8 +1,6 @@
-import {
-  RECORD_SORT_FIELDS,
-  type RecordListFilters,
-  type RecordSortField,
-} from '@repo/backend/record';
+import { RECORD_SORT_FIELDS, type RecordSortField } from '@repo/backend/record';
+import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '@repo/backend/retrieval';
+import type { RecordCollectionFilters } from '../queries/records';
 import {
   type CalendarDateRange,
   calendarDateRangeFromSearch,
@@ -10,6 +8,7 @@ import {
 } from './temporal-coverage';
 
 export type RecordSearch = {
+  q?: string;
   provider?: string;
   kind?: string;
   createdFrom?: string;
@@ -22,6 +21,9 @@ export type RecordSearch = {
 
 export function recordSearch(search: Record<string, unknown>): RecordSearch {
   const result: RecordSearch = {};
+  if (typeof search.q === 'string' && search.q.trim()) {
+    result.q = search.q.trim().slice(0, MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH);
+  }
   for (const field of ['provider', 'kind'] as const) {
     if (typeof search[field] === 'string' && search[field].trim()) {
       result[field] = search[field].trim();
@@ -58,7 +60,7 @@ function bounds(range?: CalendarDateRange): { from?: string; to?: string } {
   };
 }
 
-export function recordListFilters(search: RecordSearch): RecordListFilters {
+export function recordListFilters(search: RecordSearch): RecordCollectionFilters {
   const created = bounds(
     calendarDateRangeFromSearch({ from: search.createdFrom, to: search.createdTo }),
   );
@@ -66,6 +68,7 @@ export function recordListFilters(search: RecordSearch): RecordListFilters {
     calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo }),
   );
   return {
+    query: search.q,
     provider: search.provider,
     kind: search.kind,
     createdFrom: created.from,
@@ -78,5 +81,7 @@ export function recordListFilters(search: RecordSearch): RecordListFilters {
 }
 
 export function recordsAreFiltered(search: RecordSearch): boolean {
-  return Boolean(search.provider || search.kind || search.createdFrom || search.updatedFrom);
+  return Boolean(
+    search.q || search.provider || search.kind || search.createdFrom || search.updatedFrom,
+  );
 }

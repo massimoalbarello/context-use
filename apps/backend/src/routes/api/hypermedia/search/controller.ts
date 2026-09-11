@@ -11,6 +11,7 @@ import {
   type TemporalBounds,
   temporalBoundsFrom,
 } from '#models/knowledge-pages/temporal-coverage.ts';
+import { invalidRecordDateRange } from '#routes/api/records/model.ts';
 import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import {
   HypermediaSearchQuerySchema,
@@ -31,6 +32,14 @@ export function createHypermediaSearchController({
     .get(
       '/hypermedia/search',
       async ({ query, user, status }) => {
+        if (
+          invalidRecordDateRange({ from: query.recordCreatedFrom, to: query.recordCreatedTo }) ||
+          invalidRecordDateRange({ from: query.recordUpdatedFrom, to: query.recordUpdatedTo })
+        ) {
+          return status(StatusMap['Bad Request'], {
+            error: 'The end of a source date range must be after its start.',
+          });
+        }
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -43,7 +52,11 @@ export function createHypermediaSearchController({
         const hasRecordFilter =
           query.recordProvider !== undefined ||
           query.recordKind !== undefined ||
-          query.participantName !== undefined;
+          query.participantName !== undefined ||
+          query.recordCreatedFrom !== undefined ||
+          query.recordCreatedTo !== undefined ||
+          query.recordUpdatedFrom !== undefined ||
+          query.recordUpdatedTo !== undefined;
         const result = await retrievalService.search({
           ownerId: user.id,
           query: query.query,
@@ -57,6 +70,10 @@ export function createHypermediaSearchController({
                   provider: query.recordProvider?.trim(),
                   kind: query.recordKind?.trim(),
                   participantName: query.participantName?.trim(),
+                  createdFrom: query.recordCreatedFrom?.toISOString(),
+                  createdTo: query.recordCreatedTo?.toISOString(),
+                  updatedFrom: query.recordUpdatedFrom?.toISOString(),
+                  updatedTo: query.recordUpdatedTo?.toISOString(),
                 }
               : undefined,
           },

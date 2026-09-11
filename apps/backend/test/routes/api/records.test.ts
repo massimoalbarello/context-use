@@ -253,9 +253,18 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(JSON.stringify(list)).not.toContain('Other owner');
       expect(visible).not.toHaveProperty('participantNames');
 
+      const filterOptions = await app.handle(
+        new Request('http://localhost/api/records/filter-options'),
+      );
+      expect(filterOptions.status).toBe(StatusMap.OK);
+      expect(await filterOptions.json()).toEqual({
+        providers: ['github'],
+        kinds: ['pull-request'],
+      });
+
       const matching = await app.handle(
         new Request(
-          'http://localhost/api/records?provider=github&kind=pull-request&sortBy=kind&sortDirection=asc&limit=1',
+          'http://localhost/api/records?provider=github&kind=pull-request&sortBy=sourceCreatedAt&sortDirection=asc&limit=1',
         ),
       );
       expect(matching.status).toBe(StatusMap.OK);
@@ -270,6 +279,8 @@ test('record API lists active owner records and returns Markdown detail with syn
       });
       for (const query of [
         'sortBy=body',
+        'sortBy=provider',
+        'sortBy=kind',
         'sortDirection=sideways',
         'updatedFrom=invalid',
         'createdFrom=2026-02-01&createdTo=2026-01-01',

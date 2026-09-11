@@ -1,5 +1,5 @@
 import { ListFilter } from 'lucide-react';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useId, useState } from 'react';
 import { Button } from '../ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
@@ -7,10 +7,14 @@ export function KnowledgeFilterPopover({
   title,
   filtered,
   children,
+  side = 'bottom',
+  align = 'end',
 }: {
   title: string;
   filtered: boolean;
   children: ReactNode;
+  side?: ComponentProps<typeof PopoverContent>['side'];
+  align?: ComponentProps<typeof PopoverContent>['align'];
 }) {
   const [open, setOpen] = useState(false);
   const headingId = useId();
@@ -49,7 +53,11 @@ export function KnowledgeFilterPopover({
       >
         <ListFilter aria-hidden="true" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3">
+      <PopoverContent
+        side={side}
+        align={align}
+        className="max-h-[min(var(--available-height),calc(100dvh-1rem))] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-3"
+      >
         <section aria-labelledby={headingId}>
           <h2 id={headingId} className="font-medium text-sm">
             {title}

@@ -22,6 +22,7 @@ export const unusedRecordsService: RecordDeliveryAcceptanceContract &
   accept: unexpectedCall,
   findResource: unexpectedCall,
   listResources: unexpectedCall,
+  filterOptions: unexpectedCall,
 };
 
 export const unusedRecordSyncsService: RecordSyncAuthenticationContract &

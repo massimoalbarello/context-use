@@ -1,8 +1,11 @@
-import type { RecordListFilters } from '@repo/backend/record';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { recordQueryOptions, recordsQueryOptions } from '../../queries/records';
+import {
+  type RecordCollectionFilters,
+  recordQueryOptions,
+  recordsQueryOptions,
+} from '../../queries/records';
 
-export function useRecords(filters: RecordListFilters = {}) {
+export function useRecords(filters: RecordCollectionFilters = {}) {
   const result = useInfiniteQuery(recordsQueryOptions(filters));
   return {
     ...result,
