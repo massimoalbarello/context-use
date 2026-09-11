@@ -1,3 +1,4 @@
+import { calendarNow } from './calendar-now';
 import { temporalCoverageLabel } from './temporal-coverage';
 
 const CALENDAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
@@ -26,7 +27,7 @@ export function calendarMonth(value: unknown): CalendarMonth | undefined {
     : undefined;
 }
 
-export function currentCalendarMonth(now = new Date()): CalendarMonth {
+export function currentCalendarMonth(now = calendarNow()): CalendarMonth {
   const year = String(now.getFullYear()).padStart(YEAR_DIGITS, '0');
   const month = String(now.getMonth() + 1).padStart(MONTH_DIGITS, '0');
   return `${year}-${month}` as CalendarMonth;
@@ -51,7 +52,7 @@ export function calendarMonthLabel(value?: CalendarMonth): string {
 export function mapMonthAfterScroll({
   month,
   direction,
-  now = new Date(),
+  now = calendarNow(),
 }: {
   month?: CalendarMonth;
   direction: 'older' | 'newer';

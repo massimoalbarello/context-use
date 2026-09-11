@@ -22,7 +22,11 @@
     },
     "dev": {
       "cache": false,
-      "env": ["BETTER_AUTH_SECRET", "DATA_FOLDER"],
+      "env": [
+        "BETTER_AUTH_SECRET",
+        "DATA_FOLDER",
+        "VITE_ISOLATED_CALENDAR_NOW"
+      ],
       "persistent": true
     }
   }

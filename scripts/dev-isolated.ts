@@ -77,7 +77,11 @@ const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-dev-'));
 console.log(`Starting development servers with disposable data in ${dataFolder}`);
 
 const developmentProcess = Bun.spawn(['bun', 'run', '--no-orphans', 'dev'], {
-  env: { ...process.env, [BACKEND_ENVIRONMENT.dataFolder]: dataFolder },
+  env: {
+    ...process.env,
+    [BACKEND_ENVIRONMENT.dataFolder]: dataFolder,
+    VITE_ISOLATED_CALENDAR_NOW: seedIsolatedData ? '2001-12-31T12:00:00' : undefined,
+  },
   stdio: ['inherit', 'inherit', 'inherit'],
 });
 

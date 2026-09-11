@@ -19,6 +19,11 @@ The command registers a real passkey using the existing virtual authenticator an
 [the local workspace](http://localhost:5173/hypermedia). Start reading at
 [Steve Jobs — 2000 to 2001](http://localhost:5173/pages/steve-jobs-2000-to-2001).
 
+The seeded isolated app treats **31 December 2001** as today for timeline navigation and date
+pickers, so the story is immediately nearby. This frontend calendar override is enabled only by
+the seeded development launcher and is ignored in production builds. Authentication, ingestion
+and database timestamps still use the real clock. Ordinary development uses the current date.
+
 The complete story loads by default: **one profile, 23 other entities, 32 pages, eight page updates,
 29 records and six assets**. The existing `--all` option loads the same complete corpus; there is
 no separate set of filler resources. Stop another development server before starting this one.
