@@ -17,21 +17,23 @@ export interface SnippetDocument {
 
 /** Only selected documents pass through this private, short-lived in-memory index. */
 export async function searchSnippets({
-  schema,
   expression,
   documents,
 }: {
-  schema: string;
   expression: string;
   documents: AsyncIterable<SnippetDocument>;
 }): Promise<Array<string | null>> {
   const scratch = new SQL({ adapter: 'sqlite', filename: ':memory:' });
   try {
-    // Reuse the installed definition so columns, tokenizer and prefix rules cannot drift.
-    // Only content retention changes, and only inside this disposable memory database.
-    await scratch.unsafe(
-      schema.replace(/content\s*=\s*'',/u, '').replace(/contentless_delete\s*=\s*1,/u, ''),
-    );
+    // Same columns/tokenizer as the contentless index; parity is exercised against real migrations.
+    // Retain text only here so SQLite can select snippets with its native token positions.
+    await scratch.unsafe(`
+      create virtual table hypermedia_search_fts using fts5(
+        readable_id, label, summary, body, metadata,
+        tokenize='porter unicode61 remove_diacritics 2',
+        prefix='2 3'
+      )
+    `);
     const excerpts: Array<string | null> = [];
     for await (const document of documents) {
       const clean = (text: string) => text.replaceAll(MATCH_START, ' ').replaceAll(MATCH_END, ' ');

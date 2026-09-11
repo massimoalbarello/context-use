@@ -3,19 +3,25 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SQL } from 'bun';
-import { createSqliteDatabase } from '#db/client.ts';
+import { createSqliteDatabase, createSqliteReader } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
-import { MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH } from '#models/hypermedia-retrieval/model.ts';
+import {
+  MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH,
+  MAX_HYPERMEDIA_SEARCH_LIMIT,
+} from '#models/hypermedia-retrieval/model.ts';
 import type {
   DeliveredRecord,
   RecordContent,
 } from '#models/records/delivery-contract.generated.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
+import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
 import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
+import { replaceSearchDocument } from '#repositories/search-index.ts';
+import { HypermediaService } from '#services/hypermedia/service.ts';
 import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { RecordsService } from '#services/records/service.ts';
@@ -94,6 +100,7 @@ interface RetrievalTestContext {
   assets: AssetsRepository;
   dataFolder: string;
   database: SQL;
+  reader: SQL;
   entities: EntitiesRepository;
   pages: KnowledgePagesService;
   retrieval: HypermediaRetrievalService;
@@ -106,6 +113,7 @@ async function withRetrievalTest(
 ): Promise<void> {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-retrieval-test-'));
   const database = await createSqliteDatabase({ dataFolder });
+  let reader: SQL | undefined;
   try {
     await runMigrations({ db: database });
     for (const [id, email] of [
@@ -119,7 +127,8 @@ async function withRetrievalTest(
       `;
     }
     const storage = new LocalStorage(join(dataFolder, 'objects'));
-    const retrievalRepository = new HypermediaRetrievalRepository({ database, storage });
+    reader = createSqliteReader({ dataFolder });
+    const retrievalRepository = new HypermediaRetrievalRepository({ database: reader, storage });
     const retrieval = new HypermediaRetrievalService(retrievalRepository);
     const pagesRepository = new KnowledgePagesRepository(database);
     const recordsRepository = new RecordsRepository(database);
@@ -132,6 +141,7 @@ async function withRetrievalTest(
       assets: new AssetsRepository(database),
       dataFolder,
       database,
+      reader,
       entities: new EntitiesRepository(database),
       pages,
       records: new RecordsService({ records: recordsRepository, storage }),
@@ -139,7 +149,7 @@ async function withRetrievalTest(
       retrieval,
     });
   } finally {
-    await database.close();
+    await Promise.all([database.close(), reader?.close()]);
     await rm(dataFolder, { recursive: true, force: true });
   }
 }
@@ -192,6 +202,140 @@ async function createAsset({
   });
   expect(result.state).toBe('created');
 }
+
+test('concurrent searches coexist with canonical writes on a read-only connection', () =>
+  withRetrievalTest(async ({ entities, retrieval, reader }) => {
+    await createEntity({
+      entities,
+      readableId: 'target',
+      name: 'Target',
+      description: 'Committed needle evidence.',
+    });
+    const search = () => retrieval.search({ ownerId: OWNER_A, query: 'needle', limit: 1 });
+    const [first, second, update] = await Promise.all([
+      search(),
+      search(),
+      entities.update({
+        ownerId: OWNER_A,
+        readableId: 'target',
+        name: 'Target',
+        description: 'Updated needle evidence.',
+        updatedAt: NOW,
+      }),
+    ]);
+    expect(update?.description).toBe('Updated needle evidence.');
+    for (const result of [first, second, await search()]) {
+      expect(result.totalMatches).toBe(1);
+      expect(result.truncated).toBe(false);
+      expect(result.results[0]).toMatchObject({
+        resourceType: 'entity',
+        entity: { readableId: 'target' },
+      });
+    }
+    await expect(
+      Promise.resolve(reader.unsafe('delete from hypermedia_search_document')),
+    ).rejects.toThrow(/readonly/i);
+  }));
+
+test('retrieval never observes uncommitted metadata or postings, including rolled-back writes', () =>
+  withRetrievalTest(async ({ database, entities, retrieval }) => {
+    await createEntity({
+      entities,
+      readableId: 'target',
+      name: 'Target',
+      description: 'Committed needle evidence.',
+    });
+    for (const commit of [false, true]) {
+      const staged = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      const rollback = new Error('Intentional rollback');
+      const writing = database.begin(async (transaction) => {
+        await transaction`update entity set description = 'Staged quartz evidence.'
+          where owner_id = ${OWNER_A} and readable_id = 'target'`;
+        await replaceSearchDocument({
+          db: transaction,
+          ownerId: OWNER_A,
+          resourceType: 'entity',
+          readableId: 'target',
+          label: 'Target',
+          summary: 'Staged quartz evidence.',
+        });
+        staged.resolve();
+        await release.promise;
+        if (!commit) {
+          throw rollback;
+        }
+      });
+      // Attach rejection handling before releasing the intentionally failing writer.
+      const outcome = writing.then(
+        () => null,
+        (error: unknown) => error,
+      );
+      await staged.promise;
+      try {
+        const old = await retrieval.search({ ownerId: OWNER_A, query: 'needle', limit: 1 });
+        expect(old).toMatchObject({
+          totalMatches: 1,
+          truncated: false,
+          results: [
+            { resourceType: 'entity', entity: { description: 'Committed needle evidence.' } },
+          ],
+        });
+        expect(
+          await retrieval.search({ ownerId: OWNER_A, query: 'quartz', limit: 1 }),
+        ).toMatchObject({
+          results: [],
+          totalMatches: 0,
+          truncated: false,
+        });
+      } finally {
+        release.resolve();
+        expect(await outcome).toBe(commit ? null : rollback);
+      }
+      expect(
+        (await retrieval.search({ ownerId: OWNER_A, query: 'quartz', limit: 1 })).totalMatches,
+      ).toBe(commit ? 1 : 0);
+      expect(
+        (await retrieval.search({ ownerId: OWNER_A, query: 'needle', limit: 1 })).totalMatches,
+      ).toBe(commit ? 0 : 1);
+    }
+  }));
+
+test('excluded canvas resource kinds cannot crowd out eligible entity matches', () =>
+  withRetrievalTest(async ({ database, entities, assets, pages, retrieval }) => {
+    await createEntity({
+      entities,
+      readableId: 'target',
+      name: 'Target',
+      description: 'A specialist in needle research.',
+    });
+    await pages.create({
+      ownerId: OWNER_A,
+      actor: { kind: 'owner' },
+      markdown:
+        '# Context\n\nA useful association.\n\nWorking with [Target](context-use://entity/target).',
+    });
+    const hypermedia = new HypermediaService({
+      hypermedia: new HypermediaRepository(database),
+      retrieval,
+    });
+    const input = {
+      ownerId: OWNER_A,
+      resources: [],
+      visibleResources: [],
+      kinds: ['entity' as const],
+      interval: 'without' as const,
+      query: 'needle',
+      limit: 10,
+      offset: 0,
+    };
+    const before = await hypermedia.pages(input);
+    expect(before.pages.map((page) => page.readableId)).toEqual(['context']);
+    for (let index = 0; index < MAX_HYPERMEDIA_SEARCH_LIMIT; index++) {
+      await createAsset({ assets, readableId: `needle-${index}`, name: 'Needle' });
+    }
+    expect(await hypermedia.pages(input)).toEqual(before);
+  }));
 
 test('BM25 retrieves typed resources, body evidence, and pages containing both queried entities', () =>
   withRetrievalTest(async ({ assets, entities, pages, retrieval }) => {
@@ -936,6 +1080,18 @@ test('snippets use native stemming, prefixes, accents and clustered body matches
         expect(hit.matchExcerpt).toContain('negotiated');
         expect(hit.matchExcerpt).toContain('superconductivity');
         expect(hit.matchExcerpt?.length).toBeLessThanOrEqual(MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH);
+      }
+    }
+    // Test each tokenizer rule independently: OR queries could hide drift behind another match.
+    for (const [query, matchedText] of [
+      ['negotiating', 'Negotiated'],
+      ['cafe', 'café'],
+      ['supercon', 'superconductivity'],
+    ] as const) {
+      const result = await retrieval.search({ ownerId: OWNER_A, query, limit: 10 });
+      expect(result.results).toHaveLength(2);
+      for (const hit of result.results) {
+        expect(hit.matchExcerpt?.toLowerCase()).toContain(matchedText.toLowerCase());
       }
     }
   }));

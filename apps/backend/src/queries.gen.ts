@@ -199,6 +199,7 @@ export interface IPingDatabaseResult {
 
 /** Result of query `SearchHypermedia`. */
 export interface ISearchHypermediaResult {
+    total: number;
     resourceType: "entity" | "knowledge_page" | "asset" | "record";
     readableId: string;
     participantNames: string;
@@ -237,16 +238,6 @@ export interface ISearchHypermediaResult {
     syncName: string | null;
     createdAt: string;
     updatedAt: string;
-}
-
-/** Result of query `CountHypermediaSearchMatches`. */
-export interface ICountHypermediaSearchMatchesResult {
-    total: number;
-}
-
-/** Result of query `SearchSnippetSchema`. */
-export interface ISearchSnippetSchemaResult {
-    sql: string;
 }
 
 /** Result of query `FindHypermediaResource`. */
@@ -712,8 +703,6 @@ export interface Queries {
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
     SearchHypermedia: ISearchHypermediaResult;
-    CountHypermediaSearchMatches: ICountHypermediaSearchMatchesResult;
-    SearchSnippetSchema: ISearchSnippetSchemaResult;
     FindHypermediaResource: IFindHypermediaResourceResult;
     ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
     ListHypermediaPages: IListHypermediaPagesResult;

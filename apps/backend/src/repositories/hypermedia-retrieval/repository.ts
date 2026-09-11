@@ -220,10 +220,11 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     const recordKind = filters?.record?.kind ?? null;
     const participantName = filters?.record?.participantName ?? null;
     const boundedLimit = Math.min(Math.max(limit, 1), MAX_HYPERMEDIA_SEARCH_LIMIT);
-    const [rows, counts, schemas] = await this.sql.begin((db) =>
-      Promise.all([
-        db.SearchHypermedia`
-      /* @notNull resourceType readableId participantNames createdAt updatedAt */
+    // One statement pins rank, count, metadata and immutable file references to the same snapshot.
+    // File reads happen after it completes, so they never hold a database transaction open.
+    const rows = await this.sql.SearchHypermedia`
+      /* @notNull resourceType readableId participantNames createdAt updatedAt total */
+      /* @type total number */
       /* @type resourceType 'entity' | 'knowledge_page' | 'asset' | 'record' */
       /* @type isSelf number */
       /* @type revisionNumber number */
@@ -234,129 +235,9 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       /* @type updatedAt string */
       with selected_type as (
         select value as "resourceType" from json_each(${selectedTypes})
-      )
-      select document."resource_type" as "resourceType",
-        document."readable_id" as "readableId",
-        document."participant_names" as "participantNames",
-        coalesce(revision."storage_key", record."storage_key") as "storageKey",
-        coalesce(revision."content_hash", record."content_hash") as "contentHash",
-        coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
-        entity."id" as "entityId", entity."name" as "entityName",
-        entity."description" as "entityDescription",
-        coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
-        image."id" as "imageId", image."readable_id" as "imageReadableId",
-        image."name" as "imageName", image."media_type" as "imageMediaType",
-        image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
-        image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt",
-        page."id" as "pageId", revision."title" as "pageTitle",
-        revision."excerpt" as "pageExcerpt", revision."revision_number" as "revisionNumber",
-        revision."temporal_coverage" as "temporalCoverage",
-        asset."id" as "assetId", asset."name" as "assetName",
-        asset."media_type" as "mediaType", asset."extension" as "assetExtension",
-        asset."size_bytes" as "assetSizeBytes",
-        record."title" as "recordTitle", record."provider" as "recordProvider",
-        record."source_created_at" as "sourceCreatedAt", record."source_updated_at" as "sourceUpdatedAt",
-        record."kind" as "recordKind", record."record_id" as "recordId",
-        sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-        case document."resource_type"
-          when 'entity' then entity."created_at"
-          when 'knowledge_page' then page."created_at"
-          when 'record' then record."created_at"
-          else asset."created_at"
-        end as "createdAt",
-        case document."resource_type"
-          when 'entity' then entity."updated_at"
-          when 'knowledge_page' then page."updated_at"
-          when 'record' then record."updated_at"
-          else asset."updated_at"
-        end as "updatedAt"
-      from "hypermedia_search_fts"
-      join "hypermedia_search_document" document
-        on document."id" = "hypermedia_search_fts"."rowid"
-      left join "entity" entity
-        on document."resource_type" = 'entity'
-       and entity."owner_id" = document."owner_id"
-       and entity."readable_id" = document."readable_id"
-       and entity."archived_at" is null
-      left join "knowledge_profile" profile
-        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-      left join "asset" image
-        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
-       and image."archived_at" is null
-      left join "knowledge_page" page
-        on document."resource_type" = 'knowledge_page'
-       and page."owner_id" = document."owner_id"
-       and page."readable_id" = document."readable_id"
-       and page."archived_at" is null
-      left join "knowledge_page_revision" revision
-        on revision."owner_id" = page."owner_id" and revision."id" = page."current_revision_id"
-      left join "asset" asset
-        on document."resource_type" = 'asset'
-       and asset."owner_id" = document."owner_id"
-       and asset."readable_id" = document."readable_id"
-       and asset."archived_at" is null
-      left join "record" record
-        on document."resource_type" = 'record'
-       and record."owner_id" = document."owner_id"
-       and record."readable_id" = document."readable_id"
-       and record."operation" <> 'deleted'
-      left join "record_sync" sync
-        on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
-      where "hypermedia_search_fts" match ${expression}
-        and document."owner_id" = ${ownerId}
-        and document."resource_type" in (select "resourceType" from selected_type)
-        and (${recordsOnly} = false or document."resource_type" = 'record')
-        and (${provider} is null or record."provider" = ${provider})
-        and (${recordKind} is null or record."kind" = ${recordKind})
-        and (${participantName} is null or exists (
-          select 1 from json_each(document."participant_names") participant
-          where lower(trim(participant."value")) = lower(trim(${participantName}))
-        ))
-        and (
-          (document."resource_type" = 'entity' and entity."id" is not null)
-          or (document."resource_type" = 'knowledge_page' and page."id" is not null)
-          or (document."resource_type" = 'asset' and asset."id" is not null)
-          or (document."resource_type" = 'record' and record."readable_id" is not null)
-        )
-        and (
-          document."resource_type" <> 'knowledge_page'
-          or ${pageInterval} is null
-          or (${pageInterval} = 'without' and revision."temporal_coverage" is null)
-          or (${pageInterval} = 'with' and revision."temporal_coverage" is not null)
-        )
-        and (
-          document."resource_type" <> 'knowledge_page'
-          or ${filterStart} is null
-          or (
-            revision."temporal_coverage" is not null and
-            (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
-            and (revision."temporal_end_exclusive_ms" is null
-              or revision."temporal_end_exclusive_ms" > ${filterStart})
-          )
-        )
-        and (
-          document."resource_type" <> 'asset'
-          or ${assetKind} is null
-          or (
-            asset."media_type" like 'image/%'
-            and not exists (
-              select 1 from "entity" assignment
-              where assignment."owner_id" = asset."owner_id"
-                and assignment."image_asset_id" = asset."id"
-            )
-          )
-        )
-      order by bm25("hypermedia_search_fts", 8.0, 6.0, 3.0, 1.0, 2.0),
-        document."resource_type", document."readable_id"
-      limit ${boundedLimit}
-      `,
-        db.CountHypermediaSearchMatches`
-        /* @notNull total */
-        /* @type total number */
-        with selected_type as (
-          select value as "resourceType" from json_each(${selectedTypes})
-        )
-        select count(*) as "total"
+      ), matching_document as materialized (
+        select document."id", document."resource_type", document."readable_id",
+          bm25("hypermedia_search_fts", 8.0, 6.0, 3.0, 1.0, 2.0) as "relevance"
         from "hypermedia_search_fts"
         join "hypermedia_search_document" document
           on document."id" = "hypermedia_search_fts"."rowid"
@@ -382,8 +263,6 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
          and record."owner_id" = document."owner_id"
          and record."readable_id" = document."readable_id"
          and record."operation" <> 'deleted'
-        left join "record_sync" sync
-          on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
         where "hypermedia_search_fts" match ${expression}
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
@@ -428,22 +307,84 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
               )
             )
           )
-      `,
-        db.SearchSnippetSchema`
-          /* @notNull sql */
-          select "sql" from sqlite_schema where "name" = 'hypermedia_search_fts'
-        `,
-      ]),
-    );
-    const totalMatches = Number(counts[0]?.total ?? 0);
+      ), selected_document as (
+        select * from matching_document
+        order by "relevance", "resource_type", "readable_id"
+        limit ${boundedLimit}
+      )
+      select (select count(*) from matching_document) as "total", document."resource_type" as "resourceType",
+        document."readable_id" as "readableId",
+        document."participant_names" as "participantNames",
+        coalesce(revision."storage_key", record."storage_key") as "storageKey",
+        coalesce(revision."content_hash", record."content_hash") as "contentHash",
+        coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
+        entity."id" as "entityId", entity."name" as "entityName",
+        entity."description" as "entityDescription",
+        coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
+        image."id" as "imageId", image."readable_id" as "imageReadableId",
+        image."name" as "imageName", image."media_type" as "imageMediaType",
+        image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+        image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt",
+        page."id" as "pageId", revision."title" as "pageTitle",
+        revision."excerpt" as "pageExcerpt", revision."revision_number" as "revisionNumber",
+        revision."temporal_coverage" as "temporalCoverage",
+        asset."id" as "assetId", asset."name" as "assetName",
+        asset."media_type" as "mediaType", asset."extension" as "assetExtension",
+        asset."size_bytes" as "assetSizeBytes",
+        record."title" as "recordTitle", record."provider" as "recordProvider",
+        record."source_created_at" as "sourceCreatedAt", record."source_updated_at" as "sourceUpdatedAt",
+        record."kind" as "recordKind", record."record_id" as "recordId",
+        sync."readable_id" as "syncReadableId", sync."name" as "syncName",
+        case document."resource_type"
+          when 'entity' then entity."created_at"
+          when 'knowledge_page' then page."created_at"
+          when 'record' then record."created_at"
+          else asset."created_at"
+        end as "createdAt",
+        case document."resource_type"
+          when 'entity' then entity."updated_at"
+          when 'knowledge_page' then page."updated_at"
+          when 'record' then record."updated_at"
+          else asset."updated_at"
+        end as "updatedAt"
+      from selected_document
+      join "hypermedia_search_document" document on document."id" = selected_document."id"
+      left join "entity" entity
+        on document."resource_type" = 'entity'
+       and entity."owner_id" = document."owner_id"
+       and entity."readable_id" = document."readable_id"
+       and entity."archived_at" is null
+      left join "knowledge_profile" profile
+        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      left join "asset" image
+        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
+       and image."archived_at" is null
+      left join "knowledge_page" page
+        on document."resource_type" = 'knowledge_page'
+       and page."owner_id" = document."owner_id"
+       and page."readable_id" = document."readable_id"
+       and page."archived_at" is null
+      left join "knowledge_page_revision" revision
+        on revision."owner_id" = page."owner_id" and revision."id" = page."current_revision_id"
+      left join "asset" asset
+        on document."resource_type" = 'asset'
+       and asset."owner_id" = document."owner_id"
+       and asset."readable_id" = document."readable_id"
+       and asset."archived_at" is null
+      left join "record" record
+        on document."resource_type" = 'record'
+       and record."owner_id" = document."owner_id"
+       and record."readable_id" = document."readable_id"
+       and record."operation" <> 'deleted'
+      left join "record_sync" sync
+        on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
+      order by selected_document."relevance", document."resource_type", document."readable_id"
+    `;
+    const totalMatches = Number(rows[0]?.total ?? 0);
     if (rows.length === 0) {
       return { results: [], totalMatches, truncated: false };
     }
-    if (!schemas[0]) {
-      throw new Error('Search index schema is missing');
-    }
     const excerpts = await searchSnippets({
-      schema: schemas[0].sql,
       expression,
       documents: this.snippetDocuments(rows),
     });

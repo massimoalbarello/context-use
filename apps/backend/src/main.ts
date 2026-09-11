@@ -1,6 +1,6 @@
 import type { SQL } from 'bun';
 import { createApp } from '#app.ts';
-import { createSqliteDatabase } from '#db/client.ts';
+import { createSqliteDatabase, createSqliteReader } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
 import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
@@ -59,12 +59,17 @@ if (authSecret.source.kind === 'environment') {
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
 let recordsDatabase: SQL | undefined;
+let retrievalDatabase: SQL | undefined;
 
 try {
   await runMigrations({ db: database });
 
   const storage = createLocalStorage({ dataFolder: env.DATA_FOLDER });
-  const retrievalRepository = new HypermediaRetrievalRepository({ database, storage });
+  retrievalDatabase = createSqliteReader({ dataFolder: env.DATA_FOLDER });
+  const retrievalRepository = new HypermediaRetrievalRepository({
+    database: retrievalDatabase,
+    storage,
+  });
   const retrievalService = new HypermediaRetrievalService(retrievalRepository);
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
@@ -143,7 +148,7 @@ try {
     recordsService,
     syncsService,
   }).onStop(async () => {
-    await Promise.all([database.close(), recordsDatabase?.close()]);
+    await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
   });
   const { server } = app.listen({
     port: env.PORT,
@@ -155,6 +160,6 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await Promise.all([database.close(), recordsDatabase?.close()]);
+  await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
   throw error;
 }

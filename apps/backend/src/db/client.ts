@@ -4,6 +4,15 @@ import { ensureDir } from '#lib/filesystem.ts';
 
 const DATABASE_FILE_NAME = 'app.db';
 
+/** A separate connection keeps retrieval outside canonical write transactions. */
+export function createSqliteReader({ dataFolder }: { dataFolder: string }): SQL {
+  return new SQL({
+    adapter: 'sqlite',
+    filename: join(dataFolder, DATABASE_FILE_NAME),
+    readonly: true,
+  });
+}
+
 export async function createSqliteDatabase({ dataFolder }: { dataFolder: string }): Promise<SQL> {
   ensureDir(dataFolder);
   const database = new SQL({

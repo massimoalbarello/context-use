@@ -3,6 +3,7 @@ import {
   RECORD_SORT_FIELDS,
   type RecordResource,
   type RecordSummary,
+  recordParticipantNames,
 } from '#models/records/model.ts';
 import { MAX_SYNC_NAME_LENGTH } from '#models/syncs/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#routes/api/model.ts';
@@ -28,6 +29,7 @@ export const RecordSummarySchema = t.Object({
 export const RecordSchema = t.Object({
   ...RecordSummarySchema.properties,
   markdown: t.String({ minLength: 1 }),
+  participantNames: t.Array(t.String()),
 });
 
 export const RecordListSchema = t.Object({
@@ -65,5 +67,9 @@ export function recordSummaryResponse(record: RecordSummary) {
 }
 
 export function recordResponse(record: RecordResource) {
-  return { ...recordSummaryResponse(record), markdown: record.markdown };
+  return {
+    ...recordSummaryResponse(record),
+    markdown: record.markdown,
+    participantNames: recordParticipantNames(record.record),
+  };
 }

@@ -1,4 +1,4 @@
-import type { Nodes, Root } from 'mdast';
+import type { Nodes } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { SKIP, visit } from 'unist-util-visit';
 import {
@@ -40,16 +40,12 @@ function normalizeReadableText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function projectRoot(root: Root): string {
-  return readableMarkdownText(root);
-}
-
 function projectBlock(block: MarkdownBlock): string {
-  return projectRoot({ type: 'root', children: [block] });
+  return readableMarkdownText({ type: 'root', children: [block] });
 }
 
 function projectReferenceLabel(node: MarkdownReference): string {
-  return projectRoot({
+  return readableMarkdownText({
     type: 'root',
     children: [{ type: 'paragraph', children: [structuredClone(node)] }],
   });

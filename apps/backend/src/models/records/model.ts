@@ -18,6 +18,14 @@ export type RecordResource = RecordSummary & {
   record: Exclude<DeliveredRecord, { operation: 'deleted' }>;
 };
 
+export function recordParticipantNames(record: RecordResource['record']): string[] {
+  return [
+    ...new Set(
+      record.content.participants?.flatMap(({ name }) => (name?.trim() ? [name.trim()] : [])) ?? [],
+    ),
+  ];
+}
+
 export const RECORD_SORT_FIELDS = [
   'sourceCreatedAt',
   'sourceUpdatedAt',

@@ -52,7 +52,7 @@ export class HypermediaService {
     const retrieval = await this.retrieval.search({
       ownerId: input.ownerId,
       query,
-      resourceTypes: ['entity', 'knowledge_page', 'asset'],
+      resourceTypes: ['knowledge_page', ...input.kinds],
       limit: MAX_HYPERMEDIA_SEARCH_LIMIT,
       filters: {
         knowledgePage: {

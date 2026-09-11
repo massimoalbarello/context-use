@@ -106,6 +106,11 @@ function record({
     body: body!,
     sourceUrl: `https://github.example/pulls/${id}`,
     attributes: { ignoredForNow: true },
+    participants: [' Samantha Wells ', 'Samantha Wells', 'Alex Rivera'].map((name) => ({
+      name,
+      identities: [],
+      roles: [],
+    })),
   };
   return {
     ...common,
@@ -246,6 +251,7 @@ test('record API lists active owner records and returns Markdown detail with syn
       );
       expect(JSON.stringify(list)).not.toContain('hidden title');
       expect(JSON.stringify(list)).not.toContain('Other owner');
+      expect(visible).not.toHaveProperty('participantNames');
 
       const matching = await app.handle(
         new Request(
@@ -284,6 +290,7 @@ test('record API lists active owner records and returns Markdown detail with syn
           kind: 'pull-request',
           recordId: 'visible',
           markdown,
+          participantNames: ['Samantha Wells', 'Alex Rivera'],
           sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
         }),
       );
