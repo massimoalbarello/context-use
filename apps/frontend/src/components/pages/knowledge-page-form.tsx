@@ -9,6 +9,7 @@ import { submitThenChangeValidation } from '../../lib/form-validation';
 import { useAssetSuggestions } from '../../lib/hooks/use-assets';
 import { useEntitySuggestions } from '../../lib/hooks/use-entities';
 import { usePageSuggestions } from '../../lib/hooks/use-pages';
+import { useRecordSuggestions } from '../../lib/hooks/use-records';
 import { temporalCoverageMutation } from '../../lib/temporal-coverage';
 import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
@@ -65,6 +66,7 @@ export function KnowledgePageForm({
   const { data: entitySuggestions = [] } = useEntitySuggestions(knowledgeQuery);
   const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
   const { data: assetSuggestions = [] } = useAssetSuggestions(knowledgeQuery);
+  const { data: recordSuggestions = [] } = useRecordSuggestions(knowledgeQuery);
   const form = useForm({
     defaultValues: {
       markdown: initialValues.markdown,
@@ -149,14 +151,15 @@ export function KnowledgePageForm({
                 entities={entitySuggestions}
                 pages={pageSuggestions}
                 assets={assetSuggestions}
+                records={recordSuggestions}
                 invalid={field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={field.handleChange}
                 onQueryChange={setKnowledgeQuery}
               />
               <FieldDescription>
-                Keep one coherent idea here. Type @ to mention an entity, reference a page, or use
-                an asset; use H2 or lower headings for linkable sections.
+                Keep one coherent idea here. Type @ to mention an entity, reference a page or
+                record, or use an asset; use H2 or lower headings for linkable sections.
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>

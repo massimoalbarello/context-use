@@ -1,5 +1,6 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import type {
   RecordAcceptanceResult,
@@ -46,7 +47,10 @@ export interface RecordsRepositoryContract {
   accept(input: AcceptRecordsInput): Promise<RecordPublication>;
   listResources(input: ListRecordsInput): Promise<RecordPage>;
   filterOptions(input: { ownerId: string }): Promise<RecordFilterOptions>;
-  findResource(input: { ownerId: string; readableId: string }): Promise<StoredRecord | null>;
+  findResource(input: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<(StoredRecord & { backlinks: KnowledgePageSummary[] }) | null>;
 }
 
 type RecordPublication = {
@@ -274,7 +278,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }: {
     ownerId: string;
     readableId: string;
-  }): Promise<StoredRecord | null> {
+  }): Promise<(StoredRecord & { backlinks: KnowledgePageSummary[] }) | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
         /* @notNull title provider syncReadableId syncName readableId kind recordId storageKey contentHash sizeBytes createdAt updatedAt */
@@ -297,12 +301,36 @@ export class RecordsRepository implements RecordsRepositoryContract {
       return row
         ? {
             ...recordSummaryFrom(row),
+            backlinks: await this.listBacklinks({ ownerId, readableId }),
             storageKey: row.storageKey,
             contentHash: row.contentHash,
             sizeBytes: Number(row.sizeBytes),
           }
         : null;
     });
+  }
+
+  private async listBacklinks({
+    ownerId,
+    readableId,
+  }: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<KnowledgePageSummary[]> {
+    const rows = await this.sql.ListRecordBacklinks`
+      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
+      select page."id", page."readable_id" as "readableId", revision."revision_number" as "revisionNumber",
+        revision."title", revision."excerpt", revision."temporal_coverage" as "temporalCoverage",
+        page."created_at" as "createdAt", page."updated_at" as "updatedAt"
+      from "knowledge_page_record_reference" reference
+      join "knowledge_page" page on page."current_revision_id" = reference."source_revision_id"
+        and page."owner_id" = reference."owner_id" and page."archived_at" is null
+      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
+        and revision."owner_id" = page."owner_id"
+      where reference."owner_id" = ${ownerId} and reference."target_record_readable_id" = ${readableId}
+      order by revision."title", page."readable_id"
+    `;
+    return rows.map((row) => ({ ...row, revisionNumber: Number(row.revisionNumber) }));
   }
 
   private serialize<T>(operation: () => Promise<T>): Promise<T> {

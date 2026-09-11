@@ -5,9 +5,14 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
+import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
+import { createPageReadableIdController } from '#routes/api/pages/[pageReadableId]/controller.ts';
+import { createPagesController } from '#routes/api/pages/controller.ts';
 import { createRecordReadableIdController } from '#routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#routes/api/records/controller.ts';
+import { McpKnowledgePageSchema, mcpKnowledgePage } from '#routes/mcp/pages/model.ts';
+import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { RecordsService } from '#services/records/service.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { unusedMcpProtection } from '../../support/mcp.ts';
@@ -370,6 +375,188 @@ test('record API lists active owner records and returns Markdown detail with syn
       expect(
         (await app.handle(new Request('http://localhost/api/records/does-not-exist'))).status,
       ).toBe(StatusMap['Not Found']);
+    },
+  });
+});
+
+test('pages reference owner records across revisions, source deletion and archival', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
+      const records = new RecordsService({ records: new RecordsRepository(database), storage });
+      const pages = new KnowledgePagesService({
+        pages: new KnowledgePagesRepository(database),
+        storage,
+      });
+      for (const [ownerId, syncId] of [
+        [OWNER_USER_ID, OWNER_SYNC_ID],
+        [OTHER_OWNER_ID, OTHER_SYNC_ID],
+      ] as const) {
+        await insertOwner({ database, ownerId });
+        await insertSync({
+          database,
+          ownerId,
+          id: syncId,
+          readableId: 'source-sync',
+          name: 'Source sync',
+        });
+        await accept({
+          service: records,
+          ownerId,
+          syncId,
+          batchId: ownerId,
+          records: [record({ eventId: ownerId, id: 'source', body: 'Evidence from the source.' })],
+        });
+      }
+      const own = (await records.listResources({ ownerId: OWNER_USER_ID, limit: 1, offset: 0 }))
+        .items[0]!;
+      const foreign = (
+        await records.listResources({ ownerId: OTHER_OWNER_ID, limit: 1, offset: 0 })
+      ).items[0]!;
+      const auth = ownerAuth();
+      const app = new Elysia({ prefix: '/api' })
+        .use(createPagesController({ auth, pagesService: pages }))
+        .use(createPageReadableIdController({ auth, pagesService: pages }))
+        .use(createRecordsController({ auth, recordsService: records }))
+        .use(createRecordReadableIdController({ auth, recordsService: records }));
+      const request = ({ method, path, body }: { method: string; path: string; body?: unknown }) =>
+        app.handle(
+          new Request(`http://localhost/api${path}`, {
+            method,
+            headers: { 'content-type': 'application/json' },
+            body: body === undefined ? undefined : JSON.stringify(body),
+          }),
+        );
+      const markdown = `# Source account\n\n[Source](context-use://record/${own.readableId}) and [source again](context-use://record/${own.readableId}).`;
+      const created = await request({ method: 'POST', path: '/pages', body: { markdown } });
+      expect(created.status).toBe(StatusMap.Created);
+      expect(await created.json()).toMatchObject({
+        recordReferences: [{ readableId: own.readableId, available: true, title: own.title }],
+      });
+      const detail = await records.findResource({
+        ownerId: OWNER_USER_ID,
+        readableId: own.readableId,
+      });
+      expect(detail?.backlinks.map((page) => page.readableId)).toEqual(['source-account']);
+      const page = (await pages.detail({ ownerId: OWNER_USER_ID, readableId: 'source-account' }))!;
+      const mcp = McpKnowledgePageSchema.parse(mcpKnowledgePage(page));
+      expect(mcp.recordReferences).toMatchObject([
+        { address: `context-use://record/${own.readableId}`, available: true },
+      ]);
+      for (const target of [foreign.readableId, 'missing-record']) {
+        const rejected = await request({
+          method: 'POST',
+          path: '/pages',
+          body: {
+            markdown: `# Invalid target\n\n[Source](context-use://record/${target})`,
+          },
+        });
+        expect(rejected.status).toBe(StatusMap['Bad Request']);
+        expect(await rejected.json()).toEqual({ error: `Link target not found: record/${target}` });
+      }
+      expect(
+        await pages.detail({ ownerId: OWNER_USER_ID, readableId: 'invalid-target' }),
+      ).toBeNull();
+      const failedUpdate = await request({
+        method: 'PUT',
+        path: '/pages/source-account',
+        body: {
+          expectedRevisionNumber: 1,
+          markdown: `# Source account\n\n[Foreign](context-use://record/${foreign.readableId})`,
+        },
+      });
+      expect(failedUpdate.status).toBe(StatusMap['Bad Request']);
+      expect(
+        (await pages.detail({ ownerId: OWNER_USER_ID, readableId: 'source-account' }))
+          ?.revisionNumber,
+      ).toBe(1);
+      expect(
+        (await records.findResource({ ownerId: OWNER_USER_ID, readableId: own.readableId }))
+          ?.backlinks,
+      ).toHaveLength(1);
+      await accept({
+        service: records,
+        ownerId: OWNER_USER_ID,
+        syncId: OWNER_SYNC_ID,
+        batchId: 'delete-source',
+        records: [
+          record({ eventId: 'delete-source', id: 'source', revision: 2, operation: 'deleted' }),
+        ],
+      });
+      expect((await request({ method: 'GET', path: `/records/${own.readableId}` })).status).toBe(
+        StatusMap['Not Found'],
+      );
+      expect(
+        await (await request({ method: 'GET', path: '/pages/source-account' })).json(),
+      ).toMatchObject({
+        recordReferences: [{ readableId: own.readableId, available: false }],
+      });
+      const newlyDeleted = await request({
+        method: 'POST',
+        path: '/pages',
+        body: {
+          markdown: markdown.replace('Source account', 'New account'),
+        },
+      });
+      expect(newlyDeleted.status).toBe(StatusMap['Bad Request']);
+      const edited = await request({
+        method: 'PUT',
+        path: '/pages/source-account',
+        body: {
+          expectedRevisionNumber: 1,
+          markdown: `${markdown} Still useful.`,
+        },
+      });
+      expect(edited.status).toBe(StatusMap.OK);
+      expect(
+        (await pages.detail({ ownerId: OWNER_USER_ID, readableId: 'source-account' }))
+          ?.recordReferences,
+      ).toMatchObject([{ available: false }]);
+      await accept({
+        service: records,
+        ownerId: OWNER_USER_ID,
+        syncId: OWNER_SYNC_ID,
+        batchId: 'restore-source',
+        records: [
+          record({ eventId: 'restore-source', id: 'source', revision: 3, body: 'Updated source.' }),
+        ],
+      });
+      expect(
+        (await records.findResource({ ownerId: OWNER_USER_ID, readableId: own.readableId }))
+          ?.backlinks,
+      ).toHaveLength(1);
+      const removed = await request({
+        method: 'PUT',
+        path: '/pages/source-account',
+        body: {
+          expectedRevisionNumber: 2,
+          markdown: '# Source account\n\nThe source is no longer relevant.',
+        },
+      });
+      expect(removed.status).toBe(StatusMap.OK);
+      expect(
+        (await records.findResource({ ownerId: OWNER_USER_ID, readableId: own.readableId }))
+          ?.backlinks,
+      ).toEqual([]);
+      expect(
+        (
+          await request({
+            method: 'PUT',
+            path: '/pages/source-account',
+            body: { expectedRevisionNumber: 3, markdown },
+          })
+        ).status,
+      ).toBe(StatusMap.OK);
+      expect((await request({ method: 'PUT', path: '/pages/source-account/archive' })).status).toBe(
+        StatusMap['No Content'],
+      );
+      expect(
+        (await records.findResource({ ownerId: OWNER_USER_ID, readableId: own.readableId }))
+          ?.backlinks,
+      ).toEqual([]);
+      const remaining =
+        await database`select * from "knowledge_page_record_reference" where "owner_id" = ${OWNER_USER_ID}`;
+      expect(remaining).toHaveLength(0);
     },
   });
 });

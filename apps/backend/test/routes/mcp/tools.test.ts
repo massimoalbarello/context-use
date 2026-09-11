@@ -66,6 +66,7 @@ const page: KnowledgePage = {
   markdown: '# Growth playbook\n\nRun the feedback loop.',
   mentions: [entity],
   references: [],
+  recordReferences: [],
   backlinks: [],
   assetUsages: [],
   revisions: [
@@ -602,6 +603,7 @@ test('record search previews have exact owner-scoped read paths without imported
             ? {
                 ...record,
                 markdown,
+                backlinks: [page],
                 record: {
                   provider: record.provider,
                   kind: record.kind,
@@ -666,6 +668,7 @@ test('record search previews have exact owner-scoped read paths without imported
       expect(read.structuredContent).toMatchObject({
         markdown,
         metadata: { provider: 'calendar' },
+        backlinks: [{ address: 'context-use://page/growth-playbook', readableId: page.readableId }],
       });
       const missing = await client.callTool({
         name: 'read_record',

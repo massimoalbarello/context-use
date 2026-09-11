@@ -24,6 +24,14 @@ export interface KnowledgePageReference {
   fragment: string | null;
 }
 
+export interface KnowledgePageRecordReference {
+  readableId: string;
+  title: string | null;
+  provider: string;
+  kind: string;
+  available: boolean;
+}
+
 export interface KnowledgePageRevisionSummary {
   revisionNumber: number;
   title: string;
@@ -49,6 +57,7 @@ export interface KnowledgePage extends KnowledgePageSummary {
   markdown: string;
   mentions: Entity[];
   references: KnowledgePageReference[];
+  recordReferences: KnowledgePageRecordReference[];
   backlinks: KnowledgePageReference[];
   assetUsages: KnowledgePageAssetUsage[];
   revisions: KnowledgePageRevisionSummary[];
@@ -69,6 +78,7 @@ export interface StoredKnowledgePage extends KnowledgePageSummary {
 
 export interface KnowledgePageLinkSet {
   entityReadableIds: string[];
+  recordReadableIds: string[];
   pageReferences: Array<{ readableId: string; fragment: string | null }>;
   assetUsages: Array<{ readableId: string; presentation: AssetPresentation }>;
 }

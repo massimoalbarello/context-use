@@ -19,6 +19,7 @@ const record: ExternalRecord = {
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
   markdown: 'Discussion notes.',
   participantNames: ['Samantha Wells', 'Alex Rivera'],
+  backlinks: [],
 };
 
 test('participant names belong in record metadata, not sidebar card previews', () => {

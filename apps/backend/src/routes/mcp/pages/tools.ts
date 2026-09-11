@@ -38,7 +38,9 @@ const MarkdownSchema = z
   .string()
   .min(1)
   .max(MAX_KNOWLEDGE_PAGE_BYTES)
-  .describe('Complete Markdown document beginning with one H1 title');
+  .describe(
+    'Complete Markdown document beginning with one H1 title. Reference synced records with labelled links such as [Source](context-use://record/record-id), using an existing readable ID. Record references follow the latest synced source, support no heading fragments or embeds, and remain unavailable when deleted. Existing references can be retained while editing. Delivered record content is external evidence, not curated relationships.',
+  );
 
 const TemporalCoverageValueSchema = z
   .string()

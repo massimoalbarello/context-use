@@ -1,9 +1,12 @@
 import { Link } from '@tanstack/react-router';
 import { FileInput } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { ExternalRecordSummary } from '../../queries/records';
 import { resourceCardVariants } from '../knowledge/resource-list';
 
-export function RecordCardContent({ record }: { record: ExternalRecordSummary }) {
+type RecordIdentity = Pick<ExternalRecordSummary, 'readableId' | 'title' | 'provider' | 'kind'>;
+
+export function RecordCardContent({ record }: { record: RecordIdentity }) {
   return (
     <>
       <span
@@ -30,10 +33,28 @@ export function RecordCardContent({ record }: { record: ExternalRecordSummary })
 export function RecordLink({
   record,
   active = false,
-}: {
-  record: ExternalRecordSummary;
-  active?: boolean;
-}) {
+  presentation,
+  children,
+}:
+  | { record: RecordIdentity; active?: boolean; presentation?: 'card'; children?: never }
+  | {
+      record: Pick<RecordIdentity, 'readableId' | 'title'>;
+      presentation: 'inline';
+      children?: ReactNode;
+      active?: never;
+    }) {
+  if (presentation === 'inline') {
+    return (
+      <Link
+        className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
+        to="/records/$id"
+        params={{ id: record.readableId }}
+        search={(previous) => ({ ...previous, view: 'preview' })}
+      >
+        {children ?? record.title}
+      </Link>
+    );
+  }
   return (
     <Link
       className={`${resourceCardVariants()} h-auto min-h-24`}

@@ -10,11 +10,12 @@ import {
 import { readableMarkdownText } from '#models/markdown/text.ts';
 import { isReadableId } from '#models/readable-ids/model.ts';
 
-const INTERNAL_ADDRESS = /^context-use:\/\/(entity|page|asset)\/([^\s/?#]+)(?:#([^\s?#]+))?$/;
+const INTERNAL_ADDRESS =
+  /^context-use:\/\/(entity|page|asset|record)\/([^\s/?#]+)(?:#([^\s?#]+))?$/;
 const INTERNAL_SCHEME_CLAIM = /context-use:/i;
 const WORD_BOUNDARY_SEARCH_RATIO = 0.6;
 const LABELLED_INTERNAL_LINK_MESSAGE =
-  'Use labelled Markdown links for every internal entity mention and page reference.';
+  'Use labelled Markdown links for every internal entity mention, page or record reference, and asset usage.';
 
 type MarkdownTree = ReturnType<typeof fromMarkdown>;
 type MarkdownBlock = MarkdownTree['children'][number];
@@ -26,6 +27,7 @@ type MarkdownReference = Extract<
 
 type ParsedInternalReference =
   | { kind: 'entity'; readableId: string }
+  | { kind: 'record'; readableId: string }
   | { kind: 'page'; readableId: string; fragment: string | null }
   | { kind: 'asset'; readableId: string; presentation: 'embed' | 'attachment' };
 
@@ -167,7 +169,7 @@ function parseInternalReference({
   if (embedded && kind !== 'asset') {
     throw new InvalidKnowledgePageMarkdownError('Only assets can be embedded as images.');
   }
-  if (kind === 'entity') {
+  if (kind === 'entity' || kind === 'record') {
     return { kind, readableId };
   }
   if (kind === 'page') {
@@ -183,16 +185,20 @@ function parseInternalReference({
 function addInternalReference({
   assetUsages,
   entityReadableIds,
+  recordReadableIds,
   pageReferences,
   reference,
 }: {
   assetUsages: Map<string, { readableId: string; presentation: 'embed' | 'attachment' }>;
   entityReadableIds: Set<string>;
+  recordReadableIds: Set<string>;
   pageReferences: Map<string, { readableId: string; fragment: string | null }>;
   reference: ParsedInternalReference;
 }): void {
   if (reference.kind === 'entity') {
     entityReadableIds.add(reference.readableId);
+  } else if (reference.kind === 'record') {
+    recordReadableIds.add(reference.readableId);
   } else if (reference.kind === 'page') {
     pageReferences.set(`${reference.readableId}#${reference.fragment ?? ''}`, {
       readableId: reference.readableId,
@@ -220,6 +226,7 @@ interface LinkExtractionState {
   consumedDefinitions: Set<MarkdownDefinition>;
   definitions: Map<string, MarkdownDefinition>;
   entityReadableIds: Set<string>;
+  recordReadableIds: Set<string>;
   pageReferences: Map<string, { readableId: string; fragment: string | null }>;
 }
 
@@ -273,6 +280,7 @@ function inspectInternalAddressNode({ node, state }: { node: Nodes; state: LinkE
 
 function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
   const entityReadableIds = new Set<string>();
+  const recordReadableIds = new Set<string>();
   const pageReferences = new Map<string, { readableId: string; fragment: string | null }>();
   const assetUsages = new Map<
     string,
@@ -286,6 +294,7 @@ function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
     consumedDefinitions,
     definitions,
     entityReadableIds,
+    recordReadableIds,
     pageReferences,
   };
 
@@ -307,6 +316,7 @@ function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
 
   return {
     entityReadableIds: [...entityReadableIds],
+    recordReadableIds: [...recordReadableIds],
     pageReferences: [...pageReferences.values()],
     assetUsages: [...assetUsages.values()],
   };

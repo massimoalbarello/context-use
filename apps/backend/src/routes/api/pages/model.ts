@@ -54,6 +54,15 @@ export const KnowledgePageSchema = t.Object({
   markdown: t.String(),
   mentions: t.Array(EntitySchema),
   references: t.Array(KnowledgePageReferenceSchema),
+  recordReferences: t.Array(
+    t.Object({
+      readableId: ReadableIdSchema,
+      title: t.Nullable(t.String()),
+      provider: t.String(),
+      kind: t.String(),
+      available: t.Boolean(),
+    }),
+  ),
   backlinks: t.Array(KnowledgePageReferenceSchema),
   assetUsages: t.Array(KnowledgePageAssetUsageSchema),
   revisions: t.Array(KnowledgePageRevisionSummarySchema),
@@ -119,6 +128,15 @@ export function knowledgePageResponse(page: KnowledgePage) {
     markdown: page.markdown,
     mentions: page.mentions.map(entityResponse),
     references: page.references.map(pageReferenceResponse),
+    recordReferences: page.recordReferences.map(
+      ({ readableId, title, provider, kind, available }) => ({
+        readableId,
+        title,
+        provider,
+        kind,
+        available,
+      }),
+    ),
     backlinks: page.backlinks.map(pageReferenceResponse),
     assetUsages: page.assetUsages.map(({ asset, presentation }) => ({
       asset: assetSummaryResponse(asset),

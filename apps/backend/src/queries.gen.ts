@@ -337,6 +337,11 @@ export interface IFindCurrentKnowledgePageResult {
     updatedAt: string;
 }
 
+/** Result of query `ResolveRecordLink`. */
+export interface IResolveRecordLinkResult {
+    readable_id: string | null;
+}
+
 /** Result of query `ResolveEntityLink`. */
 export interface IResolveEntityLinkResult {
     id: string;
@@ -454,6 +459,15 @@ export interface IListActiveKnowledgePageReferrersResult {
     createdAt: string;
     updatedAt: string;
     fragment: string;
+}
+
+/** Result of query `ListKnowledgePageRecordReferences`. */
+export interface IListKnowledgePageRecordReferencesResult {
+    readableId: string;
+    title: string | null;
+    provider: string;
+    kind: string;
+    available: unknown;
 }
 
 /** Result of query `ListKnowledgePageReferences`. */
@@ -651,6 +665,18 @@ export interface IFindRecordResourceResult {
     updatedAt: string;
 }
 
+/** Result of query `ListRecordBacklinks`. */
+export interface IListRecordBacklinksResult {
+    id: string;
+    readableId: string;
+    revisionNumber: number;
+    title: string;
+    excerpt: string;
+    temporalCoverage: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 /** Result of query `FindActiveRecordSyncByName`. */
 export interface IFindActiveRecordSyncByNameResult {
     id: string;
@@ -710,6 +736,7 @@ export interface Queries {
     ListHypermediaPageResources: IListHypermediaPageResourcesResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
+    ResolveRecordLink: IResolveRecordLinkResult;
     ResolveEntityLink: IResolveEntityLinkResult;
     ResolvePageLink: IResolvePageLinkResult;
     ResolveAssetLink: IResolveAssetLinkResult;
@@ -723,6 +750,7 @@ export interface Queries {
     ListKnowledgePageMentions: IListKnowledgePageMentionsResult;
     ListKnowledgePageRevisions: IListKnowledgePageRevisionsResult;
     ListActiveKnowledgePageReferrers: IListActiveKnowledgePageReferrersResult;
+    ListKnowledgePageRecordReferences: IListKnowledgePageRecordReferencesResult;
     ListKnowledgePageReferences: IListKnowledgePageReferencesResult;
     ListKnowledgePageBacklinks: IListKnowledgePageBacklinksResult;
     ListKnowledgePageAssetUsages: IListKnowledgePageAssetUsagesResult;
@@ -742,6 +770,7 @@ export interface Queries {
     ListRecordResources: IListRecordResourcesResult;
     RecordFilterOptions: IRecordFilterOptionsResult;
     FindRecordResource: IFindRecordResourceResult;
+    ListRecordBacklinks: IListRecordBacklinksResult;
     FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;
     CreateRecordSync: ICreateRecordSyncResult;
     ListRecordSyncs: IListRecordSyncsResult;
