@@ -194,6 +194,7 @@ test('HTTP search rejects unauthenticated or invalid queries before reaching the
     '',
     'query=%20',
     'query=research&limit=0',
+    'query=research&limit=2.5',
     'query=research&limit=51',
     'query=research&resourceTypes=object',
     'query=research&resourceTypes=entity,object',

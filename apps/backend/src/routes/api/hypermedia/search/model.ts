@@ -36,7 +36,7 @@ export const HypermediaSearchQuerySchema = t.Object({
     }),
   ),
   limit: t.Optional(
-    t.Numeric({
+    t.Integer({
       minimum: 1,
       maximum: MAX_HYPERMEDIA_SEARCH_LIMIT,
       default: DEFAULT_HYPERMEDIA_SEARCH_LIMIT,
