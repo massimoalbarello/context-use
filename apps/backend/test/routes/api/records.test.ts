@@ -3,14 +3,16 @@ import type { SQL } from 'bun';
 import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
+import { createLocalStorage } from '#lib/storage/client.ts';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { createRecordReadableIdController } from '#routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#routes/api/records/controller.ts';
 import { RecordsService } from '#services/records/service.ts';
-import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
+import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { unusedMcpProtection } from '../../support/mcp.ts';
 
+const UUID_SUFFIX_LENGTH = 12;
 const NOW = '2026-09-09T09:00:00.000Z';
 const OTHER_OWNER_ID = 'records-other-owner';
 const OWNER_SYNC_ID = '01991f43-0c00-7000-8000-000000000020';
@@ -88,7 +90,7 @@ function record({
   operation?: 'added' | 'updated' | 'deleted';
 }): DeliveredRecord {
   const common = {
-    eventId,
+    eventId: `00000000-0000-4000-8000-${digest(eventId).slice(-UUID_SUFFIX_LENGTH)}`,
     provider: 'github',
     sourceId: 'github.example',
     kind: 'pull-request',
@@ -135,12 +137,17 @@ async function accept({
 }
 
 test('record API lists active owner records and returns Markdown detail with sync provenance', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_USER_ID });
       await insertOwner({ database, ownerId: OTHER_OWNER_ID });
       const repository = new RecordsRepository(database);
-      const service = new RecordsService({ records: repository, now: () => new Date(NOW) });
+      const service = new RecordsService({
+        records: repository,
+        storage,
+        now: () => new Date(NOW),
+      });
       await insertSync({
         database,
         id: OWNER_SYNC_ID,

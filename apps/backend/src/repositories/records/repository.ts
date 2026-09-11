@@ -4,8 +4,8 @@ import type { DeliveredRecord } from '#models/records/delivery-contract.generate
 import type {
   RecordAcceptanceResult,
   RecordPage,
-  RecordResource,
   RecordSummary,
+  StoredRecord,
 } from '#models/records/model.ts';
 import type { Queries } from '#queries.gen.ts';
 
@@ -19,7 +19,10 @@ class RecordAcceptanceConflict extends Error {
 export type AcceptedRecord = {
   record: DeliveredRecord;
   readableId: string;
-  markdown: string | null;
+  storageKey: string;
+  contentHash: string;
+  sizeBytes: number;
+  revisionHash: string;
 };
 
 export type AcceptRecordsInput = {
@@ -30,10 +33,15 @@ export type AcceptRecordsInput = {
 };
 
 export interface RecordsRepositoryContract {
-  accept(input: AcceptRecordsInput): Promise<RecordAcceptanceResult>;
+  accept(input: AcceptRecordsInput): Promise<RecordPublication>;
   listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage>;
-  findResource(input: { ownerId: string; readableId: string }): Promise<RecordResource | null>;
+  findResource(input: { ownerId: string; readableId: string }): Promise<StoredRecord | null>;
 }
+
+type RecordPublication = {
+  result: RecordAcceptanceResult;
+  storageKeys: Set<string>;
+};
 
 function recordSummaryFrom({
   syncReadableId,
@@ -66,17 +74,20 @@ async function applyRecord({
   db,
   input,
   accepted,
+  storageKeys,
 }: {
   db: TypedSQL<Queries>;
   input: AcceptRecordsInput;
   accepted: AcceptedRecord;
+  storageKeys: Set<string>;
 }): Promise<void> {
   const { record } = accepted;
   const currentRows = await db.FindCurrentRecordRevision`
-    /* @notNull revision operation contentHash */
-    select "revision", "operation", "content_hash" as "contentHash", "markdown"
+    /* @notNull revision revisionHash readableId storageKey */
+    select "revision", "revision_hash" as "revisionHash", "readable_id" as "readableId",
+      "storage_key" as "storageKey"
     from "record"
-    where "sync_id" = ${input.syncId}
+    where "owner_id" = ${input.ownerId} and "sync_id" = ${input.syncId}
       and "source_id" = ${record.sourceId}
       and "kind" = ${record.kind}
       and "record_id" = ${record.id}
@@ -85,10 +96,8 @@ async function applyRecord({
   if (current) {
     const currentRevision = Number(current.revision);
     if (
-      currentRevision === record.revision &&
-      (current.operation !== record.operation ||
-        current.contentHash !== record.contentHash ||
-        current.markdown !== accepted.markdown)
+      current.readableId !== accepted.readableId ||
+      (currentRevision === record.revision && current.revisionHash !== accepted.revisionHash)
     ) {
       throw new RecordAcceptanceConflict();
     }
@@ -100,20 +109,26 @@ async function applyRecord({
   await db.ApplyRecordRevision`
     insert into "record"
       ("sync_id", "owner_id", "readable_id", "source_id", "kind", "record_id", "revision",
-       "operation", "content_hash", "markdown", "created_at", "updated_at")
+       "operation", "revision_hash", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
     values
       (${input.syncId}, ${input.ownerId}, ${accepted.readableId}, ${record.sourceId}, ${record.kind},
-       ${record.id}, ${record.revision}, ${record.operation}, ${record.contentHash},
-       ${accepted.markdown}, ${input.receivedAt}, ${input.receivedAt})
-    on conflict ("sync_id", "source_id", "kind", "record_id") do update set
-      "owner_id" = excluded."owner_id",
+       ${record.id}, ${record.revision}, ${record.operation}, ${accepted.revisionHash},
+       ${accepted.storageKey}, ${accepted.contentHash}, ${accepted.sizeBytes},
+       ${input.receivedAt}, ${input.receivedAt})
+    on conflict ("owner_id", "sync_id", "source_id", "kind", "record_id") do update set
       "revision" = excluded."revision",
       "operation" = excluded."operation",
       "content_hash" = excluded."content_hash",
-      "markdown" = excluded."markdown",
+      "revision_hash" = excluded."revision_hash",
+      "storage_key" = excluded."storage_key",
+      "size_bytes" = excluded."size_bytes",
       "updated_at" = excluded."updated_at"
     where excluded."revision" > "record"."revision"
   `;
+  if (current) {
+    storageKeys.delete(current.storageKey);
+  }
+  storageKeys.add(accepted.storageKey);
 }
 
 async function acceptDelivery({
@@ -122,7 +137,8 @@ async function acceptDelivery({
 }: {
   db: TypedSQL<Queries>;
   input: AcceptRecordsInput;
-}): Promise<Exclude<RecordAcceptanceResult, { state: 'conflict' }>> {
+}): Promise<RecordPublication> {
+  const storageKeys = new Set<string>();
   const syncs = await db.FindActiveRecordSyncForAcceptance`
     /* @notNull id ownerId */
     select "id", "owner_id" as "ownerId"
@@ -130,13 +146,13 @@ async function acceptDelivery({
     where "id" = ${input.syncId} and "owner_id" = ${input.ownerId} and "revoked_at" is null
   `;
   if (!syncs[0]) {
-    return { state: 'inactive_sync' };
+    return { result: { state: 'inactive_sync' }, storageKeys };
   }
 
   for (const record of input.records) {
-    await applyRecord({ db, input, accepted: record });
+    await applyRecord({ db, input, accepted: record, storageKeys });
   }
-  return { state: 'accepted' };
+  return { result: { state: 'accepted' }, storageKeys };
 }
 
 export class RecordsRepository implements RecordsRepositoryContract {
@@ -147,12 +163,14 @@ export class RecordsRepository implements RecordsRepositoryContract {
     this.sql = withTypes<Queries>(sql);
   }
 
-  async accept(input: AcceptRecordsInput): Promise<RecordAcceptanceResult> {
+  async accept(input: AcceptRecordsInput): Promise<RecordPublication> {
     try {
-      return await this.serialize(() => this.sql.begin((db) => acceptDelivery({ db, input })));
+      return await this.serialize(() =>
+        this.sql.begin('immediate', (db) => acceptDelivery({ db, input })),
+      );
     } catch (error) {
       if (error instanceof RecordAcceptanceConflict) {
-        return { state: 'conflict' };
+        return { result: { state: 'conflict' }, storageKeys: new Set() };
       }
       throw error;
     }
@@ -193,13 +211,14 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }: {
     ownerId: string;
     readableId: string;
-  }): Promise<RecordResource | null> {
+  }): Promise<StoredRecord | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
-        /* @notNull syncReadableId syncName readableId kind recordId markdown createdAt updatedAt */
+        /* @notNull syncReadableId syncName readableId kind recordId storageKey contentHash sizeBytes createdAt updatedAt */
         select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
           record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
-          record."markdown", record."created_at" as "createdAt",
+          record."storage_key" as "storageKey", record."content_hash" as "contentHash",
+          record."size_bytes" as "sizeBytes", record."created_at" as "createdAt",
           record."updated_at" as "updatedAt"
         from "record" record
         join "record_sync" sync
@@ -210,7 +229,14 @@ export class RecordsRepository implements RecordsRepositoryContract {
         limit 1
       `;
       const row = rows[0];
-      return row ? { ...recordSummaryFrom(row), markdown: row.markdown } : null;
+      return row
+        ? {
+            ...recordSummaryFrom(row),
+            storageKey: row.storageKey,
+            contentHash: row.contentHash,
+            sizeBytes: Number(row.sizeBytes),
+          }
+        : null;
     });
   }
 

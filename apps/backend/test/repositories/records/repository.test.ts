@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
+import { join } from 'node:path';
 import type { SQL } from 'bun';
+import { createSqliteDatabase } from '#db/client.ts';
 import { OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
+import { createLocalStorage } from '#lib/storage/client.ts';
+import { LocalStorage } from '#lib/storage/local-storage.ts';
+import type { Storage } from '#lib/storage/storage.ts';
 import type {
   DeliveredRecord,
   RecordContent,
@@ -8,10 +13,9 @@ import type {
 } from '#models/records/delivery-contract.generated.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordsService } from '#services/records/service.ts';
-import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
+import { withRecordTestDatabase } from './database.ts';
 
 const OWNER_ID = OWNER_USER_ID;
-const SECOND_OWNER_ID = 'owner-b';
 const SYNC_ID = '01991f43-0c00-7000-8000-000000000001';
 const SYNC_READABLE_ID = 'receiver-a';
 const SECOND_SYNC_ID = '01991f43-0c00-7000-8000-000000000002';
@@ -53,7 +57,7 @@ function activeRecord({
   recordId?: string;
   revision?: number;
   body?: string;
-}): DeliveredRecord {
+}): Exclude<DeliveredRecord, { operation: 'deleted' }> {
   const recordContent = content(body);
   return {
     eventId,
@@ -137,30 +141,79 @@ async function recordCount(database: SQL): Promise<number> {
 
 async function storedRecord({
   database,
+  storage,
   syncId = SYNC_ID,
   recordId = 'record-1',
 }: {
   database: SQL;
+  storage: Storage;
   syncId?: string;
   recordId?: string;
 }) {
-  const [record] = await database<
-    Array<{ ownerId: string; revision: number; operation: string; markdown: string | null }>
-  >`
-    select "owner_id" as "ownerId", "revision", "operation", "markdown"
-    from "record"
-    where "sync_id" = ${syncId} and "record_id" = ${recordId}
+  const [stored] = await database<Array<{ ownerId: string; storageKey: string }>>`
+    select "owner_id" as "ownerId", "storage_key" as "storageKey" from "record"
+    where "owner_id" = ${OWNER_ID} and "sync_id" = ${syncId}
+      and "source_id" = 'github.example' and "kind" = 'pull-request' and "record_id" = ${recordId}
   `;
-  return record;
+  if (!stored) {
+    return undefined;
+  }
+  const record = await storage.file(stored.storageKey).text().then(JSON.parse);
+  return {
+    ownerId: stored.ownerId,
+    revision: record.revision,
+    operation: record.operation,
+    markdown: record.content?.body ?? null,
+  };
+}
+
+function service({ sql, storage }: { sql: SQL; storage: Storage }) {
+  return new RecordsService({
+    records: new RecordsRepository(sql),
+    storage,
+    now: () => RECEIVED_AT,
+  });
+}
+
+function input(records: DeliveredRecord[]) {
+  return {
+    ownerId: OWNER_ID,
+    syncId: SYNC_ID,
+    envelope: { version: 1 as const, batchId: Bun.randomUUIDv7(), records },
+  };
+}
+
+async function setup(database: SQL) {
+  await insertOwner({ database, ownerId: OWNER_ID });
+  await insertSync({ database });
+}
+
+function fileKeys(dataFolder: string) {
+  return Array.fromAsync(new Bun.Glob('**/*.json').scan({ cwd: join(dataFolder, 'objects') }));
+}
+
+async function storedReference(database: SQL) {
+  const [row] = await database<
+    Array<{ storageKey: string; readableId: string; contentHash: string; sizeBytes: number }>
+  >`
+    select "storage_key" as "storageKey", "readable_id" as "readableId", "content_hash" as "contentHash", "size_bytes" as "sizeBytes"
+    from "record" where "owner_id" = ${OWNER_ID} and "sync_id" = ${SYNC_ID}
+  `;
+  return row!;
+}
+
+function gate() {
+  return Promise.withResolvers<void>();
 }
 
 test('a batch atomically applies owner-bound current records', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
-      await insertOwner({ database, ownerId: SECOND_OWNER_ID });
       const service = new RecordsService({
         records: new RecordsRepository(database),
+        storage,
         now: () => RECEIVED_AT,
       });
 
@@ -180,7 +233,7 @@ test('a batch atomically applies owner-bound current records', async () => {
         await service.accept({ syncId: SYNC_ID, ownerId: OWNER_ID, envelope: firstEnvelope }),
       ).toEqual({ state: 'accepted' });
       expect(await recordCount(database)).toBe(1);
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         ownerId: OWNER_ID,
         revision: INITIAL_REVISION,
         operation: 'added',
@@ -215,7 +268,7 @@ test('a batch atomically applies owner-bound current records', async () => {
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         revision: CURRENT_REVISION,
         markdown: 'newest Markdown body',
       });
@@ -267,7 +320,7 @@ test('a batch atomically applies owner-bound current records', async () => {
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         revision: DELETED_REVISION,
         operation: 'deleted',
         markdown: null,
@@ -285,7 +338,7 @@ test('a batch atomically applies owner-bound current records', async () => {
           envelope: firstEnvelope,
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database, syncId: SECOND_SYNC_ID })).toMatchObject({
+      expect(await storedRecord({ database, storage, syncId: SECOND_SYNC_ID })).toMatchObject({
         ownerId: OWNER_ID,
         revision: INITIAL_REVISION,
       });
@@ -294,12 +347,14 @@ test('a batch atomically applies owner-bound current records', async () => {
 });
 
 test('one batch can converge multiple changes for the same record on its highest revision', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertSync({ database });
       const service = new RecordsService({
         records: new RecordsRepository(database),
+        storage,
         now: () => RECEIVED_AT,
       });
 
@@ -320,7 +375,7 @@ test('one batch can converge multiple changes for the same record on its highest
           }),
         }),
       ).toEqual({ state: 'accepted' });
-      expect(await storedRecord({ database })).toMatchObject({
+      expect(await storedRecord({ database, storage })).toMatchObject({
         revision: STALE_REVISION,
         markdown: 'second revision',
       });
@@ -329,12 +384,14 @@ test('one batch can converge multiple changes for the same record on its highest
 });
 
 test('concurrent retries are harmless and converge on the highest record revision', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_ID });
       await insertSync({ database });
       const service = new RecordsService({
         records: new RecordsRepository(database),
+        storage,
         now: () => RECEIVED_AT,
       });
       const duplicateInput = {
@@ -382,7 +439,7 @@ test('concurrent retries are harmless and converge on the highest record revisio
           }),
         }),
       ]);
-      expect(await storedRecord({ database, recordId })).toMatchObject({
+      expect(await storedRecord({ database, storage, recordId })).toMatchObject({
         revision: STALE_REVISION,
         markdown: 'concurrent high revision',
       });
@@ -390,41 +447,339 @@ test('concurrent retries are harmless and converge on the highest record revisio
   });
 });
 
-test('a record storage failure rolls back the whole batch before a later retry succeeds', async () => {
-  await withAuthTestDatabase({
-    run: async (database) => {
-      await insertOwner({ database, ownerId: OWNER_ID });
-      await insertSync({ database });
-      const service = new RecordsService({
-        records: new RecordsRepository(database),
-        now: () => RECEIVED_AT,
+test('record files preserve the full delivery across reopen and reject missing or corrupted content', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const storage = createLocalStorage({ dataFolder });
+      const initial = activeRecord({
+        eventId: 'original',
+        body: '# café\r\n\r\n[ref]: https://example.invalid\n\n  original spacing  \n',
       });
-      await database`
-        create trigger "record_test_reject_second_record"
-        before insert on "record"
-        when new."record_id" = 'rejected-record'
-        begin
-          select raise(abort, 'simulated record storage failure');
-        end
-      `;
+      expect(await service({ sql: database, storage }).accept(input([initial]))).toEqual({
+        state: 'accepted',
+      });
+      const originalReference = await storedReference(database);
+      const snapshot = await storage.file(originalReference.storageKey).text().then(JSON.parse);
+      expect(snapshot).toEqual(initial);
+      expect(originalReference.storageKey).toStartWith(`${OWNER_ID}/records/${SYNC_ID}/`);
+      const reopened = await createSqliteDatabase({ dataFolder });
+      try {
+        const reader = service({ sql: reopened, storage: createLocalStorage({ dataFolder }) });
+        const resource = await reader.findResource({
+          ownerId: OWNER_ID,
+          readableId: originalReference.readableId,
+        });
+        expect(resource?.record).toEqual(initial);
+        expect(resource?.markdown).toBe(initial.content.body);
+        const retry = { ...initial, eventId: Bun.randomUUIDv7() };
+        expect(await reader.accept(input([retry]))).toEqual({ state: 'accepted' });
+        expect(await storedReference(database)).toEqual(originalReference);
+        expect(await fileKeys(dataFolder)).toEqual([originalReference.storageKey]);
+        const json = JSON.stringify(initial);
+        for (const damaged of [json.slice(1), json.replace('github', 'gitlab')]) {
+          await storage.write(originalReference.storageKey, new Blob([damaged]));
+          await expect(
+            reader.findResource({ ownerId: OWNER_ID, readableId: originalReference.readableId }),
+          ).rejects.toThrow('integrity check');
+        }
+        // Listing uses SQL metadata, while content reads require the canonical file.
+        await storage.delete(originalReference.storageKey);
+        await expect(
+          reader.findResource({ ownerId: OWNER_ID, readableId: originalReference.readableId }),
+        ).rejects.toThrow('is missing');
+        const list = await reader.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 });
+        expect(list.items.map(({ readableId }) => readableId)).toEqual([
+          originalReference.readableId,
+        ]);
+      } finally {
+        await reopened.close();
+      }
+    },
+  });
+});
 
-      const input = {
-        syncId: SYNC_ID,
-        ownerId: OWNER_ID,
-        envelope: envelope({
-          batchId: 'batch-durable-retry',
-          records: [
-            activeRecord({ eventId: 'event-durable-retry' }),
-            activeRecord({ eventId: 'event-rejected', recordId: 'rejected-record' }),
-          ],
-        }),
-      } as const;
-      await expect(service.accept(input)).rejects.toThrow('simulated record storage failure');
+test('equal revisions compare all canonical metadata independently of JSON property order', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const records = service({ sql: database, storage: createLocalStorage({ dataFolder }) });
+      const initial = activeRecord({ eventId: 'initial' });
+      expect(await records.accept(input([initial]))).toEqual({ state: 'accepted' });
+      const originalReference = await storedReference(database);
+      const reordered = {
+        ...initial,
+        content: { ...initial.content, attributes: { nested: { enabled: true, answer: 42 } } },
+      };
+      expect(await records.accept(input([reordered]))).toEqual({ state: 'accepted' });
+      const conflicts: DeliveredRecord[] = [
+        { ...initial, provider: 'another-provider' },
+        { ...initial, committedAt: '2026-09-09T00:00:00Z' },
+        { ...initial, content: { ...initial.content, sourceUrl: 'https://changed.invalid' } },
+        { ...initial, content: { ...initial.content, participants: [] } },
+        { ...initial, content: { ...initial.content, attributes: { changed: true } } },
+      ];
+      for (const conflict of conflicts) {
+        expect(
+          await records.accept(
+            input([activeRecord({ eventId: 'rollback', recordId: 'must-rollback' }), conflict]),
+          ),
+        ).toEqual({ state: 'conflict' });
+        expect(await storedReference(database)).toEqual(originalReference);
+        expect(await recordCount(database)).toBe(1);
+        expect(await fileKeys(dataFolder)).toEqual([originalReference.storageKey]);
+      }
+    },
+  });
+});
+
+test('partial writes and SQL failures remove every unpublished file, then the exact batch can retry', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const batch = input([
+        activeRecord({ eventId: 'first' }),
+        activeRecord({ eventId: 'second', recordId: 'second' }),
+      ]);
+      const secondAttemptLastWrite = batch.envelope.records.length * 2;
+      class PartialStorage extends LocalStorage {
+        writes = 0;
+        // biome-ignore lint/complexity/useMaxParams: implements Storage.write
+        override async write(key: string, data: Blob) {
+          this.writes += 1;
+          if (this.writes === 2) {
+            await super.write(key, new Blob(['partial']));
+            throw new Error('disk write failed');
+          }
+          if (this.writes === secondAttemptLastWrite) {
+            return super.write(key, new Blob(['partial']));
+          }
+          return super.write(key, data);
+        }
+      }
+      const storage = new PartialStorage(join(dataFolder, 'objects'));
+      const records = service({ sql: database, storage });
+      for (const error of ['disk write failed', 'Record file was not fully written']) {
+        await expect(records.accept(batch)).rejects.toThrow(error);
+        expect(await recordCount(database)).toBe(0);
+        expect(await fileKeys(dataFolder)).toEqual([]);
+      }
+      await database`create trigger reject_record before insert on "record"
+      when new."readable_id" like 'pull-request-second-%' begin select raise(abort, 'SQL publication failed'); end`;
+      await expect(records.accept(batch)).rejects.toThrow('SQL publication failed');
       expect(await recordCount(database)).toBe(0);
-
-      await database`drop trigger "record_test_reject_second_record"`;
-      expect(await service.accept(input)).toEqual({ state: 'accepted' });
+      expect(await fileKeys(dataFolder)).toEqual([]);
+      await database`drop trigger reject_record`;
+      expect(await records.accept(batch)).toEqual({ state: 'accepted' });
       expect(await recordCount(database)).toBe(2);
+      expect(await fileKeys(dataFolder)).toHaveLength(2);
+    },
+  });
+});
+
+test('staged files stay invisible and revocation before publication rejects the whole batch', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const staged = gate();
+      const resume = gate();
+      class PausedStorage extends LocalStorage {
+        // biome-ignore lint/complexity/useMaxParams: implements Storage.write
+        override async write(key: string, data: Blob) {
+          const bytes = await super.write(key, data);
+          staged.resolve();
+          await resume.promise;
+          return bytes;
+        }
+      }
+      const storage = new PausedStorage(join(dataFolder, 'objects'));
+      const records = service({ sql: database, storage });
+      const accepting = records.accept(input([activeRecord({ eventId: 'paused' })]));
+      try {
+        await staged.promise;
+        expect(await fileKeys(dataFolder)).toHaveLength(1);
+        expect(await records.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 })).toEqual({
+          items: [],
+          nextOffset: null,
+        });
+        await database`update "record_sync" set "revoked_at" = ${RECEIVED_AT.toISOString()} where "id" = ${SYNC_ID}`;
+      } finally {
+        resume.resolve();
+      }
+      expect(await accepting).toEqual({ state: 'inactive_sync' });
+      expect(await recordCount(database)).toBe(0);
+      expect(await fileKeys(dataFolder)).toEqual([]);
+    },
+  });
+});
+
+test('a reader keeps a verified immutable revision while another repository publishes its replacement', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const storage = createLocalStorage({ dataFolder });
+      const writer = service({ sql: database, storage });
+      const initial = activeRecord({ eventId: 'initial' });
+      expect(await writer.accept(input([initial]))).toEqual({ state: 'accepted' });
+      const originalReference = await storedReference(database);
+      const reading = gate();
+      const resume = gate();
+      class PausedReadStorage extends LocalStorage {
+        override async exists(key: string) {
+          reading.resolve();
+          await resume.promise;
+          return super.exists(key);
+        }
+      }
+      const reader = service({
+        sql: database,
+        storage: new PausedReadStorage(join(dataFolder, 'objects')),
+      });
+      const pendingRead = reader.findResource({
+        ownerId: OWNER_ID,
+        readableId: originalReference.readableId,
+      });
+      const update = activeRecord({
+        eventId: 'replacement',
+        revision: CURRENT_REVISION,
+        body: 'replacement Markdown',
+      });
+      try {
+        await reading.promise;
+        expect(await writer.accept(input([update]))).toEqual({ state: 'accepted' });
+      } finally {
+        resume.resolve();
+      }
+      expect((await pendingRead)?.record).toEqual(initial);
+      expect(
+        (await writer.findResource({ ownerId: OWNER_ID, readableId: originalReference.readableId }))
+          ?.record,
+      ).toEqual(update);
+      expect(await storage.exists(originalReference.storageKey)).toBe(true);
+    },
+  });
+});
+
+test('cleanup failure is reported without deleting published revisions, and an exact retry is safe', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      class CleanupFailureStorage extends LocalStorage {
+        failCleanup = true;
+        override delete(key: string): Promise<void> {
+          if (this.failCleanup) {
+            return Promise.reject(new Error('disk cleanup failed'));
+          }
+          return super.delete(key);
+        }
+      }
+      const storage = new CleanupFailureStorage(join(dataFolder, 'objects'));
+      const records = service({ sql: database, storage });
+      const first = activeRecord({ eventId: 'first' });
+      const latest = activeRecord({ eventId: 'latest', revision: CURRENT_REVISION });
+      const batch = input([first, latest]);
+      await expect(records.accept(batch)).rejects.toThrow(
+        'Could not remove unpublished record files',
+      );
+      const published = await storedReference(database);
+      expect(
+        (await records.findResource({ ownerId: OWNER_ID, readableId: published.readableId }))
+          ?.record,
+      ).toEqual(latest);
+      const beforeRetry = await fileKeys(dataFolder);
+      expect(beforeRetry).toHaveLength(2);
+      storage.failCleanup = false;
+      expect(await records.accept(batch)).toEqual({ state: 'accepted' });
+      expect(await storedReference(database)).toEqual(published);
+      expect((await fileKeys(dataFolder)).sort()).toEqual(beforeRetry.sort());
+    },
+  });
+});
+
+test('a delayed staged revision cannot resurrect a tombstone committed by another connection', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const otherDatabase = await createSqliteDatabase({ dataFolder });
+      const staged = gate();
+      const resume = gate();
+      class DelayedStorage extends LocalStorage {
+        // biome-ignore lint/complexity/useMaxParams: implements Storage.write
+        override async write(key: string, data: Blob) {
+          const size = await super.write(key, data);
+          staged.resolve();
+          await resume.promise;
+          return size;
+        }
+      }
+      const storage = createLocalStorage({ dataFolder });
+      const delayed = service({
+        sql: database,
+        storage: new DelayedStorage(join(dataFolder, 'objects')),
+      });
+      const writer = service({ sql: otherDatabase, storage });
+      const accepting = delayed.accept(input([activeRecord({ eventId: 'delayed' })]));
+      try {
+        await staged.promise;
+        const deletion = deletedRecord({ eventId: 'tombstone', revision: DELETED_REVISION });
+        expect(await writer.accept(input([deletion]))).toEqual({ state: 'accepted' });
+        resume.resolve();
+        expect(await accepting).toEqual({ state: 'accepted' });
+        const published = await storedReference(database);
+        expect(await fileKeys(dataFolder)).toEqual([published.storageKey]);
+        expect(await storage.file(published.storageKey).text().then(JSON.parse)).toEqual(deletion);
+        expect(
+          await delayed.findResource({ ownerId: OWNER_ID, readableId: published.readableId }),
+        ).toBeNull();
+        const restored = activeRecord({ eventId: 'restore', revision: DELETED_REVISION + 1 });
+        expect(await writer.accept(input([restored]))).toEqual({ state: 'accepted' });
+        expect(
+          (await writer.findResource({ ownerId: OWNER_ID, readableId: published.readableId }))
+            ?.record,
+        ).toEqual(restored);
+      } finally {
+        resume.resolve();
+        await accepting;
+        await otherDatabase.close();
+      }
+    },
+  });
+});
+
+test('concurrent conflicting revisions through separate repositories publish exactly one complete batch', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const otherDatabase = await createSqliteDatabase({ dataFolder });
+      const storage = createLocalStorage({ dataFolder });
+      try {
+        const first = service({ sql: database, storage });
+        const second = service({ sql: otherDatabase, storage });
+        const results = await Promise.all([
+          first.accept(
+            input([
+              activeRecord({ eventId: 'left', body: 'left' }),
+              activeRecord({ eventId: 'left-only', recordId: 'left-only' }),
+            ]),
+          ),
+          second.accept(
+            input([
+              activeRecord({ eventId: 'right-only', recordId: 'right-only' }),
+              activeRecord({ eventId: 'right', body: 'right' }),
+            ]),
+          ),
+        ]);
+        expect(results.map(({ state }) => state).sort()).toEqual(['accepted', 'conflict']);
+        expect(await recordCount(database)).toBe(2);
+        expect(await fileKeys(dataFolder)).toHaveLength(2);
+        const list = await first.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 });
+        const winner = results[0]?.state === 'accepted' ? 'left' : 'right';
+        expect(list.items.map(({ recordId }) => recordId).sort()).toEqual(
+          [`${winner}-only`, 'record-1'].sort(),
+        );
+      } finally {
+        await otherDatabase.close();
+      }
     },
   });
 });

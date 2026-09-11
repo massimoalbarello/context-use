@@ -33,12 +33,15 @@ create table "record" (
   "record_id" text not null,
   "revision" integer not null,
   "operation" text not null,
+  "revision_hash" text not null,
+  "storage_key" text not null,
   "content_hash" text not null,
-  "markdown" text,
+  "size_bytes" integer not null,
   "created_at" text not null,
   "updated_at" text not null,
-  primary key ("sync_id", "source_id", "kind", "record_id"),
+  primary key ("owner_id", "sync_id", "source_id", "kind", "record_id"),
   unique ("owner_id", "readable_id"),
+  unique ("storage_key"),
   foreign key ("sync_id", "owner_id")
     references "record_sync" ("id", "owner_id") on delete cascade,
   check (length("readable_id") between 1 and 120),
@@ -49,13 +52,14 @@ create table "record" (
   check (length(trim("record_id")) > 0),
   check ("revision" between 1 and 9007199254740991),
   check ("operation" in ('added', 'updated', 'deleted')),
+  check ("revision_hash" not glob '*[^a-f0-9]*' and length("revision_hash") = 64),
   check ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64),
-  check (
-    ("operation" = 'deleted' and "markdown" is null)
-    or ("operation" in ('added', 'updated') and length("markdown") > 0)
-  ),
+  check (length(trim("storage_key")) > 0),
+  check ("size_bytes" > 0),
   check (length(trim("created_at")) > 0),
   check (length(trim("updated_at")) > 0)
 );
 
-create index "record_owner_updated_at_idx" on "record" ("owner_id", "updated_at" desc);
+create index "record_owner_updated_idx"
+  on "record" ("owner_id", "updated_at" desc, "readable_id")
+  where "operation" <> 'deleted';

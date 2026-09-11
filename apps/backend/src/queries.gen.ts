@@ -602,9 +602,9 @@ export interface IReadOwnerRegistrationStateResult {
 /** Result of query `FindCurrentRecordRevision`. */
 export interface IFindCurrentRecordRevisionResult {
     revision: number;
-    operation: string;
-    contentHash: string;
-    markdown: string | null;
+    revisionHash: string;
+    readableId: string;
+    storageKey: string;
 }
 
 /** Result of query `ApplyRecordRevision`. */
@@ -635,7 +635,9 @@ export interface IFindRecordResourceResult {
     readableId: string;
     kind: string;
     recordId: string;
-    markdown: string;
+    storageKey: string;
+    contentHash: string;
+    sizeBytes: number;
     createdAt: string;
     updatedAt: string;
 }
