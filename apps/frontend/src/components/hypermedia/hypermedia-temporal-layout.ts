@@ -17,7 +17,6 @@ import {
   type HypermediaLayoutResource,
   hypermediaLayoutResourceLabel,
   hypermediaLayoutResourceReference,
-  hypermediaPageColorIndex,
   hypermediaPagePlacementRatio,
 } from './hypermedia-layout';
 
@@ -54,7 +53,6 @@ export type TemporalHypermediaPage = {
   path: string;
   label: { x: number; y: number };
   bounds: Bounds;
-  colorIndex: number;
 };
 
 export type TemporalHypermediaTick = {
@@ -83,7 +81,6 @@ type TemporalPageCandidate = {
   minimumY: number;
   maximumY: number;
   preferredY: number;
-  colorIndex: number;
   duration: number;
 };
 
@@ -397,7 +394,6 @@ export function buildTemporalHypermediaLayout({
         minimumY,
         maximumY,
         preferredY,
-        colorIndex: hypermediaPageColorIndex(page.readableId),
         duration: end - start,
       },
     ];
@@ -436,7 +432,6 @@ export function buildTemporalHypermediaLayout({
       path: capsulePath(bounds),
       label: { x: (bounds.left + bounds.right) / 2, y: centerY },
       bounds,
-      colorIndex: candidate.colorIndex,
     };
   });
   laidOutPages.sort(

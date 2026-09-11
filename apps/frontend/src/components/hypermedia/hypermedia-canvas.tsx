@@ -129,11 +129,7 @@ const HypermediaScene = memo(function HypermediaScene({
             onPreview={onPreview}
             onPreviewEnd={onPreviewEnd}
           >
-            <HypermediaPageCloud
-              path={item.cloudPath}
-              colorIndex={item.colorIndex}
-              active={active}
-            />
+            <HypermediaPageCloud path={item.cloudPath} active={active} />
           </HypermediaPageLink>
         );
       })}

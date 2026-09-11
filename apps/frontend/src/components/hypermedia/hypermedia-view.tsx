@@ -346,7 +346,11 @@ export function HypermediaPageLink({
     <a
       {...props}
       href={`/pages/${encodeURIComponent(page.readableId)}?view=preview`}
-      className={`cursor-pointer outline-none ${className ?? ''}`}
+      className={cn(
+        'cursor-pointer outline-none',
+        page.temporalCoverage !== null ? 'text-chart-1' : 'text-[oklch(0.81_0.1_145)]',
+        className,
+      )}
       onPointerEnter={() => onPreview?.({ kind: 'page', page })}
       onPointerLeave={() => onPreviewEnd?.(key)}
       onFocus={() => onPreview?.({ kind: 'page', page })}
@@ -365,21 +369,12 @@ export function HypermediaPageLink({
   );
 }
 
-export function HypermediaPageCloud({
-  path,
-  colorIndex,
-  active,
-}: {
-  path: string;
-  colorIndex: number;
-  active: boolean;
-}) {
+export function HypermediaPageCloud({ path, active }: { path: string; active: boolean }) {
   return (
     <path
       d={path}
       className="transition-[fill-opacity,stroke-opacity] duration-200 motion-reduce:transition-none"
       style={{
-        color: `var(--chart-${colorIndex})`,
         fill: 'currentColor',
         fillOpacity: active ? ACTIVE_CLOUD_FILL_OPACITY : INACTIVE_CLOUD_FILL_OPACITY,
         stroke: 'currentColor',
