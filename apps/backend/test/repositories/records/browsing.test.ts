@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { SQL } from 'bun';
+import { OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
 import type { Storage } from '#lib/storage/storage.ts';
 import type { RecordContent } from '#models/records/delivery-contract.generated.ts';
@@ -7,17 +8,17 @@ import type { RecordListFilters } from '#models/records/model.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordsService } from '#services/records/service.ts';
 import { withRecordTestDatabase } from './database.ts';
-import {
-  activeRecord,
-  digest,
-  insertOwner,
-  insertSync,
-  OWNER_ID,
-  RECEIVED_AT,
-  SECOND_OWNER_ID,
-  SECOND_SYNC_ID,
-  SYNC_ID,
-} from './fixtures.ts';
+
+const OWNER_ID = OWNER_USER_ID;
+const SECOND_OWNER_ID = 'owner-b';
+const SYNC_ID = '01991f43-0c00-7000-8000-000000000001';
+const SECOND_SYNC_ID = '01991f43-0c00-7000-8000-000000000002';
+const RECEIVED_AT = new Date('2026-09-08T08:00:00.000Z');
+const UUID_SUFFIX_LENGTH = 12;
+
+function digest(value: string): string {
+  return new Bun.CryptoHasher('sha256').update(value).digest('hex');
+}
 
 function record({
   id,
@@ -40,7 +41,12 @@ function record({
     content.sourceUpdatedAt = updated;
   }
   return {
-    ...activeRecord({ eventId: id, recordId: id }),
+    eventId: `00000000-0000-4000-8000-${digest(id).slice(-UUID_SUFFIX_LENGTH)}`,
+    sourceId: 'github.example',
+    id,
+    revision: 1,
+    operation: 'added' as const,
+    committedAt: RECEIVED_AT.toISOString(),
     provider,
     kind,
     content,
@@ -58,18 +64,26 @@ async function withRecords(
 ) {
   await withRecordTestDatabase({
     run: async ({ database, dataFolder }) => {
-      await insertOwner({ database, ownerId: OWNER_ID });
-      await insertOwner({ database, ownerId: SECOND_OWNER_ID });
-      await insertSync({ database });
-      await insertSync({
-        database,
-        ownerId: SECOND_OWNER_ID,
-        syncId: SECOND_SYNC_ID,
-        readableId: 'other-sync',
-      });
+      for (const [ownerId, syncId, readableId] of [
+        [OWNER_ID, SYNC_ID, 'owner-sync'],
+        [SECOND_OWNER_ID, SECOND_SYNC_ID, 'other-sync'],
+      ] as const) {
+        await database`
+          insert into "auth_user"
+            ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+          values (${ownerId}, ${ownerId}, ${`${ownerId}@example.invalid`}, 1,
+            ${RECEIVED_AT.toISOString()}, ${RECEIVED_AT.toISOString()})
+        `;
+        await database`
+          insert into "record_sync"
+            ("id", "owner_id", "readable_id", "name", "api_key_sha256", "created_at")
+          values (${syncId}, ${ownerId}, ${readableId}, ${readableId}, ${digest(`${syncId}-key`)},
+            ${RECEIVED_AT.toISOString()})
+        `;
+      }
       const storage = createLocalStorage({ dataFolder });
-      const repository = new RecordsRepository({ sql: database, storage });
-      const service = new RecordsService({ records: repository, now: () => RECEIVED_AT });
+      const repository = new RecordsRepository(database);
+      const service = new RecordsService({ records: repository, storage, now: () => RECEIVED_AT });
       await service.accept({
         ownerId: OWNER_ID,
         syncId: SYNC_ID,
@@ -249,7 +263,7 @@ test('publishes title and browse corrections atomically, ignoring stale revision
       updatedAt: RECEIVED_AT.toISOString(),
     });
     expect(
-      (await repository.findResource({ ownerId: OWNER_ID, readableId: after.items[0]!.readableId }))
+      (await service.findResource({ ownerId: OWNER_ID, readableId: after.items[0]!.readableId }))
         ?.record.content.title,
     ).toBe('Corrected title');
     const { content: _content, ...slack } = record({ id: 'b', provider: 'slack', kind: 'message' });

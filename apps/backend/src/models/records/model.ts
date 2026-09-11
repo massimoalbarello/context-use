@@ -39,6 +39,12 @@ export type RecordListFilters = {
 
 export type RecordFilterOptions = { providers: string[]; kinds: string[] };
 
+export type StoredRecord = RecordSummary & {
+  storageKey: string;
+  contentHash: string;
+  sizeBytes: number;
+};
+
 export type RecordPage = {
   filterOptions: RecordFilterOptions;
   items: RecordSummary[];

@@ -81,10 +81,10 @@ try {
     new OwnerRegistrationRepository(database),
   );
   // Bun SQLite exposes in-flight transactions to unrelated queries on the same connection.
-  // RecordCatalog serializes its own operations; other capabilities use the primary connection.
+  // RecordsRepository serializes its own operations; other capabilities use the primary connection.
   recordsDatabase = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
-  const recordsRepository = new RecordsRepository({ sql: recordsDatabase, storage });
-  const recordsService = new RecordsService({ records: recordsRepository });
+  const recordsRepository = new RecordsRepository(recordsDatabase);
+  const recordsService = new RecordsService({ records: recordsRepository, storage });
   const syncsService = new RecordSyncsService({
     syncs: new RecordSyncsRepository(database),
   });
