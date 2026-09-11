@@ -1,4 +1,5 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { AgentSetup } from '../components/setup/agent-setup';
 import { buttonVariants } from '../components/ui/button';
 import { internalAppPath } from '../lib/internal-app-path';
@@ -24,6 +25,7 @@ function SetupRoute() {
   return (
     <main className="mx-auto grid min-h-full w-full max-w-3xl content-start gap-10 px-5 py-12 md:px-8 md:py-16">
       <header className="mx-auto grid max-w-2xl justify-items-center gap-3 text-center">
+        <ContextUseLogo className="mb-3 size-16" />
         <h1 className="font-semibold text-4xl tracking-tight">
           Set up Context Use with your agent
         </h1>

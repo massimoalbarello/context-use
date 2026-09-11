@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="154 154 972 972" fill="currentColor">
+  <title>Context Use</title>
+  <style>
+    :root { color: #000; }
+    @media (prefers-color-scheme: dark) { :root { color: #fff; } }
+  </style>
+  <rect x="194" y="295" width="617" height="108" />
+  <rect x="194" y="586" width="539" height="108" />
+  <rect x="500" y="877" width="586" height="108" />
+  <rect x="370" y="237" width="20" height="550" />
+  <rect x="646" y="237" width="19" height="38" />
+  <rect x="646" y="423" width="19" height="143" />
+  <rect x="646" y="714" width="19" height="329" />
+  <rect x="921" y="547" width="20" height="496" />
+</svg>
