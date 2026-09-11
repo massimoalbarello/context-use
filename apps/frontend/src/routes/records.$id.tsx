@@ -116,7 +116,7 @@ function RecordRoute() {
               </dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-muted-foreground">Source ID</dt>
+              <dt className="text-muted-foreground">Source record ID</dt>
               <dd className="break-all font-mono text-xs">{record.recordId}</dd>
             </div>
           </dl>
