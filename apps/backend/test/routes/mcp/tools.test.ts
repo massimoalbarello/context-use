@@ -12,6 +12,7 @@ import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#models/assets/media.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgePage, KnowledgePageReference } from '#models/knowledge-pages/model.ts';
+import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
@@ -234,12 +235,26 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
             query: { type: 'string' },
             resourceTypes: { type: 'array' },
             limit: { maximum: 50, minimum: 1 },
+            interval: { enum: ['with', 'without'] },
+            time: { type: 'string', minLength: 1, maxLength: 23 },
+            assetKind: { const: 'entity_image' },
           },
         },
       });
       expect(JSON.stringify(tools.find(({ name }) => name === 'search_hypermedia'))).not.toContain(
         'cursor',
       );
+      const searchInput = tools.find(({ name }) => name === 'search_hypermedia')!.inputSchema;
+      const searchFields = searchInput.properties as Record<
+        string,
+        { description?: string; properties?: Record<string, { description?: string }> }
+      >;
+      for (const field of [
+        ...Object.values(searchFields),
+        ...Object.values(searchFields.recordFilter!.properties!),
+      ]) {
+        expect(field.description?.trim().length).toBeGreaterThan(0);
+      }
       expect(tools.find(({ name }) => name === 'read_entity')?.inputSchema).toMatchObject({
         properties: { address: { pattern: expect.any(String) } },
       });
@@ -328,6 +343,11 @@ test('search_hypermedia returns compact typed previews and canonical dereference
         query: 'Luca Tidepool',
         resourceTypes: ['entity', 'knowledge_page'],
         limit: 2,
+        filters: {
+          knowledgePage: { interval: undefined, temporalBounds: undefined },
+          asset: { kind: undefined },
+          record: undefined,
+        },
       });
       return Promise.resolve({
         results: [
@@ -383,6 +403,105 @@ test('search_hypermedia returns compact typed previews and canonical dereference
       expect(JSON.stringify(result.structuredContent)).not.toContain(INTERNAL_PAGE_ID);
     },
   });
+});
+
+test('MCP search maps page-time, asset and record filters to the shared pipeline', async () => {
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input).toEqual({
+          ownerId: principal.ownerId,
+          query: 'project',
+          resourceTypes: ['knowledge_page', 'asset', 'record'],
+          limit: 7,
+          filters: {
+            knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
+            asset: { kind: 'entity_image' },
+            record: { provider: 'granola', kind: 'meeting', participantName: 'Luca' },
+          },
+        });
+        return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+      },
+    },
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: {
+          query: 'project',
+          resourceTypes: ['knowledge_page', 'asset', 'record'],
+          limit: 7,
+          interval: 'with',
+          time: '2026',
+          assetKind: 'entity_image',
+          recordFilter: { provider: ' granola ', kind: ' meeting ', participantName: ' Luca ' },
+        },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toEqual({ results: [], truncated: false });
+    },
+  });
+});
+
+test.each([
+  { interval: 'without', time: undefined },
+  { interval: undefined, time: '2026-09' },
+  { interval: 'with', time: '2026-01/2026-03' },
+  { interval: 'with', time: '2026/..' },
+] as const)('MCP search accepts page-time narrowing %j', async ({ interval, time }) => {
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input.filters?.knowledgePage).toEqual({
+          interval,
+          temporalBounds: time ? temporalBoundsFrom(time) : undefined,
+        });
+        return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+      },
+    },
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: { query: 'project', resourceTypes: ['knowledge_page'], interval, time },
+      });
+      expect(result.isError).not.toBe(true);
+    },
+  });
+});
+
+test('MCP search rejects invalid filters before reaching retrieval', async () => {
+  let retrievalCalls = 0;
+  await withMcpClient({
+    retrievalService: {
+      search: () => {
+        retrievalCalls += 1;
+        return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+      },
+    },
+    run: async (client) => {
+      for (const filters of [
+        { interval: 'all' },
+        { assetKind: 'image' },
+        { time: '' },
+        { time: '2026-01-01/2026-12-31-extra' },
+        { limit: 2.5 },
+      ]) {
+        const result = await client.callTool({
+          name: 'search_hypermedia',
+          arguments: { query: 'project', ...filters },
+        });
+        expect(result.isError).toBe(true);
+      }
+      for (const time of ['invalid', '2026-02-30', '2026-03/2026-01']) {
+        const result = await client.callTool({
+          name: 'search_hypermedia',
+          arguments: { query: 'project', time },
+        });
+        expect(result.isError).toBe(true);
+        expect(errorCode(result)).toBe('invalid_temporal_coverage');
+      }
+    },
+  });
+  expect(retrievalCalls).toBe(0);
 });
 
 test('the concise guide is deterministic and names only available retrieval tools', async () => {
@@ -458,6 +577,8 @@ test('record search previews have exact owner-scoped read paths without imported
         expect(input.ownerId).toBe(principal.ownerId);
         expect(input.resourceTypes).toEqual(['record']);
         expect(input.filters).toEqual({
+          knowledgePage: { interval: undefined, temporalBounds: undefined },
+          asset: { kind: undefined },
           record: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
         });
         return Promise.resolve({

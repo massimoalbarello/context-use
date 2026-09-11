@@ -1,8 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { DEFAULT_HYPERMEDIA_SEARCH_LIMIT } from '#models/hypermedia-retrieval/model.ts';
+import {
+  InvalidTemporalCoverageError,
+  type TemporalBounds,
+  temporalBoundsFrom,
+} from '#models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '#routes/mcp/tool-annotations.ts';
-import { mcpToolSuccess } from '#routes/mcp/tool-result.ts';
+import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
 import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import {
   mcpHypermediaRetrievalResult,
@@ -29,13 +34,34 @@ export function registerHypermediaRetrievalTools({
       outputSchema: SearchHypermediaOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
-    async ({ query, resourceTypes, recordFilter, limit = DEFAULT_HYPERMEDIA_SEARCH_LIMIT }) => {
+    async ({
+      query,
+      resourceTypes,
+      interval,
+      time,
+      assetKind,
+      recordFilter,
+      limit = DEFAULT_HYPERMEDIA_SEARCH_LIMIT,
+    }) => {
+      let temporalBounds: TemporalBounds | undefined;
+      try {
+        temporalBounds = time ? temporalBoundsFrom(time) : undefined;
+      } catch (error) {
+        if (error instanceof InvalidTemporalCoverageError) {
+          return mcpToolError({ code: 'invalid_temporal_coverage', message: error.message });
+        }
+        throw error;
+      }
       const result = await retrievalService.search({
         ownerId: principal.ownerId,
         query,
         resourceTypes,
         limit,
-        filters: recordFilter ? { record: recordFilter } : undefined,
+        filters: {
+          knowledgePage: { interval, temporalBounds },
+          asset: { kind: assetKind },
+          record: recordFilter,
+        },
       });
       return mcpToolSuccess({
         results: result.results.map(mcpHypermediaRetrievalResult),

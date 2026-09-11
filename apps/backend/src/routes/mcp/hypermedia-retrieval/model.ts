@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  DEFAULT_HYPERMEDIA_SEARCH_LIMIT,
   HYPERMEDIA_RESOURCE_TYPES,
   type HypermediaRetrievalResult,
   MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH,
@@ -27,14 +28,44 @@ export const SearchHypermediaInputSchema = z.object({
     .min(1)
     .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
     .regex(/.*\S.*/)
-    .describe('Names, aliases, identifiers, or topic phrases to retrieve'),
+    .describe(
+      'Plain-text names, readable IDs, or topic words to search for. Do not use search operators.',
+    ),
   resourceTypes: z
     .array(z.enum(HYPERMEDIA_RESOURCE_TYPES))
     .min(1)
     .max(HYPERMEDIA_RESOURCE_TYPES.length)
     .optional()
-    .describe('Optional typed resource filter; omit to search every hypermedia resource type'),
-  limit: z.number().int().min(1).max(MAX_HYPERMEDIA_SEARCH_LIMIT).optional(),
+    .describe('Search only the listed resource types. Omit to search all types.'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_HYPERMEDIA_SEARCH_LIMIT)
+    .optional()
+    .describe(
+      `Maximum results to return after filtering. Defaults to ${DEFAULT_HYPERMEDIA_SEARCH_LIMIT}; allowed range is 1–${MAX_HYPERMEDIA_SEARCH_LIMIT}.`,
+    ),
+  interval: z
+    .enum(['with', 'without'])
+    .optional()
+    .describe(
+      '"with" keeps pages with temporal coverage; "without" keeps pages without it. Omit for both. Other resource types are unchanged. Use resourceTypes: ["knowledge_page"] to search only pages.',
+    ),
+  time: z
+    .string()
+    .min(1)
+    .max(MAX_TEMPORAL_COVERAGE_LENGTH)
+    .optional()
+    .describe(
+      'Keep pages whose temporal coverage overlaps this date or range, not pages saved then. Examples: "2026", "2026-09", "2026-09-11", "2026-01/2026-03", or "2026/.." (2026 onward). Pages without temporal coverage are excluded; other resource types are unchanged. Omit for any time.',
+    ),
+  assetKind: z
+    .literal('entity_image')
+    .optional()
+    .describe(
+      '"entity_image" keeps image assets not already assigned to an entity. Omit for all assets. Other resource types are unchanged. Use resourceTypes: ["asset"] to search only assets.',
+    ),
   recordFilter: z
     .object({
       provider: z
@@ -43,25 +74,31 @@ export const SearchHypermediaInputSchema = z.object({
         .min(1)
         .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
         .optional()
-        .describe('Exact provider value supplied by the record source'),
+        .describe('Exact provider value from a search result. Omit to allow any provider.'),
       kind: z
         .string()
         .trim()
         .min(1)
         .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
         .optional()
-        .describe('Exact record kind supplied by the source, such as email or meeting'),
+        .describe(
+          'Exact kind from a search result, such as "email" or "meeting". Omit to allow any kind.',
+        ),
       participantName: z
         .string()
         .trim()
         .min(1)
         .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
         .optional()
-        .describe('Complete participant name, ignoring ASCII letter case; not proof of identity'),
+        .describe(
+          'Complete participant name from a search result, not a partial name. Omit to allow any participant.',
+        ),
     })
     .strict()
     .optional()
-    .describe('Restrict results to records. All supplied fields must match, before taking top K.'),
+    .describe(
+      'Search records only. Every supplied field must match. Search without this filter first if you do not know the values. Omit to allow other resource types.',
+    ),
 });
 
 const MatchExcerptSchema = z
