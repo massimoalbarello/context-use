@@ -1,7 +1,9 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
+import { ResourceList } from '../components/knowledge/resource-list';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
+import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { ExternalRecordMarkdown } from '../components/records/external-record-markdown';
 import { RecordTimestamp } from '../components/records/record-timestamp';
 import { Badge } from '../components/ui/badge';
@@ -81,10 +83,21 @@ function RecordRoute() {
           <RecordMetadata record={record} />
         </TabsContent>
         <TabsContent value="links" className="py-7">
-          <h2 className="font-semibold text-lg">Record links</h2>
-          <p className="mt-2 text-muted-foreground text-sm">
-            Links to pages and assets aren’t available yet.
-          </p>
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="font-semibold text-lg">Referenced by</h2>
+            <Badge variant="secondary">{record.backlinks.length}</Badge>
+          </div>
+          {record.backlinks.length > 0 ? (
+            <ResourceList>
+              {record.backlinks.map((page) => (
+                <li key={page.readableId}>
+                  <KnowledgePageLink page={page} presentation="card" />
+                </li>
+              ))}
+            </ResourceList>
+          ) : (
+            <p className="text-muted-foreground text-sm">No pages reference this record yet.</p>
+          )}
         </TabsContent>
       </Tabs>
     </DetailShell>

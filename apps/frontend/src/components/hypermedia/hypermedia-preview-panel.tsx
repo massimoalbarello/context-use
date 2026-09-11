@@ -198,6 +198,7 @@ function PagePreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) 
         <KnowledgePageMarkdown
           markdown={page.markdown}
           mentions={page.mentions}
+          recordReferences={page.recordReferences}
           onSelectResource={onSelect}
         />
       ) : (

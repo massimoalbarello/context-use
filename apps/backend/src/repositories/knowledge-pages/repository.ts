@@ -6,6 +6,7 @@ import type {
   KnowledgePageAssetUsage,
   KnowledgePageIntervalFilter,
   KnowledgePageLinkSet,
+  KnowledgePageRecordReference,
   KnowledgePageReference,
   KnowledgePageRevisionActor,
   KnowledgePageRevisionSummary,
@@ -78,6 +79,7 @@ export interface KnowledgePagesRepositoryContract {
   preview(input: { ownerId: string; readableId: string }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
+    recordReferences: KnowledgePageRecordReference[];
   } | null>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
   archive(input: {
@@ -89,6 +91,7 @@ export interface KnowledgePagesRepositoryContract {
     page: StoredKnowledgePage;
     mentions: Entity[];
     references: KnowledgePageReference[];
+    recordReferences: KnowledgePageRecordReference[];
     backlinks: KnowledgePageReference[];
     assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
@@ -222,12 +225,31 @@ async function resolveLinks({
 }): Promise<
   | {
       state: 'resolved';
+      recordReadableIds: string[];
       entityIds: string[];
       pageReferences: Array<{ pageId: string; fragment: string | null }>;
       assetUsages: Array<{ assetId: string; presentation: 'embed' | 'attachment' }>;
     }
   | { state: 'link_target_not_found'; target: string }
 > {
+  for (const readableId of links.recordReadableIds) {
+    const rows = await db.ResolveRecordLink`
+      select record."readable_id" from "record" record
+      where record."owner_id" = ${ownerId} and record."readable_id" = ${readableId}
+        and (record."operation" <> 'deleted' or exists (
+          select 1 from "knowledge_page_record_reference" reference
+          join "knowledge_page" page
+            on page."current_revision_id" = reference."source_revision_id"
+           and page."owner_id" = reference."owner_id"
+          where reference."owner_id" = ${ownerId}
+            and reference."target_record_readable_id" = record."readable_id"
+            and page."id" = ${self?.id ?? null} and page."archived_at" is null
+        ))
+    `;
+    if (!rows[0]) {
+      return { state: 'link_target_not_found', target: `record/${readableId}` };
+    }
+  }
   const entityIds: string[] = [];
   for (const readableId of links.entityReadableIds) {
     const rows = await db.ResolveEntityLink`
@@ -271,7 +293,13 @@ async function resolveLinks({
     assetUsages.push({ assetId: rows[0].id, presentation: usage.presentation });
   }
 
-  return { state: 'resolved', entityIds, pageReferences, assetUsages };
+  return {
+    state: 'resolved',
+    entityIds,
+    pageReferences,
+    assetUsages,
+    recordReadableIds: links.recordReadableIds,
+  };
 }
 
 async function insertLinks({
@@ -279,6 +307,7 @@ async function insertLinks({
   ownerId,
   revisionId,
   entityIds,
+  recordReadableIds,
   pageReferences,
   assetUsages,
 }: {
@@ -286,9 +315,17 @@ async function insertLinks({
   ownerId: string;
   revisionId: string;
   entityIds: string[];
+  recordReadableIds: string[];
   pageReferences: Array<{ pageId: string; fragment: string | null }>;
   assetUsages: Array<{ assetId: string; presentation: 'embed' | 'attachment' }>;
 }): Promise<void> {
+  for (const readableId of recordReadableIds) {
+    await db`
+      insert into "knowledge_page_record_reference"
+        ("owner_id", "source_revision_id", "target_record_readable_id")
+      values (${ownerId}, ${revisionId}, ${readableId})
+    `;
+  }
   for (const entityId of entityIds) {
     await db`
       insert into "knowledge_page_entity_mention"
@@ -310,6 +347,33 @@ async function insertLinks({
       values (${ownerId}, ${revisionId}, ${usage.assetId}, ${usage.presentation})
     `;
   }
+}
+
+async function deleteLinks({
+  db,
+  ownerId,
+  revisionId,
+}: {
+  db: TypedSQL<Queries>;
+  ownerId: string;
+  revisionId: string;
+}): Promise<void> {
+  await db`
+    delete from "knowledge_page_entity_mention"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+  await db`
+    delete from "knowledge_page_reference"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+  await db`
+    delete from "knowledge_page_record_reference"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
+  await db`
+    delete from "knowledge_page_asset_usage"
+    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
+  `;
 }
 
 export class KnowledgePagesRepository implements KnowledgePagesRepositoryContract {
@@ -386,6 +450,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         ownerId: input.ownerId,
         revisionId: input.revisionId,
         entityIds: resolved.entityIds,
+        recordReadableIds: resolved.recordReadableIds,
         pageReferences: resolved.pageReferences,
         assetUsages: resolved.assetUsages,
       });
@@ -467,21 +532,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         return resolved;
       }
       const revisionNumber = current.revisionNumber + 1;
-      await db`
-        delete from "knowledge_page_entity_mention"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_reference"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_asset_usage"
-        where "owner_id" = ${input.ownerId}
-          and "source_revision_id" = ${current.currentRevisionId}
-      `;
+      await deleteLinks({ db, ownerId: input.ownerId, revisionId: current.currentRevisionId });
       const author = await revisionAuthorColumns({
         db,
         ownerId: input.ownerId,
@@ -504,6 +555,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         ownerId: input.ownerId,
         revisionId: input.revisionId,
         entityIds: resolved.entityIds,
+        recordReadableIds: resolved.recordReadableIds,
         pageReferences: resolved.pageReferences,
         assetUsages: resolved.assetUsages,
       });
@@ -707,21 +759,20 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows[0] ? storedPageFrom(rows[0]) : null;
   }
 
-  async preview({
-    ownerId,
-    readableId,
-  }: {
-    ownerId: string;
-    readableId: string;
-  }): Promise<{ page: StoredKnowledgePage; mentions: Entity[] } | null> {
+  async preview({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<{
+    page: StoredKnowledgePage;
+    mentions: Entity[];
+    recordReferences: KnowledgePageRecordReference[];
+  } | null> {
     const page = await this.find({ ownerId, readableId });
     if (!page) {
       return null;
     }
-    return {
-      page,
-      mentions: await this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
-    };
+    const [mentions, recordReferences] = await Promise.all([
+      this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
+      this.recordReferenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
+    ]);
+    return { page, mentions, recordReferences };
   }
 
   archive({
@@ -756,21 +807,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       if (blockers.length > 0) {
         return { state: 'resource_in_use' as const, blockers };
       }
-      await db`
-        delete from "knowledge_page_entity_mention"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_reference"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
-      await db`
-        delete from "knowledge_page_asset_usage"
-        where "owner_id" = ${ownerId}
-          and "source_revision_id" = ${target.currentRevisionId}
-      `;
+      await deleteLinks({ db, ownerId, revisionId: target.currentRevisionId });
       await db`
         update "knowledge_page"
         set "archived_at" = ${archivedAt}
@@ -821,6 +858,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     page: StoredKnowledgePage;
     mentions: Entity[];
     references: KnowledgePageReference[];
+    recordReferences: KnowledgePageRecordReference[];
     backlinks: KnowledgePageReference[];
     assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
@@ -829,12 +867,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     if (!page) {
       return null;
     }
-    const [mentions, references, backlinks, assetUsages, revisions] = await Promise.all([
-      this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
-      this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
-      this.backlinkRows({ ownerId, targetPageId: page.id }),
-      this.assetUsageRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
-      this.sql.ListKnowledgePageRevisions`
+    const [mentions, references, recordReferences, backlinks, assetUsages, revisions] =
+      await Promise.all([
+        this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
+        this.referenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
+        this.recordReferenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
+        this.backlinkRows({ ownerId, targetPageId: page.id }),
+        this.assetUsageRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
+        this.sql.ListKnowledgePageRevisions`
         /* @notNull revisionNumber title authorKind createdAt */
         select revision."revision_number" as "revisionNumber", revision."title",
           revision."temporal_coverage" as "temporalCoverage",
@@ -844,11 +884,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         where revision."owner_id" = ${ownerId} and revision."page_id" = ${page.id}
         order by revision."revision_number" desc
       `,
-    ]);
+      ]);
     return {
       page,
       mentions,
       references,
+      recordReferences,
       backlinks,
       assetUsages,
       revisions: revisions.map(revisionSummaryFrom),
@@ -890,6 +931,27 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       page: summaryFrom(page),
       fragment: fragment || null,
     }));
+  }
+
+  private async recordReferenceRows({
+    ownerId,
+    sourceRevisionId,
+  }: {
+    ownerId: string;
+    sourceRevisionId: string;
+  }): Promise<KnowledgePageRecordReference[]> {
+    const rows = await this.sql.ListKnowledgePageRecordReferences`
+      /* @notNull readableId provider kind available */
+      select record."readable_id" as "readableId", record."title", record."provider", record."kind",
+        record."operation" <> 'deleted' as "available"
+      from "knowledge_page_record_reference" reference
+      join "record" record on record."owner_id" = reference."owner_id"
+        and record."readable_id" = reference."target_record_readable_id"
+      where reference."owner_id" = ${ownerId}
+        and reference."source_revision_id" = ${sourceRevisionId}
+      order by record."title", record."readable_id"
+    `;
+    return rows.map((row) => ({ ...row, available: Boolean(row.available) }));
   }
 
   private async referenceRows({

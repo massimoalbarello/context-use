@@ -26,6 +26,7 @@ import {
   pageSuggestionsQueryKey,
   pagesListQueryKey,
 } from '../../queries/pages';
+import { recordDetailsQueryKey } from '../../queries/records';
 
 export function settleArchivedAssetQueries({
   queryClient,
@@ -105,4 +106,5 @@ export function settleArchivedPageQueries({
   void queryClient.invalidateQueries({ queryKey: entityPreviewsQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetDetailsQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetPreviewsQueryKey });
+  void queryClient.invalidateQueries({ queryKey: recordDetailsQueryKey });
 }

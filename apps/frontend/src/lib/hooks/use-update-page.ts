@@ -3,6 +3,7 @@ import { assetDetailsQueryKey, assetPreviewsQueryKey } from '../../queries/asset
 import { entitiesQueryKey } from '../../queries/entities';
 import { hypermediaQueryKey } from '../../queries/hypermedia';
 import { pagesQueryKey, type UpdatePageVariables, updatePage } from '../../queries/pages';
+import { recordDetailsQueryKey } from '../../queries/records';
 
 export function useUpdatePage(): UseMutationResult<void, Error, UpdatePageVariables> {
   const queryClient = useQueryClient();
@@ -12,6 +13,7 @@ export function useUpdatePage(): UseMutationResult<void, Error, UpdatePageVariab
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: recordDetailsQueryKey }),
         queryClient.invalidateQueries({ queryKey: hypermediaQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetDetailsQueryKey }),

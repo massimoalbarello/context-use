@@ -1,3 +1,4 @@
+import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { DeliveredRecord } from './delivery-contract.generated.ts';
 
 export type RecordSummary = {
@@ -15,6 +16,7 @@ export type RecordSummary = {
 
 export type RecordResource = RecordSummary & {
   markdown: string;
+  backlinks: KnowledgePageSummary[];
   record: Exclude<DeliveredRecord, { operation: 'deleted' }>;
 };
 

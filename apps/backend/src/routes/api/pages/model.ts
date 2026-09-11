@@ -3,6 +3,7 @@ import {
   KNOWLEDGE_PAGE_INTERVAL_FILTERS,
   type KnowledgePage,
   type KnowledgePagePreview,
+  type KnowledgePageRecordReference,
   type KnowledgePageReference,
   type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
@@ -49,11 +50,20 @@ export const KnowledgePageAssetUsageSchema = t.Object({
   presentation: t.Union([t.Literal('embed'), t.Literal('attachment')]),
 });
 
+const KnowledgePageRecordReferenceSchema = t.Object({
+  readableId: ReadableIdSchema,
+  title: t.Nullable(t.String()),
+  provider: t.String(),
+  kind: t.String(),
+  available: t.Boolean(),
+});
+
 export const KnowledgePageSchema = t.Object({
   ...KnowledgePageSummarySchema.properties,
   markdown: t.String(),
   mentions: t.Array(EntitySchema),
   references: t.Array(KnowledgePageReferenceSchema),
+  recordReferences: t.Array(KnowledgePageRecordReferenceSchema),
   backlinks: t.Array(KnowledgePageReferenceSchema),
   assetUsages: t.Array(KnowledgePageAssetUsageSchema),
   revisions: t.Array(KnowledgePageRevisionSummarySchema),
@@ -63,6 +73,7 @@ export const KnowledgePagePreviewSchema = t.Object({
   ...KnowledgePageSummarySchema.properties,
   markdown: t.String(),
   mentions: t.Array(EntitySchema),
+  recordReferences: t.Array(KnowledgePageRecordReferenceSchema),
 });
 
 export const CreateKnowledgePageBodySchema = t.Object({
@@ -109,6 +120,16 @@ function pageReferenceResponse(reference: KnowledgePageReference) {
   return { page: pageSummaryResponse(reference.page), fragment: reference.fragment };
 }
 
+function recordReferenceResponse({
+  readableId,
+  title,
+  provider,
+  kind,
+  available,
+}: KnowledgePageRecordReference) {
+  return { readableId, title, provider, kind, available };
+}
+
 function pageRevisionResponse(revision: KnowledgePageRevisionSummary) {
   return { ...revision, createdAt: new Date(revision.createdAt) };
 }
@@ -119,6 +140,7 @@ export function knowledgePageResponse(page: KnowledgePage) {
     markdown: page.markdown,
     mentions: page.mentions.map(entityResponse),
     references: page.references.map(pageReferenceResponse),
+    recordReferences: page.recordReferences.map(recordReferenceResponse),
     backlinks: page.backlinks.map(pageReferenceResponse),
     assetUsages: page.assetUsages.map(({ asset, presentation }) => ({
       asset: assetSummaryResponse(asset),
@@ -133,5 +155,6 @@ export function knowledgePagePreviewResponse(page: KnowledgePagePreview) {
     ...pageSummaryResponse(page),
     markdown: page.markdown,
     mentions: page.mentions.map(entityResponse),
+    recordReferences: page.recordReferences.map(recordReferenceResponse),
   };
 }

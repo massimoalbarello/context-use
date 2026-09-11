@@ -7,6 +7,7 @@ import {
 } from '#models/records/model.ts';
 import { MAX_SYNC_NAME_LENGTH } from '#models/syncs/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#routes/api/model.ts';
+import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
 
 export const RecordSyncReferenceSchema = t.Object({
   readableId: ReadableIdSchema,
@@ -30,6 +31,7 @@ export const RecordSchema = t.Object({
   ...RecordSummarySchema.properties,
   markdown: t.String({ minLength: 1 }),
   participantNames: t.Array(t.String()),
+  backlinks: t.Array(KnowledgePageSummarySchema),
 });
 
 export const RecordFilterOptionsSchema = t.Object({
@@ -80,5 +82,6 @@ export function recordResponse(record: RecordResource) {
     ...recordSummaryResponse(record),
     markdown: record.markdown,
     participantNames: recordParticipantNames(record.record),
+    backlinks: record.backlinks.map(pageSummaryResponse),
   };
 }

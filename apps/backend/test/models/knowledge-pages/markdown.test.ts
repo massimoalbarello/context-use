@@ -32,6 +32,7 @@ The observation changes the next action.`);
       searchableText:
         'Feedback loop Quarterly chart Download the chart The observation changes the next action.',
       links: {
+        recordReadableIds: [],
         entityReadableIds: ['luca-bianchi'],
         pageReferences: [{ readableId: 'growth-playbook', fragment: 'feedback-loop' }],
         assetUsages: [
@@ -81,6 +82,7 @@ The references stay readable.
 
     expect(parsed.searchableText).toBe('Luca follows Roadmap with Evidence. Chart');
     expect(parsed.links).toEqual({
+      recordReadableIds: [],
       entityReadableIds: ['luca-bianchi'],
       pageReferences: [{ readableId: 'product-roadmap', fragment: 'next-step' }],
       assetUsages: [
@@ -101,6 +103,7 @@ Repeated links remain readable.
 [Chart file](context-use://asset/chart) [Chart download](context-use://asset/chart)`);
 
     expect(parsed.links).toEqual({
+      recordReadableIds: [],
       entityReadableIds: ['luca'],
       pageReferences: [{ readableId: 'plan', fragment: 'today' }],
       assetUsages: [
@@ -177,7 +180,12 @@ Inline \`[Inline](context-use://page/inline-example)\` stays hidden.
 
 Then use the documented form.`);
 
-    expect(parsed.links).toEqual({ entityReadableIds: [], pageReferences: [], assetUsages: [] });
+    expect(parsed.links).toEqual({
+      recordReadableIds: [],
+      entityReadableIds: [],
+      pageReferences: [],
+      assetUsages: [],
+    });
     expect(parsed.searchableText).toBe('Inline stays hidden. Then use the documented form.');
   });
 
@@ -289,4 +297,24 @@ ${source}`);
     ).toThrow('start with one H1');
     expect(() => parseKnowledgePageMarkdown('# First\n\nText\n\n# Second')).toThrow('one H1 title');
   });
+});
+
+test('record references use labelled links, deduplicate, and reject page-only fragments and embeds', () => {
+  const parsed = parseKnowledgePageMarkdown(`# Evidence
+
+[Source](context-use://record/source-one) and [source again][source].
+
+[source]: context-use://record/source-one`);
+  expect(parsed.links.recordReadableIds).toEqual(['source-one']);
+  expect(parsed.links.pageReferences).toEqual([]);
+  for (const link of [
+    '[Source](context-use://record/source-one#heading)',
+    '![Source](context-use://record/source-one)',
+    'context-use://record/source-one',
+    '[Source](context-use://record/Bad_ID)',
+  ]) {
+    expect(() => parseKnowledgePageMarkdown(`# Evidence\n\n${link}`)).toThrow(
+      InvalidKnowledgePageMarkdownError,
+    );
+  }
 });

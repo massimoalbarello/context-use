@@ -26,7 +26,7 @@ novelty.
 Use the relationship verb that expresses the domain:
 
 - Entities are **mentioned**.
-- Knowledge pages are **referenced**.
+- Knowledge pages and records are **referenced**.
 - Assets are **attached** or **embedded**.
 
 Do not replace a known relationship with generic “link” language. External consumers are **MCP

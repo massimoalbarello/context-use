@@ -13,6 +13,7 @@ import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../components/pages/knowledge-page-markdown';
 import { KnowledgePageRevisions } from '../components/pages/knowledge-page-revisions';
 import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-label';
+import { RecordLink } from '../components/records/record-link';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -47,22 +48,35 @@ function PageLinkList({
   id,
   label,
   links,
+  recordReferences = [],
 }: {
   id?: string;
   label: string;
   links: KnowledgePage['references'];
+  recordReferences?: KnowledgePage['recordReferences'];
 }) {
   return (
     <section className="scroll-mt-24" id={id} tabIndex={id ? -1 : undefined}>
       <div className="mb-4 flex items-center gap-3">
         <h2 className="font-semibold text-lg">{label}</h2>
-        <Badge variant="secondary">{links.length}</Badge>
+        <Badge variant="secondary">{links.length + recordReferences.length}</Badge>
       </div>
-      {links.length > 0 ? (
+      {links.length + recordReferences.length > 0 ? (
         <ResourceList>
           {links.map(({ page, fragment }) => (
             <li key={`${page.readableId}#${fragment ?? ''}`}>
               <KnowledgePageLink page={page} presentation="card" fragment={fragment ?? undefined} />
+            </li>
+          ))}
+          {recordReferences.map((record) => (
+            <li key={`record-${record.readableId}`}>
+              {record.available ? (
+                <RecordLink record={{ ...record, title: record.title ?? record.readableId }} />
+              ) : (
+                <p className="break-words text-muted-foreground text-sm">
+                  Unavailable record · {record.readableId}
+                </p>
+              )}
             </li>
           ))}
         </ResourceList>
@@ -95,7 +109,11 @@ function PageLinksView({ page }: { page: KnowledgePage }) {
           <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
         )}
       </section>
-      <PageLinkList label="References" links={page.references} />
+      <PageLinkList
+        label="References"
+        links={page.references}
+        recordReferences={page.recordReferences}
+      />
       <PageLinkList id="referenced-by" label="Referenced by" links={page.backlinks} />
       {[
         { label: 'Embedded assets', usages: embeddedAssets },
@@ -218,6 +236,12 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
               <ResourceDetailHeading actions={editActions} context={intervalField}>
                 Knowledge page
               </ResourceDetailHeading>
+              {page.recordReferences.some((record) => !record.available) && (
+                <p className="text-muted-foreground text-sm" role="status">
+                  The saved page has unavailable record references. You can keep or remove them when
+                  saving your changes.
+                </p>
+              )}
             </DetailHeader>
           )}
           onSubmit={({ markdown, temporalCoverage }) =>
@@ -295,7 +319,11 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
               <TabsTrigger value="revisions">Revisions</TabsTrigger>
             </TabsList>
             <TabsContent value="preview">
-              <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
+              <KnowledgePageMarkdown
+                markdown={page.markdown}
+                mentions={page.mentions}
+                recordReferences={page.recordReferences}
+              />
             </TabsContent>
             <TabsContent value="links">
               <PageLinksView page={page} />

@@ -6,11 +6,12 @@ import type {
   KnowledgePageSummary,
 } from '#models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
-import { pageAddress } from '#models/readable-ids/addresses.ts';
+import { pageAddress, recordAddress } from '#models/readable-ids/addresses.ts';
 import {
   McpReadableIdSchema,
   PageAddressSchema,
   PageReferenceAddressSchema,
+  RecordAddressSchema,
 } from '#routes/mcp/coordinates.ts';
 import { McpEntitySchema, mcpEntity } from '#routes/mcp/entities/model.ts';
 
@@ -46,6 +47,16 @@ export const McpKnowledgePageSchema = McpKnowledgePageSummarySchema.extend({
   markdown: z.string(),
   mentions: z.array(McpEntitySchema),
   references: z.array(McpKnowledgePageReferenceSchema),
+  recordReferences: z.array(
+    z.object({
+      address: RecordAddressSchema,
+      readableId: McpReadableIdSchema,
+      title: z.string().nullable(),
+      provider: z.string(),
+      kind: z.string(),
+      available: z.boolean(),
+    }),
+  ),
   backlinks: z.array(McpKnowledgePageReferenceSchema),
   revisions: z.array(McpKnowledgePageRevisionSchema),
 });
@@ -88,6 +99,16 @@ export function mcpKnowledgePage(page: KnowledgePage) {
     markdown: page.markdown,
     mentions: page.mentions.map(mcpEntity),
     references: page.references.map(mcpKnowledgePageReference),
+    recordReferences: page.recordReferences.map(
+      ({ readableId, title, provider, kind, available }) => ({
+        address: recordAddress(readableId),
+        readableId,
+        title,
+        provider,
+        kind,
+        available,
+      }),
+    ),
     backlinks: page.backlinks.map(mcpKnowledgePageReference),
     revisions: page.revisions.map(mcpKnowledgePageRevision),
   };

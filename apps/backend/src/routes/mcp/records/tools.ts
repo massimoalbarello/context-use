@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { recordAddress, recordReadableId } from '#models/readable-ids/addresses.ts';
 import { McpReadableIdSchema, RecordAddressSchema } from '#routes/mcp/coordinates.ts';
+import { McpKnowledgePageSummarySchema, mcpKnowledgePageSummary } from '#routes/mcp/pages/model.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '#routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
 import type { RecordResourcesServiceContract } from '#services/records/service.ts';
@@ -48,6 +49,7 @@ export function registerRecordTools({
         recordId: z.string(),
         sync: z.object({ readableId: McpReadableIdSchema, name: z.string() }),
         markdown: z.string(),
+        backlinks: z.array(McpKnowledgePageSummarySchema),
         metadata: RecordMetadataSchema,
       }),
       annotations: MCP_READ_TOOL_ANNOTATIONS,
@@ -66,6 +68,7 @@ export function registerRecordTools({
             recordId: record.recordId,
             sync: { readableId: record.sync.readableId, name: record.sync.name },
             markdown: record.markdown,
+            backlinks: record.backlinks.map(mcpKnowledgePageSummary),
             metadata: {
               provider: record.provider,
               sourceUrl: record.record.content.sourceUrl,

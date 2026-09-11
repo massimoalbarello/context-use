@@ -3,9 +3,11 @@ import { cn } from '../../lib/class-names';
 import type { AssetSummary } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
+import type { ExternalRecordSummary } from '../../queries/records';
 import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
+import { RecordCardContent } from '../records/record-link';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -20,16 +22,27 @@ import { KnowledgePageCardContent } from './knowledge-page-link';
 type KnowledgeSuggestion =
   | { kind: 'entity'; entity: EntitySummary }
   | { kind: 'page'; page: KnowledgePageSummary }
-  | { kind: 'asset'; asset: AssetSummary };
+  | { kind: 'asset'; asset: AssetSummary }
+  | { kind: 'record'; record: ExternalRecordSummary };
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
   if (suggestion.kind === 'entity') {
     return `entity-${suggestion.entity.readableId}`;
   }
+  if (suggestion.kind === 'record') {
+    return `record-${suggestion.record.readableId}`;
+  }
   return suggestion.kind === 'page'
     ? `page-${suggestion.page.readableId}`
     : `asset-${suggestion.asset.readableId}`;
 }
+
+const SUGGESTION_LABELS = {
+  entity: 'Entity',
+  page: 'Page',
+  asset: 'Asset',
+  record: 'Record',
+} as const;
 
 type PickerBounds = Pick<DOMRect, 'top' | 'bottom'>;
 
@@ -53,6 +66,7 @@ export function KnowledgeLinkTextarea({
   entities,
   pages,
   assets,
+  records,
   invalid,
   onBlur,
   onChange,
@@ -64,6 +78,7 @@ export function KnowledgeLinkTextarea({
   entities: EntitySummary[];
   pages: KnowledgePageSummary[];
   assets: AssetSummary[];
+  records: ExternalRecordSummary[];
   invalid: boolean;
   onBlur: () => void;
   onChange: (value: string) => void;
@@ -79,6 +94,7 @@ export function KnowledgeLinkTextarea({
         ...entities.map((entity) => ({ kind: 'entity' as const, entity })),
         ...pages.map((page) => ({ kind: 'page' as const, page })),
         ...assets.map((asset) => ({ kind: 'asset' as const, asset })),
+        ...records.map((record) => ({ kind: 'record' as const, record })),
       ]
     : [];
   const suggestionsOpen = suggestions.length > 0;
@@ -106,12 +122,7 @@ export function KnowledgeLinkTextarea({
     if (!link) {
       return;
     }
-    const target: KnowledgeLinkTarget =
-      suggestion.kind === 'entity'
-        ? { kind: 'entity', entity: suggestion.entity }
-        : suggestion.kind === 'page'
-          ? { kind: 'page', page: suggestion.page }
-          : { kind: 'asset', asset: suggestion.asset };
+    const target: KnowledgeLinkTarget = suggestion;
     const insertion = insertKnowledgeLink({ markdown: value, link, target });
     onChange(insertion.markdown);
     setLink(null);
@@ -204,6 +215,8 @@ export function KnowledgeLinkTextarea({
                   <EntityCardContent entity={suggestion.entity} />
                 ) : suggestion.kind === 'page' ? (
                   <KnowledgePageCardContent page={suggestion.page} />
+                ) : suggestion.kind === 'record' ? (
+                  <RecordCardContent record={suggestion.record} />
                 ) : (
                   <AssetCardContent asset={suggestion.asset} />
                 )}
@@ -211,11 +224,7 @@ export function KnowledgeLinkTextarea({
                   variant="outline"
                   className="h-6 shrink-0 px-2 text-[0.65rem] uppercase tracking-wider"
                 >
-                  {suggestion.kind === 'entity'
-                    ? 'Entity'
-                    : suggestion.kind === 'page'
-                      ? 'Page'
-                      : 'Asset'}
+                  {SUGGESTION_LABELS[suggestion.kind]}
                 </Badge>
               </Button>
             );

@@ -3,27 +3,37 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type { EntitySummary } from '../../queries/entities';
+import type { KnowledgePage } from '../../queries/pages';
 import { EntityAvatar, EntityLink } from '../entities/entity-link';
+import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
 type InternalLink =
   | { kind: 'entity'; readableId: string }
   | { kind: 'page'; readableId: string; fragment: string | undefined }
-  | { kind: 'asset'; readableId: string };
+  | { kind: 'asset'; readableId: string }
+  | { kind: 'record'; readableId: string };
 
 export type KnowledgePageMarkdownSelection = {
-  kind: InternalLink['kind'];
+  kind: Exclude<InternalLink['kind'], 'record'>;
   readableId: string;
 };
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
+type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;
 
 function internalLink(href: string): InternalLink | null {
   const match =
-    /^context-use:\/\/(entity|page|asset)\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:#([a-z0-9]+(?:-[a-z0-9]+)*))?$/.exec(
+    /^context-use:\/\/(entity|page|asset|record)\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:#([a-z0-9]+(?:-[a-z0-9]+)*))?$/.exec(
       href,
     );
   if (!match?.[1] || !match[2]) {
+    return null;
+  }
+  if (match[1] === 'record' && !match[3]) {
+    return { kind: 'record', readableId: match[2] };
+  }
+  if (match[1] !== 'page' && match[3]) {
     return null;
   }
   if (match[1] === 'entity') {
@@ -171,11 +181,13 @@ function MarkdownLink({
   href,
   children,
   mentions,
+  recordReferences,
   onSelectResource,
 }: {
   href?: string;
   children: ReactNode;
   mentions: EntityMention[];
+  recordReferences: RecordReference[];
   onSelectResource?: SelectMarkdownResource;
 }) {
   const target = href ? internalLink(href) : null;
@@ -184,6 +196,27 @@ function MarkdownLink({
       <EntityMarkdownLink target={target} mentions={mentions} onSelectResource={onSelectResource}>
         {children}
       </EntityMarkdownLink>
+    );
+  }
+  if (target?.kind === 'record') {
+    if (
+      recordReferences.some(
+        (record) => record.readableId === target.readableId && !record.available,
+      )
+    ) {
+      return (
+        <span className="text-muted-foreground">
+          {children} <span className="text-sm">(record unavailable)</span>
+        </span>
+      );
+    }
+    return (
+      <RecordLink
+        record={{ readableId: target.readableId, title: textContent(children) }}
+        presentation="inline"
+      >
+        {children}
+      </RecordLink>
     );
   }
   if (target?.kind === 'page') {
@@ -251,10 +284,12 @@ function MarkdownImage({
 export function KnowledgePageMarkdown({
   markdown,
   mentions = [],
+  recordReferences = [],
   onSelectResource,
 }: {
   markdown: string;
   mentions?: EntityMention[];
+  recordReferences?: RecordReference[];
   onSelectResource?: (selection: KnowledgePageMarkdownSelection) => void;
 }) {
   return (
@@ -263,7 +298,12 @@ export function KnowledgePageMarkdown({
         urlTransform={(url) => (url.startsWith('context-use://') ? url : defaultUrlTransform(url))}
         components={{
           a: ({ href, children }) => (
-            <MarkdownLink href={href} mentions={mentions} onSelectResource={onSelectResource}>
+            <MarkdownLink
+              href={href}
+              mentions={mentions}
+              recordReferences={recordReferences}
+              onSelectResource={onSelectResource}
+            >
               {children}
             </MarkdownLink>
           ),

@@ -39,8 +39,8 @@ replace them. Split material readers would retrieve or revise independently; nev
 catch-all page. Give an overview truthful spanning `temporalCoverage` when meaningful, otherwise
 leave coverage unset.
 
-Build structure bottom-up. An entity is a stable, identifiable referent, not a keyword. Put
-meaningful links inside prose that explains each relationship. A page should help someone understand
+Build structure bottom-up. An entity is a stable, identifiable referent, not a keyword.
+Mention entities; reference pages or records, explaining each relationship. A page should help someone understand
 the user, not prove that source material was processed. Link targets must exist before writing;
 create them first and add reverse links later.
 
