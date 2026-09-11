@@ -32,7 +32,6 @@ export type HypermediaPageLayout = {
   page: HypermediaPage;
   point: CanvasPoint;
   cloudPath: string;
-  colorIndex: number;
   resourceKeys: string[];
 };
 
@@ -93,10 +92,6 @@ export function hypermediaPagePlacementRatio(readableId: string): number {
   hash = Math.imul(hash, 0xc2b2ae35);
   hash ^= hash >>> 16;
   return (hash >>> 0) / 0xffffffff;
-}
-
-export function hypermediaPageColorIndex(readableId: string): number {
-  return (stableHash(readableId) % 5) + 1;
 }
 
 function average(points: CanvasPoint[]): CanvasPoint {
@@ -367,7 +362,6 @@ function pageLayouts(
       page,
       point,
       cloudPath: cloudPath([point, ...connectedPoints]),
-      colorIndex: hypermediaPageColorIndex(page.readableId),
       resourceKeys,
     };
   });

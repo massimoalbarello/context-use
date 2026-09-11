@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  buildHypermediaLayout,
-  type HypermediaLayoutResource,
-} from '../../src/components/hypermedia/hypermedia-layout';
+import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
 import {
   buildTemporalHypermediaLayout,
   temporalScrollTopForRange,
@@ -241,23 +238,5 @@ describe('temporal Hypermedia side projection', () => {
 
     expect(temporalScrollTopForRange({ layout, viewportHeight })).toBe(0);
     expect(older).toBeGreaterThan(recent);
-  });
-
-  test('keeps a page visual identity stable across both projections', () => {
-    const resource = entity('self');
-    const temporalPage = page({
-      readableId: 'temporal-page',
-      temporalCoverage: '2025',
-      resources: [{ kind: 'entity', readableId: 'self' }],
-    });
-
-    const semanticLayout = buildHypermediaLayout([resource], [temporalPage]);
-    const temporalLayout = buildTemporalHypermediaLayout({
-      resources: [resource],
-      pages: [temporalPage],
-      extent,
-    });
-
-    expect(temporalLayout.pages[0]?.colorIndex).toBe(semanticLayout.pages[0]?.colorIndex);
   });
 });

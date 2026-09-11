@@ -418,18 +418,13 @@ export function HypermediaTimelineCanvas({
                   onPreviewEnd={clearPreview}
                 >
                   <title>{item.page.title}</title>
-                  <HypermediaPageCloud
-                    path={item.path}
-                    colorIndex={item.colorIndex}
-                    active={active}
-                  />
+                  <HypermediaPageCloud path={item.path} active={active} />
                   {connectedColumns.map((column) => (
                     <circle
                       key={column.key}
                       cx={column.x}
                       cy={item.label.y}
                       r={active ? 5 : 3.5}
-                      style={{ color: `var(--chart-${item.colorIndex})` }}
                       className="pointer-events-none fill-current"
                     />
                   ))}
