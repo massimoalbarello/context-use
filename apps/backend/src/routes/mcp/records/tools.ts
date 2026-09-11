@@ -47,11 +47,12 @@ export function registerRecordTools({
       outputSchema: z.object({
         address: RecordAddressSchema,
         readableId: McpReadableIdSchema,
+        title: z.string(),
         kind: z.string(),
         recordId: z.string(),
         sync: z.object({ readableId: McpReadableIdSchema, name: z.string() }),
         markdown: z.string(),
-        metadata: RecordMetadataSchema.nullable(),
+        metadata: RecordMetadataSchema,
       }),
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
@@ -64,11 +65,19 @@ export function registerRecordTools({
         ? mcpToolSuccess({
             address: recordAddress(record.readableId),
             readableId: record.readableId,
+            title: record.title,
             kind: record.kind,
             recordId: record.recordId,
             sync: { readableId: record.sync.readableId, name: record.sync.name },
             markdown: record.markdown,
-            metadata: record.metadata,
+            metadata: {
+              provider: record.provider,
+              sourceUrl: record.record.content.sourceUrl,
+              sourceCreatedAt: record.record.content.sourceCreatedAt,
+              sourceUpdatedAt: record.record.content.sourceUpdatedAt,
+              participants: record.record.content.participants,
+              attributes: record.record.content.attributes,
+            },
           })
         : mcpToolError({ code: 'not_found', message: 'Record not found.' });
     },

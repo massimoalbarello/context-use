@@ -91,7 +91,10 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const storage = new LocalStorage(join(dataFolder, 'objects'));
     const assetsRepository = new AssetsRepository(database);
     const pagesRepository = new KnowledgePagesRepository(database);
-    const retrieval = createTestHypermediaRetrievalService(database);
+    const retrieval = createTestHypermediaRetrievalService({
+      database,
+      storage: new LocalStorage(join(dataFolder, 'objects')),
+    });
     const app = createApp({
       auth: ownerAuth(),
       assetsService: new AssetsService({ assets: assetsRepository, retrieval, storage }),

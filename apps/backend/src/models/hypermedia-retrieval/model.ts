@@ -33,7 +33,7 @@ export type HypermediaRetrievalResult =
     }
   | {
       resourceType: 'record';
-      record: RecordSummary;
+      record: RecordSummary & { participantNames: string[] };
       matchExcerpt: string | null;
     };
 

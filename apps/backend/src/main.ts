@@ -64,7 +64,7 @@ try {
   await runMigrations({ db: database });
 
   const storage = createLocalStorage({ dataFolder: env.DATA_FOLDER });
-  const retrievalRepository = new HypermediaRetrievalRepository(database);
+  const retrievalRepository = new HypermediaRetrievalRepository({ database, storage });
   const retrievalService = new HypermediaRetrievalService(retrievalRepository);
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({

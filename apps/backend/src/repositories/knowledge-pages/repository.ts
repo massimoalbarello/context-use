@@ -19,6 +19,7 @@ import type {
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
+import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgePagesRepositoryContract {
   create(input: {
@@ -388,15 +389,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         pageReferences: resolved.pageReferences,
         assetUsages: resolved.assetUsages,
       });
-      await db.CreateKnowledgePageSearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values
-          (${input.ownerId}, 'knowledge_page', ${input.readableId}, ${input.title},
-           ${input.excerpt}, ${input.searchableText})
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
-      `;
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'knowledge_page',
+        readableId: input.readableId,
+        label: input.title,
+        summary: input.excerpt,
+        body: input.searchableText,
+      });
 
       return {
         state: 'created' as const,
@@ -511,15 +512,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         set "current_revision_id" = ${input.revisionId}, "updated_at" = ${input.updatedAt}
         where "id" = ${current.id} and "owner_id" = ${input.ownerId}
       `;
-      await db.UpdateKnowledgePageSearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values
-          (${input.ownerId}, 'knowledge_page', ${input.readableId}, ${input.title},
-           ${input.excerpt}, ${input.searchableText})
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
-      `;
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'knowledge_page',
+        readableId: input.readableId,
+        label: input.title,
+        summary: input.excerpt,
+        body: input.searchableText,
+      });
       return {
         state: 'updated' as const,
         page: {

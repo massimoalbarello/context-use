@@ -4,6 +4,7 @@ import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#models/assets/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
+import { replaceSearchDocument } from '../search-index.ts';
 
 export interface AssetsRepositoryContract {
   create(
@@ -73,15 +74,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
       if (!rows[0]) {
         return { state: 'readable_id_conflict' } as const;
       }
-      await db.CreateAssetSearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body", "metadata")
-        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '',
-          ${[input.mediaType, input.extension].filter(Boolean).join(' ')})
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body",
-          "metadata" = excluded."metadata"
-      `;
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'asset',
+        readableId: input.readableId,
+        label: input.name,
+        metadata: [input.mediaType, input.extension].filter(Boolean).join(' '),
+      });
       return { state: 'created' as const, asset: storedAssetFrom(rows[0]) };
     });
   }
@@ -189,15 +189,14 @@ export class AssetsRepository implements AssetsRepositoryContract {
       if (!rows[0]) {
         return null;
       }
-      await db.UpdateAssetSearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body", "metadata")
-        values (${input.ownerId}, 'asset', ${input.readableId}, ${input.name}, '', '',
-          ${[rows[0].mediaType, rows[0].extension].filter(Boolean).join(' ')})
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body",
-          "metadata" = excluded."metadata"
-      `;
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'asset',
+        readableId: input.readableId,
+        label: input.name,
+        metadata: [rows[0].mediaType, rows[0].extension].filter(Boolean).join(' '),
+      });
       const asset = storedAssetFrom(rows[0]);
       return {
         ...this.summary(asset),

@@ -1,22 +1,20 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import type { Storage } from '#lib/storage/storage.ts';
+import { readVerifiedText } from '#lib/storage/verified-text.ts';
 import type {
   HypermediaResourceType,
   HypermediaRetrievalFilters,
   HypermediaRetrievalResult,
   HypermediaRetrievalResults,
 } from '#models/hypermedia-retrieval/model.ts';
-import {
-  MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH,
-  MAX_HYPERMEDIA_SEARCH_LIMIT,
-} from '#models/hypermedia-retrieval/model.ts';
+import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#models/hypermedia-retrieval/model.ts';
+import { parseKnowledgePageMarkdown } from '#models/knowledge-pages/markdown.ts';
+import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
+import { recordSearchText } from '#models/records/search.ts';
 import type { Queries } from '#queries.gen.ts';
 import type { HypermediaRetrievalRepositoryContract } from './contract.ts';
-
-const MATCH_START = '\u{e000}';
-const MATCH_END = '\u{e001}';
-const MATCH_ELLIPSIS = ' … ';
-const MATCH_EXCERPT_TOKENS = 32;
+import { BODY_SNIPPET_COLUMN, type SnippetDocument, searchSnippets } from './snippets.ts';
 
 type SearchRow = Queries['SearchHypermedia'];
 
@@ -27,21 +25,6 @@ function queryTokens(query: string): string[] {
 function ftsQuery(query: string): string | null {
   const tokens = [...new Set(queryTokens(query))];
   return tokens.length > 0 ? tokens.map((token) => `"${token}"*`).join(' OR ') : null;
-}
-
-function matchExcerpt(raw: string | null): string | null {
-  if (!raw?.includes(MATCH_START)) {
-    return null;
-  }
-  const text = raw.replaceAll(MATCH_START, '').replaceAll(MATCH_END, '').trim();
-  if (text.length <= MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH) {
-    return text;
-  }
-  const contextBeforeMatch = 80;
-  const start = Math.max(0, raw.indexOf(MATCH_START) - contextBeforeMatch);
-  const prefix = start > 0 ? '… ' : '';
-  const length = MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH - prefix.length - 1;
-  return `${prefix}${text.slice(start, start + length).trim()}…`;
 }
 
 function imageFrom(row: SearchRow) {
@@ -65,8 +48,13 @@ function imageFrom(row: SearchRow) {
     : null;
 }
 
-function resultFrom(row: SearchRow): HypermediaRetrievalResult {
-  const excerpt = matchExcerpt(row.rawMatchExcerpt);
+function resultFrom({
+  row,
+  excerpt,
+}: {
+  row: SearchRow;
+  excerpt: string | null;
+}): HypermediaRetrievalResult {
   if (row.resourceType === 'entity') {
     if (!(row.entityId && row.entityName && row.entityDescription)) {
       throw new Error('Hypermedia entity search projection is incomplete');
@@ -106,13 +94,27 @@ function resultFrom(row: SearchRow): HypermediaRetrievalResult {
     };
   }
   if (row.resourceType === 'record') {
-    if (!(row.recordKind && row.recordId && row.syncReadableId && row.syncName)) {
+    if (
+      !(
+        row.recordKind &&
+        row.recordTitle !== null &&
+        row.recordProvider &&
+        row.recordId &&
+        row.syncReadableId &&
+        row.syncName
+      )
+    ) {
       throw new Error('Hypermedia record search projection is incomplete');
     }
     return {
       resourceType: row.resourceType,
       record: {
         readableId: row.readableId,
+        title: row.recordTitle,
+        provider: row.recordProvider,
+        participantNames: JSON.parse(row.participantNames),
+        sourceCreatedAt: row.sourceCreatedAt,
+        sourceUpdatedAt: row.sourceUpdatedAt,
         kind: row.recordKind,
         recordId: row.recordId,
         sync: { readableId: row.syncReadableId, name: row.syncName },
@@ -141,11 +143,54 @@ function resultFrom(row: SearchRow): HypermediaRetrievalResult {
   };
 }
 
+function snippetDocumentFrom(row: SearchRow): SnippetDocument {
+  return {
+    readableId: row.readableId,
+    label: row.entityName ?? row.assetName ?? row.pageTitle ?? row.recordTitle ?? '',
+    summary: row.entityDescription ?? row.pageExcerpt ?? '',
+    body: '',
+    metadata: [row.mediaType, row.assetExtension].filter(Boolean).join(' '),
+    column: row.resourceType === 'record' ? (-1 as const) : BODY_SNIPPET_COLUMN,
+  };
+}
+
 export class HypermediaRetrievalRepository implements HypermediaRetrievalRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
 
-  constructor(sql: SQL) {
-    this.sql = withTypes<Queries>(sql);
+  constructor(private readonly dependencies: { database: SQL; storage: Storage }) {
+    this.sql = withTypes<Queries>(dependencies.database);
+  }
+
+  private async *snippetDocuments(rows: SearchRow[]): AsyncGenerator<SnippetDocument> {
+    for (const row of rows) {
+      const document = snippetDocumentFrom(row);
+      if (row.resourceType !== 'knowledge_page' && row.resourceType !== 'record') {
+        yield document;
+        continue;
+      }
+      if (!(row.storageKey && row.contentHash && row.contentSizeBytes !== null)) {
+        throw new Error('Search file reference is incomplete');
+      }
+      const text = await readVerifiedText({
+        storage: this.dependencies.storage,
+        storageKey: row.storageKey,
+        contentHash: row.contentHash,
+        sizeBytes: Number(row.contentSizeBytes),
+        label: `Search resource ${row.readableId}`,
+      });
+      if (row.resourceType === 'knowledge_page') {
+        document.body = parseKnowledgePageMarkdown(text).searchableText;
+      } else {
+        const record: DeliveredRecord = JSON.parse(text);
+        if (record.operation === 'deleted') {
+          throw new Error('An active search result references a deletion');
+        }
+        const projection = recordSearchText(record);
+        document.body = projection.body;
+        document.metadata = projection.metadata;
+      }
+      yield document;
+    }
   }
 
   async search({
@@ -175,14 +220,16 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     const recordKind = filters?.record?.kind ?? null;
     const participantName = filters?.record?.participantName ?? null;
     const boundedLimit = Math.min(Math.max(limit, 1), MAX_HYPERMEDIA_SEARCH_LIMIT);
-    const [rows, counts] = await this.sql.begin((db) =>
+    const [rows, counts, schemas] = await this.sql.begin((db) =>
       Promise.all([
         db.SearchHypermedia`
-      /* @notNull resourceType readableId rawMatchExcerpt createdAt updatedAt */
+      /* @notNull resourceType readableId participantNames createdAt updatedAt */
       /* @type resourceType 'entity' | 'knowledge_page' | 'asset' | 'record' */
       /* @type isSelf number */
       /* @type revisionNumber number */
-      /* @type rawMatchExcerpt string */
+      /* @type storageKey string */
+      /* @type contentHash string */
+      /* @type contentSizeBytes number */
       /* @type createdAt string */
       /* @type updatedAt string */
       with selected_type as (
@@ -190,8 +237,10 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       )
       select document."resource_type" as "resourceType",
         document."readable_id" as "readableId",
-        snippet("hypermedia_search_fts", 3, ${MATCH_START}, ${MATCH_END}, ${MATCH_ELLIPSIS},
-          ${MATCH_EXCERPT_TOKENS}) as "rawMatchExcerpt",
+        document."participant_names" as "participantNames",
+        coalesce(revision."storage_key", record."storage_key") as "storageKey",
+        coalesce(revision."content_hash", record."content_hash") as "contentHash",
+        coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
         entity."id" as "entityId", entity."name" as "entityName",
         entity."description" as "entityDescription",
         coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
@@ -205,6 +254,8 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         asset."id" as "assetId", asset."name" as "assetName",
         asset."media_type" as "mediaType", asset."extension" as "assetExtension",
         asset."size_bytes" as "assetSizeBytes",
+        record."title" as "recordTitle", record."provider" as "recordProvider",
+        record."source_created_at" as "sourceCreatedAt", record."source_updated_at" as "sourceUpdatedAt",
         record."kind" as "recordKind", record."record_id" as "recordId",
         sync."readable_id" as "syncReadableId", sync."name" as "syncName",
         case document."resource_type"
@@ -255,11 +306,11 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         and document."owner_id" = ${ownerId}
         and document."resource_type" in (select "resourceType" from selected_type)
         and (${recordsOnly} = false or document."resource_type" = 'record')
-        and (${provider} is null or json_extract(record."metadata", '$.provider') = ${provider})
+        and (${provider} is null or record."provider" = ${provider})
         and (${recordKind} is null or record."kind" = ${recordKind})
         and (${participantName} is null or exists (
-          select 1 from json_each(record."metadata", '$.participants') participant
-          where lower(trim(json_extract(participant."value", '$.name'))) = lower(trim(${participantName}))
+          select 1 from json_each(document."participant_names") participant
+          where lower(trim(participant."value")) = lower(trim(${participantName}))
         ))
         and (
           (document."resource_type" = 'entity' and entity."id" is not null)
@@ -337,11 +388,11 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
           and (${recordsOnly} = false or document."resource_type" = 'record')
-          and (${provider} is null or json_extract(record."metadata", '$.provider') = ${provider})
+          and (${provider} is null or record."provider" = ${provider})
           and (${recordKind} is null or record."kind" = ${recordKind})
           and (${participantName} is null or exists (
-            select 1 from json_each(record."metadata", '$.participants') participant
-            where lower(trim(json_extract(participant."value", '$.name'))) = lower(trim(${participantName}))
+            select 1 from json_each(document."participant_names") participant
+            where lower(trim(participant."value")) = lower(trim(${participantName}))
           ))
           and (
             (document."resource_type" = 'entity' and entity."id" is not null)
@@ -378,11 +429,28 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
             )
           )
       `,
+        db.SearchSnippetSchema`
+          /* @notNull sql */
+          select "sql" from sqlite_schema where "name" = 'hypermedia_search_fts'
+        `,
       ]),
     );
     const totalMatches = Number(counts[0]?.total ?? 0);
+    if (rows.length === 0) {
+      return { results: [], totalMatches, truncated: false };
+    }
+    if (!schemas[0]) {
+      throw new Error('Search index schema is missing');
+    }
+    const excerpts = await searchSnippets({
+      schema: schemas[0].sql,
+      expression,
+      documents: this.snippetDocuments(rows),
+    });
     return {
-      results: rows.slice(0, boundedLimit).map(resultFrom),
+      results: Array.from(rows.entries(), ([index, row]) =>
+        resultFrom({ row, excerpt: excerpts[index] ?? null }),
+      ),
       totalMatches,
       truncated: totalMatches > boundedLimit,
     };

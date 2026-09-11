@@ -6,6 +6,7 @@ import type { KnowledgePageReference } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
+import { replaceSearchDocument } from '../search-index.ts';
 
 export type SetEntityImageResult =
   | { state: 'updated'; entity: Entity }
@@ -80,14 +81,14 @@ export class EntitiesRepository implements EntityRepositoryContract {
       if (!entity) {
         return { state: 'readable_id_conflict' } as const;
       }
-      await db.CreateEntitySearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values
-          (${input.ownerId}, 'entity', ${input.readableId}, ${input.name}, ${input.description}, '')
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
-      `;
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'entity',
+        readableId: input.readableId,
+        label: input.name,
+        summary: input.description,
+      });
       return {
         state: 'created' as const,
         entity: { ...entity, isSelf: Boolean(entity.isSelf), image: null },
@@ -192,13 +193,14 @@ export class EntitiesRepository implements EntityRepositoryContract {
       if (!rows[0]) {
         return null;
       }
-      await db.UpdateEntitySearchDocument`
-        insert into "hypermedia_search_document"
-          ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-        values (${ownerId}, 'entity', ${readableId}, ${name}, ${description}, '')
-        on conflict ("owner_id", "resource_type", "readable_id") do update set
-          "label" = excluded."label", "summary" = excluded."summary", "body" = excluded."body"
-      `;
+      await replaceSearchDocument({
+        db,
+        ownerId,
+        resourceType: 'entity',
+        readableId,
+        label: name,
+        summary: description,
+      });
       return this.findWith({ db, ownerId, readableId });
     });
   }

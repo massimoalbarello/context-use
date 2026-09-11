@@ -110,8 +110,8 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
     const pagesRepository = new KnowledgePagesRepository(database);
     const assetsRepository = new AssetsRepository(database);
     const entitiesRepository = new EntitiesRepository(database);
-    const retrieval = createTestHypermediaRetrievalService(database);
     const storage = new LocalStorage(join(dataFolder, 'objects'));
+    const retrieval = createTestHypermediaRetrievalService({ database, storage });
     const pagesService = new KnowledgePagesService({
       pages: pagesRepository,
       retrieval,
@@ -1175,10 +1175,18 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     `;
     await database`
       insert into "hypermedia_search_document"
-        ("owner_id", "resource_type", "readable_id", "label", "summary", "body")
-      select "owner_id", 'entity', "readable_id", "name", "description", ''
+        ("owner_id", "resource_type", "readable_id")
+      select "owner_id", 'entity', "readable_id"
       from "entity"
       where "owner_id" = ${OWNER_USER_ID} and "readable_id" like 'dense-entity-%'
+    `;
+    await database`
+      insert into "hypermedia_search_fts" ("rowid", "readable_id", "label", "summary", "body", "metadata")
+      select document."id", entity."readable_id", entity."name", entity."description", '', ''
+      from "entity" entity join "hypermedia_search_document" document
+        on document."owner_id" = entity."owner_id" and document."resource_type" = 'entity'
+          and document."readable_id" = entity."readable_id"
+      where entity."owner_id" = ${OWNER_USER_ID} and entity."readable_id" like 'dense-entity-%'
     `;
     await database`
       insert into "knowledge_page_entity_mention"

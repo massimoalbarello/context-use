@@ -122,7 +122,10 @@ async function withAssetMcp({
   const storage = new LocalStorage(join(dataFolder, 'objects'));
   const assetsService = new AssetsService({
     assets: new AssetsRepository(database),
-    retrieval: createTestHypermediaRetrievalService(database),
+    retrieval: createTestHypermediaRetrievalService({
+      database,
+      storage: new LocalStorage(join(dataFolder, 'objects')),
+    }),
     storage,
   });
   const transferCapabilities = new AssetTransferCapabilities({

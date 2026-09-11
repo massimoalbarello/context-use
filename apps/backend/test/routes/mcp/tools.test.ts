@@ -441,6 +441,11 @@ test('the concise guide is deterministic and names only available retrieval tool
 test('record search previews have exact owner-scoped read paths without imported bodies or delivery internals', async () => {
   const record = {
     readableId: 'calendar-meeting-42',
+    title: 'Planning meeting',
+    provider: 'calendar',
+    participantNames: ['Samantha'],
+    sourceCreatedAt: null,
+    sourceUpdatedAt: null,
     kind: 'meeting',
     recordId: 'meeting-42',
     sync: { readableId: 'my-calendar', name: 'My calendar' },
@@ -474,7 +479,22 @@ test('record search previews have exact owner-scoped read paths without imported
         expect(input.ownerId).toBe(principal.ownerId);
         return Promise.resolve(
           input.readableId === record.readableId
-            ? { ...record, markdown, metadata: { provider: 'calendar' } }
+            ? {
+                ...record,
+                markdown,
+                record: {
+                  provider: record.provider,
+                  kind: record.kind,
+                  id: record.recordId,
+                  sourceId: 'private-source',
+                  eventId: 'private-event',
+                  revision: 1,
+                  committedAt: NOW,
+                  contentHash: 'private-hash',
+                  operation: 'added' as const,
+                  content: { title: record.title, body: markdown },
+                },
+              }
             : null,
         );
       },
@@ -495,6 +515,11 @@ test('record search previews have exact owner-scoped read paths without imported
             resourceType: 'record',
             address: 'context-use://record/calendar-meeting-42',
             readableId: record.readableId,
+            title: record.title,
+            provider: record.provider,
+            participantNames: record.participantNames,
+            sourceCreatedAt: null,
+            sourceUpdatedAt: null,
             kind: record.kind,
             recordId: record.recordId,
             sync: record.sync,
@@ -505,7 +530,7 @@ test('record search previews have exact owner-scoped read paths without imported
       });
       expectNoInternalResourceIds(found.structuredContent);
       expect(JSON.stringify(found.structuredContent)).not.toContain(markdown);
-      expect(JSON.stringify(found.structuredContent)).not.toContain('"title"');
+      expect(JSON.stringify(found.structuredContent)).not.toContain('private-');
       for (const recordFilter of [{ participantName: ' ' }, { unsupported: 'value' }]) {
         const invalid = await client.callTool({
           name: 'search_hypermedia',
@@ -1103,7 +1128,10 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
     await seedMcpAuthorization(database);
     const pagesService = new KnowledgePagesService({
       pages: new KnowledgePagesRepository(database),
-      retrieval: createTestHypermediaRetrievalService(database),
+      retrieval: createTestHypermediaRetrievalService({
+        database,
+        storage: new LocalStorage(join(dataFolder, 'objects')),
+      }),
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     const firstActor = { ...principal, ownerId: OWNER_USER_ID };
