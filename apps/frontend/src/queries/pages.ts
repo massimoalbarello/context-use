@@ -3,6 +3,7 @@ import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
+import { searchHypermedia } from './hypermedia-search';
 
 export type KnowledgePagePage = NonNullable<Awaited<ReturnType<typeof api.api.pages.get>>['data']>;
 
@@ -37,6 +38,34 @@ export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
 export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pagePreviewsQueryKey = [...pagesQueryKey, 'preview'] as const;
 export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
+const SUGGESTION_LIMIT = 7;
+
+async function pageSearchPage({
+  query,
+  limit,
+  interval,
+  time,
+}: {
+  query: string;
+  limit?: number;
+  interval?: KnowledgePageIntervalFilter;
+  time?: string;
+}): Promise<KnowledgePagePage> {
+  const result = await searchHypermedia({
+    query,
+    resourceTypes: 'knowledge_page',
+    limit,
+    interval,
+    time,
+  });
+  return {
+    items: result.results.flatMap((hit) =>
+      hit.resourceType === 'knowledge_page' ? [hit.knowledgePage] : [],
+    ),
+    total: result.totalMatches,
+    nextOffset: null,
+  };
+}
 
 export function pagesQueryOptions({ dateRange, query, interval }: KnowledgePageListFilters = {}) {
   const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
@@ -44,8 +73,11 @@ export function pagesQueryOptions({ dateRange, query, interval }: KnowledgePageL
     queryKey: [...pagesListQueryKey, { dateRange: dateRange ?? null, query, interval }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
+      if (query?.trim()) {
+        return pageSearchPage({ query, interval, time });
+      }
       const { data, error } = await api.api.pages.get({
-        query: { offset: pageParam, time, query, interval },
+        query: { offset: pageParam, time, interval },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
@@ -60,8 +92,11 @@ export function pageSuggestionsQueryOptions(query: string) {
   return queryOptions({
     queryKey: [...pageSuggestionsQueryKey, query],
     queryFn: async () => {
+      if (query.trim()) {
+        return (await pageSearchPage({ query, limit: SUGGESTION_LIMIT })).items;
+      }
       const { data, error } = await api.api.pages.get({
-        query: { limit: 7, offset: 0, query },
+        query: { limit: SUGGESTION_LIMIT, offset: 0 },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

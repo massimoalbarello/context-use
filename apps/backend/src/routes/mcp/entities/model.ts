@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import type { Entity, EntityReference } from '#models/entities/model.ts';
-import {
-  EntityAddressSchema,
-  entityAddress,
-  McpReadableIdSchema,
-} from '#routes/mcp/coordinates.ts';
+import { entityAddress } from '#models/readable-ids/addresses.ts';
+import { EntityAddressSchema, McpReadableIdSchema } from '#routes/mcp/coordinates.ts';
 
 export const McpEntityReferenceSchema = z.object({
   address: EntityAddressSchema,

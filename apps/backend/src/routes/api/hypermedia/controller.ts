@@ -22,13 +22,16 @@ import {
   parseHypermediaResources,
 } from '#routes/api/hypermedia/model.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 
 export function createHypermediaController({
   auth,
   hypermediaService,
+  retrievalService,
 }: {
   auth: Auth;
   hypermediaService: HypermediaServiceContract;
+  retrievalService: Pick<HypermediaRetrievalServiceContract, 'searchPageView'>;
 }) {
   return new Elysia({ prefix: '/hypermedia' })
     .use(createAuthPlugin({ auth }))
@@ -86,7 +89,7 @@ export function createHypermediaController({
         ) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
-        const pages = await hypermediaService.pages({
+        const input = {
           ownerId: user.id,
           resources,
           visibleResources,
@@ -94,9 +97,11 @@ export function createHypermediaController({
           interval: query.interval,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
-          query: query.query,
           temporalBounds,
-        });
+        };
+        const pages = query.query?.trim()
+          ? await retrievalService.searchPageView({ ...input, query: query.query })
+          : await hypermediaService.pages(input);
         return status(StatusMap.OK, hypermediaPagesResponse(pages));
       },
       {

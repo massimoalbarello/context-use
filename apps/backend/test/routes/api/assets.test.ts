@@ -25,6 +25,7 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import { unusedRecordSyncsService, unusedRecordsService } from '../../support/app.ts';
+import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -90,7 +91,12 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const storage = new LocalStorage(join(dataFolder, 'objects'));
     const assetsRepository = new AssetsRepository(database);
     const pagesRepository = new KnowledgePagesRepository(database);
+    const retrieval = createTestHypermediaRetrievalService({
+      database,
+      storage: new LocalStorage(join(dataFolder, 'objects')),
+    });
     const app = createApp({
+      retrievalService: retrieval,
       auth: ownerAuth(),
       assetsService: new AssetsService({ assets: assetsRepository, storage }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
@@ -101,7 +107,9 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService(new HypermediaRepository(database)),
+      hypermediaService: new HypermediaService({
+        hypermedia: new HypermediaRepository(database),
+      }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,

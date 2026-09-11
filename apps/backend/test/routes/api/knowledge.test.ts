@@ -9,6 +9,7 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#models/hypermedia-retrieval/model.ts';
 import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
@@ -27,6 +28,7 @@ import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import { unusedRecordSyncsService, unusedRecordsService } from '../../support/app.ts';
+import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -36,35 +38,6 @@ import {
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
-const AUTH_MIGRATION = new URL(
-  '../../../src/db/migrations/0000_better_auth_schema.sql',
-  import.meta.url,
-);
-const KNOWLEDGE_MIGRATION = new URL(
-  '../../../src/db/migrations/0001_knowledge.sql',
-  import.meta.url,
-);
-const ENTITY_ARCHIVE_MIGRATION = new URL(
-  '../../../src/db/migrations/0002_add_entity_archived_at.sql',
-  import.meta.url,
-);
-const PAGE_ARCHIVE_MIGRATION = new URL(
-  '../../../src/db/migrations/0003_add_knowledge_page_archived_at.sql',
-  import.meta.url,
-);
-const ARCHIVE_INVARIANT_MIGRATION = new URL(
-  '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
-  import.meta.url,
-);
-const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
-const OAUTH_MIGRATION = new URL(
-  '../../../src/db/migrations/0006_add_oauth_provider.sql',
-  import.meta.url,
-);
-const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
-  '../../../src/db/migrations/0007_add_mcp_client_authorizations.sql',
-  import.meta.url,
-);
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
@@ -72,7 +45,6 @@ const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
-const EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT = 121;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -121,24 +93,12 @@ function jsonRequest({
   });
 }
 
-test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph', async () => {
+test('entity and page APIs maintain an owner-scoped hypermedia graph', async () => {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-knowledge-test-'));
   const database = await createSqliteDatabase({ dataFolder });
 
   try {
-    await runMigrations({
-      db: database,
-      migrations: new Map([
-        ['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)],
-        ['0001_knowledge.sql', Bun.file(KNOWLEDGE_MIGRATION)],
-        ['0002_add_entity_archived_at.sql', Bun.file(ENTITY_ARCHIVE_MIGRATION)],
-        ['0003_add_knowledge_page_archived_at.sql', Bun.file(PAGE_ARCHIVE_MIGRATION)],
-        ['0004_prevent_self_entity_archiving.sql', Bun.file(ARCHIVE_INVARIANT_MIGRATION)],
-        ['0005_add_assets.sql', Bun.file(ASSET_MIGRATION)],
-        ['0006_add_oauth_provider.sql', Bun.file(OAUTH_MIGRATION)],
-        ['0007_add_mcp_client_authorizations.sql', Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION)],
-      ]),
-    });
+    await runMigrations({ db: database });
     const timestamp = '2026-01-01T00:00:00.000Z';
     await database`
       insert into "auth_user"
@@ -151,11 +111,13 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     const assetsRepository = new AssetsRepository(database);
     const entitiesRepository = new EntitiesRepository(database);
     const storage = new LocalStorage(join(dataFolder, 'objects'));
+    const retrieval = createTestHypermediaRetrievalService({ database, storage });
     const pagesService = new KnowledgePagesService({
       pages: pagesRepository,
       storage,
     });
     const app = createApp({
+      retrievalService: retrieval,
       auth: ownerAuth(),
       assetsService: new AssetsService({ assets: assetsRepository, storage }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
@@ -166,7 +128,9 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService(new HypermediaRepository(database)),
+      hypermediaService: new HypermediaService({
+        hypermedia: new HypermediaRepository(database),
+      }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
@@ -308,13 +272,18 @@ test('entity and page APIs maintain a rebuildable, owner-scoped hypermedia graph
     const searchedEntityPageResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: `/entities?limit=7&offset=0&query=${distinguishedEntity.readableId.slice(-READABLE_ID_SUFFIX_LENGTH)}`,
+        path: `/hypermedia/search?resourceTypes=entity&limit=7&query=${distinguishedEntity.readableId.slice(-READABLE_ID_SUFFIX_LENGTH)}`,
       }),
     );
     expect(await searchedEntityPageResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: distinguishedEntity.readableId })],
-      total: 1,
-      nextOffset: null,
+      results: [
+        expect.objectContaining({
+          resourceType: 'entity',
+          entity: expect.objectContaining({ readableId: distinguishedEntity.readableId }),
+        }),
+      ],
+      totalMatches: 1,
+      truncated: false,
     });
 
     const temporalEntityResponse = await app.handle(
@@ -833,21 +802,30 @@ Every observation changes the next action.`,
     );
 
     const searchedKnowledgePageResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/search?resourceTypes=knowledge_page&limit=7&query=growth',
+      }),
     );
     expect(await searchedKnowledgePageResponse.json()).toEqual({
-      items: [
+      results: [
         expect.objectContaining({
-          readableId: 'growth-playbook',
-          excerpt: 'Luca owns this feedback system with Test Owner.',
+          resourceType: 'knowledge_page',
+          knowledgePage: expect.objectContaining({
+            readableId: duplicatePage.readableId,
+            excerpt: 'A different page with the same title.',
+          }),
         }),
         expect.objectContaining({
-          readableId: duplicatePage.readableId,
-          excerpt: 'A different page with the same title.',
+          resourceType: 'knowledge_page',
+          knowledgePage: expect.objectContaining({
+            readableId: 'growth-playbook',
+            excerpt: 'Luca owns this feedback system with Test Owner.',
+          }),
         }),
       ],
-      total: 2,
-      nextOffset: null,
+      totalMatches: 2,
+      truncated: false,
     });
 
     const linkedGrowthResponse = await app.handle(
@@ -935,30 +913,6 @@ Revise the current knowledge instead of appending snapshots.`,
       }),
     );
     expect(staleUpdateResponse.status).toBe(StatusMap.Conflict);
-
-    await database`delete from "knowledge_page_entity_mention"`;
-    await database`delete from "knowledge_page_reference"`;
-    await database`
-      update "knowledge_page_revision"
-      set "excerpt" = 'stale derived excerpt'
-      where "id" = (
-        select "current_revision_id" from "knowledge_page"
-        where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
-      )
-    `;
-    await pagesService.rebuildIndex({ ownerId: OWNER_USER_ID });
-
-    const rebuiltResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),
-    );
-    const rebuilt = (await rebuiltResponse.json()) as {
-      excerpt: string;
-      mentions: Array<{ readableId: string }>;
-      backlinks: Array<{ page: { readableId: string } }>;
-    };
-    expect(rebuilt.excerpt).toBe('Luca owns the live account.');
-    expect(rebuilt.mentions.map(({ readableId }) => readableId)).toEqual(['luca-bianchi']);
-    expect(rebuilt.backlinks.map(({ page }) => page.readableId)).toEqual(['operating-rhythm']);
 
     const entityDetailResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities/luca-bianchi' }),
@@ -1065,14 +1019,19 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(repeatedEntityArchiveResponse.status).toBe(StatusMap['No Content']);
 
     const activeEntitiesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/entities?query=luca-bianchi' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/search?resourceTypes=entity&query=luca-bianchi',
+      }),
     );
     const activeEntities = (await activeEntitiesResponse.json()) as {
-      items: Array<{ readableId: string }>;
-      total: number;
+      results: Array<{ entity: { readableId: string } }>;
+      totalMatches: number;
     };
-    expect(activeEntities.total).toBe(1);
-    expect(activeEntities.items.map(({ readableId }) => readableId)).not.toContain('luca-bianchi');
+    expect(activeEntities.totalMatches).toBe(1);
+    expect(activeEntities.results.map(({ entity }) => entity.readableId)).not.toContain(
+      'luca-bianchi',
+    );
     const archivedEntityDetailResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities/luca-bianchi' }),
     );
@@ -1149,14 +1108,19 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(await archivedPageResponse.text()).toBe('');
 
     const activePagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?query=growth-playbook' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/search?resourceTypes=knowledge_page&query=growth-playbook',
+      }),
     );
     const activePages = (await activePagesResponse.json()) as {
-      items: Array<{ readableId: string }>;
-      total: number;
+      results: Array<{ knowledgePage: { readableId: string } }>;
+      totalMatches: number;
     };
-    expect(activePages.total).toBe(1);
-    expect(activePages.items.map(({ readableId }) => readableId)).not.toContain('growth-playbook');
+    expect(activePages.totalMatches).toBe(1);
+    expect(activePages.results.map(({ knowledgePage }) => knowledgePage.readableId)).not.toContain(
+      'growth-playbook',
+    );
 
     const directlyAddressedArchivedPageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),
@@ -1232,6 +1196,21 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       from sequence
     `;
     await database`
+      insert into "hypermedia_search_document"
+        ("owner_id", "resource_type", "readable_id")
+      select "owner_id", 'entity', "readable_id"
+      from "entity"
+      where "owner_id" = ${OWNER_USER_ID} and "readable_id" like 'dense-entity-%'
+    `;
+    await database`
+      insert into "hypermedia_search_fts" ("rowid", "readable_id", "label", "summary", "body", "metadata")
+      select document."id", entity."readable_id", entity."name", entity."description", '', ''
+      from "entity" entity join "hypermedia_search_document" document
+        on document."owner_id" = entity."owner_id" and document."resource_type" = 'entity'
+          and document."readable_id" = entity."readable_id"
+      where entity."owner_id" = ${OWNER_USER_ID} and entity."readable_id" like 'dense-entity-%'
+    `;
+    await database`
       insert into "knowledge_page_entity_mention"
         ("owner_id", "source_revision_id", "target_entity_id")
       select ${OWNER_USER_ID}, page."current_revision_id", entity."id"
@@ -1278,9 +1257,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
         readableId.startsWith('dense-entity-'),
       ),
     ).toBe(true);
-    expect(denseHypermedia.pages[0]?.resources).toHaveLength(
-      EXPECTED_BOUNDED_HYPERMEDIA_REFERENCE_COUNT,
-    );
+    expect(denseHypermedia.pages[0]?.resources).toHaveLength(MAX_HYPERMEDIA_SEARCH_LIMIT);
     expect(denseHypermedia.nextOffset).toBeNull();
     expect(denseHypermedia.resourceReferencesTruncated).toBe(true);
 

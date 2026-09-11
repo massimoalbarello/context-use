@@ -94,12 +94,12 @@ describe('Hypermedia resource type filter', () => {
     expect(timeline.pages[0]?.resourceKeys).toEqual(['entity:owner']);
   });
 
-  test('keeps only keyword-matching resource nodes and connections in both views', () => {
+  test('preserves server-selected matches without re-matching display text in either view', () => {
     const filtered = filterHypermedia({
       resources,
       pages: [page],
       kinds: ['entity', 'asset'],
-      query: 'the OWNER',
+      matchingResourceKeys: new Set(['entity:owner']),
     });
     const map = buildHypermediaLayout(filtered.resources, filtered.pages);
     const timeline = buildTemporalHypermediaLayout({
@@ -119,10 +119,18 @@ describe('Hypermedia resource type filter', () => {
       resources,
       pages: [page],
       kinds: ['entity', 'asset'],
-      query: '  ',
     });
     expect(cleared.resources).toEqual(resources);
     expect(cleared.pages[0]).toBe(page);
+
+    const noMatches = filterHypermedia({
+      resources,
+      pages: [page],
+      kinds: ['entity', 'asset'],
+      matchingResourceKeys: new Set(),
+    });
+    expect(noMatches.resources).toEqual([]);
+    expect(noMatches.pages[0]?.resources).toEqual([]);
   });
 
   test('separates cached API results by selected resource kinds', () => {

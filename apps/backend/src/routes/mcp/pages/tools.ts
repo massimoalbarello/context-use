@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
-import { PageAddressSchema, pageAddress, pageReadableId } from '#routes/mcp/coordinates.ts';
+import { pageAddress, pageReadableId } from '#models/readable-ids/addresses.ts';
+import { PageAddressSchema } from '#routes/mcp/coordinates.ts';
 import {
   McpKnowledgePageSchema,
   McpKnowledgePageSummarySchema,

@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { MAX_ASSET_NAME_LENGTH } from '#models/assets/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
+import { assetAddress, assetReadableId } from '#models/readable-ids/addresses.ts';
 import {
   McpAssetSchema,
   McpAssetSummarySchema,
@@ -12,7 +13,7 @@ import {
 } from '#routes/mcp/assets/model.ts';
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { MCP_ASSET_TRANSFER_CAPABILITY_HEADER } from '#routes/mcp/assets/transfer-capabilities.ts';
-import { AssetAddressSchema, assetAddress, assetReadableId } from '#routes/mcp/coordinates.ts';
+import { AssetAddressSchema } from '#routes/mcp/coordinates.ts';
 import {
   DEFAULT_MCP_LIST_LIMIT,
   decodeMcpCursor,

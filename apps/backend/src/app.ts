@@ -22,6 +22,7 @@ import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
@@ -47,6 +48,7 @@ export function createApp({
   entitiesService,
   healthService,
   hypermediaService,
+  retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
   mcpTransport,
@@ -63,6 +65,7 @@ export function createApp({
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
   hypermediaService: HypermediaServiceContract;
+  retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
   mcpTransport: McpTransportContract;
@@ -159,6 +162,7 @@ export function createApp({
         entitiesService,
         healthService,
         hypermediaService,
+        retrievalService,
         mcpClientAuthorizationsService,
         mcpServerUrl,
         ownerRegistrationService,

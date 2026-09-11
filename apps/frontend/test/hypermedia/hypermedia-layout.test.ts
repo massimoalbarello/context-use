@@ -86,13 +86,10 @@ describe('resource-first hypermedia layout', () => {
     const self = entity('self', true);
     const alpha = entity('alpha');
     const orphan = entity('orphan');
-    const initial = buildStableResources(
-      [neighborhood(self, [alpha])],
-      [self.entity, alpha.entity, orphan.entity],
-    );
+    const initial = buildStableResources([neighborhood(self, [alpha])], [self, alpha, orphan]);
     const expanded = buildStableResources(
       [neighborhood(self, [alpha]), neighborhood(alpha, [entity('beta')])],
-      [self.entity, alpha.entity, orphan.entity, entity('zeta').entity],
+      [self, alpha, orphan, entity('zeta')],
       initial,
     );
 
@@ -100,6 +97,29 @@ describe('resource-first hypermedia layout', () => {
     for (const resource of initial) {
       expect(expanded.find(({ key }) => key === resource.key)?.point).toEqual(resource.point);
     }
+  });
+
+  test('places standalone search matches without waiting for graph discovery', () => {
+    const match: HypermediaResource = {
+      kind: 'asset',
+      asset: {
+        readableId: 'diagram',
+        name: 'Diagram',
+        mediaType: 'image/png',
+        extension: 'png',
+        sizeBytes: 42,
+        createdAt,
+        updatedAt: createdAt,
+      },
+    };
+    const initial = buildStableResources([], [match]);
+    expect(initial.map(({ key }) => key)).toEqual(['asset:diagram']);
+    const expanded = buildStableResources(
+      [neighborhood(entity('self', true), [match])],
+      [match],
+      initial,
+    );
+    expect(expanded.find(({ key }) => key === 'asset:diagram')?.point).toEqual(initial[0]?.point);
   });
 
   test('focus follows the viewport while retaining a selected resource', () => {

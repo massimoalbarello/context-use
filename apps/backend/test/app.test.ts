@@ -18,6 +18,7 @@ import { unusedHypermediaService } from './support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -64,7 +65,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     detail: unexpectedCall,
     update: unexpectedCall,
     archive: unexpectedCall,
-    rebuildIndex: unexpectedCall,
   };
   const profilesService: KnowledgeProfilesServiceContract = {
     create: unexpectedCall,
@@ -90,6 +90,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     entitiesService,
     healthService,
     hypermediaService: unusedHypermediaService,
+    retrievalService: unusedHypermediaRetrievalService,
     mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
     mcpTransport: unusedMcpTransport,

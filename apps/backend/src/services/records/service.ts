@@ -1,5 +1,6 @@
 import canonicalize from 'canonicalize';
 import type { Storage } from '#lib/storage/storage.ts';
+import { readVerifiedText } from '#lib/storage/verified-text.ts';
 import { readableIdFrom, readableIdWithSuffix } from '#models/readable-ids/model.ts';
 import type {
   DeliveredRecord,
@@ -119,14 +120,15 @@ export class RecordsService {
       return null;
     }
     const { storageKey, contentHash, sizeBytes, ...summary } = stored;
-    if (!(await this.storage.exists(storageKey))) {
-      throw new Error(`Record file ${input.readableId} is missing`);
-    }
-    const bytes = new Uint8Array(await this.storage.file(storageKey).arrayBuffer());
-    if (bytes.byteLength !== sizeBytes || sha256(bytes) !== contentHash) {
-      throw new Error(`Record file ${input.readableId} failed its integrity check`);
-    }
-    const record: DeliveredRecord = JSON.parse(new TextDecoder().decode(bytes));
+    const record: DeliveredRecord = JSON.parse(
+      await readVerifiedText({
+        storage: this.storage,
+        storageKey,
+        contentHash,
+        sizeBytes,
+        label: `Record file ${input.readableId}`,
+      }),
+    );
     if (record.operation === 'deleted') {
       throw new Error('An active record references a deletion');
     }

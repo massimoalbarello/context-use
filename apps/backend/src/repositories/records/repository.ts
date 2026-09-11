@@ -8,7 +8,9 @@ import type {
   RecordSummary,
   StoredRecord,
 } from '#models/records/model.ts';
+import { recordSearchText } from '#models/records/search.ts';
 import type { Queries } from '#queries.gen.ts';
+import { replaceSearchDocument } from '../search-index.ts';
 
 class RecordAcceptanceConflict extends Error {
   constructor() {
@@ -133,6 +135,25 @@ async function applyRecord({
     storageKeys.delete(current.storageKey);
   }
   storageKeys.add(accepted.storageKey);
+  if (record.operation === 'deleted') {
+    await db.RemoveRecordSearchDocument`
+      delete from "hypermedia_search_document"
+      where "owner_id" = ${input.ownerId} and "resource_type" = 'record'
+        and "readable_id" = ${accepted.readableId}
+    `;
+  } else {
+    const text = recordSearchText(record);
+    await replaceSearchDocument({
+      db,
+      ownerId: input.ownerId,
+      resourceType: 'record',
+      readableId: accepted.readableId,
+      label: record.content.title,
+      body: text.body,
+      metadata: text.metadata,
+      participantNames: text.participantNames,
+    });
+  }
 }
 
 async function acceptDelivery({

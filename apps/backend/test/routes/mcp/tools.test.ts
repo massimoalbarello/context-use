@@ -12,19 +12,24 @@ import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#models/assets/media.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgePage, KnowledgePageReference } from '#models/knowledge-pages/model.ts';
+import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import {
   KnowledgePagesService,
   type KnowledgePagesServiceContract,
 } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
+import type { RecordResourcesServiceContract } from '#services/records/service.ts';
 import {
   unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
+  unusedMcpRecordsService,
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
@@ -106,28 +111,33 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 
 async function withMcpClient<T>({
   actor = principal,
   assetsService = unusedAssetsService,
   entitiesService = unusedEntitiesService,
+  retrievalService = unusedHypermediaRetrievalService,
   pagesService = unusedPagesService,
   profilesService = unusedKnowledgeProfilesService,
+  recordsService = unusedMcpRecordsService,
   run,
 }: {
   actor?: McpClientAuthorizationPrincipal;
   assetsService?: AssetsServiceContract;
   entitiesService?: EntitiesServiceContract;
+  retrievalService?: Pick<HypermediaRetrievalServiceContract, 'search'>;
   pagesService?: KnowledgePagesServiceContract;
   profilesService?: KnowledgeProfilesServiceContract;
+  recordsService?: Pick<RecordResourcesServiceContract, 'findResource'>;
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
   const server = createContextUseMcpServer({
+    recordsService,
     principal: actor,
     assetsService,
     entitiesService,
+    retrievalService,
     pagesService,
     profilesService,
     transferCapabilities: unusedAssetTransferCapabilities,
@@ -159,7 +169,7 @@ async function readHypermediaCurationGuideVersion(client: Client): Promise<strin
   return (result.structuredContent as { guide_version: string }).guide_version;
 }
 
-test('MCP publishes sixteen typed tools with accurate safety annotations and no private coordinates', async () => {
+test('MCP publishes typed tools with accurate safety annotations and no private coordinates', async () => {
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
@@ -174,12 +184,14 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
         'read_entity',
         'update_entity',
         'archive_entity',
+        'search_hypermedia',
         'read_hypermedia_curation_guide',
         'create_knowledge_page',
         'list_knowledge_pages',
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
         readOnlyHint: true,
@@ -216,6 +228,33 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
         readOnlyHint: false,
         destructiveHint: true,
       });
+      expect(tools.find(({ name }) => name === 'search_hypermedia')).toMatchObject({
+        annotations: { readOnlyHint: true, destructiveHint: false },
+        inputSchema: {
+          properties: {
+            query: { type: 'string' },
+            resourceTypes: { type: 'array' },
+            limit: { maximum: 50, minimum: 1 },
+            interval: { enum: ['with', 'without'] },
+            time: { type: 'string', minLength: 1, maxLength: 23 },
+            assetKind: { const: 'entity_image' },
+          },
+        },
+      });
+      expect(JSON.stringify(tools.find(({ name }) => name === 'search_hypermedia'))).not.toContain(
+        'cursor',
+      );
+      const searchInput = tools.find(({ name }) => name === 'search_hypermedia')!.inputSchema;
+      const searchFields = searchInput.properties as Record<
+        string,
+        { description?: string; properties?: Record<string, { description?: string }> }
+      >;
+      for (const field of [
+        ...Object.values(searchFields),
+        ...Object.values(searchFields.recordFilter!.properties!),
+      ]) {
+        expect(field.description?.trim().length).toBeGreaterThan(0);
+      }
       expect(tools.find(({ name }) => name === 'read_entity')?.inputSchema).toMatchObject({
         properties: { address: { pattern: expect.any(String) } },
       });
@@ -296,6 +335,175 @@ test('MCP publishes sixteen typed tools with accurate safety annotations and no 
   });
 });
 
+test('search_hypermedia returns compact typed previews and canonical dereference addresses', async () => {
+  const retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'> = {
+    search: (input) => {
+      expect(input).toEqual({
+        ownerId: principal.ownerId,
+        query: 'Luca Tidepool',
+        resourceTypes: ['entity', 'knowledge_page'],
+        limit: 2,
+        filters: {
+          knowledgePage: { interval: undefined, temporalBounds: undefined },
+          asset: { kind: undefined },
+          record: undefined,
+        },
+      });
+      return Promise.resolve({
+        results: [
+          { resourceType: 'entity' as const, entity, matchExcerpt: null },
+          {
+            resourceType: 'knowledge_page' as const,
+            knowledgePage: page,
+            matchExcerpt: 'Luca became involved with Tidepool.',
+          },
+        ],
+        totalMatches: 4,
+        truncated: true,
+      });
+    },
+  };
+
+  await withMcpClient({
+    retrievalService,
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: {
+          query: 'Luca Tidepool',
+          resourceTypes: ['entity', 'knowledge_page'],
+          limit: 2,
+        },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toEqual({
+        results: [
+          {
+            resourceType: 'entity',
+            address: 'context-use://entity/luca-bianchi',
+            readableId: 'luca-bianchi',
+            name: 'Luca Bianchi',
+            description: 'Researcher and collaborator',
+            matchExcerpt: null,
+          },
+          {
+            resourceType: 'knowledge_page',
+            address: 'context-use://page/growth-playbook',
+            readableId: 'growth-playbook',
+            title: 'Growth playbook',
+            excerpt: 'Run the feedback loop.',
+            temporalCoverage: '2025-03/..',
+            matchExcerpt: 'Luca became involved with Tidepool.',
+          },
+        ],
+        truncated: true,
+      });
+      expectNoInternalResourceIds(result.structuredContent);
+      expect(JSON.stringify(result.structuredContent)).not.toContain(INTERNAL_ENTITY_ID);
+      expect(JSON.stringify(result.structuredContent)).not.toContain(INTERNAL_PAGE_ID);
+    },
+  });
+});
+
+test('MCP search maps page-time, asset and record filters to the shared pipeline', async () => {
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input).toEqual({
+          ownerId: principal.ownerId,
+          query: 'project',
+          resourceTypes: ['knowledge_page', 'asset', 'record'],
+          limit: 7,
+          filters: {
+            knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
+            asset: { kind: 'entity_image' },
+            record: { provider: 'granola', kind: 'meeting', participantName: 'Luca' },
+          },
+        });
+        return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+      },
+    },
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: {
+          query: 'project',
+          resourceTypes: ['knowledge_page', 'asset', 'record'],
+          limit: 7,
+          interval: 'with',
+          time: '2026',
+          assetKind: 'entity_image',
+          recordFilter: { provider: ' granola ', kind: ' meeting ', participantName: ' Luca ' },
+        },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toEqual({ results: [], truncated: false });
+    },
+  });
+});
+
+test.each([
+  { interval: 'without', time: undefined },
+  { interval: undefined, time: '2026-09' },
+  { interval: 'with', time: '2026-01/2026-03' },
+  { interval: 'with', time: '2026/..' },
+] as const)('MCP search accepts page-time narrowing %j', async ({ interval, time }) => {
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input.filters?.knowledgePage).toEqual({
+          interval,
+          temporalBounds: time ? temporalBoundsFrom(time) : undefined,
+        });
+        return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+      },
+    },
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: { query: 'project', resourceTypes: ['knowledge_page'], interval, time },
+      });
+      expect(result.isError).not.toBe(true);
+    },
+  });
+});
+
+test('MCP search rejects invalid filters before reaching retrieval', async () => {
+  let retrievalCalls = 0;
+  await withMcpClient({
+    retrievalService: {
+      search: () => {
+        retrievalCalls += 1;
+        return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
+      },
+    },
+    run: async (client) => {
+      for (const filters of [
+        { interval: 'all' },
+        { assetKind: 'image' },
+        { time: '' },
+        { time: '2026-01-01/2026-12-31-extra' },
+        { limit: 2.5 },
+      ]) {
+        const result = await client.callTool({
+          name: 'search_hypermedia',
+          arguments: { query: 'project', ...filters },
+        });
+        expect(result.isError).toBe(true);
+      }
+      for (const time of ['invalid', '2026-02-30', '2026-03/2026-01']) {
+        const result = await client.callTool({
+          name: 'search_hypermedia',
+          arguments: { query: 'project', time },
+        });
+        expect(result.isError).toBe(true);
+        expect(errorCode(result)).toBe('invalid_temporal_coverage');
+      }
+    },
+  });
+  expect(retrievalCalls).toBe(0);
+});
+
 test('the concise guide is deterministic and names only available retrieval tools', async () => {
   await withMcpClient({
     run: async (client) => {
@@ -333,7 +541,10 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('Place knowledge in time');
       expect(guide).toContain('story is derived from its evidence, not a replacement');
       expect(guide).toContain('explain the blockers to the user');
-      expect(guide).not.toContain('search_hypermedia');
+      expect(guide).toContain('search_hypermedia');
+      expect(guide).toContain('`recordFilter`');
+      expect(guide).toContain('names, aliases, identifiers, and topic phrases');
+      expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
 
       const availableToolNames = new Set(tools.map(({ name }) => name));
       const guideToolNames = [...guide.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].flatMap((match) =>
@@ -341,6 +552,136 @@ test('the concise guide is deterministic and names only available retrieval tool
       );
       expect(guideToolNames.length).toBeGreaterThan(0);
       expect(guideToolNames.every((toolName) => availableToolNames.has(toolName))).toBe(true);
+    },
+  });
+});
+
+test('record search previews have exact owner-scoped read paths without imported bodies or delivery internals', async () => {
+  const record = {
+    readableId: 'calendar-meeting-42',
+    title: 'Planning meeting',
+    provider: 'calendar',
+    participantNames: ['Samantha'],
+    sourceCreatedAt: null,
+    sourceUpdatedAt: null,
+    kind: 'meeting',
+    recordId: 'meeting-42',
+    sync: { readableId: 'my-calendar', name: 'My calendar' },
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+  const markdown = '# Planning meeting\n\nEvidence that must not be included in search previews.';
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input.ownerId).toBe(principal.ownerId);
+        expect(input.resourceTypes).toEqual(['record']);
+        expect(input.filters).toEqual({
+          knowledgePage: { interval: undefined, temporalBounds: undefined },
+          asset: { kind: undefined },
+          record: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
+        });
+        return Promise.resolve({
+          results: [
+            {
+              resourceType: 'record',
+              record,
+              matchExcerpt: 'Meeting with Samantha.',
+            },
+          ],
+          totalMatches: 1,
+          truncated: false,
+        });
+      },
+    },
+    recordsService: {
+      findResource: (input) => {
+        expect(input.ownerId).toBe(principal.ownerId);
+        return Promise.resolve(
+          input.readableId === record.readableId
+            ? {
+                ...record,
+                markdown,
+                record: {
+                  provider: record.provider,
+                  kind: record.kind,
+                  id: record.recordId,
+                  sourceId: 'private-source',
+                  eventId: 'private-event',
+                  revision: 1,
+                  committedAt: NOW,
+                  contentHash: 'private-hash',
+                  operation: 'added' as const,
+                  content: { title: record.title, body: markdown },
+                },
+              }
+            : null,
+        );
+      },
+    },
+    run: async (client) => {
+      const found = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: {
+          query: 'meeting',
+          resourceTypes: ['record'],
+          recordFilter: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
+        },
+      });
+      expect(found.isError).not.toBe(true);
+      expect(found.structuredContent).toEqual({
+        results: [
+          {
+            resourceType: 'record',
+            address: 'context-use://record/calendar-meeting-42',
+            readableId: record.readableId,
+            title: record.title,
+            provider: record.provider,
+            participantNames: record.participantNames,
+            sourceCreatedAt: null,
+            sourceUpdatedAt: null,
+            kind: record.kind,
+            recordId: record.recordId,
+            sync: record.sync,
+            matchExcerpt: 'Meeting with Samantha.',
+          },
+        ],
+        truncated: false,
+      });
+      expectNoInternalResourceIds(found.structuredContent);
+      expect(JSON.stringify(found.structuredContent)).not.toContain(markdown);
+      expect(JSON.stringify(found.structuredContent)).not.toContain('private-');
+      for (const recordFilter of [{ participantName: ' ' }, { unsupported: 'value' }]) {
+        const invalid = await client.callTool({
+          name: 'search_hypermedia',
+          arguments: { query: 'meeting', recordFilter },
+        });
+        expect(invalid.isError).toBe(true);
+      }
+      const read = await client.callTool({
+        name: 'read_record',
+        arguments: { address: 'context-use://record/calendar-meeting-42' },
+      });
+      expect(read.isError).not.toBe(true);
+      expect(read.structuredContent).toMatchObject({
+        markdown,
+        metadata: { provider: 'calendar' },
+      });
+      const missing = await client.callTool({
+        name: 'read_record',
+        arguments: { address: 'context-use://record/not-found' },
+      });
+      expect(errorCode(missing)).toBe('not_found');
+      const wrongType = await client.callTool({
+        name: 'read_record',
+        arguments: { address: 'context-use://entity/calendar-meeting-42' },
+      });
+      expect(wrongType.isError).toBe(true);
+      const { tools } = await client.listTools();
+      expect(tools.find(({ name }) => name === 'read_record')?.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+      });
     },
   });
 });

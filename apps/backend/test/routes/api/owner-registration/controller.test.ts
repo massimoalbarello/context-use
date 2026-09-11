@@ -24,6 +24,7 @@ import {
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -72,7 +73,6 @@ const pagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 const profilesService: KnowledgeProfilesServiceContract = {
   create: unexpectedCall,
@@ -96,6 +96,7 @@ test('owner registration API exposes only complete registration states', async (
       entitiesService,
       healthService,
       hypermediaService: unusedHypermediaService,
+      retrievalService: unusedHypermediaRetrievalService,
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,

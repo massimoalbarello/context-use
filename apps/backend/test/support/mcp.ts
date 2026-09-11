@@ -1,8 +1,10 @@
 import type { Auth } from '#lib/auth/better-auth.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
+import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#services/mcp-client-authorizations/service.ts';
+import type { RecordResourcesServiceContract } from '#services/records/service.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected MCP dependency call');
@@ -23,6 +25,14 @@ export const unusedMcpClientAuthorizationsService: McpClientAuthorizationsServic
 export const unusedMcpTransport: McpTransportContract = {
   fetch: unexpectedCall,
   close: () => Promise.resolve(),
+};
+
+export const unusedHypermediaRetrievalService: HypermediaRetrievalServiceContract = {
+  searchPageView: unexpectedCall,
+  search: unexpectedCall,
+};
+export const unusedMcpRecordsService: Pick<RecordResourcesServiceContract, 'findResource'> = {
+  findResource: unexpectedCall,
 };
 
 export const unusedKnowledgeProfilesService: KnowledgeProfilesServiceContract = {

@@ -47,7 +47,6 @@ export const SetEntityImageBodySchema = t.Object({ assetReadableId: ReadableIdSc
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
 export const EntityListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
-  query: t.Optional(t.String({ maxLength: MAX_ENTITY_NAME_LENGTH })),
 });
 export const EntityListSchema = t.Object({
   items: t.Array(EntitySchema),

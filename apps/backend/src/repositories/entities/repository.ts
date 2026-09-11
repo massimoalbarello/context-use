@@ -6,6 +6,7 @@ import type { KnowledgePageReference } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
+import { replaceSearchDocument } from '../search-index.ts';
 
 export type SetEntityImageResult =
   | { state: 'updated'; entity: Entity }
@@ -21,12 +22,7 @@ export interface EntityRepositoryContract {
     description: string;
     createdAt: string;
   }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }>;
-  list(input: {
-    ownerId: string;
-    limit: number;
-    offset: number;
-    query?: string;
-  }): Promise<Page<Entity>>;
+  list(input: { ownerId: string; limit: number; offset: number }): Promise<Page<Entity>>;
   find(input: { ownerId: string; readableId: string }): Promise<Entity | null>;
   update(input: {
     ownerId: string;
@@ -60,7 +56,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
     this.sql = withTypes<Queries>(sql);
   }
 
-  async create(input: {
+  create(input: {
     id: string;
     ownerId: string;
     readableId: string;
@@ -68,105 +64,67 @@ export class EntitiesRepository implements EntityRepositoryContract {
     description: string;
     createdAt: string;
   }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }> {
-    const rows = await this.sql.CreateEntity`
-      /* @notNull id readableId name description createdAt updatedAt */
-      /* @type isSelf number */
-      insert into "entity"
-        ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
-      values
-         (${input.id}, ${input.ownerId}, ${input.readableId}, ${input.name}, ${input.description},
-         ${input.createdAt}, ${input.createdAt})
-      on conflict ("owner_id", "readable_id") do nothing
-      returning "id", "readable_id" as "readableId", "name", "description",
-        0 as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
-    `;
-    return rows[0]
-      ? {
-          state: 'created',
-          entity: { ...rows[0], isSelf: Boolean(rows[0].isSelf), image: null },
-        }
-      : { state: 'readable_id_conflict' };
+    return this.sql.begin(async (db) => {
+      const rows = await db.CreateEntity`
+        /* @notNull id readableId name description createdAt updatedAt */
+        /* @type isSelf number */
+        insert into "entity"
+          ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
+        values
+           (${input.id}, ${input.ownerId}, ${input.readableId}, ${input.name}, ${input.description},
+           ${input.createdAt}, ${input.createdAt})
+        on conflict ("owner_id", "readable_id") do nothing
+        returning "id", "readable_id" as "readableId", "name", "description",
+          0 as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
+      `;
+      const entity = rows[0];
+      if (!entity) {
+        return { state: 'readable_id_conflict' } as const;
+      }
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'entity',
+        readableId: input.readableId,
+        label: input.name,
+        summary: input.description,
+      });
+      return {
+        state: 'created' as const,
+        entity: { ...entity, isSelf: Boolean(entity.isSelf), image: null },
+      };
+    });
   }
 
-  async list({
-    ownerId,
-    limit,
-    offset,
-    query,
-  }: {
-    ownerId: string;
-    limit: number;
-    offset: number;
-    query?: string;
-  }) {
-    const normalizedQuery = query?.trim() || null;
-    const rowsPromise = normalizedQuery
-      ? this.sql.SearchEntities`
-          /* @notNull id readableId name description createdAt updatedAt */
-          /* @type isSelf number */
-          select entity."id", entity."readable_id" as "readableId", entity."name",
-            entity."description", profile."self_entity_id" is not null as "isSelf",
-            entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
-            image."id" as "imageId", image."readable_id" as "imageReadableId",
-            image."name" as "imageName", image."media_type" as "imageMediaType",
-            image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
-            image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
-          from "entity" entity
-          left join "knowledge_profile" profile
-           on profile."owner_id" = entity."owner_id"
-           and profile."self_entity_id" = entity."id"
-          left join "asset" image
-            on image."owner_id" = entity."owner_id"
-           and image."id" = entity."image_asset_id"
-           and image."archived_at" is null
-          where entity."owner_id" = ${ownerId}
-            and entity."archived_at" is null
-            and (
-              instr(lower(entity."name"), lower(${normalizedQuery})) > 0
-              or instr(entity."readable_id", lower(${normalizedQuery})) > 0
-            )
-          order by entity."name" collate nocase, entity."readable_id"
-          limit ${limit} offset ${offset}
-        `
-      : this.sql.ListEntities`
-          /* @notNull id readableId name description createdAt updatedAt */
-          /* @type isSelf number */
-          select entity."id", entity."readable_id" as "readableId", entity."name",
-            entity."description", profile."self_entity_id" is not null as "isSelf",
-            entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
-            image."id" as "imageId", image."readable_id" as "imageReadableId",
-            image."name" as "imageName", image."media_type" as "imageMediaType",
-            image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
-            image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
-          from "entity" entity
-          left join "knowledge_profile" profile
-           on profile."owner_id" = entity."owner_id"
-           and profile."self_entity_id" = entity."id"
-          left join "asset" image
-            on image."owner_id" = entity."owner_id"
-           and image."id" = entity."image_asset_id"
-           and image."archived_at" is null
-          where entity."owner_id" = ${ownerId}
-            and entity."archived_at" is null
-          order by entity."name" collate nocase, entity."readable_id"
-          limit ${limit} offset ${offset}
-        `;
-    const countsPromise = normalizedQuery
-      ? this.sql.CountSearchedEntities`
-          /* @notNull total */
-          select count(*) as "total" from "entity"
-          where "owner_id" = ${ownerId}
-            and "archived_at" is null
-            and (
-              instr(lower("name"), lower(${normalizedQuery})) > 0
-              or instr("readable_id", lower(${normalizedQuery})) > 0
-            )
-        `
-      : this.sql.CountEntities`
-          /* @notNull total */
-          select count(*) as "total" from "entity"
-          where "owner_id" = ${ownerId} and "archived_at" is null
-        `;
+  async list({ ownerId, limit, offset }: { ownerId: string; limit: number; offset: number }) {
+    const rowsPromise = this.sql.ListEntities`
+      /* @notNull id readableId name description createdAt updatedAt */
+      /* @type isSelf number */
+      select entity."id", entity."readable_id" as "readableId", entity."name",
+        entity."description", profile."self_entity_id" is not null as "isSelf",
+        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+        image."id" as "imageId", image."readable_id" as "imageReadableId",
+        image."name" as "imageName", image."media_type" as "imageMediaType",
+        image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+        image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt"
+      from "entity" entity
+      left join "knowledge_profile" profile
+       on profile."owner_id" = entity."owner_id"
+       and profile."self_entity_id" = entity."id"
+      left join "asset" image
+        on image."owner_id" = entity."owner_id"
+       and image."id" = entity."image_asset_id"
+       and image."archived_at" is null
+      where entity."owner_id" = ${ownerId}
+        and entity."archived_at" is null
+      order by entity."name" collate nocase, entity."readable_id"
+      limit ${limit} offset ${offset}
+    `;
+    const countsPromise = this.sql.CountEntities`
+      /* @notNull total */
+      select count(*) as "total" from "entity"
+      where "owner_id" = ${ownerId} and "archived_at" is null
+    `;
     const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
     return pageFrom({
       items: rows.map(entityFrom),
@@ -210,7 +168,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
     return rows[0] ? entityFrom(rows[0]) : null;
   }
 
-  async update({
+  update({
     ownerId,
     readableId,
     name,
@@ -223,15 +181,28 @@ export class EntitiesRepository implements EntityRepositoryContract {
     description: string;
     updatedAt: string;
   }): Promise<Entity | null> {
-    const rows = await this.sql.UpdateEntityIdentity`
-      /* @notNull id */
-      update "entity"
-      set "name" = ${name}, "description" = ${description}, "updated_at" = ${updatedAt}
-      where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
-        and "archived_at" is null
-      returning "id"
-    `;
-    return rows[0] ? this.find({ ownerId, readableId }) : null;
+    return this.sql.begin(async (db) => {
+      const rows = await db.UpdateEntityIdentity`
+        /* @notNull id */
+        update "entity"
+        set "name" = ${name}, "description" = ${description}, "updated_at" = ${updatedAt}
+        where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
+          and "archived_at" is null
+        returning "id"
+      `;
+      if (!rows[0]) {
+        return null;
+      }
+      await replaceSearchDocument({
+        db,
+        ownerId,
+        resourceType: 'entity',
+        readableId,
+        label: name,
+        summary: description,
+      });
+      return this.findWith({ db, ownerId, readableId });
+    });
   }
 
   setImage({
@@ -347,6 +318,11 @@ export class EntitiesRepository implements EntityRepositoryContract {
         update "entity"
         set "archived_at" = ${archivedAt}
         where "owner_id" = ${ownerId} and "id" = ${target.id}
+      `;
+      await db.RemoveEntitySearchDocument`
+        delete from "hypermedia_search_document"
+        where "owner_id" = ${ownerId} and "resource_type" = 'entity'
+          and "readable_id" = ${readableId}
       `;
       return { state: 'archived' } as const;
     });

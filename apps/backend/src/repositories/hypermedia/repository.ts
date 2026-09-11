@@ -9,6 +9,7 @@ import type {
   HypermediaResourceKind,
   HypermediaResourceNeighborhood,
   HypermediaResourceReference,
+  HypermediaRetrievalMatches,
 } from '#models/hypermedia/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
@@ -138,7 +139,7 @@ export interface HypermediaRepositoryContract {
     interval: HypermediaPageInterval;
     limit: number;
     offset: number;
-    query?: string;
+    retrievalMatches?: HypermediaRetrievalMatches;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages>;
 }
@@ -345,7 +346,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     interval,
     limit,
     offset,
-    query,
+    retrievalMatches,
     temporalBounds,
   }: {
     ownerId: string;
@@ -355,7 +356,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     interval: HypermediaPageInterval;
     limit: number;
     offset: number;
-    query?: string;
+    retrievalMatches?: HypermediaRetrievalMatches;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages> {
     const selectedResourceKeys = JSON.stringify(
@@ -377,7 +378,11 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       kinds.includes(kind),
     ).length;
     const resourceKinds = JSON.stringify(kinds);
-    const normalizedQuery = query?.trim().toLocaleLowerCase() || null;
+    const retrievalPageReadableIds = JSON.stringify(retrievalMatches?.pageReadableIds ?? []);
+    const retrievalResourceKeys = JSON.stringify(
+      retrievalMatches?.resources.map(({ kind, readableId }) => `${kind}:${readableId}`) ?? [],
+    );
+    const searchApplied = retrievalMatches ? 1 : 0;
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
     const rowLimit = limit + 1;
@@ -390,8 +395,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         selectedResourceCount,
         visibleResourceKeys,
         visibleResourceCount,
-        normalizedQuery,
         interval,
+        retrievalPageReadableIds,
+        retrievalResourceKeys,
+        searchApplied,
         filterStart,
         filterEnd,
         rowLimit,
@@ -426,7 +433,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       resourceKeys: scopedResourceKeys,
       selectedPageIds,
       referenceLimit,
-      normalizedQuery,
+      retrievalResourceKeys,
+      searchApplied,
     });
     const pagesById = new Map(pages.map((page) => [page.readableId, page]));
     const returnedReferenceLimit = referenceLimit - 1;
@@ -450,8 +458,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedResourceCount,
     visibleResourceKeys,
     visibleResourceCount,
-    normalizedQuery,
     interval,
+    retrievalPageReadableIds,
+    retrievalResourceKeys,
+    searchApplied,
     filterStart,
     filterEnd,
     rowLimit,
@@ -462,8 +472,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedResourceCount: number;
     visibleResourceKeys: string;
     visibleResourceCount: number;
-    normalizedQuery: string | null;
     interval: HypermediaPageInterval;
+    retrievalPageReadableIds: string;
+    retrievalResourceKeys: string;
+    searchApplied: number;
     filterStart: number | null;
     filterEnd: number | null;
     rowLimit: number;
@@ -476,6 +488,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         select value as "key" from json_each(${selectedResourceKeys})
       ), visible_key as (
         select value as "key" from json_each(${visibleResourceKeys})
+      ), retrieval_page as (
+        select value as "readableId" from json_each(${retrievalPageReadableIds})
+      ), retrieval_resource as (
+        select value as "key" from json_each(${retrievalResourceKeys})
       ), active_resource_reference as (
         select mention."source_revision_id" as "revisionId",
           'entity:' || entity."readable_id" as "key"
@@ -500,6 +516,25 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           ${selectedResourceCount} = 0
           or count(distinct selected."key") = ${selectedResourceCount}
         ) and (${visibleResourceCount} = 0 or count(distinct visible."key") > 0)
+      ), retrieval_matched_revision as (
+        select page."current_revision_id" as "revisionId"
+        from "knowledge_page" page
+        where page."owner_id" = ${ownerId} and page."archived_at" is null
+          and page."readable_id" in (select "readableId" from retrieval_page)
+        union
+        select mention."source_revision_id" as "revisionId"
+        from "knowledge_page_entity_mention" mention
+        join "entity" entity
+          on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
+        where mention."owner_id" = ${ownerId} and entity."archived_at" is null
+          and 'entity:' || entity."readable_id" in (select "key" from retrieval_resource)
+        union
+        select usage."source_revision_id" as "revisionId"
+        from "knowledge_page_asset_usage" usage
+        join "asset" asset
+          on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
+        where usage."owner_id" = ${ownerId} and asset."archived_at" is null
+          and 'asset:' || asset."readable_id" in (select "key" from retrieval_resource)
       ), filtered_page as (
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
@@ -518,39 +553,11 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
           and page."current_revision_id" in (select "revisionId" from resource_matched_revision)
+          and (${searchApplied} = 0
+            or page."current_revision_id" in (select "revisionId" from retrieval_matched_revision))
           and (
             (${interval} = 'without' and revision."temporal_coverage" is null)
             or (${interval} = 'with' and revision."temporal_coverage" is not null)
-          )
-          and (
-            ${normalizedQuery} is null
-            or instr(lower(revision."title"), ${normalizedQuery}) > 0
-            or instr(lower(revision."excerpt"), ${normalizedQuery}) > 0
-            or instr(page."readable_id", ${normalizedQuery}) > 0
-            or exists (
-              select 1 from "knowledge_page_entity_mention" mention
-              join "entity" entity
-                on entity."id" = mention."target_entity_id"
-               and entity."owner_id" = mention."owner_id"
-              where mention."source_revision_id" = page."current_revision_id"
-                and mention."owner_id" = page."owner_id" and entity."archived_at" is null
-                and (
-                  instr(lower(entity."name"), ${normalizedQuery}) > 0
-                  or instr(lower(entity."description"), ${normalizedQuery}) > 0
-                  or instr(entity."readable_id", ${normalizedQuery}) > 0
-                )
-            )
-            or exists (
-              select 1 from "knowledge_page_asset_usage" usage
-              join "asset" asset
-                on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
-              where usage."source_revision_id" = page."current_revision_id"
-                and usage."owner_id" = page."owner_id" and asset."archived_at" is null
-                and (
-                  instr(lower(asset."name"), ${normalizedQuery}) > 0
-                  or instr(asset."readable_id", ${normalizedQuery}) > 0
-                )
-            )
           )
           and (
             ${interval} = 'without'
@@ -616,14 +623,16 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resourceKeys,
     selectedPageIds,
     referenceLimit,
-    normalizedQuery,
+    retrievalResourceKeys,
+    searchApplied,
   }: {
     ownerId: string;
     resourceKinds: string;
     resourceKeys: string;
     selectedPageIds: string;
     referenceLimit: number;
-    normalizedQuery: string | null;
+    retrievalResourceKeys: string;
+    searchApplied: number;
   }): Promise<IListHypermediaPageResourcesResult[]> {
     return this.sql.ListHypermediaPageResources`
       /* @notNull sourcePageReadableId kind readableId */
@@ -632,6 +641,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         select value as "kind" from json_each(${resourceKinds})
       ), selected_key as (
         select value as "key" from json_each(${resourceKeys})
+      ), retrieval_resource as (
+        select value as "key" from json_each(${retrievalResourceKeys})
       ), selected_page as (
         select "id", "readable_id" as "readableId", "current_revision_id" as "revisionId"
         from "knowledge_page"
@@ -648,12 +659,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
         where entity."archived_at" is null
           and 'entity' in (select "kind" from selected_kind)
-          and (
-            ${normalizedQuery} is null
-            or instr(lower(entity."name"), ${normalizedQuery}) > 0
-            or instr(lower(entity."description"), ${normalizedQuery}) > 0
-            or instr(entity."readable_id", ${normalizedQuery}) > 0
-          )
+          and (${searchApplied} = 0
+            or 'entity:' || entity."readable_id" in (select "key" from retrieval_resource))
         union
         select selected_page."readableId" as "sourcePageReadableId", 'asset' as "kind",
           asset."readable_id" as "readableId"
@@ -665,11 +672,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
         where asset."archived_at" is null
           and 'asset' in (select "kind" from selected_kind)
-          and (
-            ${normalizedQuery} is null
-            or instr(lower(asset."name"), ${normalizedQuery}) > 0
-            or instr(asset."readable_id", ${normalizedQuery}) > 0
-          )
+          and (${searchApplied} = 0
+            or 'asset:' || asset."readable_id" in (select "key" from retrieval_resource))
       )
       select "sourcePageReadableId", "kind", "readableId" from page_resource
       order by ("kind" || ':' || "readableId") in (select "key" from selected_key) desc,

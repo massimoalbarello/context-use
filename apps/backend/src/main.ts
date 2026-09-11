@@ -1,6 +1,6 @@
 import type { SQL } from 'bun';
 import { createApp } from '#app.ts';
-import { createSqliteDatabase } from '#db/client.ts';
+import { createSqliteDatabase, createSqliteReader } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
 import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
@@ -18,6 +18,7 @@ import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#repositories/mcp-client-authorizations/repository.ts';
@@ -31,6 +32,7 @@ import { EntitiesService } from '#services/entities/service.ts';
 import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
 import { HypermediaService } from '#services/hypermedia/service.ts';
+import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { McpClientAuthorizationsService } from '#services/mcp-client-authorizations/service.ts';
@@ -57,11 +59,21 @@ if (authSecret.source.kind === 'environment') {
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
 let recordsDatabase: SQL | undefined;
+let retrievalDatabase: SQL | undefined;
 
 try {
   await runMigrations({ db: database });
 
   const storage = createLocalStorage({ dataFolder: env.DATA_FOLDER });
+  retrievalDatabase = createSqliteReader({ dataFolder: env.DATA_FOLDER });
+  const retrievalRepository = new HypermediaRetrievalRepository({
+    database: retrievalDatabase,
+    storage,
+  });
+  const retrievalService = new HypermediaRetrievalService({
+    retrieval: retrievalRepository,
+    hypermedia: new HypermediaRepository(retrievalDatabase),
+  });
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
     assets: assetsRepository,
@@ -76,7 +88,9 @@ try {
     pages: pagesRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
-  const hypermediaService = new HypermediaService(new HypermediaRepository(database));
+  const hypermediaService = new HypermediaService({
+    hypermedia: new HypermediaRepository(database),
+  });
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
   );
@@ -88,7 +102,10 @@ try {
   const syncsService = new RecordSyncsService({
     syncs: new RecordSyncsRepository(database),
   });
-  const pagesService = new KnowledgePagesService({ pages: pagesRepository, storage });
+  const pagesService = new KnowledgePagesService({
+    pages: pagesRepository,
+    storage,
+  });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
     new McpClientAuthorizationsRepository(database),
@@ -99,8 +116,10 @@ try {
         principal,
         assetsService,
         entitiesService,
+        retrievalService,
         pagesService,
         profilesService,
+        recordsService,
         transferCapabilities: assetTransferCapabilities,
       }),
   });
@@ -119,6 +138,7 @@ try {
     entitiesService,
     healthService,
     hypermediaService,
+    retrievalService,
     mcpClientAuthorizationsService,
     mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
     mcpTransport,
@@ -128,7 +148,7 @@ try {
     recordsService,
     syncsService,
   }).onStop(async () => {
-    await Promise.all([database.close(), recordsDatabase?.close()]);
+    await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
   });
   const { server } = app.listen({
     port: env.PORT,
@@ -140,6 +160,6 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await Promise.all([database.close(), recordsDatabase?.close()]);
+  await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
   throw error;
 }

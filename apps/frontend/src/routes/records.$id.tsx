@@ -7,7 +7,7 @@ import { RecordTimestamp } from '../components/records/record-timestamp';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useRecord } from '../lib/hooks/use-records';
-import { recordQueryOptions } from '../queries/records';
+import { type ExternalRecord, recordQueryOptions } from '../queries/records';
 
 type RecordView = 'preview' | 'metadata' | 'links';
 
@@ -78,48 +78,7 @@ function RecordRoute() {
           <ExternalRecordMarkdown markdown={record.markdown} label={record.title} />
         </TabsContent>
         <TabsContent value="metadata" className="py-7">
-          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <dt className="text-muted-foreground">Title</dt>
-              <dd>{record.title}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Provider</dt>
-              <dd>{record.provider}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Data kind</dt>
-              <dd>{record.kind}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Source created</dt>
-              <dd>
-                <RecordTimestamp value={record.sourceCreatedAt} />
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Source updated</dt>
-              <dd>
-                <RecordTimestamp value={record.sourceUpdatedAt} />
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">First received</dt>
-              <dd>
-                <RecordTimestamp value={record.createdAt} />
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Last received</dt>
-              <dd>
-                <RecordTimestamp value={record.updatedAt} />
-              </dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-muted-foreground">Source record ID</dt>
-              <dd className="break-all font-mono text-xs">{record.recordId}</dd>
-            </div>
-          </dl>
+          <RecordMetadata record={record} />
         </TabsContent>
         <TabsContent value="links" className="py-7">
           <h2 className="font-semibold text-lg">Record links</h2>
@@ -129,5 +88,56 @@ function RecordRoute() {
         </TabsContent>
       </Tabs>
     </DetailShell>
+  );
+}
+
+export function RecordMetadata({ record }: { record: ExternalRecord }) {
+  return (
+    <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <dt className="text-muted-foreground">Title</dt>
+        <dd>{record.title}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Provider</dt>
+        <dd>{record.provider}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Data kind</dt>
+        <dd>{record.kind}</dd>
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="text-muted-foreground">Participants</dt>
+        <dd>{record.participantNames.join(', ') || 'Not provided'}</dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Source created</dt>
+        <dd>
+          <RecordTimestamp value={record.sourceCreatedAt} />
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Source updated</dt>
+        <dd>
+          <RecordTimestamp value={record.sourceUpdatedAt} />
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">First received</dt>
+        <dd>
+          <RecordTimestamp value={record.createdAt} />
+        </dd>
+      </div>
+      <div>
+        <dt className="text-muted-foreground">Last received</dt>
+        <dd>
+          <RecordTimestamp value={record.updatedAt} />
+        </dd>
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="text-muted-foreground">Source record ID</dt>
+        <dd className="break-all font-mono text-xs">{record.recordId}</dd>
+      </div>
+    </dl>
   );
 }

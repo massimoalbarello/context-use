@@ -3,6 +3,7 @@ import type { SQL } from 'bun';
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom } from '#views/entities/entity-view.ts';
+import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
   create(input: {
@@ -75,6 +76,14 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
         insert into "knowledge_profile" ("owner_id", "self_entity_id")
         values (${input.ownerId}, ${entity.id})
       `;
+      await replaceSearchDocument({
+        db,
+        ownerId: input.ownerId,
+        resourceType: 'entity',
+        readableId: input.readableId,
+        label: input.name,
+        summary: input.description,
+      });
       return { state: 'created' as const, profile: createdProfileFrom(entity) };
     });
   }

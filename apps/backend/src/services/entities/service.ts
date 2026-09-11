@@ -55,7 +55,7 @@ export class EntitiesService {
       );
   }
 
-  list(input: { ownerId: string; limit: number; offset: number; query?: string }) {
+  list(input: { ownerId: string; limit: number; offset: number }) {
     return this.entities.list(input);
   }
 

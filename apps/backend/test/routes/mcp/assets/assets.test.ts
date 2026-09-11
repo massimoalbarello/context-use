@@ -22,7 +22,11 @@ import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
-import { unusedKnowledgeProfilesService } from '../../../support/mcp.ts';
+import {
+  unusedHypermediaRetrievalService,
+  unusedKnowledgeProfilesService,
+  unusedMcpRecordsService,
+} from '../../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../../support/public-api.ts';
 
 const NOW = '2026-09-01T12:00:00.000Z';
@@ -78,7 +82,6 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   detail: unexpectedCall,
   update: unexpectedCall,
   archive: unexpectedCall,
-  rebuildIndex: unexpectedCall,
 };
 
 async function seedOwner(database: SQL): Promise<void> {
@@ -128,9 +131,11 @@ async function withAssetMcp({
     transferCapabilities,
   });
   const server = createContextUseMcpServer({
+    recordsService: unusedMcpRecordsService,
     principal,
     assetsService,
     entitiesService: unusedEntitiesService,
+    retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
     transferCapabilities,
@@ -581,9 +586,11 @@ test('asset updates return no echoed state and archive blockers expose only publ
     baseUrl: new URL('https://context-use.example'),
   });
   const server = createContextUseMcpServer({
+    recordsService: unusedMcpRecordsService,
     principal,
     assetsService,
     entitiesService: unusedEntitiesService,
+    retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
     transferCapabilities,

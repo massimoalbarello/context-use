@@ -8,7 +8,15 @@ import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.t
 import type { HypermediaRepositoryContract } from '#repositories/hypermedia/repository.ts';
 
 export class HypermediaService {
-  constructor(private readonly hypermedia: HypermediaRepositoryContract) {}
+  private readonly hypermedia: HypermediaRepositoryContract;
+
+  constructor({
+    hypermedia,
+  }: {
+    hypermedia: HypermediaRepositoryContract;
+  }) {
+    this.hypermedia = hypermedia;
+  }
 
   resourceNeighborhood(input: {
     ownerId: string;
@@ -28,7 +36,6 @@ export class HypermediaService {
     interval: HypermediaPageInterval;
     limit: number;
     offset: number;
-    query?: string;
     temporalBounds?: TemporalBounds;
   }) {
     return this.hypermedia.pages(input);

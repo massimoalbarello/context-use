@@ -99,13 +99,7 @@ export class AssetsService {
     return { state: 'created', asset };
   }
 
-  list(input: {
-    ownerId: string;
-    limit: number;
-    offset: number;
-    query?: string;
-    kind?: 'entity_image';
-  }) {
+  list(input: { ownerId: string; limit: number; offset: number; kind?: 'entity_image' }) {
     return this.assets.list(input);
   }
 

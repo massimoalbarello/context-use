@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Asset, AssetSummary, AssetUsage } from '#models/assets/model.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
-import { AssetAddressSchema, assetAddress, McpReadableIdSchema } from '#routes/mcp/coordinates.ts';
+import { assetAddress } from '#models/readable-ids/addresses.ts';
+import { AssetAddressSchema, McpReadableIdSchema } from '#routes/mcp/coordinates.ts';
 import { McpEntityReferenceSchema, mcpEntityReference } from '#routes/mcp/entities/model.ts';
 import { McpKnowledgePageSummarySchema, mcpKnowledgePageSummary } from '#routes/mcp/pages/model.ts';
 

@@ -108,6 +108,7 @@ const HypermediaPageSchema = t.Object({
 
 export const HypermediaPagesSchema = t.Object({
   pages: t.Array(HypermediaPageSchema),
+  matchedResources: t.Nullable(t.Array(HypermediaResourceSchema)),
   nextOffset: t.Nullable(t.Integer({ minimum: 0 })),
   resourceReferencesTruncated: t.Boolean(),
   temporalExtent: t.Nullable(
@@ -242,8 +243,11 @@ export function hypermediaResourceNeighborhoodResponse(
   };
 }
 
-export function hypermediaPagesResponse(result: HypermediaPages) {
+export function hypermediaPagesResponse(
+  result: HypermediaPages & { matchedResources?: HypermediaResource[] },
+) {
   return {
+    matchedResources: result.matchedResources?.map(hypermediaResourceResponse) ?? null,
     pages: result.pages.map((page) => ({
       ...pageSummaryResponse(page),
       resources: page.resources,

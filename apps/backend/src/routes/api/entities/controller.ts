@@ -54,7 +54,6 @@ export function createEntitiesController({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
-          query: query.query,
         });
         return status(StatusMap.OK, { ...page, items: page.items.map(entityResponse) });
       },
