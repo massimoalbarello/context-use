@@ -619,17 +619,31 @@ export interface IFindActiveRecordSyncForAcceptanceResult {
 
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
-    syncReadableId: string;
-    syncName: string;
     readableId: string;
+    title: string;
+    provider: string;
     kind: string;
     recordId: string;
+    sourceCreatedAt: string | null;
+    sourceUpdatedAt: string | null;
+    syncReadableId: string;
+    syncName: string;
     createdAt: string;
     updatedAt: string;
 }
 
+/** Result of query `RecordFilterOptions`. */
+export interface IRecordFilterOptionsResult {
+    provider: string;
+    kind: string;
+}
+
 /** Result of query `FindRecordResource`. */
 export interface IFindRecordResourceResult {
+    title: string;
+    provider: string;
+    sourceCreatedAt: string | null;
+    sourceUpdatedAt: string | null;
     syncReadableId: string;
     syncName: string;
     readableId: string;
@@ -732,6 +746,7 @@ export interface Queries {
     ApplyRecordRevision: IApplyRecordRevisionResult;
     FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
     ListRecordResources: IListRecordResourcesResult;
+    RecordFilterOptions: IRecordFilterOptionsResult;
     FindRecordResource: IFindRecordResourceResult;
     FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;
     CreateRecordSync: ICreateRecordSyncResult;

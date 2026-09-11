@@ -4,7 +4,13 @@ import type { ExternalRecordSummary } from '../../queries/records';
 import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { RecordLink } from './record-link';
 
-export function RecordList({ records }: { records: ExternalRecordSummary[] }) {
+export function RecordList({
+  records,
+  filtered = false,
+}: {
+  records: ExternalRecordSummary[];
+  filtered?: boolean;
+}) {
   const activeRecordId = useRouterState({
     select: (state) => {
       const resource = knowledgeResourceFromPath(state.location.pathname);
@@ -14,8 +20,10 @@ export function RecordList({ records }: { records: ExternalRecordSummary[] }) {
 
   if (records.length === 0) {
     return (
-      <ResourceListEmpty title="No synced records yet.">
-        Records appear here after an authorized sync delivers them.
+      <ResourceListEmpty title={filtered ? 'No matching records.' : 'No synced records yet.'}>
+        {filtered
+          ? 'Clear or change the filters to see more records.'
+          : 'Records appear here after an authorized sync delivers them.'}
       </ResourceListEmpty>
     );
   }

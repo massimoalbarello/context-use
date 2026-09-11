@@ -24,6 +24,7 @@ const SENDER_VALID_LONG_PARTICIPANT_VALUE_LENGTH = 1_025;
 
 function validEnvelope(): RecordDeliveryEnvelope {
   const content = {
+    title: 'example/repository #1: Improve records',
     body: '# Pull request',
     sourceUrl: 'https://github.com/example/repository/pull/1',
     sourceCreatedAt: '2026-09-01T10:00:00.123456Z',
@@ -321,12 +322,15 @@ test('allows an exact-limit body and rejects malformed JSON cleanly', async () =
 
 test('enforces the per-record content limit', async () => {
   const envelope = validEnvelope();
-  const emptyContentBytes = Buffer.byteLength(JSON.stringify({ body: '' }));
+  const emptyContentBytes = Buffer.byteLength(
+    JSON.stringify({ title: 'Example record', body: '' }),
+  );
   const record = firstRecord(envelope);
   if (record.operation === 'deleted') {
     throw new Error('Expected record content');
   }
   record.content = {
+    title: 'Example record',
     body: 'x'.repeat(MAX_RECORD_CONTENT_BYTES - emptyContentBytes),
   };
   const accepted = await controller().handle(request({ body: JSON.stringify(envelope) }));
@@ -354,6 +358,23 @@ test('validates the whole batch before calling the acceptance service', async ()
   expect(response.status).toBe(StatusMap['Bad Request']);
   expect(accept).not.toHaveBeenCalled();
 });
+
+test.each([undefined, '', ' \n\t', null, 1])(
+  'rejects records without a meaningful title before acceptance: %j',
+  async (title) => {
+    const envelope = validEnvelope();
+    const record = firstRecord(envelope);
+    if (record.operation === 'deleted') {
+      throw new Error('Expected record content');
+    }
+    const payload = {
+      ...envelope,
+      records: [{ ...record, content: { ...record.content, title } }],
+    };
+    const response = await controller().handle(request({ body: JSON.stringify(payload) }));
+    expect(response.status).toBe(StatusMap['Bad Request']);
+  },
+);
 
 test('enforces record count, deletion shape, hashes, and nonempty Markdown', async () => {
   const cases: unknown[] = [];

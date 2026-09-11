@@ -39,9 +39,10 @@ export function ExternalRecordMarkdown({ markdown, label }: { markdown: string; 
           ),
           img: ({ alt }) =>
             alt ? <span className="text-muted-foreground text-sm">Image: {alt}</span> : null,
-          h1: ({ children }) => (
-            <h1 className="mb-7 font-semibold text-4xl tracking-tight">{children}</h1>
-          ),
+          h1: ({ children, node }) =>
+            node?.position?.start.line === 1 && children === label ? null : (
+              <h2 className="mb-7 font-semibold text-2xl tracking-tight">{children}</h2>
+            ),
           h2: ({ children }) => (
             <h2 className="mt-10 border-border border-b pb-2 font-semibold text-2xl tracking-tight">
               {children}

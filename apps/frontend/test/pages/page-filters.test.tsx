@@ -35,7 +35,7 @@ test('Pages keeps its search, interval, and date controls behind one filter icon
   const filterText = filterWindow.textContent ?? '';
   expect(keyword.getAttribute('placeholder')).toBe('Page title');
   expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
-  expect(screen.getByRole('button', { name: 'Choose dates' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Filter by date range: Choose dates' })).toBeTruthy();
   expect(filterText.indexOf('Interval')).toBeLessThan(filterText.indexOf('Keyword'));
   expect(filterText.indexOf('Keyword')).toBeLessThan(filterText.indexOf('Filter by date range'));
 

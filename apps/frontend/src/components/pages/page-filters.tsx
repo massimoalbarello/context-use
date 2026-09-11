@@ -3,9 +3,9 @@ import {
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '@repo/backend/page';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
+import { DateRangeFilter } from '../knowledge/date-range-filter';
 import { KeywordFilter } from '../knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
-import { PageDateRangeFilter } from './page-date-range-filter';
 import { PageIntervalFilter } from './page-interval-filter';
 
 export function PageFilters({
@@ -41,7 +41,7 @@ export function PageFilters({
         onApply={onQueryApply}
       />
       {interval !== 'without' && (
-        <PageDateRangeFilter
+        <DateRangeFilter
           value={dateRange}
           hint="Pages without an interval are excluded."
           onApply={onDateRangeApply}

@@ -3,6 +3,7 @@ import type { SQL } from 'bun';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import type {
   RecordAcceptanceResult,
+  RecordListFilters,
   RecordPage,
   RecordSummary,
   StoredRecord,
@@ -32,9 +33,15 @@ export type AcceptRecordsInput = {
   receivedAt: string;
 };
 
+export type ListRecordsInput = RecordListFilters & {
+  ownerId: string;
+  limit: number;
+  offset: number;
+};
+
 export interface RecordsRepositoryContract {
   accept(input: AcceptRecordsInput): Promise<RecordPublication>;
-  listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage>;
+  listResources(input: ListRecordsInput): Promise<RecordPage>;
   findResource(input: { ownerId: string; readableId: string }): Promise<StoredRecord | null>;
 }
 
@@ -43,30 +50,20 @@ type RecordPublication = {
   storageKeys: Set<string>;
 };
 
-function recordSummaryFrom({
-  syncReadableId,
-  syncName,
-  readableId,
-  kind,
-  recordId,
-  createdAt,
-  updatedAt,
-}: {
-  syncReadableId: string;
-  syncName: string;
-  readableId: string;
-  kind: string;
-  recordId: string;
-  createdAt: string;
-  updatedAt: string;
-}): RecordSummary {
+function recordSummaryFrom(
+  record: Omit<RecordSummary, 'sync'> & { syncReadableId: string; syncName: string },
+): RecordSummary {
   return {
-    readableId,
-    kind,
-    recordId,
-    sync: { readableId: syncReadableId, name: syncName },
-    createdAt,
-    updatedAt,
+    readableId: record.readableId,
+    title: record.title,
+    provider: record.provider,
+    sourceCreatedAt: record.sourceCreatedAt,
+    sourceUpdatedAt: record.sourceUpdatedAt,
+    kind: record.kind,
+    recordId: record.recordId,
+    sync: { readableId: record.syncReadableId, name: record.syncName },
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
   };
 }
 
@@ -106,15 +103,18 @@ async function applyRecord({
     }
   }
 
+  const content = record.operation === 'deleted' ? null : record.content;
   await db.ApplyRecordRevision`
     insert into "record"
       ("sync_id", "owner_id", "readable_id", "source_id", "kind", "record_id", "revision",
-       "operation", "revision_hash", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
+       "operation", "revision_hash", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at",
+       "provider", "title", "source_created_at", "source_updated_at")
     values
       (${input.syncId}, ${input.ownerId}, ${accepted.readableId}, ${record.sourceId}, ${record.kind},
        ${record.id}, ${record.revision}, ${record.operation}, ${accepted.revisionHash},
        ${accepted.storageKey}, ${accepted.contentHash}, ${accepted.sizeBytes},
-       ${input.receivedAt}, ${input.receivedAt})
+       ${input.receivedAt}, ${input.receivedAt}, ${record.provider}, ${content?.title ?? null},
+       ${content?.sourceCreatedAt ?? null}, ${content?.sourceUpdatedAt ?? null})
     on conflict ("owner_id", "sync_id", "source_id", "kind", "record_id") do update set
       "revision" = excluded."revision",
       "operation" = excluded."operation",
@@ -122,7 +122,11 @@ async function applyRecord({
       "revision_hash" = excluded."revision_hash",
       "storage_key" = excluded."storage_key",
       "size_bytes" = excluded."size_bytes",
-      "updated_at" = excluded."updated_at"
+      "updated_at" = excluded."updated_at",
+      "provider" = excluded."provider",
+      "title" = excluded."title",
+      "source_created_at" = excluded."source_created_at",
+      "source_updated_at" = excluded."source_updated_at"
     where excluded."revision" > "record"."revision"
   `;
   if (current) {
@@ -180,28 +184,60 @@ export class RecordsRepository implements RecordsRepositoryContract {
     ownerId,
     limit,
     offset,
-  }: {
-    ownerId: string;
-    limit: number;
-    offset: number;
-  }): Promise<RecordPage> {
+    provider,
+    kind,
+    createdFrom,
+    createdTo,
+    updatedFrom,
+    updatedTo,
+    sortBy = 'sourceUpdatedAt',
+    sortDirection = 'desc',
+  }: ListRecordsInput): Promise<RecordPage> {
     return await this.serialize(async () => {
       const rows = await this.sql.ListRecordResources`
-        /* @notNull syncReadableId syncName readableId kind recordId createdAt updatedAt */
-        select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-          record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
+        /* @notNull readableId title provider kind recordId syncReadableId syncName createdAt updatedAt */
+        select record."readable_id" as "readableId", record."title", record."provider", record."kind",
+          record."record_id" as "recordId", record."source_created_at" as "sourceCreatedAt",
+          record."source_updated_at" as "sourceUpdatedAt",
+          sync."readable_id" as "syncReadableId", sync."name" as "syncName",
           record."created_at" as "createdAt", record."updated_at" as "updatedAt"
         from "record" record
-        join "record_sync" sync
-          on sync."id" = record."sync_id"
-         and sync."owner_id" = record."owner_id"
+        join "record_sync" sync on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
         where record."owner_id" = ${ownerId} and record."operation" <> 'deleted'
-        order by record."updated_at" desc, record."readable_id"
+          and (${provider ?? null} is null or record."provider" = ${provider ?? null})
+          and (${kind ?? null} is null or record."kind" = ${kind ?? null})
+          and (${createdFrom ?? null} is null or julianday(record."source_created_at") >= julianday(${createdFrom ?? null}))
+          and (${createdTo ?? null} is null or julianday(record."source_created_at") < julianday(${createdTo ?? null}))
+          and (${updatedFrom ?? null} is null or julianday(record."source_updated_at") >= julianday(${updatedFrom ?? null}))
+          and (${updatedTo ?? null} is null or julianday(record."source_updated_at") < julianday(${updatedTo ?? null}))
+        order by
+          case ${sortBy} when 'sourceCreatedAt' then julianday(record."source_created_at") is null
+            when 'sourceUpdatedAt' then julianday(record."source_updated_at") is null else 0 end,
+          case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end asc,
+          case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end asc,
+          case when ${sortDirection} = 'asc' and ${sortBy} = 'provider' then record."provider" end asc,
+          case when ${sortDirection} = 'asc' and ${sortBy} = 'kind' then record."kind" end asc,
+          case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end desc,
+          case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end desc,
+          case when ${sortDirection} = 'desc' and ${sortBy} = 'provider' then record."provider" end desc,
+          case when ${sortDirection} = 'desc' and ${sortBy} = 'kind' then record."kind" end desc,
+        record."readable_id"
         limit ${limit + 1} offset ${offset}
       `;
-      const hasNextPage = rows.length > limit;
+      const options = await this.sql.RecordFilterOptions`
+        select distinct "provider", "kind" from "record"
+        where "owner_id" = ${ownerId} and "operation" <> 'deleted'
+        order by "provider", "kind"
+      `;
       const items = rows.slice(0, limit).map(recordSummaryFrom);
-      return { items, nextOffset: hasNextPage ? offset + items.length : null };
+      return {
+        items,
+        nextOffset: rows.length > limit ? offset + items.length : null,
+        filterOptions: {
+          providers: [...new Set(options.map((row) => row.provider))],
+          kinds: [...new Set(options.map((row) => row.kind))].sort(),
+        },
+      };
     });
   }
 
@@ -214,8 +250,10 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }): Promise<StoredRecord | null> {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
-        /* @notNull syncReadableId syncName readableId kind recordId storageKey contentHash sizeBytes createdAt updatedAt */
-        select sync."readable_id" as "syncReadableId", sync."name" as "syncName",
+        /* @notNull title provider syncReadableId syncName readableId kind recordId storageKey contentHash sizeBytes createdAt updatedAt */
+        select record."title", record."provider", record."source_created_at" as "sourceCreatedAt",
+          record."source_updated_at" as "sourceUpdatedAt",
+          sync."readable_id" as "syncReadableId", sync."name" as "syncName",
           record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
           record."storage_key" as "storageKey", record."content_hash" as "contentHash",
           record."size_bytes" as "sizeBytes", record."created_at" as "createdAt",

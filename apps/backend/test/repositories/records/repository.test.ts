@@ -32,6 +32,7 @@ function digest(value: string): string {
 
 function content(body: string): RecordContent {
   return {
+    title: 'example/repository #1: Improve records',
     body,
     sourceUrl: 'https://example.invalid/records/record-1',
     sourceCreatedAt: '2025-01-02T03:04:05-04:00',
@@ -470,6 +471,12 @@ test('record files preserve the full delivery across reopen and reject missing o
           ownerId: OWNER_ID,
           readableId: originalReference.readableId,
         });
+        expect(resource).toMatchObject({
+          title: initial.content.title,
+          provider: initial.provider,
+          sourceCreatedAt: initial.content.sourceCreatedAt,
+          sourceUpdatedAt: initial.content.sourceUpdatedAt,
+        });
         expect(resource?.record).toEqual(initial);
         expect(resource?.markdown).toBe(initial.content.body);
         const retry = { ...initial, eventId: Bun.randomUUIDv7() };
@@ -514,6 +521,7 @@ test('equal revisions compare all canonical metadata independently of JSON prope
       expect(await records.accept(input([reordered]))).toEqual({ state: 'accepted' });
       const conflicts: DeliveredRecord[] = [
         { ...initial, provider: 'another-provider' },
+        { ...initial, content: { ...initial.content, title: 'Changed title' } },
         { ...initial, committedAt: '2026-09-09T00:00:00Z' },
         { ...initial, content: { ...initial.content, sourceUrl: 'https://changed.invalid' } },
         { ...initial, content: { ...initial.content, participants: [] } },
@@ -601,6 +609,7 @@ test('staged files stay invisible and revocation before publication rejects the 
         expect(await records.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 })).toEqual({
           items: [],
           nextOffset: null,
+          filterOptions: { providers: [], kinds: [] },
         });
         await database`update "record_sync" set "revoked_at" = ${RECEIVED_AT.toISOString()} where "id" = ${SYNC_ID}`;
       } finally {

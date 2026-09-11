@@ -1,8 +1,8 @@
 {
   "repository": "massimoalbarello/open-connector",
   "path": "docs/record-delivery.openapi.yaml",
-  "requestedRef": "b16b86d84a1a3c8777f07ddb6edeadef878b82ae",
-  "resolvedCommit": "b16b86d84a1a3c8777f07ddb6edeadef878b82ae",
-  "sourceUrl": "https://raw.githubusercontent.com/massimoalbarello/open-connector/b16b86d84a1a3c8777f07ddb6edeadef878b82ae/docs/record-delivery.openapi.yaml",
-  "sha256": "3b6c16d457efbec5b4ec825c36b916ee68b2a9d4e3f6002a62c924fec334ff95"
+  "requestedRef": "90865e0116b4baa9bcecad7207e41f7764f6213d",
+  "resolvedCommit": "90865e0116b4baa9bcecad7207e41f7764f6213d",
+  "sourceUrl": "https://raw.githubusercontent.com/massimoalbarello/open-connector/90865e0116b4baa9bcecad7207e41f7764f6213d/docs/record-delivery.openapi.yaml",
+  "sha256": "1fd71270f4bf42ccfe857c2fa271b0144704d6738d8dc94581d41ef3a3bb3a49"
 }

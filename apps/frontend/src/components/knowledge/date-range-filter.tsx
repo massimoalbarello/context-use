@@ -59,16 +59,18 @@ export function dateRangeButtonLabel(value?: CalendarDateRange): string {
   return `${DATE_FORMATTER.format(from)} – ${DATE_FORMATTER.format(to)}`;
 }
 
-export function PageDateRangeFilter({
+export function DateRangeFilter({
   value,
   onApply,
   className,
-  hint = 'Pages without an interval are excluded.',
+  hint,
+  title = 'Filter by date range',
 }: {
   value?: CalendarDateRange;
   onApply: (value?: CalendarDateRange) => void;
   className?: string;
   hint?: ReactNode;
+  title?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<DateRange | undefined>(() => pickerRangeFrom(value));
@@ -76,7 +78,7 @@ export function PageDateRangeFilter({
 
   return (
     <div className={cn('grid gap-2 rounded-xl bg-muted/55 p-3', className)}>
-      <p className="font-medium text-xs">Filter by date range</p>
+      <p className="font-medium text-xs">{title}</p>
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {
@@ -92,6 +94,7 @@ export function PageDateRangeFilter({
               className="w-full justify-start overflow-hidden font-normal"
               type="button"
               variant="outline"
+              aria-label={`${title}: ${dateRangeButtonLabel(value)}`}
             />
           }
         >

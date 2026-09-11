@@ -8,6 +8,7 @@ import type {
 import type { RecordAcceptanceResult, RecordPage, RecordResource } from '#models/records/model.ts';
 import type {
   AcceptedRecord,
+  ListRecordsInput,
   RecordsRepositoryContract,
 } from '#repositories/records/repository.ts';
 
@@ -105,7 +106,7 @@ export class RecordsService {
     return result;
   }
 
-  listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage> {
+  listResources(input: ListRecordsInput): Promise<RecordPage> {
     return this.records.listResources(input);
   }
 

@@ -6,6 +6,19 @@ import {
 } from '../../src/components/records/external-record-markdown';
 
 describe('external record Markdown', () => {
+  test('omits a repeated leading title while retaining distinct and later headings', () => {
+    const html = renderToStaticMarkup(
+      <ExternalRecordMarkdown
+        label="Record title"
+        markdown={'# Record title\n\nBody\n\n# Record title\n\n# Another heading'}
+      />,
+    );
+    expect(html).not.toContain('<h1');
+    expect(html.match(/<h2/g)).toHaveLength(2);
+    expect(html).toContain('Another heading');
+    expect(html).toContain('Body');
+  });
+
   test('activates only absolute HTTP links', () => {
     expect(externalRecordUrl('https://github.com/example/repository/pull/1')).toBe(
       'https://github.com/example/repository/pull/1',

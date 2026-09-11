@@ -31,6 +31,10 @@ create table "record" (
   "source_id" text not null,
   "kind" text not null,
   "record_id" text not null,
+  "provider" text not null,
+  "title" text,
+  "source_created_at" text,
+  "source_updated_at" text,
   "revision" integer not null,
   "operation" text not null,
   "revision_hash" text not null,
@@ -50,6 +54,9 @@ create table "record" (
   check (length(trim("source_id")) > 0),
   check (length(trim("kind")) > 0),
   check (length(trim("record_id")) > 0),
+  check (length(trim("provider")) > 0),
+  check ("operation" = 'deleted' or "title" is not null),
+  check ("title" is null or length(trim("title")) > 0),
   check ("revision" between 1 and 9007199254740991),
   check ("operation" in ('added', 'updated', 'deleted')),
   check ("revision_hash" not glob '*[^a-f0-9]*' and length("revision_hash") = 64),
@@ -62,4 +69,11 @@ create table "record" (
 
 create index "record_owner_updated_idx"
   on "record" ("owner_id", "updated_at" desc, "readable_id")
+  where "operation" <> 'deleted';
+
+create index "record_source_created_idx" on "record" ("owner_id", julianday("source_created_at"))
+  where "operation" <> 'deleted';
+create index "record_source_updated_idx" on "record" ("owner_id", julianday("source_updated_at"))
+  where "operation" <> 'deleted';
+create index "record_provider_kind_idx" on "record" ("owner_id", "provider", "kind")
   where "operation" <> 'deleted';

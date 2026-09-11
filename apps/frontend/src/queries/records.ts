@@ -1,3 +1,4 @@
+import type { RecordListFilters } from '@repo/backend/record';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
@@ -14,12 +15,14 @@ export const recordsQueryKey = ['records'] as const;
 export const recordsListQueryKey = [...recordsQueryKey, 'list'] as const;
 export const recordDetailsQueryKey = [...recordsQueryKey, 'detail'] as const;
 
-export function recordsQueryOptions() {
+export function recordsQueryOptions(filters: RecordListFilters = {}) {
   return infiniteQueryOptions({
-    queryKey: recordsListQueryKey,
+    queryKey: [...recordsListQueryKey, filters],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await api.api.records.get({ query: { offset: pageParam } });
+      const { data, error } = await api.api.records.get({
+        query: { ...filters, offset: pageParam },
+      });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }

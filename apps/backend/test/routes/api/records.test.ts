@@ -102,6 +102,7 @@ function record({
     return { ...common, operation, contentHash: digest('deleted') };
   }
   const content = {
+    title: 'example/repository #1: Improve records',
     body: body!,
     sourceUrl: `https://github.example/pulls/${id}`,
     attributes: { ignoredForNow: true },
@@ -236,11 +237,41 @@ test('record API lists active owner records and returns Markdown detail with syn
           readableId: expect.stringMatching(/^pull-request-visible-[a-f0-9]{24}$/),
           kind: 'pull-request',
           recordId: 'visible',
+          title: 'example/repository #1: Improve records',
+          provider: 'github',
+          sourceCreatedAt: null,
+          sourceUpdatedAt: null,
           sync: { readableId: 'github-sync', name: 'Engineering GitHub' },
         }),
       );
       expect(JSON.stringify(list)).not.toContain('hidden title');
       expect(JSON.stringify(list)).not.toContain('Other owner');
+
+      const matching = await app.handle(
+        new Request(
+          'http://localhost/api/records?provider=github&kind=pull-request&sortBy=kind&sortDirection=asc&limit=1',
+        ),
+      );
+      expect(matching.status).toBe(StatusMap.OK);
+      expect(await matching.json()).toMatchObject({ items: [expect.any(Object)] });
+      const filtered = await app.handle(
+        new Request('http://localhost/api/records?provider=other-provider'),
+      );
+      expect(await filtered.json()).toMatchObject({
+        items: [],
+        nextOffset: null,
+        filterOptions: { providers: ['github'], kinds: ['pull-request'] },
+      });
+      for (const query of [
+        'sortBy=body',
+        'sortDirection=sideways',
+        'updatedFrom=invalid',
+        'createdFrom=2026-02-01&createdTo=2026-01-01',
+      ]) {
+        const invalid = await app.handle(new Request(`http://localhost/api/records?${query}`));
+        expect(invalid.status).toBeGreaterThanOrEqual(StatusMap['Bad Request']);
+        expect(invalid.status).toBeLessThan(StatusMap['Internal Server Error']);
+      }
 
       const detailResponse = await app.handle(
         new Request(`http://localhost/api/records/${visible!.readableId}`),
