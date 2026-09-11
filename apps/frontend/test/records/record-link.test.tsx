@@ -26,7 +26,7 @@ const record: ExternalRecordSummary = {
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
 };
 
-test('record cards identify their content and syncing external service', () => {
+test('record cards identify their content, provider, and kind', () => {
   render(<RecordCardContent record={record} />);
 
   expect(screen.getByText(record.title)).toBeTruthy();
@@ -34,7 +34,7 @@ test('record cards identify their content and syncing external service', () => {
   expect(screen.queryByText('Not provided')).toBeNull();
   expect(document.querySelector('time')).toBeNull();
   expect(screen.queryByText(record.recordId)).toBeNull();
-  expect(screen.getByText('Synced by Example sync')).toBeTruthy();
+  expect(screen.queryByText('Synced by Example sync')).toBeNull();
   expect(screen.queryByText(record.sync.readableId)).toBeNull();
 });
 

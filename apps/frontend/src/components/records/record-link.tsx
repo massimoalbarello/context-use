@@ -22,9 +22,6 @@ export function RecordCardContent({ record }: { record: ExternalRecordSummary })
         <small className="truncate text-muted-foreground text-xs leading-relaxed">
           {record.provider} · {record.kind}
         </small>
-        <small className="truncate text-muted-foreground text-xs leading-relaxed">
-          Synced by {record.sync.name}
-        </small>
       </span>
     </>
   );
