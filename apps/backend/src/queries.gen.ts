@@ -616,26 +616,15 @@ export interface IFindCurrentRecordRevisionResult {
 export interface IPublishRecordRevisionResult {
 }
 
-/** Result of query `IndexRecordMetadata`. */
-export interface IIndexRecordMetadataResult {
-}
-
-/** Result of query `RemoveRecordMetadata`. */
-export interface IRemoveRecordMetadataResult {
-}
-
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
-    ownerId: string;
-    syncId: string;
-    identityKey: string;
     readableId: string;
-    revision: number;
-    operation: string;
-    revisionHash: string;
-    storageKey: string;
-    blobHash: string;
-    sizeBytes: number;
+    title: string;
+    provider: string;
+    kind: string;
+    recordId: string;
+    sourceCreatedAt: string | null;
+    sourceUpdatedAt: string | null;
     syncReadableId: string;
     syncName: string;
     createdAt: string;
@@ -650,15 +639,21 @@ export interface IRecordFilterOptionsResult {
 
 /** Result of query `FindRecordResource`. */
 export interface IFindRecordResourceResult {
+    title: string;
+    provider: string;
+    sourceCreatedAt: string | null;
+    sourceUpdatedAt: string | null;
     ownerId: string;
     syncId: string;
-    identityKey: string;
+    sourceId: string;
+    kind: string;
+    recordId: string;
     readableId: string;
     revision: number;
     operation: string;
     revisionHash: string;
     storageKey: string;
-    blobHash: string;
+    contentHash: string;
     sizeBytes: number;
     syncReadableId: string;
     syncName: string;
@@ -755,8 +750,6 @@ export interface Queries {
     FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
     FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
     PublishRecordRevision: IPublishRecordRevisionResult;
-    IndexRecordMetadata: IIndexRecordMetadataResult;
-    RemoveRecordMetadata: IRemoveRecordMetadataResult;
     ListRecordResources: IListRecordResourcesResult;
     RecordFilterOptions: IRecordFilterOptionsResult;
     FindRecordResource: IFindRecordResourceResult;

@@ -88,7 +88,7 @@ async function withRecords(
               id: 'b',
               provider: 'slack',
               kind: 'message',
-              created: '2026-01-01T00:00:00Z',
+              created: '2026-01-02T04:00:00+05:00',
               updated: '2026-01-02T00:00:00Z',
             }),
             record({
@@ -152,7 +152,7 @@ test('combines exact metadata and source date bounds across the collection witho
     // An unavailable nonmatching record must not be read to filter the collection.
     const [slack] = await database<
       { storageKey: string }[]
-    >`select head."storage_key" as "storageKey" from "record_delivery_head" head join "record_browse_index" browse using ("owner_id", "sync_id", "identity_key") where browse."provider" = 'slack'`;
+    >`select "storage_key" as "storageKey" from "record" where "provider" = 'slack'`;
     await storage.delete(slack!.storageKey);
     const page = await repository.listResources({
       ownerId: OWNER_ID,
@@ -261,7 +261,7 @@ test('publishes title and browse corrections atomically, ignoring stale revision
         .providers,
     ).toEqual(['github', 'granola']);
     const rows =
-      await database`select "provider" from "record_browse_index" where "owner_id" = ${OWNER_ID} and "provider" = 'slack'`;
+      await database`select "provider" from "record" where "owner_id" = ${OWNER_ID} and "provider" = 'slack' and "operation" <> 'deleted'`;
     expect(rows).toHaveLength(0);
   });
 });

@@ -48,12 +48,12 @@ function fileKeys(dataFolder: string) {
   return Array.fromAsync(new Bun.Glob('**/*.json').scan({ cwd: join(dataFolder, 'objects') }));
 }
 
-async function head(database: SQL) {
+async function storedReference(database: SQL) {
   const [row] = await database<
-    Array<{ storageKey: string; readableId: string; blobHash: string; sizeBytes: number }>
+    Array<{ storageKey: string; readableId: string; contentHash: string; sizeBytes: number }>
   >`
-    select "storage_key" as "storageKey", "readable_id" as "readableId", "blob_hash" as "blobHash", "size_bytes" as "sizeBytes"
-    from "record_delivery_head" where "owner_id" = ${OWNER_ID} and "sync_id" = ${SYNC_ID}
+    select "storage_key" as "storageKey", "readable_id" as "readableId", "content_hash" as "contentHash", "size_bytes" as "sizeBytes"
+    from "record" where "owner_id" = ${OWNER_ID} and "sync_id" = ${SYNC_ID}
   `;
   return row!;
 }
@@ -62,7 +62,7 @@ function gate() {
   return Promise.withResolvers<void>();
 }
 
-test('canonical files preserve Markdown and all accepted metadata across reopen; SQL contains only delivery control', async () => {
+test('canonical files preserve Markdown and all accepted metadata across reopen; SQL stores identity metadata and file references', async () => {
   await withRecordTestDatabase({
     run: async ({ database, dataFolder }) => {
       await setup(database);
@@ -74,71 +74,114 @@ test('canonical files preserve Markdown and all accepted metadata across reopen;
       expect(await service({ sql: database, storage }).accept(input([initial]))).toEqual({
         state: 'accepted',
       });
-      const originalHead = await head(database);
-      const snapshot = await storage.file(originalHead.storageKey).text().then(JSON.parse);
+      const originalReference = await storedReference(database);
+      const snapshot = await storage.file(originalReference.storageKey).text().then(JSON.parse);
       expect(snapshot).toEqual({
         version: 1,
         ownerId: OWNER_ID,
         syncId: SYNC_ID,
-        readableId: originalHead.readableId,
+        readableId: originalReference.readableId,
         receivedAt: RECEIVED_AT.toISOString(),
         record: initial,
       });
-      expect(originalHead.storageKey).toStartWith(`${OWNER_ID}/records/${SYNC_ID}/`);
-      const columns = await database<
-        Array<{ name: string }>
-      >`pragma table_info('record_delivery_head')`;
+      expect(originalReference.storageKey).toStartWith(`${OWNER_ID}/records/${SYNC_ID}/`);
+      const columns = await database<Array<{ name: string }>>`pragma table_info('record')`;
       expect(columns.map(({ name }) => name).sort()).toEqual(
         [
           'owner_id',
           'sync_id',
-          'identity_key',
+          'source_id',
+          'kind',
+          'record_id',
+          'title',
+          'provider',
+          'source_created_at',
+          'source_updated_at',
           'readable_id',
           'revision',
           'operation',
           'revision_hash',
           'storage_key',
-          'blob_hash',
+          'content_hash',
           'size_bytes',
           'created_at',
           'updated_at',
         ].sort(),
       );
-      expect(
-        await database<
-          Array<{ name: string }>
-        >`select name from sqlite_master where name = 'record'`,
-      ).toEqual([]);
       const reopened = await createSqliteDatabase({ dataFolder });
       try {
         const reader = service({ sql: reopened, storage: createLocalStorage({ dataFolder }) });
         const resource = await reader.findResource({
           ownerId: OWNER_ID,
-          readableId: originalHead.readableId,
+          readableId: originalReference.readableId,
         });
         expect(resource?.record).toEqual(initial);
         expect(resource?.markdown).toBe(initial.content.body);
         const retry = { ...initial, eventId: Bun.randomUUIDv7() };
         expect(await reader.accept(input([retry]))).toEqual({ state: 'accepted' });
-        expect(await head(database)).toEqual(originalHead);
-        expect(await fileKeys(dataFolder)).toEqual([originalHead.storageKey]);
-        // The catalog cannot substitute for missing canonical content.
-        await storage.delete(originalHead.storageKey);
+        expect(await storedReference(database)).toEqual(originalReference);
+        expect(await fileKeys(dataFolder)).toEqual([originalReference.storageKey]);
+        // Listing uses SQL metadata, while content reads require the canonical file.
+        await storage.delete(originalReference.storageKey);
         await expect(
-          reader.findResource({ ownerId: OWNER_ID, readableId: originalHead.readableId }),
+          reader.findResource({ ownerId: OWNER_ID, readableId: originalReference.readableId }),
         ).rejects.toThrow('is missing');
-        await expect(
-          reader.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 }),
-        ).rejects.toThrow('is missing');
+        expect(await reader.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 })).toEqual({
+          items: [
+            {
+              readableId: originalReference.readableId,
+              title: initial.content.title,
+              provider: initial.provider,
+              sourceCreatedAt: initial.content.sourceCreatedAt ?? null,
+              sourceUpdatedAt: initial.content.sourceUpdatedAt ?? null,
+              kind: initial.kind,
+              recordId: initial.id,
+              sync: { readableId: 'receiver-a', name: 'receiver-a' },
+              createdAt: RECEIVED_AT.toISOString(),
+              updatedAt: RECEIVED_AT.toISOString(),
+            },
+          ],
+          nextOffset: null,
+          filterOptions: { providers: [initial.provider], kinds: [initial.kind] },
+        });
         expect(
           await reader.findResource({
             ownerId: SECOND_OWNER_ID,
-            readableId: originalHead.readableId,
+            readableId: originalReference.readableId,
           }),
         ).toBeNull();
       } finally {
         await reopened.close();
       }
+    },
+  });
+});
+
+test('source, kind, and record ID keep records and their revisions independent within a sync', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await setup(database);
+      const records = service({ sql: database, storage: createLocalStorage({ dataFolder }) });
+      const initial = [
+        activeRecord({ eventId: 'initial' }),
+        { ...activeRecord({ eventId: 'other-source' }), sourceId: 'other.example' },
+        { ...activeRecord({ eventId: 'other-kind' }), kind: 'issue' },
+        activeRecord({ eventId: 'other-record', recordId: 'record-2' }),
+      ];
+      expect(await records.accept(input(initial))).toEqual({ state: 'accepted' });
+      const updated = {
+        ...activeRecord({ eventId: 'update', revision: CURRENT_REVISION, body: 'updated source' }),
+        sourceId: 'other.example',
+      };
+      expect(await records.accept(input([updated]))).toEqual({ state: 'accepted' });
+      const list = await records.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 });
+      expect(list.items).toHaveLength(initial.length);
+      const stored = await Promise.all(
+        list.items.map(({ readableId }) => records.findResource({ ownerId: OWNER_ID, readableId })),
+      );
+      expect(stored.map((record) => record?.record)).toEqual(
+        expect.arrayContaining([initial[0], updated, initial[2], initial[3]]),
+      );
     },
   });
 });
@@ -150,7 +193,7 @@ test('equal revisions compare all canonical metadata independently of JSON prope
       const records = service({ sql: database, storage: createLocalStorage({ dataFolder }) });
       const initial = activeRecord({ eventId: 'initial' });
       expect(await records.accept(input([initial]))).toEqual({ state: 'accepted' });
-      const originalHead = await head(database);
+      const originalReference = await storedReference(database);
       const reordered = {
         ...initial,
         content: { ...initial.content, attributes: { nested: { enabled: true, answer: 42 } } },
@@ -169,9 +212,9 @@ test('equal revisions compare all canonical metadata independently of JSON prope
             input([activeRecord({ eventId: 'rollback', recordId: 'must-rollback' }), conflict]),
           ),
         ).toEqual({ state: 'conflict' });
-        expect(await head(database)).toEqual(originalHead);
+        expect(await storedReference(database)).toEqual(originalReference);
         expect(await recordCount(database)).toBe(1);
-        expect(await fileKeys(dataFolder)).toEqual([originalHead.storageKey]);
+        expect(await fileKeys(dataFolder)).toEqual([originalReference.storageKey]);
       }
     },
   });
@@ -202,7 +245,7 @@ test('partial writes and SQL failures remove every unpublished file, then the ex
       await expect(records.accept(batch)).rejects.toThrow('disk write failed');
       expect(await recordCount(database)).toBe(0);
       expect(await fileKeys(dataFolder)).toEqual([]);
-      await database`create trigger reject_record before insert on "record_delivery_head"
+      await database`create trigger reject_record before insert on "record"
       when new."readable_id" like 'pull-request-second-%' begin select raise(abort, 'SQL publication failed'); end`;
       await expect(records.accept(batch)).rejects.toThrow('SQL publication failed');
       expect(await recordCount(database)).toBe(0);
@@ -267,7 +310,7 @@ test('separate database connections serialize revisions and retain tombstones ag
           { state: 'accepted' },
         ]);
         expect(await fileKeys(dataFolder)).toHaveLength(1);
-        const originalHead = await head(database);
+        const originalReference = await storedReference(database);
         const newest = activeRecord({ eventId: 'newest', revision: CURRENT_REVISION });
         const deletion = deletedRecord({ eventId: 'deleted', revision: DELETED_REVISION });
         expect(
@@ -275,23 +318,29 @@ test('separate database connections serialize revisions and retain tombstones ag
         ).toEqual([{ state: 'accepted' }, { state: 'accepted' }]);
         expect(await first.accept(initial)).toEqual({ state: 'accepted' });
         expect(
-          await first.findResource({ ownerId: OWNER_ID, readableId: originalHead.readableId }),
+          await first.findResource({ ownerId: OWNER_ID, readableId: originalReference.readableId }),
         ).toBeNull();
         expect(await first.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 })).toEqual({
           items: [],
           nextOffset: null,
           filterOptions: { providers: [], kinds: [] },
         });
-        const deletedHead = await head(database);
-        expect(await storage.file(deletedHead.storageKey).text().then(JSON.parse)).toMatchObject({
+        const deletedReference = await storedReference(database);
+        expect(
+          await storage.file(deletedReference.storageKey).text().then(JSON.parse),
+        ).toMatchObject({
           record: deletion,
         });
         const restore = activeRecord({ eventId: 'restore', revision: DELETED_REVISION + 1 });
         expect(await second.accept(input([restore]))).toEqual({ state: 'accepted' });
-        expect((await head(database)).readableId).toBe(originalHead.readableId);
+        expect((await storedReference(database)).readableId).toBe(originalReference.readableId);
         expect(
-          (await first.findResource({ ownerId: OWNER_ID, readableId: originalHead.readableId }))
-            ?.record,
+          (
+            await first.findResource({
+              ownerId: OWNER_ID,
+              readableId: originalReference.readableId,
+            })
+          )?.record,
         ).toEqual(restore);
       } finally {
         await otherDatabase.close();
@@ -309,7 +358,7 @@ test('integrity checks reject truncation, equal-size tampering, invalid schema, 
       expect(await records.accept(input([activeRecord({ eventId: 'integrity' })]))).toEqual({
         state: 'accepted',
       });
-      const original = await head(database);
+      const original = await storedReference(database);
       const json = await storage.file(original.storageKey).text();
       const find = () =>
         records.findResource({ ownerId: OWNER_ID, readableId: original.readableId });
@@ -324,7 +373,7 @@ test('integrity checks reject truncation, equal-size tampering, invalid schema, 
         const invalid = JSON.stringify(snapshot);
         await storage.write(original.storageKey, new Blob([invalid]));
         // Even a structurally valid checksum cannot bypass schema or owner/identity validation.
-        await database`update "record_delivery_head" set "blob_hash" = ${digest(invalid)}, "size_bytes" = ${Buffer.byteLength(invalid)} where "storage_key" = ${original.storageKey}`;
+        await database`update "record" set "content_hash" = ${digest(invalid)}, "size_bytes" = ${Buffer.byteLength(invalid)} where "storage_key" = ${original.storageKey}`;
         await expect(find()).rejects.toThrow();
       }
       expect(
@@ -342,7 +391,7 @@ test('a reader keeps a verified immutable revision while another repository publ
       const writer = service({ sql: database, storage });
       const initial = activeRecord({ eventId: 'initial' });
       expect(await writer.accept(input([initial]))).toEqual({ state: 'accepted' });
-      const originalHead = await head(database);
+      const originalReference = await storedReference(database);
       const reading = gate();
       const resume = gate();
       class PausedReadStorage extends LocalStorage {
@@ -358,7 +407,7 @@ test('a reader keeps a verified immutable revision while another repository publ
       });
       const pendingRead = reader.findResource({
         ownerId: OWNER_ID,
-        readableId: originalHead.readableId,
+        readableId: originalReference.readableId,
       });
       const update = activeRecord({
         eventId: 'replacement',
@@ -373,10 +422,10 @@ test('a reader keeps a verified immutable revision while another repository publ
       }
       expect((await pendingRead)?.record).toEqual(initial);
       expect(
-        (await writer.findResource({ ownerId: OWNER_ID, readableId: originalHead.readableId }))
+        (await writer.findResource({ ownerId: OWNER_ID, readableId: originalReference.readableId }))
           ?.record,
       ).toEqual(update);
-      expect(await storage.exists(originalHead.storageKey)).toBe(true);
+      expect(await storage.exists(originalReference.storageKey)).toBe(true);
     },
   });
 });
@@ -402,7 +451,7 @@ test('cleanup failure is reported without deleting published revisions, and an e
       await expect(records.accept(batch)).rejects.toThrow(
         'Could not remove unpublished record files',
       );
-      const published = await head(database);
+      const published = await storedReference(database);
       expect(
         (await records.findResource({ ownerId: OWNER_ID, readableId: published.readableId }))
           ?.record,
@@ -411,7 +460,7 @@ test('cleanup failure is reported without deleting published revisions, and an e
       expect(beforeRetry).toHaveLength(2);
       storage.failCleanup = false;
       expect(await records.accept(batch)).toEqual({ state: 'accepted' });
-      expect(await head(database)).toEqual(published);
+      expect(await storedReference(database)).toEqual(published);
       expect((await fileKeys(dataFolder)).sort()).toEqual(beforeRetry.sort());
     },
   });
@@ -446,7 +495,7 @@ test('a delayed staged revision cannot resurrect a tombstone committed by anothe
         expect(await writer.accept(input([deletion]))).toEqual({ state: 'accepted' });
         resume.resolve();
         expect(await accepting).toEqual({ state: 'accepted' });
-        const published = await head(database);
+        const published = await storedReference(database);
         expect(await fileKeys(dataFolder)).toEqual([published.storageKey]);
         expect(await storage.file(published.storageKey).text().then(JSON.parse)).toMatchObject({
           record: deletion,
