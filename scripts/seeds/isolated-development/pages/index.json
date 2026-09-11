@@ -1,111 +1,242 @@
 [
-  { "readableId": "project-brief", "temporalCoverage": "2026-08/.." },
-  { "readableId": "ui-review-checklist" },
   {
-    "readableId": "weekly-review",
-    "temporalCoverage": "2026-08-24/2026-08-30"
+    "readableId": "two-ceo-roles",
+    "path": "pages/two-ceo-roles.md",
+    "asOf": "2000-01-05",
+    "temporalCoverage": "2000-01-05"
   },
   {
-    "readableId": "northstar-launch-retrospective",
-    "temporalCoverage": "2025-11~"
+    "readableId": "aqua-makes-the-next-mac-visible",
+    "path": "pages/aqua-makes-the-next-mac-visible.md",
+    "asOf": "2000-01-05",
+    "temporalCoverage": "2000-01-05"
   },
   {
-    "readableId": "customer-research-synthesis",
-    "temporalCoverage": "2026-06/2026-07"
+    "readableId": "moving-the-mac-to-os-x",
+    "path": "pages/moving-the-mac-to-os-x.md",
+    "asOf": "2000-01-05",
+    "temporalCoverage": "2000-01-05"
   },
   {
-    "readableId": "technical-hypermedia-notes",
-    "temporalCoverage": "2026-08/.."
+    "readableId": "the-cube-joins-the-desktop-family",
+    "path": "pages/the-cube-joins-the-desktop-family.md",
+    "asOf": "2000-07-19",
+    "temporalCoverage": "2000-07-19"
   },
   {
-    "readableId": "launch-readiness-plan",
-    "temporalCoverage": "2026-09/2026-10"
-  },
-  { "readableId": "decision-log", "temporalCoverage": "2026-08/.." },
-  {
-    "readableId": "pilot-feedback",
-    "temporalCoverage": "2026-08-18/2026-08-22"
-  },
-  { "readableId": "design-critique-notes", "temporalCoverage": "2026-08-28" },
-  { "readableId": "agent-collaboration-workflow" },
-  {
-    "readableId": "next-quarter-priorities",
-    "temporalCoverage": "2026-10/2026-12"
+    "readableId": "the-cube-bet",
+    "path": "pages/the-cube-bet.md",
+    "asOf": "2000-07-19",
+    "temporalCoverage": "2000-07-19"
   },
   {
-    "readableId": "research-recruitment-plan",
-    "temporalCoverage": "2026-04/2026-05"
-  },
-  { "readableId": "navigation-study-protocol", "temporalCoverage": "2026-05" },
-  { "readableId": "interview-theme-analysis", "temporalCoverage": "2026-06" },
-  { "readableId": "pilot-hypermedia-journey", "temporalCoverage": "2026-07" },
-  {
-    "readableId": "terminology-testing-notes",
-    "temporalCoverage": "2026-07-14/2026-07-18"
+    "readableId": "listening-through-a-public-beta",
+    "path": "pages/listening-through-a-public-beta.md",
+    "asOf": "2000-09-13",
+    "temporalCoverage": "2000-09-13"
   },
   {
-    "readableId": "discoverability-benchmark",
-    "temporalCoverage": "2026-07/2026-08"
-  },
-  { "readableId": "research-archive-guide" },
-  {
-    "readableId": "hypermedia-interaction-principles",
-    "temporalCoverage": "2026-07/.."
+    "readableId": "moving-the-mac-to-os-x",
+    "path": "revisions/moving-the-mac-to-os-x-2000-09-13.md",
+    "asOf": "2000-09-13",
+    "temporalCoverage": "2000-01-05/2000-09-13"
   },
   {
-    "readableId": "hover-preview-specification",
-    "temporalCoverage": "2026-08-03/2026-08-07"
+    "readableId": "a-beta-feedback-conversation",
+    "path": "pages/a-beta-feedback-conversation.md",
+    "asOf": "2000-09-18",
+    "temporalCoverage": "2000-09-18"
   },
   {
-    "readableId": "dense-neighborhood-states",
-    "temporalCoverage": "2026-08-10/2026-08-14"
+    "readableId": "a-new-home-for-pixar",
+    "path": "pages/a-new-home-for-pixar.md",
+    "asOf": "2000-12-31",
+    "temporalCoverage": "2000/2001"
   },
   {
-    "readableId": "accessibility-audit",
-    "temporalCoverage": "2026-08-17/2026-08-21"
+    "readableId": "music-becomes-a-mac-workflow",
+    "path": "pages/music-becomes-a-mac-workflow.md",
+    "asOf": "2001-01-09",
+    "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "mobile-navigation-review",
-    "temporalCoverage": "2026-08-21"
-  },
-  { "readableId": "resource-card-patterns" },
-  { "readableId": "visual-language-notes", "temporalCoverage": "2026-08" },
-  {
-    "readableId": "hypermedia-query-budget",
-    "temporalCoverage": "2026-08/.."
+    "readableId": "the-mac-as-a-digital-hub",
+    "path": "pages/the-mac-as-a-digital-hub.md",
+    "asOf": "2001-01-09",
+    "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "pagination-stability-report",
-    "temporalCoverage": "2026-08-20/2026-08-27"
+    "readableId": "a-firm-date-for-mac-os-x",
+    "path": "pages/a-firm-date-for-mac-os-x.md",
+    "asOf": "2001-01-09",
+    "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "layout-performance-benchmark",
-    "temporalCoverage": "2026-08-25"
+    "readableId": "the-cost-of-resetting-inventory",
+    "path": "pages/the-cost-of-resetting-inventory.md",
+    "asOf": "2001-01-17",
+    "temporalCoverage": "2000-10/2000-12-30"
   },
   {
-    "readableId": "collision-avoidance-notes",
-    "temporalCoverage": "2026-08-26"
-  },
-  { "readableId": "preview-cache-strategy", "temporalCoverage": "2026-08/.." },
-  {
-    "readableId": "hypermedia-observability-plan",
-    "temporalCoverage": "2026-09/.."
-  },
-  { "readableId": "release-readiness-runbook", "temporalCoverage": "2026-09" },
-  {
-    "readableId": "pilot-onboarding-plan",
-    "temporalCoverage": "2026-05/2026-06"
-  },
-  { "readableId": "stakeholder-sync-notes", "temporalCoverage": "2026-07-30" },
-  {
-    "readableId": "launch-risk-register",
-    "temporalCoverage": "2026-08/2026-10"
+    "readableId": "from-a-home-movie-to-a-dvd",
+    "path": "pages/from-a-home-movie-to-a-dvd.md",
+    "asOf": "2001-02-19",
+    "temporalCoverage": "2001-02-19"
   },
   {
-    "readableId": "rollout-support-playbook",
-    "temporalCoverage": "2026-09/2026-11"
+    "readableId": "the-cube-turns-toward-cd-burning",
+    "path": "pages/the-cube-turns-toward-cd-burning.md",
+    "asOf": "2001-02-22",
+    "temporalCoverage": "2001-02-22"
   },
-  { "readableId": "adoption-review", "temporalCoverage": "2026-10" },
-  { "readableId": "knowledge-governance-model" },
-  { "readableId": "content-lifecycle-policy", "temporalCoverage": "2026-09/.." }
+  {
+    "readableId": "the-cube-bet",
+    "path": "revisions/the-cube-bet-2001-02-22.md",
+    "asOf": "2001-02-22",
+    "temporalCoverage": "2000-07-19/2001-02-22"
+  },
+  {
+    "readableId": "mac-os-x-reaches-customers",
+    "path": "pages/mac-os-x-reaches-customers.md",
+    "asOf": "2001-03-24",
+    "temporalCoverage": "2001-03-24"
+  },
+  {
+    "readableId": "moving-the-mac-to-os-x",
+    "path": "revisions/moving-the-mac-to-os-x-2001-03-24.md",
+    "asOf": "2001-03-24",
+    "temporalCoverage": "2000-01-05/2001-03-24"
+  },
+  {
+    "readableId": "quarterly-profit-returns",
+    "path": "pages/quarterly-profit-returns.md",
+    "asOf": "2001-04-18",
+    "temporalCoverage": "2000-12-31/2001-03-31"
+  },
+  {
+    "readableId": "the-first-stores-are-announced",
+    "path": "pages/the-first-stores-are-announced.md",
+    "asOf": "2001-05-15",
+    "temporalCoverage": "2001-05-15"
+  },
+  {
+    "readableId": "learning-to-sell-the-whole-experience",
+    "path": "pages/learning-to-sell-the-whole-experience.md",
+    "asOf": "2001-05-15",
+    "temporalCoverage": "2001-05-15"
+  },
+  {
+    "readableId": "rehearsing-one-complete-customer-task",
+    "path": "pages/rehearsing-one-complete-customer-task.md",
+    "asOf": "2001-05-17",
+    "temporalCoverage": "2001-05-17"
+  },
+  {
+    "readableId": "the-first-retail-weekend",
+    "path": "pages/the-first-retail-weekend.md",
+    "asOf": "2001-05-21",
+    "temporalCoverage": "2001-05-19/2001-05-20"
+  },
+  {
+    "readableId": "learning-to-sell-the-whole-experience",
+    "path": "revisions/learning-to-sell-the-whole-experience-2001-05-21.md",
+    "asOf": "2001-05-21",
+    "temporalCoverage": "2001-05-15/2001-05-20"
+  },
+  {
+    "readableId": "os-x-is-installed-but-os-9-still-boots",
+    "path": "pages/os-x-is-installed-but-os-9-still-boots.md",
+    "asOf": "2001-05-21",
+    "temporalCoverage": "2001-05-21"
+  },
+  {
+    "readableId": "the-cube-is-put-on-ice",
+    "path": "pages/the-cube-is-put-on-ice.md",
+    "asOf": "2001-07-03",
+    "temporalCoverage": "2001-07-03"
+  },
+  {
+    "readableId": "the-cube-bet",
+    "path": "revisions/the-cube-bet-2001-07-03.md",
+    "asOf": "2001-07-03",
+    "temporalCoverage": "2000-07-19/2001-07-03"
+  },
+  {
+    "readableId": "os-x-10-1-broadens-everyday-usefulness",
+    "path": "pages/os-x-10-1-broadens-everyday-usefulness.md",
+    "asOf": "2001-09-29",
+    "temporalCoverage": "2001-09-25/2001-09-29"
+  },
+  {
+    "readableId": "moving-the-mac-to-os-x",
+    "path": "revisions/moving-the-mac-to-os-x-2001-09-29.md",
+    "asOf": "2001-09-29",
+    "temporalCoverage": "2000-01-05/2001-09-29"
+  },
+  {
+    "readableId": "a-financial-checkpoint-before-ipod",
+    "path": "pages/a-financial-checkpoint-before-ipod.md",
+    "asOf": "2001-10-17",
+    "temporalCoverage": "2001-07/2001-09-29"
+  },
+  {
+    "readableId": "a-music-library-in-the-hand",
+    "path": "pages/a-music-library-in-the-hand.md",
+    "asOf": "2001-10-23",
+    "temporalCoverage": "2001-10-23"
+  },
+  {
+    "readableId": "the-mac-as-a-digital-hub",
+    "path": "revisions/the-mac-as-a-digital-hub-2001-10-23.md",
+    "asOf": "2001-10-23",
+    "temporalCoverage": "2001-01-09/2001-10-23"
+  },
+  {
+    "readableId": "keeping-the-playlist-at-the-center",
+    "path": "pages/keeping-the-playlist-at-the-center.md",
+    "asOf": "2001-10-24",
+    "temporalCoverage": "2001-10-24"
+  },
+  {
+    "readableId": "monsters-inc-reaches-an-audience",
+    "path": "pages/monsters-inc-reaches-an-audience.md",
+    "asOf": "2001-11-02",
+    "temporalCoverage": "2001-11-02"
+  },
+  {
+    "readableId": "talking-about-the-story-after-release",
+    "path": "pages/talking-about-the-story-after-release.md",
+    "asOf": "2001-11-05",
+    "temporalCoverage": "2001-11-05"
+  },
+  {
+    "readableId": "who-made-the-first-ipod-possible",
+    "path": "pages/who-made-the-first-ipod-possible.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": "2001"
+  },
+  {
+    "readableId": "steve-and-ron-build-a-retail-channel",
+    "path": "pages/steve-and-ron-build-a-retail-channel.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": "2000/2001"
+  },
+  {
+    "readableId": "looking-at-the-products-and-the-person",
+    "path": "pages/looking-at-the-products-and-the-person.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "two-ceo-roles",
+    "path": "revisions/two-ceo-roles-2001-12-31.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": "2000-01-05/2001-11-02"
+  },
+  {
+    "readableId": "steve-jobs-2000-to-2001",
+    "path": "pages/steve-jobs-2000-to-2001.md",
+    "asOf": "2001-12-31",
+    "temporalCoverage": "2000/2001"
+  }
 ]

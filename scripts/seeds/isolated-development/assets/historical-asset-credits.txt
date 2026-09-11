@@ -1,0 +1,21 @@
+Historical demo asset provenance
+
+Steve Jobs portrait 2010
+Matthew Yohe; existing Commons crop, copied without alteration
+https://commons.wikimedia.org/wiki/File:Steve_Jobs_Headshot_2010-CROP.jpg
+CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+June 2010, outside the story period; identity illustration only.
+
+Power Mac G4 Cube photo
+Ulf Cronenberg (Uelef), unchanged
+https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg
+Public domain dedication: https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg
+May 27, 2005; later product photograph, not a launch-event photograph.
+
+Original iPod photo
+Aaron Logan (Lightmatter) photograph; background removal by Rjcflyer, unchanged Commons file
+https://commons.wikimedia.org/wiki/File:Ipod_1G.png
+CC BY 2.5: https://creativecommons.org/licenses/by/2.5/
+Derivative uploaded October 22, 2006; original capture date not established. Product reference only.
+
+The CSV is an original transcription of selected reported financial facts, with source URLs per row. The demo checklist is original synthetic text. Research summaries are original paraphrases, not copies of articles. Media was downloaded on 2026-09-11; that is not a historical event date.

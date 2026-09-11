@@ -1,0 +1,984 @@
+[
+  {
+    "id": "ceo",
+    "provider": "cnnfn",
+    "kind": "news-summary",
+    "content": {
+      "title": "Jobs drops the interim title",
+      "sourceUrl": "https://money.cnn.com/2000/01/05/deals/apple/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000-01-05",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2000-01-05T00:00:00Z"
+    },
+    "path": "records/ceo.md"
+  },
+  {
+    "id": "osx-preview",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac OS X preview and original schedule",
+      "sourceUrl": "https://www.apple.com/newsroom/2000/01/05Apple-Unveils-Mac-OS-X/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000-01-05",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2000-01-05T00:00:00Z"
+    },
+    "path": "records/osx-preview.md"
+  },
+  {
+    "id": "cube-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Cube and iMovie 2 desktop announcement",
+      "sourceUrl": "https://www.apple.com/newsroom/2000/07/19Apple-Unveils-Entirely-New-Desktop-Line-Including-the-Revolutionary-Power-Mac-G4-Cube/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000-07-19",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2000-07-19T00:00:00Z"
+    },
+    "path": "records/cube-launch.md"
+  },
+  {
+    "id": "osx-beta",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac OS X public beta opens to users",
+      "sourceUrl": "https://www.apple.com/newsroom/2000/09/13Apple-Releases-Mac-OS-X-Public-Beta/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000-09-13",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2000-09-13T00:00:00Z"
+    },
+    "path": "records/osx-beta.md"
+  },
+  {
+    "id": "itunes-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iTunes turns the Mac into a music library",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/01/09Apple-Introduces-iTunes-Worlds-Best-and-Easiest-To-Use-Jukebox-Software/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-01-09",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-01-09T00:00:00Z"
+    },
+    "path": "records/itunes-launch.md"
+  },
+  {
+    "id": "osx-date",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac OS X receives a March shipping date",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/01/09Apples-Mac-OS-X-to-Ship-on-March-24/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-01-09",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-01-09T00:00:00Z"
+    },
+    "path": "records/osx-date.md"
+  },
+  {
+    "id": "q1-loss",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Fiscal Q1 2001 loss and inventory reset",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/01/17Apple-Reports-First-Quarter-Results/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Fred Anderson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "fred-anderson"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000-10/2000-12-30",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-01-17T00:00:00Z"
+    },
+    "path": "records/q1-loss.md"
+  },
+  {
+    "id": "superdrive",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "SuperDrive systems begin shipping",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/02/19Apple-Ships-Industrys-First-SuperDrive/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-02-19",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-02-19T00:00:00Z"
+    },
+    "path": "records/superdrive.md"
+  },
+  {
+    "id": "cube-cdrw",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Cube gains CD-RW and iTunes",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/02/22Apple-Introduces-New-Power-Mac-G4-Cube-With-CD-RW-iTunes/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-02-22",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-02-22T00:00:00Z"
+    },
+    "path": "records/cube-cdrw.md"
+  },
+  {
+    "id": "q2-profit",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Fiscal Q2 2001 return to profit",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/04/18Apple-Reports-Second-Quarter-Profit-of-43-Million/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Fred Anderson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "fred-anderson"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000-12-31/2001-03-31",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-04-18T00:00:00Z"
+    },
+    "path": "records/q2-profit.md"
+  },
+  {
+    "id": "stores-plan",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "First physical stores and 25-store plan",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/05/15Apple-to-Open-25-Retail-Stores-in-2001/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-05-15",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-05-15T00:00:00Z"
+    },
+    "path": "records/stores-plan.md"
+  },
+  {
+    "id": "stores-weekend",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "First stores opening-weekend results",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/05/21Apple-Retail-Stores-Welcome-Over-7700-People-in-First-Two-Days/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-05-19/2001-05-20",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-05-21T00:00:00Z"
+    },
+    "path": "records/stores-weekend.md"
+  },
+  {
+    "id": "osx-preinstall",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac OS X preinstalled beside Mac OS 9",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/05/21Apple-to-Pre-Install-Mac-OS-X-Ahead-of-Schedule/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-05-21",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-05-21T00:00:00Z"
+    },
+    "path": "records/osx-preinstall.md"
+  },
+  {
+    "id": "cube-ice",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Cube production suspended indefinitely",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/07/03Apple-Puts-Power-Mac-G4-Cube-on-Ice/",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "phil-schiller"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-07-03",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-07-03T00:00:00Z"
+    },
+    "path": "records/cube-ice.md"
+  },
+  {
+    "id": "osx-101",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac OS X 10.1 availability and improvements",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/09/25First-Major-Upgrade-to-Mac-OS-X-Hits-Stores-This-Weekend/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-09-25",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-09-25T00:00:00Z"
+    },
+    "path": "records/osx-101.md"
+  },
+  {
+    "id": "osx-apps",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac OS X native application count",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/09/25More-than-1-400-Third-Party-Applications-Now-Available-for-Mac-OS-X-v10-1/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-09-25",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-09-25T00:00:00Z"
+    },
+    "path": "records/osx-apps.md"
+  },
+  {
+    "id": "q4-profit",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Fiscal Q4 closes before iPod announcement",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/10/17Apple-Reports-Fourth-Quarter-Profit-of-66-Million/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Fred Anderson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "fred-anderson"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-07/2001-09-29",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-10-17T00:00:00Z"
+    },
+    "path": "records/q4-profit.md"
+  },
+  {
+    "id": "ipod-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Original iPod announcement and planned availability",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/10/23Apple-Presents-iPod/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-10-23",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-10-23T00:00:00Z"
+    },
+    "path": "records/ipod-launch.md"
+  },
+  {
+    "id": "pixar-campus",
+    "provider": "pixar",
+    "kind": "historical-summary",
+    "content": {
+      "title": "Pixar moves and releases its fourth feature",
+      "sourceUrl": "https://www.pixar.com/our-story",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ed-catmull"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000/2001",
+        "datePrecision": "unknown"
+      }
+    },
+    "path": "records/pixar-campus.md"
+  },
+  {
+    "id": "monsters-release",
+    "provider": "disney",
+    "kind": "film-reference",
+    "content": {
+      "title": "Monsters Inc US release and creative credits",
+      "sourceUrl": "https://movies.disney.com/monsters-inc",
+      "participants": [
+        {
+          "name": "Pete Docter",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "pete-docter"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-11-02",
+        "datePrecision": "unknown"
+      }
+    },
+    "path": "records/monsters-release.md"
+  },
+  {
+    "id": "monsters-craft",
+    "provider": "pixar",
+    "kind": "production-summary",
+    "content": {
+      "title": "Monsters Inc character and world development",
+      "sourceUrl": "https://www.pixar.com/monsters-inc",
+      "participants": [
+        {
+          "name": "Pete Docter",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "pete-docter"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000/2001",
+        "datePrecision": "unknown"
+      }
+    },
+    "path": "records/monsters-craft.md"
+  },
+  {
+    "id": "rubinstein-history",
+    "provider": "computer-history-museum",
+    "kind": "oral-history-summary",
+    "content": {
+      "title": "Rubinstein recalls the first iPod team",
+      "sourceUrl": "https://archive.computerhistory.org/resources/access/text/2020/02/102717908-05-01-acc.pdf",
+      "participants": [
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "jon-rubinstein"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Jonathan Ive",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "jonathan-ive"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001",
+        "datePrecision": "unknown"
+      }
+    },
+    "path": "records/rubinstein-history.md"
+  },
+  {
+    "id": "fadell-history",
+    "provider": "computer-history-museum",
+    "kind": "interview-summary",
+    "content": {
+      "title": "Fadell on joining Apple in 2001",
+      "sourceUrl": "https://computerhistory.org/blog/computing-for-the-whole-world-a-conversation-with-ipod-iphone-inventor-tony-fadell/",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001",
+        "datePrecision": "unknown",
+        "interviewDate": "2017-05-10"
+      }
+    },
+    "path": "records/fadell-history.md"
+  },
+  {
+    "id": "tevanian-history",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Tevanian software leadership retrospective",
+      "sourceUrl": "https://www.apple.com/newsroom/2003/07/08Avie-Tevanian-Named-Chief-Software-Technology-Officer-of-Apple/",
+      "participants": [
+        {
+          "name": "Avie Tevanian",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "avie-tevanian"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000/2001",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2003-07-08T00:00:00Z"
+    },
+    "path": "records/tevanian-history.md"
+  },
+  {
+    "id": "johnson-history",
+    "provider": "publisher",
+    "kind": "book-description-summary",
+    "content": {
+      "title": "Ron Johnson recalls creating Apple retail",
+      "sourceUrl": "https://books.apple.com/gb/book/shop-different/id6753891179",
+      "participants": [
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ron-johnson"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2000/2001",
+        "datePrecision": "unknown"
+      }
+    },
+    "path": "records/johnson-history.md"
+  },
+  {
+    "id": "beta-triage",
+    "provider": "synthetic-workspace",
+    "kind": "meeting-notes",
+    "content": {
+      "title": "[Synthetic] Beta feedback triage",
+      "sourceCreatedAt": "2000-09-18T12:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Avie Tevanian",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "avie-tevanian"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        }
+      ],
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2000-09-18",
+        "timestampNote": "Invented scenario date and time."
+      }
+    },
+    "path": "records/beta-triage.md"
+  },
+  {
+    "id": "store-rehearsal",
+    "provider": "synthetic-workspace",
+    "kind": "conversation",
+    "content": {
+      "title": "[Synthetic] Store demo rehearsal",
+      "sourceCreatedAt": "2001-05-17T12:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ron-johnson"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        }
+      ],
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2001-05-17",
+        "timestampNote": "Invented scenario date and time."
+      }
+    },
+    "path": "records/store-rehearsal.md"
+  },
+  {
+    "id": "ipod-handoff",
+    "provider": "synthetic-workspace",
+    "kind": "message",
+    "content": {
+      "title": "[Synthetic] Music demo handoff",
+      "sourceCreatedAt": "2001-10-24T12:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "jon-rubinstein"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "phil-schiller"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        }
+      ],
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2001-10-24",
+        "timestampNote": "Invented scenario date and time."
+      }
+    },
+    "path": "records/ipod-handoff.md"
+  },
+  {
+    "id": "pixar-checkin",
+    "provider": "synthetic-workspace",
+    "kind": "meeting-notes",
+    "content": {
+      "title": "[Synthetic] Pixar story check-in",
+      "sourceCreatedAt": "2001-11-05T12:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ed-catmull"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        },
+        {
+          "name": "Pete Docter",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "pete-docter"
+            }
+          ],
+          "roles": ["fictional-participant"]
+        }
+      ],
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2001-11-05",
+        "timestampNote": "Invented scenario date and time."
+      }
+    },
+    "path": "records/pixar-checkin.md"
+  }
+]

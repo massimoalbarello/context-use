@@ -1,0 +1,53 @@
+[
+  {
+    "readableId": "steve-jobs-portrait-2010",
+    "name": "Steve Jobs portrait 2010",
+    "path": "assets/steve-jobs-2010.jpg",
+    "expectedMediaType": "image/jpeg",
+    "entityReadableId": "steve-jobs",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Steve_Jobs_Headshot_2010-CROP.jpg",
+    "credit": "Matthew Yohe; existing Commons crop, copied without alteration",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "dateNote": "June 2010, outside the story period; identity illustration only."
+  },
+  {
+    "readableId": "power-mac-g4-cube-photo",
+    "name": "Power Mac G4 Cube photo",
+    "path": "assets/cube.jpg",
+    "expectedMediaType": "image/jpeg",
+    "entityReadableId": "power-mac-g4-cube",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg",
+    "credit": "Ulf Cronenberg (Uelef), unchanged",
+    "license": "Public domain dedication",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg",
+    "dateNote": "May 27, 2005; later product photograph, not a launch-event photograph."
+  },
+  {
+    "readableId": "original-ipod-photo",
+    "name": "Original iPod photo",
+    "path": "assets/ipod.png",
+    "expectedMediaType": "image/png",
+    "entityReadableId": "ipod",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ipod_1G.png",
+    "credit": "Aaron Logan (Lightmatter); background removal by Rjcflyer, unchanged Commons file",
+    "license": "CC BY 2.5",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.5/",
+    "dateNote": "Derivative uploaded October 22, 2006; original capture date not established. Product reference only."
+  },
+  {
+    "readableId": "apple-quarterly-results",
+    "name": "Apple quarterly results",
+    "path": "assets/apple-quarterly-results.csv"
+  },
+  {
+    "readableId": "synthetic-ipod-demo-checklist",
+    "name": "Synthetic iPod demo checklist",
+    "path": "assets/synthetic-ipod-demo-checklist.txt"
+  },
+  {
+    "readableId": "historical-asset-credits",
+    "name": "Historical asset credits",
+    "path": "assets/historical-asset-credits.txt"
+  }
+]
