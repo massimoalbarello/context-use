@@ -3,6 +3,7 @@ import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type { EntitySummary } from '../../queries/entities';
+import type { KnowledgePage } from '../../queries/pages';
 import { EntityAvatar, EntityLink } from '../entities/entity-link';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
@@ -19,6 +20,7 @@ export type KnowledgePageMarkdownSelection = {
 };
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
+type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;
 
 function internalLink(href: string): InternalLink | null {
   const match =
@@ -179,11 +181,13 @@ function MarkdownLink({
   href,
   children,
   mentions,
+  recordReferences,
   onSelectResource,
 }: {
   href?: string;
   children: ReactNode;
   mentions: EntityMention[];
+  recordReferences: RecordReference[];
   onSelectResource?: SelectMarkdownResource;
 }) {
   const target = href ? internalLink(href) : null;
@@ -195,6 +199,17 @@ function MarkdownLink({
     );
   }
   if (target?.kind === 'record') {
+    if (
+      recordReferences.some(
+        (record) => record.readableId === target.readableId && !record.available,
+      )
+    ) {
+      return (
+        <span className="text-muted-foreground">
+          {children} <span className="text-sm">(record unavailable)</span>
+        </span>
+      );
+    }
     return (
       <RecordLink
         record={{ readableId: target.readableId, title: textContent(children) }}
@@ -269,10 +284,12 @@ function MarkdownImage({
 export function KnowledgePageMarkdown({
   markdown,
   mentions = [],
+  recordReferences = [],
   onSelectResource,
 }: {
   markdown: string;
   mentions?: EntityMention[];
+  recordReferences?: RecordReference[];
   onSelectResource?: (selection: KnowledgePageMarkdownSelection) => void;
 }) {
   return (
@@ -281,7 +298,12 @@ export function KnowledgePageMarkdown({
         urlTransform={(url) => (url.startsWith('context-use://') ? url : defaultUrlTransform(url))}
         components={{
           a: ({ href, children }) => (
-            <MarkdownLink href={href} mentions={mentions} onSelectResource={onSelectResource}>
+            <MarkdownLink
+              href={href}
+              mentions={mentions}
+              recordReferences={recordReferences}
+              onSelectResource={onSelectResource}
+            >
               {children}
             </MarkdownLink>
           ),

@@ -66,6 +66,7 @@ export interface KnowledgePage extends KnowledgePageSummary {
 export interface KnowledgePagePreview extends KnowledgePageSummary {
   markdown: string;
   mentions: Entity[];
+  recordReferences: KnowledgePageRecordReference[];
 }
 
 export interface StoredKnowledgePage extends KnowledgePageSummary {

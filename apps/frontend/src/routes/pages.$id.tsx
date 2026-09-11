@@ -236,6 +236,12 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
               <ResourceDetailHeading actions={editActions} context={intervalField}>
                 Knowledge page
               </ResourceDetailHeading>
+              {page.recordReferences.some((record) => !record.available) && (
+                <p className="text-muted-foreground text-sm" role="status">
+                  The saved page has unavailable record references. You can keep or remove them when
+                  saving your changes.
+                </p>
+              )}
             </DetailHeader>
           )}
           onSubmit={({ markdown, temporalCoverage }) =>
@@ -313,7 +319,11 @@ function KnowledgePageRouteContent({ id }: { id: string }) {
               <TabsTrigger value="revisions">Revisions</TabsTrigger>
             </TabsList>
             <TabsContent value="preview">
-              <KnowledgePageMarkdown markdown={page.markdown} mentions={page.mentions} />
+              <KnowledgePageMarkdown
+                markdown={page.markdown}
+                mentions={page.mentions}
+                recordReferences={page.recordReferences}
+              />
             </TabsContent>
             <TabsContent value="links">
               <PageLinksView page={page} />

@@ -88,3 +88,42 @@ test('the @ picker identifies records, inserts a labelled reference, and preview
   await user.click(link);
   expect(await screen.findByRole('heading', { name: 'Source record detail' })).toBeTruthy();
 });
+
+test('unavailable references retain their labels without navigation and become links after restoration', async () => {
+  function Preview() {
+    const [available, setAvailable] = useState(false);
+    return (
+      <>
+        <KnowledgePageMarkdown
+          markdown={
+            '# Evidence\n\nSee [Launch decision](context-use://record/source-record) and [Current research](context-use://record/current-record).'
+          }
+          recordReferences={[
+            { readableId: 'source-record', available },
+            { readableId: 'current-record', available: true },
+          ]}
+        />
+        <button type="button" onClick={() => setAvailable(true)}>
+          Restore source
+        </button>
+      </>
+    );
+  }
+  const root = createRootRoute({ component: Preview });
+  const router = createRouter({
+    routeTree: root,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+  expect(screen.getByText('Launch decision', { exact: false })).toBeTruthy();
+  expect(screen.getByText('(record unavailable)')).toBeTruthy();
+  expect(screen.queryByRole('link', { name: 'Launch decision' })).toBeNull();
+  expect(screen.getByRole('link', { name: 'Current research' })).toBeTruthy();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Restore source' }));
+  expect(screen.getByRole('link', { name: 'Launch decision' }).getAttribute('href')).toBe(
+    '/records/source-record?view=preview',
+  );
+  expect(screen.queryByText('(record unavailable)')).toBeNull();
+});

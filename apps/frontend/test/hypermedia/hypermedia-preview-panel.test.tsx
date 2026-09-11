@@ -23,8 +23,11 @@ async function renderPreview(selection: HypermediaSelection): Promise<string> {
   if (selection.kind === 'page') {
     queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
       markdown:
-        '# Project brief\n\n[Maya Chen](context-use://entity/maya-chen) reviews the [launch plan](context-use://page/launch-plan) and [metrics](context-use://asset/rollout-metrics).',
+        '# Project brief\n\n[Maya Chen](context-use://entity/maya-chen) reviews the [launch plan](context-use://page/launch-plan), [metrics](context-use://asset/rollout-metrics), and [research](context-use://record/research).',
       mentions: [{ readableId: 'maya-chen', name: 'Maya Chen', image: null }],
+      recordReferences: [
+        { readableId: 'research', title: null, provider: 'notion', kind: 'note', available: false },
+      ],
     } as KnowledgePagePreview);
   }
   if (selection.kind === 'asset') {
@@ -99,6 +102,7 @@ async function renderInteractivePreview(onEscape: () => void) {
       updatedAt: timestamp,
       markdown: `# ${title}`,
       mentions: [],
+      recordReferences: [],
     } as KnowledgePagePreview);
   }
   function InteractivePreview() {
@@ -156,6 +160,8 @@ test('page preview content keeps resource navigation inside the Hypermedia overl
   expect(pageHtml).not.toContain('href="/entities/maya-chen"');
   expect(pageHtml).not.toContain('href="/pages/launch-plan"');
   expect(pageHtml).not.toContain('href="/api/assets/rollout-metrics/content"');
+  expect(pageHtml).toContain('(record unavailable)');
+  expect(pageHtml).not.toContain('href="/records/research');
 });
 
 test('asset previews show each knowledge page that embeds or attaches the asset', async () => {

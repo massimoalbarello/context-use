@@ -79,6 +79,7 @@ export interface KnowledgePagesRepositoryContract {
   preview(input: { ownerId: string; readableId: string }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
+    recordReferences: KnowledgePageRecordReference[];
   } | null>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
   archive(input: {
@@ -750,21 +751,20 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows[0] ? storedPageFrom(rows[0]) : null;
   }
 
-  async preview({
-    ownerId,
-    readableId,
-  }: {
-    ownerId: string;
-    readableId: string;
-  }): Promise<{ page: StoredKnowledgePage; mentions: Entity[] } | null> {
+  async preview({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<{
+    page: StoredKnowledgePage;
+    mentions: Entity[];
+    recordReferences: KnowledgePageRecordReference[];
+  } | null> {
     const page = await this.find({ ownerId, readableId });
     if (!page) {
       return null;
     }
-    return {
-      page,
-      mentions: await this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
-    };
+    const [mentions, recordReferences] = await Promise.all([
+      this.listMentions({ ownerId, revisionId: page.currentRevisionId }),
+      this.recordReferenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
+    ]);
+    return { page, mentions, recordReferences };
   }
 
   archive({

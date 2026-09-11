@@ -161,8 +161,13 @@ export class KnowledgePagesService {
     if (!preview) {
       return null;
     }
-    const { page, mentions } = preview;
-    return { ...this.summary(page), markdown: await this.readMarkdown(page), mentions };
+    const { page, mentions, recordReferences } = preview;
+    return {
+      ...this.summary(page),
+      markdown: await this.readMarkdown(page),
+      mentions,
+      recordReferences,
+    };
   }
 
   async update(input: {

@@ -491,6 +491,11 @@ test('pages reference owner records across revisions, source deletion and archiv
       ).toMatchObject({
         recordReferences: [{ readableId: own.readableId, available: false }],
       });
+      expect(
+        await (await request({ method: 'GET', path: '/pages/source-account/preview' })).json(),
+      ).toMatchObject({
+        recordReferences: [{ readableId: own.readableId, available: false }],
+      });
       const newlyDeleted = await request({
         method: 'POST',
         path: '/pages',
