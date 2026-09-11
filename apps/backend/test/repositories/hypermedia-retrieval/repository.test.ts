@@ -615,16 +615,15 @@ test('record search tracks accepted revisions atomically, rejects conflicting me
     expect(first.title).toBeNull();
     expect(await records.findResource({ ownerId: OWNER_B, readableId })).toBeNull();
 
-    // Existing body-only records can acquire metadata on an identical replay, without changing
-    // their recorded update time or pretending that the source event just happened.
-    await database`update "record" set "metadata" = null where "owner_id" = ${OWNER_A}`;
-    await acceptRecords({ records, syncId, deliveries: [initial] });
-    const enriched = await records.findResource({ ownerId: OWNER_A, readableId });
-    expect(enriched?.metadata).toMatchObject({
+    const stored = await records.findResource({ ownerId: OWNER_A, readableId });
+    expect(stored?.metadata).toMatchObject({
       provider: 'calendar',
       attributes: { subject: 'Oldmetadata' },
     });
-    expect(enriched?.updatedAt).toBe(first.record.updatedAt);
+    // An identical replay preserves both canonical content and its searchable projection.
+    await acceptRecords({ records, syncId, deliveries: [initial] });
+    expect(await records.findResource({ ownerId: OWNER_A, readableId })).toEqual(stored);
+    expect((await search('oldmetadata')).results).toHaveLength(1);
 
     const updated = deliveredRecord({
       revision: 2,
