@@ -35,6 +35,13 @@ export const BaseRecordDeliveryEnvelopeSchema = z
                 ),
               content: z
                 .object({
+                  title: z
+                    .string()
+                    .regex(new RegExp('\\S'))
+                    .min(1)
+                    .describe(
+                      'Descriptive plain-text title chosen by the sync for display and search.',
+                    ),
                   body: z
                     .string()
                     .regex(new RegExp('\\S'))
@@ -99,6 +106,13 @@ export const BaseRecordDeliveryEnvelopeSchema = z
                 ),
               content: z
                 .object({
+                  title: z
+                    .string()
+                    .regex(new RegExp('\\S'))
+                    .min(1)
+                    .describe(
+                      'Descriptive plain-text title chosen by the sync for display and search.',
+                    ),
                   body: z
                     .string()
                     .regex(new RegExp('\\S'))

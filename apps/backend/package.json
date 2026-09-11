@@ -6,6 +6,7 @@
     "#*": "./src/*"
   },
   "exports": {
+    "./record": "./src/models/records/model.ts",
     "./asset": "./src/models/assets/model.ts",
     "./entity": "./src/models/entities/model.ts",
     "./mcp-client-authorization": "./src/models/mcp-client-authorizations/model.ts",

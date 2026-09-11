@@ -7,8 +7,12 @@ import type {
   RecordSummary,
 } from '#models/records/model.ts';
 import { type CatalogRecord, RecordCatalog } from './catalog.ts';
-import type { AcceptRecordsInput, RecordsRepositoryContract } from './contract.ts';
-import { type RecordFileReference, RecordFiles } from './files.ts';
+import type {
+  AcceptRecordsInput,
+  ListRecordsInput,
+  RecordsRepositoryContract,
+} from './contract.ts';
+import { RecordFiles, type StagedRecordFile } from './files.ts';
 
 function summary({
   head,
@@ -19,6 +23,10 @@ function summary({
 }): RecordSummary {
   return {
     readableId: head.readableId,
+    title: record.content.title,
+    provider: record.provider,
+    sourceCreatedAt: record.content.sourceCreatedAt ?? null,
+    sourceUpdatedAt: record.content.sourceUpdatedAt ?? null,
     kind: record.kind,
     recordId: record.id,
     sync: { readableId: head.syncReadableId, name: head.syncName },
@@ -43,7 +51,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
     const attemptedKeys = new Set<string>();
     let result: RecordAcceptanceResult;
     try {
-      const staged: RecordFileReference[] = [];
+      const staged: StagedRecordFile[] = [];
       for (const accepted of input.records) {
         staged.push(await this.files.stage({ input, accepted, attemptedKeys }));
       }
@@ -65,21 +73,18 @@ export class RecordsRepository implements RecordsRepositoryContract {
     return result;
   }
 
-  async listResources({
-    ownerId,
-    limit,
-    offset,
-  }: {
-    ownerId: string;
-    limit: number;
-    offset: number;
-  }): Promise<RecordPage> {
-    const heads = await this.catalog.list({ ownerId, limit: limit + 1, offset });
+  async listResources(input: ListRecordsInput): Promise<RecordPage> {
+    const { ownerId, limit, offset } = input;
+    const heads = await this.catalog.list({ ...input, limit: limit + 1 });
     const items: RecordSummary[] = [];
     for (const head of heads.slice(0, limit)) {
       items.push(summary({ head, record: await this.readActive(head) }));
     }
-    return { items, nextOffset: heads.length > limit ? offset + items.length : null };
+    return {
+      items,
+      nextOffset: heads.length > limit ? offset + items.length : null,
+      filterOptions: await this.catalog.filterOptions(ownerId),
+    };
   }
 
   async findResource(input: {

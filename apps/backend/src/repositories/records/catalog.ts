@@ -2,8 +2,8 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type { RecordAcceptanceResult } from '#models/records/model.ts';
 import type { Queries } from '#queries.gen.ts';
-import type { AcceptRecordsInput } from './contract.ts';
-import type { RecordFileReference } from './files.ts';
+import type { AcceptRecordsInput, ListRecordsInput } from './contract.ts';
+import type { RecordFileReference, StagedRecordFile } from './files.ts';
 
 class RecordAcceptanceConflict extends Error {}
 
@@ -48,7 +48,7 @@ async function publishRecord({
 }: {
   db: TypedSQL<Queries>;
   input: AcceptRecordsInput;
-  file: RecordFileReference;
+  file: StagedRecordFile;
   publishedKeys: Set<string>;
 }): Promise<void> {
   const rows = await db.FindCurrentRecordRevision`
@@ -85,6 +85,22 @@ async function publishRecord({
       "blob_hash" = excluded."blob_hash", "size_bytes" = excluded."size_bytes",
       "updated_at" = excluded."updated_at"
   `;
+  if (file.browse) {
+    const { provider, kind, createdAt, updatedAt } = file.browse;
+    await db.IndexRecordMetadata`
+      insert into "record_browse_index"
+        ("owner_id", "sync_id", "identity_key", "provider", "kind", "source_created_at", "source_updated_at")
+      values (${input.ownerId}, ${input.syncId}, ${file.identityKey}, ${provider}, ${kind}, ${createdAt}, ${updatedAt})
+      on conflict ("owner_id", "sync_id", "identity_key") do update set
+        "provider" = excluded."provider", "kind" = excluded."kind",
+        "source_created_at" = excluded."source_created_at", "source_updated_at" = excluded."source_updated_at"
+    `;
+  } else {
+    await db.RemoveRecordMetadata`
+      delete from "record_browse_index"
+      where "owner_id" = ${input.ownerId} and "sync_id" = ${input.syncId} and "identity_key" = ${file.identityKey}
+    `;
+  }
   if (current) {
     publishedKeys.delete(current.storageKey);
   }
@@ -108,7 +124,7 @@ export class RecordCatalog {
     files,
   }: {
     input: AcceptRecordsInput;
-    files: RecordFileReference[];
+    files: StagedRecordFile[];
   }): Promise<{
     result: RecordAcceptanceResult;
     publishedKeys: Set<string>;
@@ -136,7 +152,23 @@ export class RecordCatalog {
     }
   }
 
-  async list({ ownerId, limit, offset }: { ownerId: string; limit: number; offset: number }) {
+  async list({
+    ownerId,
+    limit,
+    offset,
+    provider,
+    kind,
+    createdFrom,
+    createdTo,
+    updatedFrom,
+    updatedTo,
+    sortBy = 'sourceUpdatedAt',
+    sortDirection = 'desc',
+  }: ListRecordsInput) {
+    const createdMin = createdFrom === undefined ? null : Date.parse(createdFrom);
+    const createdMax = createdTo === undefined ? null : Date.parse(createdTo);
+    const updatedMin = updatedFrom === undefined ? null : Date.parse(updatedFrom);
+    const updatedMax = updatedTo === undefined ? null : Date.parse(updatedTo);
     const rows = await this.serialize(
       () => this.sql.ListRecordResources`
       /* @notNull ownerId syncId identityKey readableId revision operation revisionHash storageKey blobHash sizeBytes syncReadableId syncName createdAt updatedAt */
@@ -148,12 +180,44 @@ export class RecordCatalog {
         head."created_at" as "createdAt", head."updated_at" as "updatedAt"
       from "record_delivery_head" head
       join "record_sync" sync on sync."id" = head."sync_id" and sync."owner_id" = head."owner_id"
+      join "record_browse_index" browse on browse."owner_id" = head."owner_id"
+        and browse."sync_id" = head."sync_id" and browse."identity_key" = head."identity_key"
       where head."owner_id" = ${ownerId} and head."operation" <> 'deleted'
-      order by head."updated_at" desc, head."readable_id"
+        and (${provider ?? null} is null or browse."provider" = ${provider ?? null})
+        and (${kind ?? null} is null or browse."kind" = ${kind ?? null})
+        and (${createdMin} is null or browse."source_created_at" >= ${createdMin})
+        and (${createdMax} is null or browse."source_created_at" < ${createdMax})
+        and (${updatedMin} is null or browse."source_updated_at" >= ${updatedMin})
+        and (${updatedMax} is null or browse."source_updated_at" < ${updatedMax})
+      order by
+        case ${sortBy} when 'sourceCreatedAt' then browse."source_created_at" is null
+          when 'sourceUpdatedAt' then browse."source_updated_at" is null else 0 end,
+        case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceCreatedAt' then browse."source_created_at" end asc,
+        case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceUpdatedAt' then browse."source_updated_at" end asc,
+        case when ${sortDirection} = 'asc' and ${sortBy} = 'provider' then browse."provider" end asc,
+        case when ${sortDirection} = 'asc' and ${sortBy} = 'kind' then browse."kind" end asc,
+        case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceCreatedAt' then browse."source_created_at" end desc,
+        case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceUpdatedAt' then browse."source_updated_at" end desc,
+        case when ${sortDirection} = 'desc' and ${sortBy} = 'provider' then browse."provider" end desc,
+        case when ${sortDirection} = 'desc' and ${sortBy} = 'kind' then browse."kind" end desc,
+      head."readable_id"
       limit ${limit} offset ${offset}
     `,
     );
     return rows.map(catalogRecord);
+  }
+
+  async filterOptions(ownerId: string) {
+    const rows = await this.serialize(
+      () => this.sql.RecordFilterOptions`
+      select distinct "provider", "kind" from "record_browse_index" where "owner_id" = ${ownerId}
+      order by "provider", "kind"
+    `,
+    );
+    return {
+      providers: [...new Set(rows.map((row) => row.provider))],
+      kinds: [...new Set(rows.map((row) => row.kind))].sort(),
+    };
   }
 
   async find({ ownerId, readableId }: { ownerId: string; readableId: string }) {

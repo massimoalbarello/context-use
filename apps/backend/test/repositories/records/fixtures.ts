@@ -27,6 +27,7 @@ export function digest(value: string): string {
 
 function content(body: string): RecordContent {
   return {
+    title: 'example/repository #1: Improve records',
     body,
     sourceUrl: 'https://example.invalid/records/record-1',
     sourceCreatedAt: '2025-01-02T03:04:05-04:00',

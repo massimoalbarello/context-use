@@ -59,3 +59,20 @@ create table "record_delivery_head" (
 create index "record_delivery_head_owner_updated_idx"
   on "record_delivery_head" ("owner_id", "updated_at" desc, "readable_id")
   where "operation" <> 'deleted';
+
+-- Derived filtering/ordering projection. Source content remains in verified files.
+create table "record_browse_index" (
+  "owner_id" text not null,
+  "sync_id" text not null,
+  "identity_key" text not null,
+  "provider" text not null,
+  "kind" text not null,
+  "source_created_at" integer,
+  "source_updated_at" integer,
+  primary key ("owner_id", "sync_id", "identity_key"),
+  foreign key ("owner_id", "sync_id", "identity_key")
+    references "record_delivery_head" ("owner_id", "sync_id", "identity_key") on delete cascade
+);
+create index "record_browse_created_idx" on "record_browse_index" ("owner_id", "source_created_at");
+create index "record_browse_updated_idx" on "record_browse_index" ("owner_id", "source_updated_at");
+create index "record_browse_provider_kind_idx" on "record_browse_index" ("owner_id", "provider", "kind");

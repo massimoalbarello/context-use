@@ -37,6 +37,10 @@ export interface RecordDeliveryEnvelope {
         contentHash: string;
         content: {
           /**
+           * Descriptive plain-text title chosen by the sync for display and search.
+           */
+          title: string;
+          /**
            * Markdown body of the record.
            */
           body: string;
@@ -87,6 +91,10 @@ export interface RecordDeliveryEnvelope {
          */
         contentHash: string;
         content: {
+          /**
+           * Descriptive plain-text title chosen by the sync for display and search.
+           */
+          title: string;
           /**
            * Markdown body of the record.
            */

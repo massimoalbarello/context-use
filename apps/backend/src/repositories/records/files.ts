@@ -27,6 +27,15 @@ export type RecordFileReference = {
   sizeBytes: number;
 };
 
+export type StagedRecordFile = RecordFileReference & {
+  browse: {
+    provider: string;
+    kind: string;
+    createdAt: number | null;
+    updatedAt: number | null;
+  } | null;
+};
+
 function hash(value: string | Uint8Array): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
 }
@@ -52,7 +61,7 @@ export class RecordFiles {
     input: AcceptRecordsInput;
     accepted: AcceptedRecord;
     attemptedKeys: Set<string>;
-  }): Promise<RecordFileReference> {
+  }): Promise<StagedRecordFile> {
     const snapshot = CanonicalRecordSchema.parse({
       version: 1,
       ownerId: input.ownerId,
@@ -80,7 +89,25 @@ export class RecordFiles {
     attemptedKeys.add(storageKey);
     await this.storage.write(storageKey, new Blob([json], { type: 'application/json' }));
     await this.read(reference);
-    return reference;
+    const record = snapshot.record;
+    return {
+      ...reference,
+      browse:
+        record.operation === 'deleted'
+          ? null
+          : {
+              provider: record.provider,
+              kind: record.kind,
+              createdAt:
+                record.content.sourceCreatedAt === undefined
+                  ? null
+                  : Date.parse(record.content.sourceCreatedAt),
+              updatedAt:
+                record.content.sourceUpdatedAt === undefined
+                  ? null
+                  : Date.parse(record.content.sourceUpdatedAt),
+            },
+    };
   }
 
   async read(reference: RecordFileReference): Promise<DeliveredRecord> {

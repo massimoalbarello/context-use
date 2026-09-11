@@ -616,6 +616,14 @@ export interface IFindCurrentRecordRevisionResult {
 export interface IPublishRecordRevisionResult {
 }
 
+/** Result of query `IndexRecordMetadata`. */
+export interface IIndexRecordMetadataResult {
+}
+
+/** Result of query `RemoveRecordMetadata`. */
+export interface IRemoveRecordMetadataResult {
+}
+
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
     ownerId: string;
@@ -632,6 +640,12 @@ export interface IListRecordResourcesResult {
     syncName: string;
     createdAt: string;
     updatedAt: string;
+}
+
+/** Result of query `RecordFilterOptions`. */
+export interface IRecordFilterOptionsResult {
+    provider: string;
+    kind: string;
 }
 
 /** Result of query `FindRecordResource`. */
@@ -741,7 +755,10 @@ export interface Queries {
     FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
     FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
     PublishRecordRevision: IPublishRecordRevisionResult;
+    IndexRecordMetadata: IIndexRecordMetadataResult;
+    RemoveRecordMetadata: IRemoveRecordMetadataResult;
     ListRecordResources: IListRecordResourcesResult;
+    RecordFilterOptions: IRecordFilterOptionsResult;
     FindRecordResource: IFindRecordResourceResult;
     FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;
     CreateRecordSync: ICreateRecordSyncResult;

@@ -239,6 +239,7 @@ test('staged files stay invisible and revocation before publication rejects the 
         expect(await records.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 })).toEqual({
           items: [],
           nextOffset: null,
+          filterOptions: { providers: [], kinds: [] },
         });
         await database`update "record_sync" set "revoked_at" = ${RECEIVED_AT.toISOString()} where "id" = ${SYNC_ID}`;
       } finally {
@@ -279,6 +280,7 @@ test('separate database connections serialize revisions and retain tombstones ag
         expect(await first.listResources({ ownerId: OWNER_ID, limit: 10, offset: 0 })).toEqual({
           items: [],
           nextOffset: null,
+          filterOptions: { providers: [], kinds: [] },
         });
         const deletedHead = await head(database);
         expect(await storage.file(deletedHead.storageKey).text().then(JSON.parse)).toMatchObject({

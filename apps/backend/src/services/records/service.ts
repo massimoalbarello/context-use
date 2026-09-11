@@ -4,7 +4,10 @@ import type {
   RecordDeliveryEnvelope,
 } from '#models/records/delivery-contract.generated.ts';
 import type { RecordAcceptanceResult, RecordPage, RecordResource } from '#models/records/model.ts';
-import type { RecordsRepositoryContract } from '#repositories/records/contract.ts';
+import type {
+  ListRecordsInput,
+  RecordsRepositoryContract,
+} from '#repositories/records/contract.ts';
 
 const RECORD_READABLE_ID_SUFFIX_LENGTH = 24;
 
@@ -58,7 +61,7 @@ export class RecordsService {
     });
   }
 
-  listResources(input: { ownerId: string; limit: number; offset: number }): Promise<RecordPage> {
+  listResources(input: ListRecordsInput): Promise<RecordPage> {
     return this.records.listResources(input);
   }
 
