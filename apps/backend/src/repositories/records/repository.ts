@@ -6,24 +6,20 @@ import type {
   RecordResource,
   RecordSummary,
 } from '#models/records/model.ts';
-import { type CatalogRecord, RecordCatalog } from './catalog.ts';
+import { RecordCatalog } from './catalog.ts';
 import type { AcceptRecordsInput, RecordsRepositoryContract } from './contract.ts';
 import { type RecordFileReference, RecordFiles } from './files.ts';
 
-function summary({
-  head,
-  record,
-}: {
-  head: CatalogRecord;
-  record: RecordResource['record'];
-}): RecordSummary {
+function summary(
+  record: Omit<RecordSummary, 'sync'> & { syncReadableId: string; syncName: string },
+): RecordSummary {
   return {
-    readableId: head.readableId,
+    readableId: record.readableId,
     kind: record.kind,
-    recordId: record.id,
-    sync: { readableId: head.syncReadableId, name: head.syncName },
-    createdAt: head.createdAt,
-    updatedAt: head.updatedAt,
+    recordId: record.recordId,
+    sync: { readableId: record.syncReadableId, name: record.syncName },
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
   };
 }
 
@@ -74,31 +70,23 @@ export class RecordsRepository implements RecordsRepositoryContract {
     limit: number;
     offset: number;
   }): Promise<RecordPage> {
-    const heads = await this.catalog.list({ ownerId, limit: limit + 1, offset });
-    const items: RecordSummary[] = [];
-    for (const head of heads.slice(0, limit)) {
-      items.push(summary({ head, record: await this.readActive(head) }));
-    }
-    return { items, nextOffset: heads.length > limit ? offset + items.length : null };
+    const rows = await this.catalog.list({ ownerId, limit: limit + 1, offset });
+    const items = rows.slice(0, limit).map(summary);
+    return { items, nextOffset: rows.length > limit ? offset + items.length : null };
   }
 
   async findResource(input: {
     ownerId: string;
     readableId: string;
   }): Promise<RecordResource | null> {
-    const head = await this.catalog.find(input);
-    if (!head) {
+    const stored = await this.catalog.find(input);
+    if (!stored) {
       return null;
     }
-    const record = await this.readActive(head);
-    return { ...summary({ head, record }), markdown: record.content.body, record };
-  }
-
-  private async readActive(head: CatalogRecord): Promise<RecordResource['record']> {
-    const record = await this.files.read(head);
+    const record = await this.files.read(stored);
     if (record.operation === 'deleted') {
       throw new Error('An active catalog record references a tombstone');
     }
-    return record;
+    return { ...summary(stored), markdown: record.content.body, record };
   }
 }

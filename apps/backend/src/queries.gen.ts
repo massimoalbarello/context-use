@@ -618,16 +618,9 @@ export interface IPublishRecordRevisionResult {
 
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
-    ownerId: string;
-    syncId: string;
-    identityKey: string;
     readableId: string;
-    revision: number;
-    operation: string;
-    revisionHash: string;
-    storageKey: string;
-    blobHash: string;
-    sizeBytes: number;
+    kind: string;
+    recordId: string;
     syncReadableId: string;
     syncName: string;
     createdAt: string;
@@ -638,13 +631,15 @@ export interface IListRecordResourcesResult {
 export interface IFindRecordResourceResult {
     ownerId: string;
     syncId: string;
-    identityKey: string;
+    sourceId: string;
+    kind: string;
+    recordId: string;
     readableId: string;
     revision: number;
     operation: string;
     revisionHash: string;
     storageKey: string;
-    blobHash: string;
+    contentHash: string;
     sizeBytes: number;
     syncReadableId: string;
     syncName: string;

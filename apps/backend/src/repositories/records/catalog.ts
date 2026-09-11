@@ -7,7 +7,7 @@ import type { RecordFileReference } from './files.ts';
 
 class RecordAcceptanceConflict extends Error {}
 
-export type CatalogRecord = RecordFileReference & {
+type CatalogRecord = RecordFileReference & {
   syncReadableId: string;
   syncName: string;
   createdAt: string;
@@ -55,9 +55,9 @@ async function publishRecord({
     /* @notNull revision revisionHash readableId storageKey */
     select "revision", "revision_hash" as "revisionHash", "readable_id" as "readableId",
       "storage_key" as "storageKey"
-    from "record_delivery_head"
+    from "record"
     where "owner_id" = ${input.ownerId} and "sync_id" = ${input.syncId}
-      and "identity_key" = ${file.identityKey}
+      and "source_id" = ${file.sourceId} and "kind" = ${file.kind} and "record_id" = ${file.recordId}
   `;
   const current = rows[0];
   if (current) {
@@ -72,17 +72,17 @@ async function publishRecord({
     }
   }
   await db.PublishRecordRevision`
-    insert into "record_delivery_head"
-      ("owner_id", "sync_id", "identity_key", "readable_id", "revision", "operation",
-       "revision_hash", "storage_key", "blob_hash", "size_bytes", "created_at", "updated_at")
+    insert into "record"
+      ("owner_id", "sync_id", "source_id", "kind", "record_id", "readable_id", "revision", "operation",
+       "revision_hash", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
     values
-      (${input.ownerId}, ${input.syncId}, ${file.identityKey}, ${file.readableId},
+      (${input.ownerId}, ${input.syncId}, ${file.sourceId}, ${file.kind}, ${file.recordId}, ${file.readableId},
        ${file.revision}, ${file.operation}, ${file.revisionHash}, ${file.storageKey},
-       ${file.blobHash}, ${file.sizeBytes}, ${input.receivedAt}, ${input.receivedAt})
-    on conflict ("owner_id", "sync_id", "identity_key") do update set
+       ${file.contentHash}, ${file.sizeBytes}, ${input.receivedAt}, ${input.receivedAt})
+    on conflict ("owner_id", "sync_id", "source_id", "kind", "record_id") do update set
       "revision" = excluded."revision", "operation" = excluded."operation",
       "revision_hash" = excluded."revision_hash", "storage_key" = excluded."storage_key",
-      "blob_hash" = excluded."blob_hash", "size_bytes" = excluded."size_bytes",
+      "content_hash" = excluded."content_hash", "size_bytes" = excluded."size_bytes",
       "updated_at" = excluded."updated_at"
   `;
   if (current) {
@@ -136,40 +136,37 @@ export class RecordCatalog {
     }
   }
 
-  async list({ ownerId, limit, offset }: { ownerId: string; limit: number; offset: number }) {
-    const rows = await this.serialize(
+  list({ ownerId, limit, offset }: { ownerId: string; limit: number; offset: number }) {
+    return this.serialize(
       () => this.sql.ListRecordResources`
-      /* @notNull ownerId syncId identityKey readableId revision operation revisionHash storageKey blobHash sizeBytes syncReadableId syncName createdAt updatedAt */
-      select head."owner_id" as "ownerId", head."sync_id" as "syncId",
-        head."identity_key" as "identityKey", head."readable_id" as "readableId", head."revision",
-        head."operation", head."revision_hash" as "revisionHash", head."storage_key" as "storageKey",
-        head."blob_hash" as "blobHash", head."size_bytes" as "sizeBytes",
+      /* @notNull readableId kind recordId syncReadableId syncName createdAt updatedAt */
+      select record."readable_id" as "readableId", record."kind", record."record_id" as "recordId",
         sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-        head."created_at" as "createdAt", head."updated_at" as "updatedAt"
-      from "record_delivery_head" head
-      join "record_sync" sync on sync."id" = head."sync_id" and sync."owner_id" = head."owner_id"
-      where head."owner_id" = ${ownerId} and head."operation" <> 'deleted'
-      order by head."updated_at" desc, head."readable_id"
+        record."created_at" as "createdAt", record."updated_at" as "updatedAt"
+      from "record" record
+      join "record_sync" sync on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
+      where record."owner_id" = ${ownerId} and record."operation" <> 'deleted'
+      order by record."updated_at" desc, record."readable_id"
       limit ${limit} offset ${offset}
     `,
     );
-    return rows.map(catalogRecord);
   }
 
   async find({ ownerId, readableId }: { ownerId: string; readableId: string }) {
     const rows = await this.serialize(
       () => this.sql.FindRecordResource`
-      /* @notNull ownerId syncId identityKey readableId revision operation revisionHash storageKey blobHash sizeBytes syncReadableId syncName createdAt updatedAt */
-      select head."owner_id" as "ownerId", head."sync_id" as "syncId",
-        head."identity_key" as "identityKey", head."readable_id" as "readableId", head."revision",
-        head."operation", head."revision_hash" as "revisionHash", head."storage_key" as "storageKey",
-        head."blob_hash" as "blobHash", head."size_bytes" as "sizeBytes",
+      /* @notNull ownerId syncId sourceId kind recordId readableId revision operation revisionHash storageKey contentHash sizeBytes syncReadableId syncName createdAt updatedAt */
+      select record."owner_id" as "ownerId", record."sync_id" as "syncId",
+        record."source_id" as "sourceId", record."kind", record."record_id" as "recordId",
+        record."readable_id" as "readableId", record."revision",
+        record."operation", record."revision_hash" as "revisionHash", record."storage_key" as "storageKey",
+        record."content_hash" as "contentHash", record."size_bytes" as "sizeBytes",
         sync."readable_id" as "syncReadableId", sync."name" as "syncName",
-        head."created_at" as "createdAt", head."updated_at" as "updatedAt"
-      from "record_delivery_head" head
-      join "record_sync" sync on sync."id" = head."sync_id" and sync."owner_id" = head."owner_id"
-      where head."owner_id" = ${ownerId} and head."readable_id" = ${readableId}
-        and head."operation" <> 'deleted'
+        record."created_at" as "createdAt", record."updated_at" as "updatedAt"
+      from "record" record
+      join "record_sync" sync on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
+      where record."owner_id" = ${ownerId} and record."readable_id" = ${readableId}
+        and record."operation" <> 'deleted'
       limit 1
     `,
     );

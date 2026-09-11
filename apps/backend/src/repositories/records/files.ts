@@ -17,22 +17,20 @@ const CanonicalRecordSchema = z.strictObject({
 export type RecordFileReference = {
   ownerId: string;
   syncId: string;
-  identityKey: string;
+  sourceId: string;
+  kind: string;
+  recordId: string;
   readableId: string;
   revision: number;
   operation: DeliveredRecord['operation'];
   revisionHash: string;
   storageKey: string;
-  blobHash: string;
+  contentHash: string;
   sizeBytes: number;
 };
 
 function hash(value: string | Uint8Array): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
-}
-
-function identityKey(record: DeliveredRecord): string {
-  return hash(JSON.stringify([record.sourceId, record.kind, record.id]));
 }
 
 function revisionHash(record: DeliveredRecord): string {
@@ -61,19 +59,20 @@ export class RecordFiles {
       receivedAt: input.receivedAt,
       record: accepted.record,
     });
-    const recordIdentityKey = identityKey(snapshot.record);
-    const storageKey = `${encodeURIComponent(input.ownerId)}/records/${encodeURIComponent(input.syncId)}/${recordIdentityKey}/${Bun.randomUUIDv7()}.json`;
+    const storageKey = `${encodeURIComponent(input.ownerId)}/records/${encodeURIComponent(input.syncId)}/${encodeURIComponent(accepted.readableId)}/${Bun.randomUUIDv7()}.json`;
     const json = JSON.stringify(snapshot);
     const reference: RecordFileReference = {
       ownerId: input.ownerId,
       syncId: input.syncId,
-      identityKey: recordIdentityKey,
+      sourceId: snapshot.record.sourceId,
+      kind: snapshot.record.kind,
+      recordId: snapshot.record.id,
       readableId: accepted.readableId,
       revision: snapshot.record.revision,
       operation: snapshot.record.operation,
       revisionHash: revisionHash(snapshot.record),
       storageKey,
-      blobHash: hash(json),
+      contentHash: hash(json),
       sizeBytes: Buffer.byteLength(json, 'utf8'),
     };
     // Register before writing: even a rejected write may have created a partial file.
@@ -88,7 +87,7 @@ export class RecordFiles {
       throw new Error(`Record file ${reference.readableId} is missing`);
     }
     const bytes = new Uint8Array(await this.storage.file(reference.storageKey).arrayBuffer());
-    if (bytes.byteLength !== reference.sizeBytes || hash(bytes) !== reference.blobHash) {
+    if (bytes.byteLength !== reference.sizeBytes || hash(bytes) !== reference.contentHash) {
       throw new Error(`Record file ${reference.readableId} failed its integrity check`);
     }
     const snapshot = CanonicalRecordSchema.parse(
@@ -99,7 +98,9 @@ export class RecordFiles {
       snapshot.ownerId !== reference.ownerId ||
       snapshot.syncId !== reference.syncId ||
       snapshot.readableId !== reference.readableId ||
-      identityKey(record) !== reference.identityKey ||
+      record.sourceId !== reference.sourceId ||
+      record.kind !== reference.kind ||
+      record.id !== reference.recordId ||
       record.revision !== reference.revision ||
       record.operation !== reference.operation ||
       revisionHash(record) !== reference.revisionHash

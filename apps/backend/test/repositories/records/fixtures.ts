@@ -129,7 +129,7 @@ export async function insertSync({
 
 export async function recordCount(database: SQL): Promise<number> {
   const [count] = await database<Array<{ total: number }>>`
-    select count(*) as "total" from "record_delivery_head"
+    select count(*) as "total" from "record"
   `;
   return Number(count?.total ?? 0);
 }
@@ -145,15 +145,15 @@ export async function storedRecord({
   syncId?: string;
   recordId?: string;
 }) {
-  const identityKey = digest(JSON.stringify(['github.example', 'pull-request', recordId]));
-  const [head] = await database<Array<{ storageKey: string }>>`
-    select "storage_key" as "storageKey" from "record_delivery_head"
-    where "sync_id" = ${syncId} and "identity_key" = ${identityKey}
+  const [stored] = await database<Array<{ storageKey: string }>>`
+    select "storage_key" as "storageKey" from "record"
+    where "owner_id" = ${OWNER_ID} and "sync_id" = ${syncId}
+      and "source_id" = 'github.example' and "kind" = 'pull-request' and "record_id" = ${recordId}
   `;
-  if (!head) {
+  if (!stored) {
     return undefined;
   }
-  const snapshot = await storage.file(head.storageKey).text().then(JSON.parse);
+  const snapshot = await storage.file(stored.storageKey).text().then(JSON.parse);
   return {
     ownerId: snapshot.ownerId,
     revision: snapshot.record.revision,
