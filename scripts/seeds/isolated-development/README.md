@@ -37,7 +37,7 @@ stops. It does not overwrite an ordinary local database. Restart the command for
 
 Each event keeps its own page and coverage. The broader pages connect events through Steve’s work
 and collaborators, following the [MCP curation guide](../../../apps/backend/src/routes/mcp/pages/hypermedia-curation-guide.md).
-The overview reaches every page and entity. Entity/page/asset relationships use supported typed
+The overview reaches every page, entity, record and asset. All relationships use supported typed
 links, with targets created before their first reference.
 
 `pages/index.json` is an ordered sequence of Markdown snapshots, including revisions. `asOf` orders
@@ -68,11 +68,11 @@ source timestamps; interview dates and the historical subject remain separate. I
 
 Records enter through `/api/syncs` and `/api/records/batch`, after owner registration. The temporary
 sync key stays inside the browser and is revoked immediately after delivery; its records remain
-readable. The loader resolves record IDs from the authenticated record listing. `seed-record:<id>`
-is a fixture placeholder replaced with a local record-detail URL before a page is submitted: the
-current page contract does not accept `context-use://record/...` links. These source links open the
-record but do not create graph edges or record backlinks. Public source links remain inside each
-record. Entity, page and asset links do create their normal graph relationships.
+readable. The loader resolves record IDs from the authenticated record listing. Fixtures use
+`context-use://record/<fixture-id>` links; the loader substitutes the server-assigned readable ID
+before submitting each page. These native references appear in page References and record
+Referenced by views, using the support introduced in [#66](https://github.com/massimoalbarello/context-use/pull/66).
+Public source URLs remain inside each record.
 
 ## Assets
 

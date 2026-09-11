@@ -5,8 +5,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-LINK = re.compile(r"context-use://(entity|page|asset)/([a-z0-9-]+)")
-RECORD_LINK = re.compile(r"seed-record:([a-z0-9-]+)")
+LINK = re.compile(r"context-use://(entity|page|asset|record)/([a-z0-9-]+)")
 
 
 def read_json(path):
@@ -18,7 +17,7 @@ class HistoricalSeedTests(unittest.TestCase):
         entities = {p.stem for p in (ROOT / "entities").glob("*.json")}
         assets = {a["readableId"] for a in read_json("assets/index.json")}
         records = {r["id"] for r in read_json("records/index.json")}
-        existing = {"entity": entities, "asset": assets, "page": set()}
+        existing = {"entity": entities, "asset": assets, "record": records, "page": set()}
         snapshots = read_json("pages/index.json")
         previous_date = ""
         used_paths = set()
@@ -33,18 +32,16 @@ class HistoricalSeedTests(unittest.TestCase):
                 self.assertEqual(len(re.findall(r"^# ", markdown, re.M)), 1)
                 for kind, target in LINK.findall(markdown):
                     self.assertIn(target, existing[kind])
-                for target in RECORD_LINK.findall(markdown):
-                    self.assertIn(target, records)
                 existing["page"].add(snapshot["readableId"])
         actual_paths = {str(p.relative_to(ROOT)) for folder in ("pages", "revisions")
                         for p in (ROOT / folder).glob("*.md")}
         self.assertEqual(used_paths, actual_paths)
 
-    def test_final_graph_reaches_every_page_and_entity(self):
+    def test_final_graph_reaches_every_resource(self):
         latest = {s["readableId"]: s for s in read_json("pages/index.json")}
         pending = ["steve-jobs-2000-to-2001"]
         seen = set()
-        entities = set()
+        reached = {"entity": set(), "asset": set(), "record": set()}
         while pending:
             current = pending.pop()
             if current in seen:
@@ -53,10 +50,12 @@ class HistoricalSeedTests(unittest.TestCase):
             for kind, target in LINK.findall((ROOT / latest[current]["path"]).read_text()):
                 if kind == "page":
                     pending.append(target)
-                elif kind == "entity":
-                    entities.add(target)
+                else:
+                    reached[kind].add(target)
         self.assertEqual(seen, set(latest))
-        self.assertEqual(entities, {p.stem for p in (ROOT / "entities").glob("*.json")})
+        self.assertEqual(reached["entity"], {p.stem for p in (ROOT / "entities").glob("*.json")})
+        self.assertEqual(reached["asset"], {a["readableId"] for a in read_json("assets/index.json")})
+        self.assertEqual(reached["record"], {r["id"] for r in read_json("records/index.json")})
 
     def test_invented_evidence_cannot_lose_its_label(self):
         synthetic_ids = set()
@@ -76,7 +75,8 @@ class HistoricalSeedTests(unittest.TestCase):
                     self.assertIn(content["sourceUrl"], body)
         for snapshot in read_json("pages/index.json"):
             markdown = (ROOT / snapshot["path"]).read_text()
-            if synthetic_ids.intersection(RECORD_LINK.findall(markdown)):
+            if any(kind == "record" and target in synthetic_ids
+                   for kind, target in LINK.findall(markdown)):
                 self.assertIn("**Synthetic scenario", markdown)
 
     def test_asset_bytes_and_provenance_are_bundled(self):

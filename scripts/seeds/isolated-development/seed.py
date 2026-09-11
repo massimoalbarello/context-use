@@ -247,8 +247,8 @@ def seed_pages(record_addresses):
     for snapshot in PAGE_SNAPSHOTS:
         readable_id = snapshot["readableId"]
         markdown = re.sub(
-            r"seed-record:([a-z0-9-]+)",
-            lambda match: f"{EXPECTED_ORIGIN}/records/{record_addresses[match[1]]}",
+            r"context-use://record/([a-z0-9-]+)",
+            lambda match: f"context-use://record/{record_addresses[match[1]]}",
             read_seed_text(snapshot["path"]),
         )
         if readable_id in revisions:
