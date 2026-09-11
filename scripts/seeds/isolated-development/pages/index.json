@@ -1,13 +1,13 @@
 [
   {
-    "readableId": "two-ceo-roles",
-    "path": "pages/two-ceo-roles.md",
+    "readableId": "my-two-ceo-roles",
+    "path": "pages/my-two-ceo-roles.md",
     "asOf": "2000-01-05",
     "temporalCoverage": "2000-01-05"
   },
   {
-    "readableId": "aqua-makes-the-next-mac-visible",
-    "path": "pages/aqua-makes-the-next-mac-visible.md",
+    "readableId": "showing-the-next-mac-through-aqua",
+    "path": "pages/showing-the-next-mac-through-aqua.md",
     "asOf": "2000-01-05",
     "temporalCoverage": "2000-01-05"
   },
@@ -18,20 +18,20 @@
     "temporalCoverage": "2000-01-05"
   },
   {
-    "readableId": "the-cube-joins-the-desktop-family",
-    "path": "pages/the-cube-joins-the-desktop-family.md",
+    "readableId": "introducing-the-cube",
+    "path": "pages/introducing-the-cube.md",
     "asOf": "2000-07-19",
     "temporalCoverage": "2000-07-19"
   },
   {
-    "readableId": "the-cube-bet",
-    "path": "pages/the-cube-bet.md",
+    "readableId": "my-bet-on-the-cube",
+    "path": "pages/my-bet-on-the-cube.md",
     "asOf": "2000-07-19",
     "temporalCoverage": "2000-07-19"
   },
   {
-    "readableId": "listening-through-a-public-beta",
-    "path": "pages/listening-through-a-public-beta.md",
+    "readableId": "asking-customers-to-try-our-public-beta",
+    "path": "pages/asking-customers-to-try-our-public-beta.md",
     "asOf": "2000-09-13",
     "temporalCoverage": "2000-09-13"
   },
@@ -42,62 +42,62 @@
     "temporalCoverage": "2000-01-05/2000-09-13"
   },
   {
-    "readableId": "a-beta-feedback-conversation",
-    "path": "pages/a-beta-feedback-conversation.md",
+    "readableId": "reviewing-beta-feedback-with-avie",
+    "path": "pages/reviewing-beta-feedback-with-avie.md",
     "asOf": "2000-09-18",
     "temporalCoverage": "2000-09-18"
   },
   {
-    "readableId": "a-new-home-for-pixar",
-    "path": "pages/a-new-home-for-pixar.md",
+    "readableId": "our-new-home-in-emeryville",
+    "path": "pages/our-new-home-in-emeryville.md",
     "asOf": "2000-12-31",
     "temporalCoverage": "2000/2001"
   },
   {
-    "readableId": "music-becomes-a-mac-workflow",
-    "path": "pages/music-becomes-a-mac-workflow.md",
+    "readableId": "bringing-music-into-the-mac",
+    "path": "pages/bringing-music-into-the-mac.md",
     "asOf": "2001-01-09",
     "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "the-mac-as-a-digital-hub",
-    "path": "pages/the-mac-as-a-digital-hub.md",
+    "readableId": "the-mac-as-our-digital-hub",
+    "path": "pages/the-mac-as-our-digital-hub.md",
     "asOf": "2001-01-09",
     "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "a-firm-date-for-mac-os-x",
-    "path": "pages/a-firm-date-for-mac-os-x.md",
+    "readableId": "committing-to-march-24-for-mac-os-x",
+    "path": "pages/committing-to-march-24-for-mac-os-x.md",
     "asOf": "2001-01-09",
     "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "the-cost-of-resetting-inventory",
-    "path": "pages/the-cost-of-resetting-inventory.md",
+    "readableId": "working-through-our-inventory-reset",
+    "path": "pages/working-through-our-inventory-reset.md",
     "asOf": "2001-01-17",
     "temporalCoverage": "2000-10/2000-12-30"
   },
   {
-    "readableId": "from-a-home-movie-to-a-dvd",
-    "path": "pages/from-a-home-movie-to-a-dvd.md",
+    "readableId": "taking-a-home-movie-all-the-way-to-dvd",
+    "path": "pages/taking-a-home-movie-all-the-way-to-dvd.md",
     "asOf": "2001-02-19",
     "temporalCoverage": "2001-02-19"
   },
   {
-    "readableId": "the-cube-turns-toward-cd-burning",
-    "path": "pages/the-cube-turns-toward-cd-burning.md",
+    "readableId": "giving-the-cube-a-music-workflow",
+    "path": "pages/giving-the-cube-a-music-workflow.md",
     "asOf": "2001-02-22",
     "temporalCoverage": "2001-02-22"
   },
   {
-    "readableId": "the-cube-bet",
-    "path": "revisions/the-cube-bet-2001-02-22.md",
+    "readableId": "my-bet-on-the-cube",
+    "path": "revisions/my-bet-on-the-cube-2001-02-22.md",
     "asOf": "2001-02-22",
     "temporalCoverage": "2000-07-19/2001-02-22"
   },
   {
-    "readableId": "mac-os-x-reaches-customers",
-    "path": "pages/mac-os-x-reaches-customers.md",
+    "readableId": "shipping-mac-os-x",
+    "path": "pages/shipping-mac-os-x.md",
     "asOf": "2001-03-24",
     "temporalCoverage": "2001-03-24"
   },
@@ -108,62 +108,62 @@
     "temporalCoverage": "2000-01-05/2001-03-24"
   },
   {
-    "readableId": "quarterly-profit-returns",
-    "path": "pages/quarterly-profit-returns.md",
+    "readableId": "returning-to-quarterly-profit",
+    "path": "pages/returning-to-quarterly-profit.md",
     "asOf": "2001-04-18",
     "temporalCoverage": "2000-12-31/2001-03-31"
   },
   {
-    "readableId": "the-first-stores-are-announced",
-    "path": "pages/the-first-stores-are-announced.md",
+    "readableId": "announcing-our-first-stores",
+    "path": "pages/announcing-our-first-stores.md",
     "asOf": "2001-05-15",
     "temporalCoverage": "2001-05-15"
   },
   {
-    "readableId": "learning-to-sell-the-whole-experience",
-    "path": "pages/learning-to-sell-the-whole-experience.md",
+    "readableId": "showing-the-whole-experience-in-our-stores",
+    "path": "pages/showing-the-whole-experience-in-our-stores.md",
     "asOf": "2001-05-15",
     "temporalCoverage": "2001-05-15"
   },
   {
-    "readableId": "rehearsing-one-complete-customer-task",
-    "path": "pages/rehearsing-one-complete-customer-task.md",
+    "readableId": "rehearsing-a-store-demo-with-ron",
+    "path": "pages/rehearsing-a-store-demo-with-ron.md",
     "asOf": "2001-05-17",
     "temporalCoverage": "2001-05-17"
   },
   {
-    "readableId": "the-first-retail-weekend",
-    "path": "pages/the-first-retail-weekend.md",
+    "readableId": "our-first-retail-weekend",
+    "path": "pages/our-first-retail-weekend.md",
     "asOf": "2001-05-21",
     "temporalCoverage": "2001-05-19/2001-05-20"
   },
   {
-    "readableId": "learning-to-sell-the-whole-experience",
-    "path": "revisions/learning-to-sell-the-whole-experience-2001-05-21.md",
+    "readableId": "showing-the-whole-experience-in-our-stores",
+    "path": "revisions/showing-the-whole-experience-in-our-stores-2001-05-21.md",
     "asOf": "2001-05-21",
     "temporalCoverage": "2001-05-15/2001-05-20"
   },
   {
-    "readableId": "os-x-is-installed-but-os-9-still-boots",
-    "path": "pages/os-x-is-installed-but-os-9-still-boots.md",
+    "readableId": "putting-os-x-on-every-new-mac",
+    "path": "pages/putting-os-x-on-every-new-mac.md",
     "asOf": "2001-05-21",
     "temporalCoverage": "2001-05-21"
   },
   {
-    "readableId": "the-cube-is-put-on-ice",
-    "path": "pages/the-cube-is-put-on-ice.md",
+    "readableId": "putting-the-cube-on-ice",
+    "path": "pages/putting-the-cube-on-ice.md",
     "asOf": "2001-07-03",
     "temporalCoverage": "2001-07-03"
   },
   {
-    "readableId": "the-cube-bet",
-    "path": "revisions/the-cube-bet-2001-07-03.md",
+    "readableId": "my-bet-on-the-cube",
+    "path": "revisions/my-bet-on-the-cube-2001-07-03.md",
     "asOf": "2001-07-03",
     "temporalCoverage": "2000-07-19/2001-07-03"
   },
   {
-    "readableId": "os-x-10-1-broadens-everyday-usefulness",
-    "path": "pages/os-x-10-1-broadens-everyday-usefulness.md",
+    "readableId": "making-os-x-more-useful-with-10-1",
+    "path": "pages/making-os-x-more-useful-with-10-1.md",
     "asOf": "2001-09-29",
     "temporalCoverage": "2001-09-25/2001-09-29"
   },
@@ -174,20 +174,20 @@
     "temporalCoverage": "2000-01-05/2001-09-29"
   },
   {
-    "readableId": "a-financial-checkpoint-before-ipod",
-    "path": "pages/a-financial-checkpoint-before-ipod.md",
+    "readableId": "our-financial-position-before-ipod",
+    "path": "pages/our-financial-position-before-ipod.md",
     "asOf": "2001-10-17",
     "temporalCoverage": "2001-07/2001-09-29"
   },
   {
-    "readableId": "a-music-library-in-the-hand",
-    "path": "pages/a-music-library-in-the-hand.md",
+    "readableId": "putting-a-music-library-in-your-hand",
+    "path": "pages/putting-a-music-library-in-your-hand.md",
     "asOf": "2001-10-23",
     "temporalCoverage": "2001-10-23"
   },
   {
-    "readableId": "the-mac-as-a-digital-hub",
-    "path": "revisions/the-mac-as-a-digital-hub-2001-10-23.md",
+    "readableId": "the-mac-as-our-digital-hub",
+    "path": "revisions/the-mac-as-our-digital-hub-2001-10-23.md",
     "asOf": "2001-10-23",
     "temporalCoverage": "2001-01-09/2001-10-23"
   },
@@ -198,80 +198,80 @@
     "temporalCoverage": "2001-10-24"
   },
   {
-    "readableId": "monsters-inc-reaches-an-audience",
-    "path": "pages/monsters-inc-reaches-an-audience.md",
+    "readableId": "bringing-monsters-inc-to-audiences",
+    "path": "pages/bringing-monsters-inc-to-audiences.md",
     "asOf": "2001-11-02",
     "temporalCoverage": "2001-11-02"
   },
   {
-    "readableId": "talking-about-the-story-after-release",
-    "path": "pages/talking-about-the-story-after-release.md",
+    "readableId": "checking-in-with-ed-and-pete-after-release",
+    "path": "pages/checking-in-with-ed-and-pete-after-release.md",
     "asOf": "2001-11-05",
     "temporalCoverage": "2001-11-05"
   },
   {
-    "readableId": "who-made-the-first-ipod-possible",
-    "path": "pages/who-made-the-first-ipod-possible.md",
+    "readableId": "the-team-behind-our-first-ipod",
+    "path": "pages/the-team-behind-our-first-ipod.md",
     "asOf": "2001-12-31",
     "temporalCoverage": "2001"
   },
   {
-    "readableId": "steve-and-ron-build-a-retail-channel",
-    "path": "pages/steve-and-ron-build-a-retail-channel.md",
+    "readableId": "building-our-retail-channel-with-ron",
+    "path": "pages/building-our-retail-channel-with-ron.md",
     "asOf": "2001-12-31",
     "temporalCoverage": "2000/2001"
   },
   {
-    "readableId": "looking-at-the-products-and-the-person",
-    "path": "pages/looking-at-the-products-and-the-person.md",
+    "readableId": "photos-of-me-and-our-products",
+    "path": "pages/photos-of-me-and-our-products.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "two-ceo-roles",
-    "path": "revisions/two-ceo-roles-2001-12-31.md",
+    "readableId": "my-two-ceo-roles",
+    "path": "revisions/my-two-ceo-roles-2001-12-31.md",
     "asOf": "2001-12-31",
     "temporalCoverage": "2000-01-05/2001-11-02"
   },
   {
-    "readableId": "steves-circle-of-collaborators",
-    "path": "pages/steves-circle-of-collaborators.md",
+    "readableId": "my-collaborators-at-apple",
+    "path": "pages/my-collaborators-at-apple.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "apple-and-pixar-in-steves-world",
-    "path": "pages/apple-and-pixar-in-steves-world.md",
+    "readableId": "my-work-at-apple-and-pixar",
+    "path": "pages/my-work-at-apple-and-pixar.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "what-a-digital-hub-connects",
-    "path": "pages/what-a-digital-hub-connects.md",
+    "readableId": "our-digital-hub-model",
+    "path": "pages/our-digital-hub-model.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "the-store-as-a-place-to-learn",
-    "path": "pages/the-store-as-a-place-to-learn.md",
+    "readableId": "helping-customers-in-our-stores",
+    "path": "pages/helping-customers-in-our-stores.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "product-form-and-everyday-use",
-    "path": "pages/product-form-and-everyday-use.md",
+    "readableId": "the-products-we-make-and-how-people-use-them",
+    "path": "pages/the-products-we-make-and-how-people-use-them.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "reading-the-evidence-around-steve",
-    "path": "pages/reading-the-evidence-around-steve.md",
+    "readableId": "my-working-notes-and-source-material",
+    "path": "pages/my-working-notes-and-source-material.md",
     "asOf": "2001-12-31",
     "temporalCoverage": null
   },
   {
-    "readableId": "steve-jobs-2000-to-2001",
-    "path": "pages/steve-jobs-2000-to-2001.md",
+    "readableId": "my-work-2000-to-2001",
+    "path": "pages/my-work-2000-to-2001.md",
     "asOf": "2001-12-31",
     "temporalCoverage": "2000/2001"
   }

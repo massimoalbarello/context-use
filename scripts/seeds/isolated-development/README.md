@@ -1,10 +1,14 @@
 # Steve Jobs, 2000–2001
 
 A connected historical demo replacing the former random Northstar fixtures. Steve Jobs is the
-workspace owner persona. The chapter follows his permanent Apple CEO appointment, the Mac OS X
-transition, the Cube, digital-media software, the first Apple stores, iPod and Pixar’s Monsters, Inc.
-The two-year focus keeps the people and projects closely connected while retaining commercial
-setbacks, revised expectations and parallel responsibilities.
+workspace owner persona. Pages, historical revisions and entity descriptions use his first-person
+perspective: my collaborators, my commitments, and the work we are doing at Apple and Pixar.
+The two-year focus covers his permanent Apple CEO appointment, Mac OS X, the Cube, digital-media
+software, the first Apple stores, iPod and Monsters, Inc., including setbacks and revised plans.
+
+The first-person prose is authored for this simulation, not quoted from Jobs or presented as a
+recovered diary. Historical actions and product facts retain their sources. Imported research
+records keep the source's perspective, and invented interactions remain explicitly labeled.
 
 ## Run locally
 
@@ -17,7 +21,7 @@ bun run dev:isolated:seeded
 
 The command registers a real passkey using the existing virtual authenticator and opens
 [the local workspace](http://localhost:5173/hypermedia). Start reading at
-[Steve Jobs — 2000 to 2001](http://localhost:5173/pages/steve-jobs-2000-to-2001).
+[My work — 2000 to 2001](http://localhost:5173/pages/my-work-2000-to-2001).
 
 The seeded isolated app treats **31 December 2001** as today for timeline navigation and date
 pickers, so the story is immediately nearby. This frontend calendar override is enabled only by
@@ -30,9 +34,9 @@ no separate set of filler resources. Stop another development server before star
 The data lives in a newly allocated temporary directory and is deleted when the isolated process
 stops. It does not overwrite an ordinary local database. Restart the command for a fresh copy.
 
-The default undated map contains seven connected reference pages: collaborators, Apple and Pixar,
-the digital-hub model, the store experience, product form and use, evidence interpretation, and
-reference images. They provide entry points into the dated story. Events and chronological
+The default undated map contains seven connected personal notes: my collaborators, my work at
+Apple and Pixar, our digital-hub model, helping customers, our products, my working notes, and
+photos of me and our products. They provide entry points into the dated story. Events and chronological
 syntheses keep their historical intervals; the reference notes leave coverage unset because their
 purpose is orientation rather than an assertion that something happened or applied on a date.
 
@@ -41,10 +45,10 @@ purpose is orientation rather than an assertion that something happened or appli
 | Page | Revision sequence |
 | --- | --- |
 | Moving the Mac to OS X | January 2000 preview → September beta → March 2001 shipping → September 10.1 |
-| The Cube bet | July 2000 launch → February 2001 CD-RW configuration → July suspension |
-| The Mac as a digital hub | January music library → October portable player |
-| Learning to sell the whole experience | May 15 plan → first weekend results reported May 21 |
-| Two CEO roles | Permanent Apple appointment → Apple and Pixar chapter synthesis |
+| My bet on the Cube | July 2000 launch → February 2001 CD-RW configuration → July suspension |
+| The Mac as our digital hub | January music library → October portable player |
+| Showing the whole experience in our stores | May 15 plan → first weekend results reported May 21 |
+| My two CEO roles | Permanent Apple appointment → Apple and Pixar chapter synthesis |
 
 Each event keeps its own page and coverage. The broader pages connect events through Steve’s work
 and collaborators, following the [MCP curation guide](../../../apps/backend/src/routes/mcp/pages/hypermedia-curation-guide.md).

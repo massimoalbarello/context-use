@@ -1,5 +1,5 @@
 # Moving the Mac to OS X
 
-As of January 5, 2000, [Steve Jobs](context-use://entity/steve-jobs) has made the [Aqua preview](context-use://page/aqua-makes-the-next-mac-visible) public. [Mac OS X](context-use://entity/mac-os-x) is still a transition ahead of customers, with commercial release expected in summer 2000.
+As of January 5, 2000, [I](context-use://entity/steve-jobs) have shown the [Aqua preview](context-use://page/showing-the-next-mac-through-aqua). Our [Mac OS X](context-use://entity/mac-os-x) commercial release is still ahead, with summer 2000 as the announced target.
 
-Protected memory and a familiar application path need to arrive together. Classic and Carbon in the [original plan](context-use://record/osx-preview) address that tension; a stage demonstration does not settle compatibility.
+We need protected memory and a path for existing applications together. Classic and Carbon are part of our [original plan](context-use://record/osx-preview); demonstrating the interface is only the first step in getting customers across.

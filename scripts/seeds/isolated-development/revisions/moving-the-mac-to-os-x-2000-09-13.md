@@ -1,5 +1,5 @@
 # Moving the Mac to OS X
 
-As of September 13, 2000, [Mac OS X](context-use://entity/mac-os-x) has reached [public beta](context-use://page/listening-through-a-public-beta), not the final commercial release anticipated at the [January preview](context-use://page/aqua-makes-the-next-mac-visible).
+As of September 13, 2000, we have released the [Mac OS X](context-use://entity/mac-os-x) [public beta](context-use://page/asking-customers-to-try-our-public-beta). At the [January preview](context-use://page/showing-the-next-mac-through-aqua), we had targeted a final commercial release in summer.
 
-[Steve Jobs](context-use://entity/steve-jobs) is now asking users to test the system. The beta opens a feedback loop while the migration question remains: how to gain the new foundation without abandoning existing Mac applications.
+[I](context-use://entity/steve-jobs) am now asking customers to test the system and send feedback. We still need to bring them to the new foundation while supporting the Mac applications they already use.

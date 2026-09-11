@@ -1,7 +1,0 @@
-# Reading the evidence around Steve
-
-This workspace reconstructs [Steve Jobs](context-use://entity/steve-jobs)’s public work. An announcement, a later recollection and an invented conversation answer different kinds of questions; they should not be treated as interchangeable memories belonging to Steve.
-
-[Apple](context-use://entity/apple)’s [iPod announcement](context-use://record/ipod-launch) is evidence of what the company announced, including a planned availability date. [Jon Rubinstein](context-use://entity/jon-rubinstein)’s [later oral history](context-use://record/rubinstein-history) helps attribute contributions, with the limits of retrospective testimony. [The collaborator guide](context-use://page/steves-circle-of-collaborators) connects those attributions to people, while [the two-company guide](context-use://page/apple-and-pixar-in-steves-world) separates Steve’s Apple role from [Pixar](context-use://entity/pixar).
-
-The [beta conversation](context-use://page/a-beta-feedback-conversation), [retail rehearsal](context-use://page/rehearsing-one-complete-customer-task), [music handoff](context-use://page/keeping-the-playlist-at-the-center) and [Pixar check-in](context-use://page/talking-about-the-story-after-release) are explicitly fictional illustrations. Their wording and attendance are not historical evidence. [The image notes](context-use://page/looking-at-the-products-and-the-person) similarly distinguish later reference photographs from pictures of an event.

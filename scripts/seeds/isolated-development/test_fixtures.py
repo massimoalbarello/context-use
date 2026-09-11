@@ -39,7 +39,7 @@ class HistoricalSeedTests(unittest.TestCase):
 
     def test_final_graph_reaches_every_resource(self):
         latest = {s["readableId"]: s for s in read_json("pages/index.json")}
-        pending = ["steve-jobs-2000-to-2001"]
+        pending = ["my-work-2000-to-2001"]
         seen = set()
         reached = {"entity": set(), "asset": set(), "record": set()}
         while pending:

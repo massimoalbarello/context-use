@@ -1,5 +1,5 @@
 # Moving the Mac to OS X
 
-As of March 24, 2001, [Mac OS X](context-use://entity/mac-os-x) has [shipped](context-use://page/mac-os-x-reaches-customers). The path runs from the [Aqua preview](context-use://page/aqua-makes-the-next-mac-visible), through [public beta](context-use://page/listening-through-a-public-beta), to the [revised shipping commitment](context-use://page/a-firm-date-for-mac-os-x).
+As of March 24, 2001, we have [shipped Mac OS X](context-use://page/shipping-mac-os-x). [I](context-use://entity/steve-jobs) have taken the [Mac OS X](context-use://entity/mac-os-x) launch from our [Aqua preview](context-use://page/showing-the-next-mac-through-aqua), through [public beta](context-use://page/asking-customers-to-try-our-public-beta), to our [March delivery commitment](context-use://page/committing-to-march-24-for-mac-os-x).
 
-For [Steve Jobs](context-use://entity/steve-jobs), release is a milestone in moving the Mac to a new foundation. It does not mean every application has migrated or that the old operating system has disappeared.
+Customers can now buy the new system. Applications still need to migrate, and the old operating system remains part of their environment. Shipping is a major step in the transition, not the end of it.
