@@ -7,30 +7,25 @@ import {
 } from '#models/readable-ids/model.ts';
 import type { AssetsRepositoryContract } from '#repositories/assets/repository.ts';
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
-import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 
 export class EntitiesService {
   private readonly assets: Pick<AssetsRepositoryContract, 'find'>;
   private readonly entities: EntityRepositoryContract;
   private readonly pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
-  private readonly retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>;
 
   constructor({
     assets,
     entities,
     pages,
-    retrieval,
   }: {
     assets: Pick<AssetsRepositoryContract, 'find'>;
     entities: EntityRepositoryContract;
     pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
-    retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>;
   }) {
     this.assets = assets;
     this.entities = entities;
     this.pages = pages;
-    this.retrieval = retrieval;
   }
 
   create(input: {
@@ -60,23 +55,7 @@ export class EntitiesService {
       );
   }
 
-  list(input: { ownerId: string; limit: number; offset: number; query?: string }) {
-    if (input.query?.trim()) {
-      return this.retrieval
-        .search({
-          ownerId: input.ownerId,
-          query: input.query,
-          resourceTypes: ['entity'],
-          limit: input.limit,
-        })
-        .then(({ results, totalMatches }) => ({
-          items: results.flatMap((result) =>
-            result.resourceType === 'entity' ? [result.entity] : [],
-          ),
-          total: totalMatches,
-          nextOffset: null,
-        }));
-    }
+  list(input: { ownerId: string; limit: number; offset: number }) {
     return this.entities.list(input);
   }
 

@@ -24,7 +24,6 @@ import {
 } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { RecordResourcesServiceContract } from '#services/records/service.ts';
-import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
@@ -126,7 +125,7 @@ async function withMcpClient<T>({
   actor?: McpClientAuthorizationPrincipal;
   assetsService?: AssetsServiceContract;
   entitiesService?: EntitiesServiceContract;
-  retrievalService?: HypermediaRetrievalServiceContract;
+  retrievalService?: Pick<HypermediaRetrievalServiceContract, 'search'>;
   pagesService?: KnowledgePagesServiceContract;
   profilesService?: KnowledgeProfilesServiceContract;
   recordsService?: Pick<RecordResourcesServiceContract, 'findResource'>;
@@ -322,7 +321,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
 });
 
 test('search_hypermedia returns compact typed previews and canonical dereference addresses', async () => {
-  const retrievalService: HypermediaRetrievalServiceContract = {
+  const retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'> = {
     search: (input) => {
       expect(input).toEqual({
         ownerId: principal.ownerId,
@@ -1128,10 +1127,6 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
     await seedMcpAuthorization(database);
     const pagesService = new KnowledgePagesService({
       pages: new KnowledgePagesRepository(database),
-      retrieval: createTestHypermediaRetrievalService({
-        database,
-        storage: new LocalStorage(join(dataFolder, 'objects')),
-      }),
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     const firstActor = { ...principal, ownerId: OWNER_USER_ID };

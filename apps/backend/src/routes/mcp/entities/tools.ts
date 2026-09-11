@@ -9,12 +9,11 @@ import {
 } from '#models/entities/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import {
-  AssetAddressSchema,
   assetReadableId,
-  EntityAddressSchema,
   entityAddress,
   entityReadableId,
-} from '#routes/mcp/coordinates.ts';
+} from '#models/readable-ids/addresses.ts';
+import { AssetAddressSchema, EntityAddressSchema } from '#routes/mcp/coordinates.ts';
 import { McpEntitySchema, mcpEntity } from '#routes/mcp/entities/model.ts';
 import {
   McpKnowledgePageSummarySchema,

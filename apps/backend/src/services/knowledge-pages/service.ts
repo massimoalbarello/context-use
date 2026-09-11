@@ -23,7 +23,6 @@ import {
   readableIdFrom,
   readableIdWithSuffix,
 } from '#models/readable-ids/model.ts';
-import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 
 export type KnowledgePageMutationResult =
@@ -41,20 +40,16 @@ function contentHash(markdown: string): string {
 
 export class KnowledgePagesService {
   private readonly pages: KnowledgePagesRepositoryContract;
-  private readonly retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>;
   private readonly storage: StorageClient;
 
   constructor({
     pages,
-    retrieval,
     storage,
   }: {
     pages: KnowledgePagesRepositoryContract;
-    retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>;
     storage: StorageClient;
   }) {
     this.pages = pages;
-    this.retrieval = retrieval;
     this.storage = storage;
   }
 
@@ -130,29 +125,9 @@ export class KnowledgePagesService {
     ownerId: string;
     limit: number;
     offset: number;
-    query?: string;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }) {
-    if (input.query?.trim()) {
-      return this.retrieval
-        .search({
-          ownerId: input.ownerId,
-          query: input.query,
-          resourceTypes: ['knowledge_page'],
-          limit: input.limit,
-          filters: {
-            knowledgePage: { interval: input.interval, temporalBounds: input.temporalBounds },
-          },
-        })
-        .then(({ results, totalMatches }) => ({
-          items: results.flatMap((result) =>
-            result.resourceType === 'knowledge_page' ? [result.knowledgePage] : [],
-          ),
-          total: totalMatches,
-          nextOffset: null,
-        }));
-    }
     return this.pages.list(input);
   }
 

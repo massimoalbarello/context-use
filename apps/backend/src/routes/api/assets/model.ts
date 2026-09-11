@@ -43,7 +43,6 @@ export const AssetListSchema = t.Object({
 
 export const AssetListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
-  query: t.Optional(t.String({ maxLength: MAX_ASSET_NAME_LENGTH })),
   kind: t.Optional(t.Literal('entity_image')),
 });
 

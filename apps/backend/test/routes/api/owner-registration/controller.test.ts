@@ -24,6 +24,7 @@ import {
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
   unusedMcpClientAuthorizationsService,
   unusedMcpProtection,
   unusedMcpTransport,
@@ -95,6 +96,7 @@ test('owner registration API exposes only complete registration states', async (
       entitiesService,
       healthService,
       hypermediaService: unusedHypermediaService,
+      retrievalService: unusedHypermediaRetrievalService,
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,

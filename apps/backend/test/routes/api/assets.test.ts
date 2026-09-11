@@ -96,20 +96,19 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     const app = createApp({
+      retrievalService: retrieval,
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: assetsRepository, retrieval, storage }),
+      assetsService: new AssetsService({ assets: assetsRepository, storage }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,
         entities: new EntitiesRepository(database),
         pages: pagesRepository,
-        retrieval,
       }),
       healthService: new HealthService(new HealthRepository(database)),
       hypermediaService: new HypermediaService({
         hypermedia: new HypermediaRepository(database),
-        retrieval,
       }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
@@ -117,7 +116,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       ownerRegistrationService: new OwnerRegistrationService(
         new OwnerRegistrationRepository(database),
       ),
-      pagesService: new KnowledgePagesService({ pages: pagesRepository, retrieval, storage }),
+      pagesService: new KnowledgePagesService({ pages: pagesRepository, storage }),
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
       recordsService: unusedRecordsService,
       syncsService: unusedRecordSyncsService,

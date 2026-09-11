@@ -23,6 +23,7 @@ import { type CalendarMonth, calendarMonth, currentCalendarMonth } from '../lib/
 import { entitiesQueryOptions } from '../queries/entities';
 import {
   type HypermediaPage,
+  type HypermediaResource,
   type HypermediaResourceReference,
   type HypermediaView,
   hypermediaPagesQueryOptions,
@@ -33,6 +34,7 @@ import {
 const MAX_HYPERMEDIA_SEARCH_LENGTH = 160;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
+const EMPTY_HYPERMEDIA_RESOURCES: HypermediaResource[] = [];
 export type HypermediaSearch = {
   q?: string;
   view?: 'timeline';
@@ -284,6 +286,10 @@ function HypermediaRoute() {
             selectedResources={selectedResources}
             query={q}
             pages={loadedPages}
+            matchedResources={
+              pageQuery.data?.pages[0]?.matchedResources ??
+              (q.trim() ? EMPTY_HYPERMEDIA_RESOURCES : null)
+            }
             month={activeMonth}
             temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
             pagesLoading={pageQuery.isFetching}

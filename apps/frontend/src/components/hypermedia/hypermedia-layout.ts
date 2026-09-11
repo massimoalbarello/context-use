@@ -1,7 +1,6 @@
 // biome-ignore-all lint/style/noMagicNumbers: The deterministic Hypermedia geometry is defined by visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and collection indexes.
 
-import type { EntitySummary } from '../../queries/entities';
 import type {
   HypermediaPage,
   HypermediaResource,
@@ -181,7 +180,7 @@ function samePositionedResource(
 
 export function buildStableResources(
   neighborhoods: HypermediaResourceNeighborhood[],
-  entities: EntitySummary[] = [],
+  standaloneResources: HypermediaResource[] = [],
   previousResources: HypermediaLayoutResource[] = [],
 ): HypermediaLayoutResource[] {
   const resources = new Map<string, HypermediaLayoutResource>();
@@ -196,8 +195,8 @@ export function buildStableResources(
       ),
     ]),
   );
-  for (const entity of entities) {
-    availableKeys.add(`entity:${entity.readableId}`);
+  for (const resource of standaloneResources) {
+    availableKeys.add(hypermediaResourceKey(hypermediaResourceReference(resource)));
   }
   for (const resource of previousResources) {
     if (availableKeys.has(resource.key)) {
@@ -264,8 +263,8 @@ export function buildStableResources(
     neighborCountByAnchor.set(anchor.key, anchorOffset + neighborhood.neighbors.length);
   }
 
-  for (const entity of entities) {
-    addAnchor({ kind: 'entity', entity });
+  for (const resource of standaloneResources) {
+    addAnchor(resource);
   }
 
   const nextResources = [...resources.values()];

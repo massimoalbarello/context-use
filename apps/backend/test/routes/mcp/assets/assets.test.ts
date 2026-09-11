@@ -22,7 +22,6 @@ import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
-import { createTestHypermediaRetrievalService } from '../../../support/hypermedia-retrieval.ts';
 import {
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
@@ -122,10 +121,6 @@ async function withAssetMcp({
   const storage = new LocalStorage(join(dataFolder, 'objects'));
   const assetsService = new AssetsService({
     assets: new AssetsRepository(database),
-    retrieval: createTestHypermediaRetrievalService({
-      database,
-      storage: new LocalStorage(join(dataFolder, 'objects')),
-    }),
     storage,
   });
   const transferCapabilities = new AssetTransferCapabilities({

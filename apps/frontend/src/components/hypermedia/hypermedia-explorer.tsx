@@ -10,6 +10,7 @@ import {
   type HypermediaView,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
+  hypermediaResourceReference,
 } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
@@ -70,6 +71,7 @@ export function HypermediaExplorer({
   selectedResources,
   query,
   pages,
+  matchedResources,
   month,
   temporalExtent,
   pagesLoading,
@@ -91,6 +93,7 @@ export function HypermediaExplorer({
   selectedResources: HypermediaResourceReference[];
   query: string;
   pages: HypermediaPage[];
+  matchedResources: HypermediaPages['matchedResources'];
   month?: CalendarMonth;
   temporalExtent: HypermediaPages['temporalExtent'];
   pagesLoading: boolean;
@@ -156,8 +159,21 @@ export function HypermediaExplorer({
   const [intervalScrolling, setIntervalScrolling] = useState(false);
 
   const visualizedHypermedia = useMemo(
-    () => filterHypermedia({ resources, pages, kinds: resourceKinds, query }),
-    [pages, query, resourceKinds, resources],
+    () =>
+      filterHypermedia({
+        resources,
+        pages,
+        kinds: resourceKinds,
+        matchingResourceKeys:
+          matchedResources === null
+            ? undefined
+            : new Set(
+                matchedResources.map((resource) =>
+                  hypermediaResourceKey(hypermediaResourceReference(resource)),
+                ),
+              ),
+      }),
+    [pages, matchedResources, resourceKinds, resources],
   );
   const visualizedSelectedResources = useMemo(() => {
     const normalizedQuery = query.trim();
@@ -175,8 +191,17 @@ export function HypermediaExplorer({
   }, [query, resourceKinds, selectedResources, visualizedHypermedia]);
 
   useEffect(() => {
-    setResources((current) => buildStableResources(neighborhoods, entities, current));
-  }, [entities, neighborhoods]);
+    setResources((current) =>
+      buildStableResources(
+        neighborhoods,
+        [
+          ...entities.map((entity) => ({ kind: 'entity' as const, entity })),
+          ...(matchedResources ?? []),
+        ],
+        current,
+      ),
+    );
+  }, [entities, matchedResources, neighborhoods]);
 
   const handleViewportSettled = useCallback(
     ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {

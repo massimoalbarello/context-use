@@ -6,11 +6,11 @@ import type {
   KnowledgePageSummary,
 } from '#models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
+import { pageAddress } from '#models/readable-ids/addresses.ts';
 import {
   McpReadableIdSchema,
   PageAddressSchema,
   PageReferenceAddressSchema,
-  pageAddress,
 } from '#routes/mcp/coordinates.ts';
 import { McpEntitySchema, mcpEntity } from '#routes/mcp/entities/model.ts';
 

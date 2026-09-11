@@ -21,7 +21,6 @@ import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieva
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { replaceSearchDocument } from '#repositories/search-index.ts';
-import { HypermediaService } from '#services/hypermedia/service.ts';
 import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { RecordsService } from '#services/records/service.ts';
@@ -129,12 +128,14 @@ async function withRetrievalTest(
     const storage = new LocalStorage(join(dataFolder, 'objects'));
     reader = createSqliteReader({ dataFolder });
     const retrievalRepository = new HypermediaRetrievalRepository({ database: reader, storage });
-    const retrieval = new HypermediaRetrievalService(retrievalRepository);
+    const retrieval = new HypermediaRetrievalService({
+      retrieval: retrievalRepository,
+      hypermedia: new HypermediaRepository(reader),
+    });
     const pagesRepository = new KnowledgePagesRepository(database);
     const recordsRepository = new RecordsRepository(database);
     const pages = new KnowledgePagesService({
       pages: pagesRepository,
-      retrieval,
       storage,
     });
     await run({
@@ -302,7 +303,7 @@ test('retrieval never observes uncommitted metadata or postings, including rolle
   }));
 
 test('excluded canvas resource kinds cannot crowd out eligible entity matches', () =>
-  withRetrievalTest(async ({ database, entities, assets, pages, retrieval }) => {
+  withRetrievalTest(async ({ entities, assets, pages, retrieval }) => {
     await createEntity({
       entities,
       readableId: 'target',
@@ -315,10 +316,6 @@ test('excluded canvas resource kinds cannot crowd out eligible entity matches', 
       markdown:
         '# Context\n\nA useful association.\n\nWorking with [Target](context-use://entity/target).',
     });
-    const hypermedia = new HypermediaService({
-      hypermedia: new HypermediaRepository(database),
-      retrieval,
-    });
     const input = {
       ownerId: OWNER_A,
       resources: [],
@@ -329,12 +326,15 @@ test('excluded canvas resource kinds cannot crowd out eligible entity matches', 
       limit: 10,
       offset: 0,
     };
-    const before = await hypermedia.pages(input);
+    const before = await retrieval.searchPageView(input);
     expect(before.pages.map((page) => page.readableId)).toEqual(['context']);
+    expect(before.matchedResources).toEqual([
+      { kind: 'entity', entity: expect.objectContaining({ readableId: 'target' }) },
+    ]);
     for (let index = 0; index < MAX_HYPERMEDIA_SEARCH_LIMIT; index++) {
       await createAsset({ assets, readableId: `needle-${index}`, name: 'Needle' });
     }
-    expect(await hypermedia.pages(input)).toEqual(before);
+    expect(await retrieval.searchPageView(input)).toEqual(before);
   }));
 
 test('BM25 retrieves typed resources, body evidence, and pages containing both queried entities', () =>

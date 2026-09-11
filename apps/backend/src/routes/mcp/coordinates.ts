@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import {
+  ASSET_ADDRESS_PREFIX,
+  ENTITY_ADDRESS_PREFIX,
+  PAGE_ADDRESS_PREFIX,
+  RECORD_ADDRESS_PREFIX,
+} from '#models/readable-ids/addresses.ts';
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-ids/model.ts';
 
-const ASSET_ADDRESS_PREFIX = 'context-use://asset/';
-const ENTITY_ADDRESS_PREFIX = 'context-use://entity/';
-const PAGE_ADDRESS_PREFIX = 'context-use://page/';
-const RECORD_ADDRESS_PREFIX = 'context-use://record/';
 const READABLE_ID_PATTERN_BODY = READABLE_ID_PATTERN.source.slice(1, -1);
 
 export const McpReadableIdSchema = z
@@ -45,35 +47,3 @@ export const PageReferenceAddressSchema = z
   .describe(
     'Canonical knowledge-page address with an optional fragment, for example context-use://page/growth-playbook#priorities',
   );
-
-export function assetAddress(readableId: string): string {
-  return `${ASSET_ADDRESS_PREFIX}${readableId}`;
-}
-
-export function entityAddress(readableId: string): string {
-  return `${ENTITY_ADDRESS_PREFIX}${readableId}`;
-}
-
-export function pageAddress(readableId: string): string {
-  return `${PAGE_ADDRESS_PREFIX}${readableId}`;
-}
-
-export function recordAddress(readableId: string): string {
-  return `${RECORD_ADDRESS_PREFIX}${readableId}`;
-}
-
-export function recordReadableId(address: string): string {
-  return address.slice(RECORD_ADDRESS_PREFIX.length);
-}
-
-export function assetReadableId(address: string): string {
-  return address.slice(ASSET_ADDRESS_PREFIX.length);
-}
-
-export function entityReadableId(address: string): string {
-  return address.slice(ENTITY_ADDRESS_PREFIX.length);
-}
-
-export function pageReadableId(address: string): string {
-  return address.slice(PAGE_ADDRESS_PREFIX.length);
-}

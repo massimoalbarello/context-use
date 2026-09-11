@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
+import { searchHypermedia } from './hypermedia-search';
 import type { KnowledgePageReference } from './pages';
 
 export type EntityPage = NonNullable<Awaited<ReturnType<typeof api.api.entities.get>>['data']>;
@@ -29,6 +30,22 @@ export const entityDetailsQueryKey = [...entitiesQueryKey, 'detail'] as const;
 export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
 export const entitySuggestionsQueryKey = [...entitiesQueryKey, 'suggestions'] as const;
 const PREVIEW_RELATIONSHIP_LIMIT = 12;
+const SUGGESTION_LIMIT = 7;
+
+async function entitySearchPage({
+  query,
+  limit,
+}: {
+  query: string;
+  limit?: number;
+}): Promise<EntityPage> {
+  const result = await searchHypermedia({ query, resourceTypes: 'entity', limit });
+  return {
+    items: result.results.flatMap((hit) => (hit.resourceType === 'entity' ? [hit.entity] : [])),
+    total: result.totalMatches,
+    nextOffset: null,
+  };
+}
 
 export function entitiesQueryOptions(query?: string) {
   const normalizedQuery = query?.trim() || undefined;
@@ -36,8 +53,11 @@ export function entitiesQueryOptions(query?: string) {
     queryKey: [...entitiesListQueryKey, { query: normalizedQuery ?? null }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
+      if (normalizedQuery) {
+        return entitySearchPage({ query: normalizedQuery });
+      }
       const { data, error } = await api.api.entities.get({
-        query: { offset: pageParam, query: normalizedQuery },
+        query: { offset: pageParam },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
@@ -52,8 +72,11 @@ export function entitySuggestionsQueryOptions(query: string) {
   return queryOptions({
     queryKey: [...entitySuggestionsQueryKey, query],
     queryFn: async () => {
+      if (query.trim()) {
+        return (await entitySearchPage({ query, limit: SUGGESTION_LIMIT })).items;
+      }
       const { data, error } = await api.api.entities.get({
-        query: { limit: 7, offset: 0, query },
+        query: { limit: SUGGESTION_LIMIT, offset: 0 },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

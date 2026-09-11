@@ -12,7 +12,6 @@ import {
   readableIdWithSuffix,
 } from '#models/readable-ids/model.ts';
 import type { AssetsRepositoryContract } from '#repositories/assets/repository.ts';
-import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
 
 export type AssetCreateResult =
   | { state: 'created'; asset: Asset }
@@ -25,20 +24,16 @@ function hash(bytes: Uint8Array): string {
 
 export class AssetsService {
   private readonly assets: AssetsRepositoryContract;
-  private readonly retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>;
   private readonly storage: StorageClient;
 
   constructor({
     assets,
-    retrieval,
     storage,
   }: {
     assets: AssetsRepositoryContract;
-    retrieval: Pick<HypermediaRetrievalRepositoryContract, 'search'>;
     storage: StorageClient;
   }) {
     this.assets = assets;
-    this.retrieval = retrieval;
     this.storage = storage;
   }
 
@@ -104,30 +99,7 @@ export class AssetsService {
     return { state: 'created', asset };
   }
 
-  list(input: {
-    ownerId: string;
-    limit: number;
-    offset: number;
-    query?: string;
-    kind?: 'entity_image';
-  }) {
-    if (input.query?.trim()) {
-      return this.retrieval
-        .search({
-          ownerId: input.ownerId,
-          query: input.query,
-          resourceTypes: ['asset'],
-          limit: input.limit,
-          filters: { asset: { kind: input.kind } },
-        })
-        .then(({ results, totalMatches }) => ({
-          items: results.flatMap((result) =>
-            result.resourceType === 'asset' ? [result.asset] : [],
-          ),
-          total: totalMatches,
-          nextOffset: null,
-        }));
-    }
+  list(input: { ownerId: string; limit: number; offset: number; kind?: 'entity_image' }) {
     return this.assets.list(input);
   }
 

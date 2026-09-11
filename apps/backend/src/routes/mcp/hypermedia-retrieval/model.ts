@@ -8,15 +8,17 @@ import {
 } from '#models/hypermedia-retrieval/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import {
-  AssetAddressSchema,
   assetAddress,
-  EntityAddressSchema,
   entityAddress,
+  pageAddress,
+  recordAddress,
+} from '#models/readable-ids/addresses.ts';
+import {
+  AssetAddressSchema,
+  EntityAddressSchema,
   McpReadableIdSchema,
   PageAddressSchema,
-  pageAddress,
   RecordAddressSchema,
-  recordAddress,
 } from '#routes/mcp/coordinates.ts';
 
 export const SearchHypermediaInputSchema = z.object({

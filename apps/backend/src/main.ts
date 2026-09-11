@@ -70,11 +70,13 @@ try {
     database: retrievalDatabase,
     storage,
   });
-  const retrievalService = new HypermediaRetrievalService(retrievalRepository);
+  const retrievalService = new HypermediaRetrievalService({
+    retrieval: retrievalRepository,
+    hypermedia: new HypermediaRepository(retrievalDatabase),
+  });
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
     assets: assetsRepository,
-    retrieval: retrievalRepository,
     storage,
   });
   const assetTransferCapabilities = new AssetTransferCapabilities({ baseUrl: env.BASE_URL });
@@ -84,12 +86,10 @@ try {
     assets: assetsRepository,
     entities: new EntitiesRepository(database),
     pages: pagesRepository,
-    retrieval: retrievalRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
   const hypermediaService = new HypermediaService({
     hypermedia: new HypermediaRepository(database),
-    retrieval: retrievalRepository,
   });
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
@@ -104,7 +104,6 @@ try {
   });
   const pagesService = new KnowledgePagesService({
     pages: pagesRepository,
-    retrieval: retrievalRepository,
     storage,
   });
   const profilesService = new KnowledgeProfilesService(new KnowledgeProfilesRepository(database));
@@ -139,6 +138,7 @@ try {
     entitiesService,
     healthService,
     hypermediaService,
+    retrievalService,
     mcpClientAuthorizationsService,
     mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
     mcpTransport,

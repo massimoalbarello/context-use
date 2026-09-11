@@ -8,7 +8,6 @@ import {
   type KnowledgePageSummary,
   MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
-  MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
@@ -85,7 +84,6 @@ export const KnowledgePageListSchema = t.Object({
 });
 export const KnowledgePageListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
-  query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
   interval: t.Optional(
     t.Union([
       t.Literal(KNOWLEDGE_PAGE_INTERVAL_FILTERS[0]),

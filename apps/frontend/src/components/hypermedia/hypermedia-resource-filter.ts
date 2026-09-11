@@ -46,38 +46,23 @@ export function toggleDisplayedHypermediaResourceKind({
   return ALL_HYPERMEDIA_RESOURCE_KINDS.filter((candidate) => selectedKinds.has(candidate));
 }
 
-function hypermediaResourceMatchesQuery({
-  resource,
-  normalizedQuery,
-}: {
-  resource: HypermediaLayoutResource;
-  normalizedQuery: string;
-}): boolean {
-  const values =
-    resource.kind === 'entity'
-      ? [resource.entity.readableId, resource.entity.name, resource.entity.description]
-      : [resource.asset.readableId, resource.asset.name];
-  return values.some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
-}
-
 export function filterHypermedia({
   resources,
   pages,
   kinds,
-  query,
+  matchingResourceKeys,
 }: {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPage[];
   kinds: HypermediaResourceKind[];
-  query?: string;
+  matchingResourceKeys?: ReadonlySet<string>;
 }): { resources: HypermediaLayoutResource[]; pages: HypermediaPage[] } {
   const visibleKinds = new Set(kinds);
-  const normalizedQuery = query?.trim().toLocaleLowerCase() ?? '';
   const knownResourceKeys = new Set(resources.map(({ key }) => key));
   const visibleResources = resources.filter(
     (resource) =>
       visibleKinds.has(resource.kind) &&
-      (!normalizedQuery || hypermediaResourceMatchesQuery({ resource, normalizedQuery })),
+      (!matchingResourceKeys || matchingResourceKeys.has(resource.key)),
   );
   const visibleResourceKeys = new Set(visibleResources.map(({ key }) => key));
   return {
@@ -88,7 +73,7 @@ export function filterHypermedia({
           return false;
         }
         const key = hypermediaResourceKey(reference);
-        return !normalizedQuery || !knownResourceKeys.has(key) || visibleResourceKeys.has(key);
+        return !matchingResourceKeys || !knownResourceKeys.has(key) || visibleResourceKeys.has(key);
       });
       return visibleReferences.length === page.resources.length
         ? page

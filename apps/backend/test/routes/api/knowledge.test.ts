@@ -114,24 +114,22 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
     const retrieval = createTestHypermediaRetrievalService({ database, storage });
     const pagesService = new KnowledgePagesService({
       pages: pagesRepository,
-      retrieval,
       storage,
     });
     const app = createApp({
+      retrievalService: retrieval,
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: assetsRepository, retrieval, storage }),
+      assetsService: new AssetsService({ assets: assetsRepository, storage }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,
         entities: entitiesRepository,
         pages: pagesRepository,
-        retrieval,
       }),
       healthService: new HealthService(new HealthRepository(database)),
       hypermediaService: new HypermediaService({
         hypermedia: new HypermediaRepository(database),
-        retrieval,
       }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
@@ -274,13 +272,18 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
     const searchedEntityPageResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: `/entities?limit=7&offset=0&query=${distinguishedEntity.readableId.slice(-READABLE_ID_SUFFIX_LENGTH)}`,
+        path: `/hypermedia/search?resourceTypes=entity&limit=7&query=${distinguishedEntity.readableId.slice(-READABLE_ID_SUFFIX_LENGTH)}`,
       }),
     );
     expect(await searchedEntityPageResponse.json()).toEqual({
-      items: [expect.objectContaining({ readableId: distinguishedEntity.readableId })],
-      total: 1,
-      nextOffset: null,
+      results: [
+        expect.objectContaining({
+          resourceType: 'entity',
+          entity: expect.objectContaining({ readableId: distinguishedEntity.readableId }),
+        }),
+      ],
+      totalMatches: 1,
+      truncated: false,
     });
 
     const temporalEntityResponse = await app.handle(
@@ -799,21 +802,30 @@ Every observation changes the next action.`,
     );
 
     const searchedKnowledgePageResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?limit=7&offset=0&query=growth' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/search?resourceTypes=knowledge_page&limit=7&query=growth',
+      }),
     );
     expect(await searchedKnowledgePageResponse.json()).toEqual({
-      items: [
+      results: [
         expect.objectContaining({
-          readableId: duplicatePage.readableId,
-          excerpt: 'A different page with the same title.',
+          resourceType: 'knowledge_page',
+          knowledgePage: expect.objectContaining({
+            readableId: duplicatePage.readableId,
+            excerpt: 'A different page with the same title.',
+          }),
         }),
         expect.objectContaining({
-          readableId: 'growth-playbook',
-          excerpt: 'Luca owns this feedback system with Test Owner.',
+          resourceType: 'knowledge_page',
+          knowledgePage: expect.objectContaining({
+            readableId: 'growth-playbook',
+            excerpt: 'Luca owns this feedback system with Test Owner.',
+          }),
         }),
       ],
-      total: 2,
-      nextOffset: null,
+      totalMatches: 2,
+      truncated: false,
     });
 
     const linkedGrowthResponse = await app.handle(
@@ -1007,14 +1019,19 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(repeatedEntityArchiveResponse.status).toBe(StatusMap['No Content']);
 
     const activeEntitiesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/entities?query=luca-bianchi' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/search?resourceTypes=entity&query=luca-bianchi',
+      }),
     );
     const activeEntities = (await activeEntitiesResponse.json()) as {
-      items: Array<{ readableId: string }>;
-      total: number;
+      results: Array<{ entity: { readableId: string } }>;
+      totalMatches: number;
     };
-    expect(activeEntities.total).toBe(1);
-    expect(activeEntities.items.map(({ readableId }) => readableId)).not.toContain('luca-bianchi');
+    expect(activeEntities.totalMatches).toBe(1);
+    expect(activeEntities.results.map(({ entity }) => entity.readableId)).not.toContain(
+      'luca-bianchi',
+    );
     const archivedEntityDetailResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities/luca-bianchi' }),
     );
@@ -1091,14 +1108,19 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(await archivedPageResponse.text()).toBe('');
 
     const activePagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?query=growth-playbook' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/search?resourceTypes=knowledge_page&query=growth-playbook',
+      }),
     );
     const activePages = (await activePagesResponse.json()) as {
-      items: Array<{ readableId: string }>;
-      total: number;
+      results: Array<{ knowledgePage: { readableId: string } }>;
+      totalMatches: number;
     };
-    expect(activePages.total).toBe(1);
-    expect(activePages.items.map(({ readableId }) => readableId)).not.toContain('growth-playbook');
+    expect(activePages.totalMatches).toBe(1);
+    expect(activePages.results.map(({ knowledgePage }) => knowledgePage.readableId)).not.toContain(
+      'growth-playbook',
+    );
 
     const directlyAddressedArchivedPageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook' }),

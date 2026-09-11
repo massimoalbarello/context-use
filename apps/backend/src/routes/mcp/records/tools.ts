@@ -1,12 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
-import {
-  McpReadableIdSchema,
-  RecordAddressSchema,
-  recordAddress,
-  recordReadableId,
-} from '#routes/mcp/coordinates.ts';
+import { recordAddress, recordReadableId } from '#models/readable-ids/addresses.ts';
+import { McpReadableIdSchema, RecordAddressSchema } from '#routes/mcp/coordinates.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '#routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
 import type { RecordResourcesServiceContract } from '#services/records/service.ts';
