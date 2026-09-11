@@ -55,12 +55,7 @@ export function RecordFilters({
   const updated = calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo });
   const sortBy = search.sortBy ?? 'sourceUpdatedAt';
   return (
-    <KnowledgeFilterPopover
-      title="Filter and sort records"
-      filtered={recordsAreFiltered(search)}
-      side="right"
-      align="start"
-    >
+    <KnowledgeFilterPopover title="Filter and sort records" filtered={recordsAreFiltered(search)}>
       <KeywordFilter
         key={search.q ?? ''}
         inputId="record-keyword"
