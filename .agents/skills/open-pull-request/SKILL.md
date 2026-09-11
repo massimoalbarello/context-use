@@ -10,6 +10,8 @@ description: Open a GitHub pull request for this repository with a concise Conve
 1. Read `AGENTS.md` and any instructions governing the changed files.
 2. Review the complete branch diff against its intended base, the commit history, and any linked
    issue. Confirm the pull request contains one cohesive change and no unrelated files.
+   Inspect related pull requests and documented plans when needed to understand what led
+   to this change and what it enables next. Verify references and their connection to the change.
 3. Complete the validation required by `AGENTS.md` before opening the pull request. Resolve
    failures that affect correctness. Do not turn successful routine validation into PR-body
    content.
@@ -25,10 +27,8 @@ description: Open a GitHub pull request for this repository with a concise Conve
 
 ## Write the body
 
-- Open with a short paragraph explaining what changed and why. Write for a reviewer who was not
-  part of the implementation.
-- Include decisions, tradeoffs, risks, migration notes, or follow-up context only when they help
-  the reviewer evaluate the change.
+- Use two sections, `## Why` followed by `## How`. Write for a reviewer who was not part of the
+  implementation.
 - Add `Closes #<issue>` only when merging the pull request should close that issue.
 - Avoid generic checklists, padded three-bullet summaries, implementation trivia, and raw command
   output.
@@ -37,6 +37,25 @@ description: Open a GitHub pull request for this repository with a concise Conve
   coverage succeeds.
 - Mention a validation gap only when it leaves material risk or requires reviewer action. Explain
   the consequence and required action, not the tooling trivia.
+
+### Why
+
+- Explain the problem or need that prompted the pull request and why it matters now.
+- Tell a concise, connected story of how this change fits into the repository's ongoing work:
+  what earlier work established, what remains to be addressed, and how this pull request advances
+  the intended direction or enables known next steps. Ground this context in verified history,
+  documented plans, or the requester's stated intent; do not invent a roadmap or force connections
+  for a standalone change.
+- Reference relevant pull requests with `#<number>` or links when they help explain that story.
+  Explain the relationship in the prose, such as building on an earlier change, resolving a gap
+  it left, or preparing for a planned follow-up. Include only references that clarify the reason
+  for this pull request, rather than listing related work without context.
+
+### How
+
+- Open with a short paragraph explaining what changed and the resulting behavior.
+- Include decisions, tradeoffs, risks, migration notes, or follow-up context only when they help
+  the reviewer evaluate the change. Keep motivation and broader project direction in `Why`.
 
 ## Open and verify
 
