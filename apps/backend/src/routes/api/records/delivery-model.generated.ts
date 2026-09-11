@@ -172,8 +172,6 @@ export const BaseRecordDeliveryEnvelopeSchema = z
   .strict()
   .describe('A durable batch delivered by OpenConnector to one configured destination.');
 
-export const DeliveredRecordSchema = BaseRecordDeliveryEnvelopeSchema.shape.records.element;
-
 export const RecordDeliveryEnvelopeSchema = BaseRecordDeliveryEnvelopeSchema.superRefine(
   (envelope, context) => {
     for (const record of envelope.records) {

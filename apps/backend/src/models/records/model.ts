@@ -14,6 +14,12 @@ export type RecordResource = RecordSummary & {
   record: Exclude<DeliveredRecord, { operation: 'deleted' }>;
 };
 
+export type StoredRecord = RecordSummary & {
+  storageKey: string;
+  contentHash: string;
+  sizeBytes: number;
+};
+
 export type RecordPage = {
   items: RecordSummary[];
   nextOffset: number | null;

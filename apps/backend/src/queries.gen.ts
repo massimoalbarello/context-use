@@ -599,11 +599,6 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
-/** Result of query `FindActiveRecordSyncForAcceptance`. */
-export interface IFindActiveRecordSyncForAcceptanceResult {
-    id: string;
-}
-
 /** Result of query `FindCurrentRecordRevision`. */
 export interface IFindCurrentRecordRevisionResult {
     revision: number;
@@ -612,37 +607,37 @@ export interface IFindCurrentRecordRevisionResult {
     storageKey: string;
 }
 
-/** Result of query `PublishRecordRevision`. */
-export interface IPublishRecordRevisionResult {
+/** Result of query `ApplyRecordRevision`. */
+export interface IApplyRecordRevisionResult {
+}
+
+/** Result of query `FindActiveRecordSyncForAcceptance`. */
+export interface IFindActiveRecordSyncForAcceptanceResult {
+    id: string;
+    ownerId: string;
 }
 
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
+    syncReadableId: string;
+    syncName: string;
     readableId: string;
     kind: string;
     recordId: string;
-    syncReadableId: string;
-    syncName: string;
     createdAt: string;
     updatedAt: string;
 }
 
 /** Result of query `FindRecordResource`. */
 export interface IFindRecordResourceResult {
-    ownerId: string;
-    syncId: string;
-    sourceId: string;
+    syncReadableId: string;
+    syncName: string;
+    readableId: string;
     kind: string;
     recordId: string;
-    readableId: string;
-    revision: number;
-    operation: string;
-    revisionHash: string;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
-    syncReadableId: string;
-    syncName: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -733,9 +728,9 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
-    FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
     FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
-    PublishRecordRevision: IPublishRecordRevisionResult;
+    ApplyRecordRevision: IApplyRecordRevisionResult;
+    FindActiveRecordSyncForAcceptance: IFindActiveRecordSyncForAcceptanceResult;
     ListRecordResources: IListRecordResourcesResult;
     FindRecordResource: IFindRecordResourceResult;
     FindActiveRecordSyncByName: IFindActiveRecordSyncByNameResult;

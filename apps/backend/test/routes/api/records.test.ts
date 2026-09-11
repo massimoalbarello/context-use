@@ -142,8 +142,12 @@ test('record API lists active owner records and returns Markdown detail with syn
       const storage = createLocalStorage({ dataFolder });
       await insertOwner({ database, ownerId: OWNER_USER_ID });
       await insertOwner({ database, ownerId: OTHER_OWNER_ID });
-      const repository = new RecordsRepository({ sql: database, storage });
-      const service = new RecordsService({ records: repository, now: () => new Date(NOW) });
+      const repository = new RecordsRepository(database);
+      const service = new RecordsService({
+        records: repository,
+        storage,
+        now: () => new Date(NOW),
+      });
       await insertSync({
         database,
         id: OWNER_SYNC_ID,
