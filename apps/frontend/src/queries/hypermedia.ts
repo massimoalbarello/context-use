@@ -57,14 +57,21 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 
 type HypermediaPageQuery = {
   resources: HypermediaResourceReference[];
+  visibleResources: HypermediaResourceReference[];
   month?: CalendarMonth;
   query?: string;
 };
 
 const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({ resources, month, query }: HypermediaPageQuery) {
+export function hypermediaPagesQueryOptions({
+  resources,
+  visibleResources,
+  month,
+  query,
+}: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
+  const visibleResourceKeys = visibleResources.map(hypermediaResourceKey).sort();
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
     queryKey: [
@@ -72,6 +79,7 @@ export function hypermediaPagesQueryOptions({ resources, month, query }: Hyperme
       'pages',
       {
         resources: resourceKeys,
+        visibleResources: visibleResourceKeys,
         month: month ?? null,
         query: normalizedQuery ?? null,
       },
@@ -82,6 +90,7 @@ export function hypermediaPagesQueryOptions({ resources, month, query }: Hyperme
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
+          visible: visibleResourceKeys.length > 0 ? visibleResourceKeys.join(',') : undefined,
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,
           time: month,

@@ -28,6 +28,7 @@ export class HypermediaService {
   pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     limit: number;
     offset: number;
     temporalBounds?: TemporalBounds;

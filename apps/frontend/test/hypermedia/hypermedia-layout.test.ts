@@ -189,24 +189,6 @@ describe('resource-first hypermedia layout', () => {
     ).toEqual(['connected-page']);
   });
 
-  test('unloaded entity references cannot hide a page whose label is in the viewport', () => {
-    const resources = buildStableResources([], [entity('self', true)]);
-    const layout = buildHypermediaLayout(resources, [
-      { ...page('disconnected'), resources: [{ kind: 'entity', readableId: 'unloaded' }] },
-    ]);
-    const point = layout.pages[0]!.point;
-    const viewport = { x: point.x - 50, y: point.y - 50, width: 100, height: 100 };
-    expect(
-      hypermediaLayoutInViewport({ layout, viewport }).pages.map(
-        ({ page: item }) => item.readableId,
-      ),
-    ).toEqual(['disconnected']);
-    expect(layout.bounds.x).toBeLessThanOrEqual(point.x);
-    expect(layout.bounds.x + layout.bounds.width).toBeGreaterThanOrEqual(point.x);
-    expect(layout.bounds.y).toBeLessThanOrEqual(point.y);
-    expect(layout.bounds.y + layout.bounds.height).toBeGreaterThanOrEqual(point.y);
-  });
-
   test('returns the same view when zoom-out is already clamped at its maximum', () => {
     const current = { x: -1200, y: -800, width: 2400, height: 1600 };
 

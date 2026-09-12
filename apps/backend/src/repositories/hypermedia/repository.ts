@@ -110,6 +110,7 @@ export interface HypermediaRepositoryContract {
   pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     limit: number;
     offset: number;
     retrievalMatches?: HypermediaRetrievalMatches;
@@ -236,6 +237,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
   async pages({
     ownerId,
     resources,
+    visibleResources,
     limit,
     offset,
     retrievalMatches,
@@ -243,6 +245,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
   }: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     limit: number;
     offset: number;
     retrievalMatches?: HypermediaRetrievalMatches;
@@ -251,7 +254,19 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     const selectedResourceKeys = JSON.stringify(
       resources.map(({ kind, readableId }) => `${kind}:${readableId}`),
     );
+    const visibleResourceKeys = JSON.stringify(
+      visibleResources.map(({ kind, readableId }) => `${kind}:${readableId}`),
+    );
+    const scopedResources = new Map(
+      [...resources, ...visibleResources].map((resource) => [
+        `${resource.kind}:${resource.readableId}`,
+        resource,
+      ]),
+    );
+    const scopedResourceKeys = JSON.stringify([...scopedResources.keys()]);
     const selectedResourceCount = resources.length;
+    const visibleResourceCount = visibleResources.length;
+    const visibleScopedResourceCount = scopedResources.size;
     const retrievalPageReadableIds = JSON.stringify(retrievalMatches?.pageReadableIds ?? []);
     const retrievalResourceKeys = JSON.stringify(
       retrievalMatches?.resources.map(({ kind, readableId }) => `${kind}:${readableId}`) ?? [],
@@ -264,6 +279,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       ownerId,
       selectedResourceKeys,
       selectedResourceCount,
+      visibleResourceKeys,
+      visibleResourceCount,
       retrievalPageReadableIds,
       retrievalResourceKeys,
       searchApplied,
@@ -284,12 +301,12 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       };
     }
     const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
-    const maximumScopedResourceReferences = selectedResourceCount * selectedPageRows.length;
+    const maximumScopedResourceReferences = visibleScopedResourceCount * selectedPageRows.length;
     const referenceLimit =
       MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES + maximumScopedResourceReferences + 1;
     const referenceRows = await this.pageResourceRows({
       ownerId,
-      resourceKeys: selectedResourceKeys,
+      resourceKeys: scopedResourceKeys,
       selectedPageIds,
       referenceLimit,
       retrievalResourceKeys,
@@ -314,6 +331,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     ownerId,
     selectedResourceKeys,
     selectedResourceCount,
+    visibleResourceKeys,
+    visibleResourceCount,
     retrievalPageReadableIds,
     retrievalResourceKeys,
     searchApplied,
@@ -325,6 +344,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     ownerId: string;
     selectedResourceKeys: string;
     selectedResourceCount: number;
+    visibleResourceKeys: string;
+    visibleResourceCount: number;
     retrievalPageReadableIds: string;
     retrievalResourceKeys: string;
     searchApplied: number;
@@ -338,6 +359,8 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       /* @type ongoingSort number */
       with selected_key as (
         select value as "key" from json_each(${selectedResourceKeys})
+      ), visible_key as (
+        select value as "key" from json_each(${visibleResourceKeys})
       ), retrieval_page as (
         select value as "readableId" from json_each(${retrievalPageReadableIds})
       ), retrieval_resource as (
@@ -353,11 +376,12 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         select reference."revisionId"
         from active_resource_reference reference
         left join selected_key selected on selected."key" = reference."key"
+        left join visible_key visible on visible."key" = reference."key"
         group by reference."revisionId"
         having (
           ${selectedResourceCount} = 0
           or count(distinct selected."key") = ${selectedResourceCount}
-        )
+        ) and (${visibleResourceCount} = 0 or count(distinct visible."key") > 0)
       ), retrieval_matched_revision as (
         select page."current_revision_id" as "revisionId"
         from "knowledge_page" page
@@ -387,8 +411,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         join "knowledge_page_revision" revision
           on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
-          and (${selectedResourceCount} = 0
-            or page."current_revision_id" in (select "revisionId" from resource_matched_revision))
+          and page."current_revision_id" in (select "revisionId" from resource_matched_revision)
           and (${searchApplied} = 0
             or page."current_revision_id" in (select "revisionId" from retrieval_matched_revision))
           and (
@@ -448,7 +471,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         where entity."archived_at" is null
           and (${searchApplied} = 0
             or 'entity:' || entity."readable_id" in (select "key" from retrieval_resource))
-
       )
       select "sourcePageReadableId", "kind", "readableId" from page_resource
       order by ("kind" || ':' || "readableId") in (select "key" from selected_key) desc,

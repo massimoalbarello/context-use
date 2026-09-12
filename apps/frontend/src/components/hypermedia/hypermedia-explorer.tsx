@@ -76,6 +76,7 @@ export function HypermediaExplorer({
   pageReferencesTruncated,
   onSelect,
   onMonthChange,
+  onVisibleResourcesChange,
   onRetryPages,
   onDiscoverMorePages,
 }: {
@@ -93,6 +94,7 @@ export function HypermediaExplorer({
   pageReferencesTruncated: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onMonthChange: (month?: CalendarMonth) => void;
+  onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
@@ -186,15 +188,8 @@ export function HypermediaExplorer({
   }, [entities, matchedResources, neighborhoods]);
 
   const handleViewportSettled = useCallback(
-    ({
-      focus,
-      discoverMoreEntities,
-      discoverMorePages,
-      boundaryAnchor,
-    }: SettledHypermediaViewport) => {
-      if (discoverMorePages && hasNextPage && !pagesLoading && !pagesTransitioning && !pagesError) {
-        onDiscoverMorePages();
-      }
+    ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
+      onVisibleResourcesChange(focus);
       if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
         void fetchNextEntityPage();
       }
@@ -237,15 +232,11 @@ export function HypermediaExplorer({
     },
     [
       fetchNextEntityPage,
-      hasNextPage,
-      pagesLoading,
-      pagesTransitioning,
-      pagesError,
-      onDiscoverMorePages,
       hasNextEntityPage,
       isFetchingNextEntityPage,
       neighborhoodQueries,
       neighborhoodRequests,
+      onVisibleResourcesChange,
     ],
   );
 

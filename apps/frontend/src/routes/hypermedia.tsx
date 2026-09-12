@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { useState } from 'react';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import {
@@ -103,12 +104,14 @@ function HypermediaRoute() {
   const search = Route.useSearch();
   const { q = '', kind, id, focus, month } = search;
   const navigate = Route.useNavigate();
+  const [visibleResources, setVisibleResources] = useState<HypermediaResourceReference[]>([]);
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
       resources: selectedResources,
+      visibleResources,
       month,
       query: q,
     }),
@@ -204,6 +207,16 @@ function HypermediaRoute() {
                   id: previous.kind === 'page' ? undefined : previous.id,
                 }),
                 replace: true,
+              });
+            }}
+            onVisibleResourcesChange={(nextResources) => {
+              setVisibleResources((current) => {
+                const currentKeys = current.map(hypermediaResourceKey);
+                const nextKeys = nextResources.map(hypermediaResourceKey);
+                return currentKeys.length === nextKeys.length &&
+                  currentKeys.join('\u0000') === nextKeys.join('\u0000')
+                  ? current
+                  : nextResources;
               });
             }}
             onRetryPages={() => {

@@ -48,6 +48,7 @@ export class HypermediaRetrievalService {
   async searchPageView(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
+    visibleResources: HypermediaResourceReference[];
     limit: number;
     offset: number;
     query: string;

@@ -67,6 +67,7 @@ export function createHypermediaController({
       '/pages',
       async ({ query, user, status }) => {
         const resources = parseHypermediaResources(query.resources);
+        const visibleResources = parseHypermediaResources(query.visible);
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -76,12 +77,13 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!resources) {
+        if (!resources || !visibleResources) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const input = {
           ownerId: user.id,
           resources,
+          visibleResources,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           temporalBounds,

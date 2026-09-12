@@ -47,7 +47,6 @@ import {
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
   type SettledHypermediaViewport,
-  viewportNearResourceBoundary,
   viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
 import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
@@ -292,14 +291,16 @@ export function HypermediaCanvas({
       const boundaryAnchor = discoverMoreEntities
         ? nearestBoundaryResource(layout.resources, viewport)
         : undefined;
+      if (focus.length === 0 && !discoverMoreEntities) {
+        return;
+      }
       onViewportSettled({
         focus,
         discoverMoreEntities,
-        discoverMorePages: viewportNearResourceBoundary(viewport, layout.bounds),
         boundaryAnchor,
       });
     },
-    [layout.bounds, layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
+    [layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
   );
 
   const scheduleViewport = useCallback(
@@ -329,7 +330,7 @@ export function HypermediaCanvas({
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, layout.bounds.width * 2.5);
+    const maximumWidth = Math.max(2400, layout.resourceBounds.width * 2.5);
     const nextViewBox = zoomedHypermediaViewBox({
       current,
       factor,

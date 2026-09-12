@@ -66,6 +66,12 @@ export const HypermediaPagesQuerySchema = t.Object({
       maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
     }),
   ),
+  visible: t.Optional(
+    t.String({
+      minLength: MIN_RESOURCE_KEY_LENGTH,
+      maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
+    }),
+  ),
   limit: t.Optional(
     t.Numeric({
       minimum: 1,

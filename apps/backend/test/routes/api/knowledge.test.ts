@@ -593,10 +593,7 @@ Every observation changes the next action.`,
       nextOffset: number | null;
       resourceReferencesTruncated: boolean;
     };
-    expect(withoutInterval.pages.map(({ readableId }) => readableId)).toEqual([
-      'alpha-principles',
-      duplicatePage.readableId,
-    ]);
+    expect(withoutInterval.pages.map(({ readableId }) => readableId)).toEqual(['alpha-principles']);
     expect(withoutInterval.nextOffset).toBeNull();
     expect(withoutInterval.resourceReferencesTruncated).toBe(false);
 
@@ -682,6 +679,31 @@ Every observation changes the next action.`,
     expect(intersectedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
       'alpha-principles',
     ]);
+
+    const viewportHypermediaResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?time=2025&visible=entity:temporal-subject,entity:test-owner',
+      }),
+    );
+    const viewportHypermedia = (await viewportHypermediaResponse.json()) as {
+      pages: Array<{ readableId: string }>;
+    };
+    expect(viewportHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
+      'current-programme',
+      'operating-rhythm',
+      'growth-playbook',
+    ]);
+
+    const combinedScopeResponse = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/hypermedia/pages?time=2025&resources=entity:test-owner&visible=entity:temporal-subject',
+      }),
+    );
+    expect(
+      ((await combinedScopeResponse.json()) as { pages: Array<{ readableId: string }> }).pages,
+    ).toEqual([]);
 
     const rangedHypermediaResponse = await app.handle(
       jsonRequest({

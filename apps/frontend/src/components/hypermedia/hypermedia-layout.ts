@@ -28,7 +28,6 @@ export type HypermediaLayout = {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPageLayout[];
   resourceBounds: CanvasBounds;
-  bounds: CanvasBounds;
 };
 
 const CANVAS_PADDING = 160;
@@ -334,23 +333,30 @@ export function buildHypermediaLayout(
   pages: HypermediaPage[],
 ): HypermediaLayout {
   const laidOutPages = pageLayouts(resources, pages);
+  const boundedResourcePoints = (resources.length > 0 ? resources : laidOutPages).map(
+    ({ point }) => point,
+  );
+  if (boundedResourcePoints.length === 0) {
+    return {
+      resources,
+      pages: laidOutPages,
+      resourceBounds: initialHypermediaViewBox(resources),
+    };
+  }
+  const resourceMinX = Math.min(...boundedResourcePoints.map(({ x }) => x)) - CANVAS_PADDING;
+  const resourceMaxX = Math.max(...boundedResourcePoints.map(({ x }) => x)) + CANVAS_PADDING;
+  const resourceMinY = Math.min(...boundedResourcePoints.map(({ y }) => y)) - CANVAS_PADDING;
+  const resourceMaxY = Math.max(...boundedResourcePoints.map(({ y }) => y)) + CANVAS_PADDING;
   return {
     resources,
     pages: laidOutPages,
-    resourceBounds: boundsForPoints(resources.map(({ point }) => point)),
-    bounds: boundsForPoints([...resources, ...laidOutPages].map(({ point }) => point)),
+    resourceBounds: {
+      x: resourceMinX,
+      y: resourceMinY,
+      width: resourceMaxX - resourceMinX,
+      height: resourceMaxY - resourceMinY,
+    },
   };
-}
-
-function boundsForPoints(points: CanvasPoint[]): CanvasBounds {
-  if (points.length === 0) {
-    return initialHypermediaViewBox([]);
-  }
-  const minX = Math.min(...points.map(({ x }) => x)) - CANVAS_PADDING;
-  const maxX = Math.max(...points.map(({ x }) => x)) + CANVAS_PADDING;
-  const minY = Math.min(...points.map(({ y }) => y)) - CANVAS_PADDING;
-  const maxY = Math.max(...points.map(({ y }) => y)) + CANVAS_PADDING;
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
 export function initialHypermediaViewBox(resources: HypermediaLayoutResource[]): CanvasBounds {

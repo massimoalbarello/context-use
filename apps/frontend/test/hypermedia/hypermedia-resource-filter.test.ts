@@ -85,6 +85,7 @@ describe('Hypermedia search filter', () => {
   test('retains the displayed page set while a changed interval loads', () => {
     const pages = hypermediaPagesQueryOptions({
       resources: [],
+      visibleResources: [],
       month: '2026-09',
     });
 
