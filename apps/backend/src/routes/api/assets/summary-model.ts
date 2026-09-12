@@ -8,7 +8,7 @@ export const AssetSummarySchema = t.Object({
   name: t.String({ minLength: 1, maxLength: MAX_ASSET_NAME_LENGTH }),
   mediaType: t.String(),
   extension: t.Nullable(t.String()),
-  sizeBytes: t.Integer({ minimum: 1, maximum: MAX_ASSET_BYTES }),
+  sizeBytes: t.Integer({ minimum: 0, maximum: MAX_ASSET_BYTES }),
   createdAt: t.Date(),
   updatedAt: t.Date(),
 });

@@ -3,10 +3,8 @@ import { StatusMap } from 'elysia';
 import { createApp } from '#app.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#models/records/delivery-contract.generated.ts';
-import {
-  RECORD_DELIVERY_ROUTE_PATH,
-  RECORD_SYNC_SECURITY_SCHEME,
-} from '#routes/api/records/delivery-controller.ts';
+import { RECORD_DELIVERY_ROUTE_PATH } from '#routes/api/records/delivery-controller.ts';
+import { RECORD_SYNC_SECURITY_SCHEME } from '#routes/sync-auth.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
@@ -14,7 +12,7 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
-import { unusedHypermediaService } from './support/app.ts';
+import { unusedAssetImportsService, unusedHypermediaService } from './support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -83,6 +81,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
 
   const app = createApp({
+    assetImportsService: unusedAssetImportsService,
     auth,
     assetsService,
     assetTransferCapabilities: unusedAssetTransferCapabilities,

@@ -4,11 +4,9 @@ import { type Auth, sessionSecuritySchemes } from '#lib/auth/better-auth.ts';
 import { elysiaErrorHandler } from '#lib/errors.ts';
 import type { McpTransportContract } from '#lib/mcp/transport.ts';
 import { createRequestResponsePlugin } from '#lib/request-response.ts';
+import { createAssetImportsController } from '#routes/api/assets/imports/controller.ts';
 import { createApiController } from '#routes/api/controller.ts';
-import {
-  createRecordDeliveryController,
-  recordSyncSecuritySchemes,
-} from '#routes/api/records/delivery-controller.ts';
+import { createRecordDeliveryController } from '#routes/api/records/delivery-controller.ts';
 import { createAuthDiscoveryController } from '#routes/auth-discovery/controller.ts';
 import {
   createFrontendAssetsController,
@@ -17,6 +15,8 @@ import {
 import type { AssetTransferCapabilitiesContract } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#routes/mcp/controller.ts';
+import { recordSyncSecuritySchemes } from '#routes/sync-auth.ts';
+import type { AssetImportsServiceContract } from '#services/assets/imports.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
@@ -43,6 +43,7 @@ const OPENAPI_PATH = '/openapi';
 export function createApp({
   auth,
   assetsService,
+  assetImportsService,
   assetTransferCapabilities,
   frontendAssetsService,
   entitiesService,
@@ -60,6 +61,7 @@ export function createApp({
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
+  assetImportsService: AssetImportsServiceContract;
   assetTransferCapabilities: AssetTransferCapabilitiesContract;
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
@@ -173,6 +175,7 @@ export function createApp({
       }),
     )
     .use(createRecordDeliveryController({ recordsService, syncsService }))
+    .use(createAssetImportsController({ assetImportsService, syncsService }))
     .onStop(() => mcpTransport.close())
     .use(createFrontendFallbackController({ frontendAssetsService }));
 }

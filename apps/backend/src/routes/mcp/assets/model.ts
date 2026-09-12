@@ -12,7 +12,7 @@ export const McpAssetSummarySchema = z.object({
   name: z.string(),
   mediaType: z.string(),
   extension: z.string().nullable(),
-  sizeBytes: z.number().int().min(1).max(MAX_ASSET_BYTES),
+  sizeBytes: z.number().int().min(0).max(MAX_ASSET_BYTES),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
