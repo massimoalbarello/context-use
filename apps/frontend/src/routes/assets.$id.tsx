@@ -89,7 +89,7 @@ function AssetEntityImageUsageList({ asset }: { asset: Asset }) {
         <ResourceList>
           {usages.map(({ entity }) => (
             <li key={entity.readableId}>
-              <EntityLink entity={entity} presentation="card" />
+              <EntityLink entity={{ ...entity, image: asset }} presentation="card" />
             </li>
           ))}
         </ResourceList>
