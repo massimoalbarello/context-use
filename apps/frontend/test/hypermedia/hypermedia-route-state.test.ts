@@ -26,7 +26,7 @@ test('Hypermedia accepts only entity and page URL selections', () => {
   });
 });
 
-test('Escape closes the current preview and deselects only its resource', () => {
+test('Escape closes the current preview and deselects only its entity', () => {
   const previous = {
     kind: 'entity' as const,
     id: 'rollout-metrics',

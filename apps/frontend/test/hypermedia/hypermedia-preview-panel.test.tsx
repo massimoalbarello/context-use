@@ -106,7 +106,7 @@ async function renderInteractivePreview(onEscape: () => void) {
   render(<RouterProvider router={router} />);
 }
 
-test('preview headers use visible same-window resource links without native tooltips', async () => {
+test('preview headers use visible same-window entity links without native tooltips', async () => {
   const pageHtml = await renderPreview({ kind: 'page', readableId: 'project-brief' });
   const entityHtml = await renderPreview({ kind: 'entity', readableId: 'maya-chen' });
 
@@ -118,7 +118,7 @@ test('preview headers use visible same-window resource links without native tool
   expect(`${pageHtml}${entityHtml}`).not.toContain('Open full');
 });
 
-test('page preview content keeps resource navigation inside the Hypermedia overlay', async () => {
+test('page preview content keeps entity navigation inside the Hypermedia overlay', async () => {
   const pageHtml = await renderPreview({ kind: 'page', readableId: 'project-brief' });
 
   expect(pageHtml).toContain('>launch plan</button>');

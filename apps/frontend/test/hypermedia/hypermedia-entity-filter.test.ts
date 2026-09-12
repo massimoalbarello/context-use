@@ -1,17 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 import { keepPreviousData } from '@tanstack/react-query';
+import { filterHypermedia } from '../../src/components/hypermedia/hypermedia-entity-filter';
 import {
   buildHypermediaLayout,
-  type HypermediaLayoutResource,
+  type HypermediaLayoutEntity,
 } from '../../src/components/hypermedia/hypermedia-layout';
-import { filterHypermedia } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import { type HypermediaPage, hypermediaPagesQueryOptions } from '../../src/queries/hypermedia';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
-const resources: HypermediaLayoutResource[] = [
+const entities: HypermediaLayoutEntity[] = [
   {
     key: 'entity:owner',
-    kind: 'entity',
     entity: {
       readableId: 'owner',
       name: 'Owner',
@@ -26,7 +25,6 @@ const resources: HypermediaLayoutResource[] = [
   },
   {
     key: 'entity:plan',
-    kind: 'entity',
     entity: {
       readableId: 'plan',
       name: 'Plan',
@@ -48,44 +46,41 @@ const page: HypermediaPage = {
   revisionNumber: 1,
   createdAt,
   updatedAt: createdAt,
-  resources: [
-    { kind: 'entity', readableId: 'owner' },
-    { kind: 'entity', readableId: 'plan' },
-  ],
+  entities: [{ readableId: 'owner' }, { readableId: 'plan' }],
 };
 
 describe('Hypermedia search filter', () => {
   test('preserves server-selected matches without re-matching display text in the map', () => {
     const filtered = filterHypermedia({
-      resources,
+      entities,
       pages: [page],
-      matchingResourceKeys: new Set(['entity:owner']),
+      matchingEntityKeys: new Set(['entity:owner']),
     });
-    const map = buildHypermediaLayout(filtered.resources, filtered.pages);
+    const map = buildHypermediaLayout(filtered.entities, filtered.pages);
 
-    expect(map.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(map.pages[0]?.resourceKeys).toEqual(['entity:owner']);
+    expect(map.entities.map(({ key }) => key)).toEqual(['entity:owner']);
+    expect(map.pages[0]?.entityKeys).toEqual(['entity:owner']);
 
     const cleared = filterHypermedia({
-      resources,
+      entities,
       pages: [page],
     });
-    expect(cleared.resources).toEqual(resources);
+    expect(cleared.entities).toEqual(entities);
     expect(cleared.pages[0]).toBe(page);
 
     const noMatches = filterHypermedia({
-      resources,
+      entities,
       pages: [page],
-      matchingResourceKeys: new Set(),
+      matchingEntityKeys: new Set(),
     });
-    expect(noMatches.resources).toEqual([]);
-    expect(noMatches.pages[0]?.resources).toEqual([]);
+    expect(noMatches.entities).toEqual([]);
+    expect(noMatches.pages[0]?.entities).toEqual([]);
   });
 
   test('retains the displayed page set while a changed interval loads', () => {
     const pages = hypermediaPagesQueryOptions({
-      resources: [],
-      visibleResources: [],
+      entities: [],
+      visibleEntities: [],
       month: '2026-09',
     });
 

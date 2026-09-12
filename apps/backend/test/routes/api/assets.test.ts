@@ -335,23 +335,20 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const assetNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart&limit=1'),
+      new Request('http://localhost/api/hypermedia/entities?anchor=asset:quarterly-chart&limit=1'),
     );
     expect(assetNeighborhoodResponse.status).toBe(StatusMap['Bad Request']);
     const assetSelectionResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart'),
+      new Request('http://localhost/api/hypermedia/pages?entities=asset:quarterly-chart'),
     );
     expect(assetSelectionResponse.status).toBe(StatusMap['Bad Request']);
 
     const entityNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/resources?anchor=entity:luca-bianchi'),
+      new Request('http://localhost/api/hypermedia/entities?anchor=luca-bianchi'),
     );
     expect(entityNeighborhoodResponse.status).toBe(StatusMap.OK);
     expect(await entityNeighborhoodResponse.json()).toMatchObject({
-      anchor: {
-        kind: 'entity',
-        entity: { readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } },
-      },
+      anchor: { readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } },
       neighbors: [],
       nextCursor: null,
     });
@@ -362,9 +359,9 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const graphPages = await graphPagesResponse.json();
     expectNoInternalResourceIds(graphPages);
     expect(graphPages).toMatchObject({
-      pages: [{ readableId: 'evidence-report', resources: [] }],
-      matchedResources: [],
-      resourceReferencesTruncated: false,
+      pages: [{ readableId: 'evidence-report', entities: [] }],
+      matchedEntities: [],
+      entityReferencesTruncated: false,
     });
 
     const detailResponse = await app.handle(

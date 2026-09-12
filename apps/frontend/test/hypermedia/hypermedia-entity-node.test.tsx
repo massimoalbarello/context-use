@@ -1,7 +1,7 @@
 import { afterEach, expect, mock, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
-import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
+import type { HypermediaLayoutEntity } from '../../src/components/hypermedia/hypermedia-layout';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 import {
   type CalendarMonth,
@@ -34,10 +34,9 @@ const portrait = {
   createdAt,
   updatedAt: createdAt,
 };
-const resources: HypermediaLayoutResource[] = [
+const entities: HypermediaLayoutEntity[] = [
   {
     key: 'entity:grace-hopper',
-    kind: 'entity',
     entity: {
       readableId: 'grace-hopper',
       name: 'Grace Hopper',
@@ -52,7 +51,6 @@ const resources: HypermediaLayoutResource[] = [
   },
   {
     key: 'entity:ada-lovelace',
-    kind: 'entity',
     entity: {
       readableId: 'ada-lovelace',
       name: 'Ada Lovelace',
@@ -67,16 +65,16 @@ const resources: HypermediaLayoutResource[] = [
   },
 ];
 
-function resourceMark({ name, kind }: { name: string; kind: 'entity' }): SVGGElement {
-  const interactive = screen.getByRole('link', { name: `Open ${kind} ${name}` });
-  const mark = interactive.querySelector<SVGGElement>(`[data-hypermedia-resource-kind="${kind}"]`);
+function entityMark(name: string): SVGGElement {
+  const interactive = screen.getByRole('link', { name: `Open entity ${name}` });
+  const mark = interactive.querySelector<SVGGElement>('[data-hypermedia-entity-mark]');
   expect(mark).toBeTruthy();
   return mark!;
 }
 
-function expectResourceIdentities() {
-  const grace = resourceMark({ name: 'Grace Hopper', kind: 'entity' });
-  const ada = resourceMark({ name: 'Ada Lovelace', kind: 'entity' });
+function expectEntityIdentities() {
+  const grace = entityMark('Grace Hopper');
+  const ada = entityMark('Ada Lovelace');
 
   expect(grace.querySelector('circle')).toBeTruthy();
   expect(grace.querySelector('rect')).toBeNull();
@@ -104,9 +102,9 @@ function HypermediaMapFixture({
     <KnowledgeWorkspace>
       <div />
       <HypermediaCanvas
-        resources={resources}
+        entities={entities}
         pages={[]}
-        selectedResources={[{ kind: 'entity', readableId: 'grace-hopper' }]}
+        selectedEntities={[{ readableId: 'grace-hopper' }]}
         selectedKey={selectedKey}
         month={month}
         onSelect={() => undefined}
@@ -122,7 +120,7 @@ function HypermediaMapFixture({
   );
 }
 
-test('Map distinguishes resource identities and retains partial progress between months', async () => {
+test('Map distinguishes entity identities and retains partial progress between months', async () => {
   const onMonthChange = mock(() => undefined);
   const onIntervalScrollingChange = mock(() => undefined);
   render(
@@ -132,7 +130,7 @@ test('Map distinguishes resource identities and retains partial progress between
     />,
   );
 
-  expectResourceIdentities();
+  expectEntityIdentities();
   const canvas = screen.getByLabelText('Interactive Hypermedia');
 
   expect(screen.getByText('Undated')).toBeTruthy();

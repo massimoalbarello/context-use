@@ -338,8 +338,8 @@ test.each([
     const hypermedia = new HypermediaRepository(reader);
     const input = {
       ownerId: OWNER_A,
-      resources: [{ kind: 'entity' as const, readableId: 'topic' }],
-      visibleResources: [],
+      entities: [{ readableId: 'topic' }],
+      visibleEntities: [],
       limit: 1,
       temporalBounds: time ? temporalBoundsFrom(time) : undefined,
     };
@@ -374,17 +374,15 @@ test('excluded canvas resource kinds cannot crowd out eligible entity matches', 
     });
     const input = {
       ownerId: OWNER_A,
-      resources: [],
-      visibleResources: [],
+      entities: [],
+      visibleEntities: [],
       query: 'needle',
       limit: 10,
       offset: 0,
     };
     const before = await retrieval.searchPageView(input);
     expect(before.pages.map((page) => page.readableId)).toEqual(['context']);
-    expect(before.matchedResources).toEqual([
-      { kind: 'entity', entity: expect.objectContaining({ readableId: 'target' }) },
-    ]);
+    expect(before.matchedEntities).toEqual([expect.objectContaining({ readableId: 'target' })]);
     for (let index = 0; index < MAX_HYPERMEDIA_SEARCH_LIMIT; index++) {
       await createAsset({ assets, readableId: `needle-${index}`, name: 'Needle' });
     }

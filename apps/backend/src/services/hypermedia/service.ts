@@ -1,6 +1,6 @@
 import type {
-  HypermediaResourceContinuation,
-  HypermediaResourceReference,
+  HypermediaEntityContinuation,
+  HypermediaEntityReference,
 } from '#models/hypermedia/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { HypermediaRepositoryContract } from '#repositories/hypermedia/repository.ts';
@@ -16,19 +16,19 @@ export class HypermediaService {
     this.hypermedia = hypermedia;
   }
 
-  resourceNeighborhood(input: {
+  entityNeighborhood(input: {
     ownerId: string;
-    anchor: HypermediaResourceReference;
+    anchor: HypermediaEntityReference;
     limit: number;
-    cursor?: HypermediaResourceContinuation;
+    cursor?: HypermediaEntityContinuation;
   }) {
-    return this.hypermedia.resourceNeighborhood(input);
+    return this.hypermedia.entityNeighborhood(input);
   }
 
   pages(input: {
     ownerId: string;
-    resources: HypermediaResourceReference[];
-    visibleResources: HypermediaResourceReference[];
+    entities: HypermediaEntityReference[];
+    visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;
     temporalBounds?: TemporalBounds;
@@ -37,4 +37,4 @@ export class HypermediaService {
   }
 }
 
-export type HypermediaServiceContract = Pick<HypermediaService, 'resourceNeighborhood' | 'pages'>;
+export type HypermediaServiceContract = Pick<HypermediaService, 'entityNeighborhood' | 'pages'>;

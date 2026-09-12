@@ -4,27 +4,27 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
 import {
+  type HypermediaEntityReference,
   type HypermediaPage,
   type HypermediaPages,
-  type HypermediaResourceReference,
-  hypermediaResourceKey,
-  hypermediaResourceNeighborhoodQueryOptions,
-  hypermediaResourceReference,
+  hypermediaEntityKey,
+  hypermediaEntityNeighborhoodQueryOptions,
+  hypermediaEntityReference,
 } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
-import { buildStableResources } from './hypermedia-layout';
-import { filterHypermedia } from './hypermedia-resource-filter';
+import { filterHypermedia } from './hypermedia-entity-filter';
+import { buildStableEntities } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
-  anchor: HypermediaResourceReference;
+  anchor: HypermediaEntityReference;
   cursor?: string;
 };
 
 function requestKey(request: NeighborhoodRequest): string {
-  return `${hypermediaResourceKey(request.anchor)}:${request.cursor ?? 'first'}`;
+  return `${hypermediaEntityKey(request.anchor)}:${request.cursor ?? 'first'}`;
 }
 
 function appendNeighborhoodRequest({
@@ -39,35 +39,31 @@ function appendNeighborhoodRequest({
     : [...current, request];
 }
 
-function neighborhoodRequestsForResources({
-  resources,
+function neighborhoodRequestsForEntities({
+  entities,
   initial = [],
 }: {
-  resources: HypermediaResourceReference[];
+  entities: HypermediaEntityReference[];
   initial?: NeighborhoodRequest[];
 }): NeighborhoodRequest[] {
   let requests = initial;
-  for (const anchor of resources) {
+  for (const anchor of entities) {
     requests = appendNeighborhoodRequest({ current: requests, request: { anchor } });
   }
   return requests;
 }
 
-function resourceSelection(
-  selection?: HypermediaSelection,
-): HypermediaResourceReference | undefined {
-  return selection && selection.kind !== 'page'
-    ? { kind: selection.kind, readableId: selection.readableId }
-    : undefined;
+function entitySelection(selection?: HypermediaSelection): HypermediaEntityReference | undefined {
+  return selection && selection.kind !== 'page' ? { readableId: selection.readableId } : undefined;
 }
 
 export function HypermediaExplorer({
   selfReadableId,
   selection,
-  selectedResources,
+  selectedEntities,
   query,
   pages,
-  matchedResources,
+  matchedEntities,
   month,
   pagesLoading,
   pagesTransitioning,
@@ -76,16 +72,16 @@ export function HypermediaExplorer({
   pageReferencesTruncated,
   onSelect,
   onMonthChange,
-  onVisibleResourcesChange,
+  onVisibleEntitiesChange,
   onRetryPages,
   onDiscoverMorePages,
 }: {
   selfReadableId: string;
   selection?: HypermediaSelection;
-  selectedResources: HypermediaResourceReference[];
+  selectedEntities: HypermediaEntityReference[];
   query: string;
   pages: HypermediaPage[];
-  matchedResources: HypermediaPages['matchedResources'];
+  matchedEntities: HypermediaPages['matchedEntities'];
   month?: CalendarMonth;
   pagesLoading: boolean;
   pagesTransitioning: boolean;
@@ -94,35 +90,33 @@ export function HypermediaExplorer({
   pageReferencesTruncated: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onMonthChange: (month?: CalendarMonth) => void;
-  onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
+  onVisibleEntitiesChange: (entities: HypermediaEntityReference[]) => void;
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
-  const self = useMemo<HypermediaResourceReference>(
-    () => ({ kind: 'entity', readableId: selfReadableId }),
+  const self = useMemo<HypermediaEntityReference>(
+    () => ({ readableId: selfReadableId }),
     [selfReadableId],
   );
-  const selectedResource = useMemo(() => resourceSelection(selection), [selection]);
-  const selectedNeighborhoodResources = useMemo(
-    () => (selectedResource ? [...selectedResources, selectedResource] : selectedResources),
-    [selectedResource, selectedResources],
+  const selectedEntity = useMemo(() => entitySelection(selection), [selection]);
+  const selectedNeighborhoodEntities = useMemo(
+    () => (selectedEntity ? [...selectedEntities, selectedEntity] : selectedEntities),
+    [selectedEntity, selectedEntities],
   );
   const [exploredNeighborhoodRequests, setExploredNeighborhoodRequests] = useState<
     NeighborhoodRequest[]
-  >(() =>
-    neighborhoodRequestsForResources({ resources: [self, ...selectedNeighborhoodResources] }),
-  );
+  >(() => neighborhoodRequestsForEntities({ entities: [self, ...selectedNeighborhoodEntities] }));
   const neighborhoodRequests = useMemo(
     () =>
-      neighborhoodRequestsForResources({
-        resources: selectedNeighborhoodResources,
+      neighborhoodRequestsForEntities({
+        entities: selectedNeighborhoodEntities,
         initial: exploredNeighborhoodRequests,
       }),
-    [exploredNeighborhoodRequests, selectedNeighborhoodResources],
+    [exploredNeighborhoodRequests, selectedNeighborhoodEntities],
   );
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map((request) =>
-      hypermediaResourceNeighborhoodQueryOptions(request),
+      hypermediaEntityNeighborhoodQueryOptions(request),
     ),
   });
   const neighborhoods = useMemo(
@@ -138,58 +132,51 @@ export function HypermediaExplorer({
     fetchNextPage: fetchNextEntityPage,
     refetch: refetchEntities,
   } = useEntities();
-  const entities = useMemo(
+  const listedEntities = useMemo(
     () => entityData?.pages.flatMap((page) => page.items) ?? [],
     [entityData],
   );
-  const [resources, setResources] = useState(() => buildStableResources([], []));
+  const [entities, setEntities] = useState(() => buildStableEntities([], []));
   const [intervalScrolling, setIntervalScrolling] = useState(false);
 
   const visualizedHypermedia = useMemo(
     () =>
       filterHypermedia({
-        resources,
+        entities,
         pages,
-        matchingResourceKeys:
-          matchedResources === null
+        matchingEntityKeys:
+          matchedEntities === null
             ? undefined
             : new Set(
-                matchedResources.map((resource) =>
-                  hypermediaResourceKey(hypermediaResourceReference(resource)),
+                matchedEntities.map((entity) =>
+                  hypermediaEntityKey(hypermediaEntityReference(entity)),
                 ),
               ),
       }),
-    [pages, matchedResources, resources],
+    [pages, matchedEntities, entities],
   );
-  const visualizedSelectedResources = useMemo(() => {
+  const visualizedSelectedEntities = useMemo(() => {
     const normalizedQuery = query.trim();
-    const visibleResourceKeys = new Set([
-      ...visualizedHypermedia.resources.map(({ key }) => key),
-      ...visualizedHypermedia.pages.flatMap(({ resources: references }) =>
-        references.map(hypermediaResourceKey),
+    const visibleEntityKeys = new Set([
+      ...visualizedHypermedia.entities.map(({ key }) => key),
+      ...visualizedHypermedia.pages.flatMap(({ entities: references }) =>
+        references.map(hypermediaEntityKey),
       ),
     ]);
-    return selectedResources.filter(
-      (resource) => !normalizedQuery || visibleResourceKeys.has(hypermediaResourceKey(resource)),
+    return selectedEntities.filter(
+      (entity) => !normalizedQuery || visibleEntityKeys.has(hypermediaEntityKey(entity)),
     );
-  }, [query, selectedResources, visualizedHypermedia]);
+  }, [query, selectedEntities, visualizedHypermedia]);
 
   useEffect(() => {
-    setResources((current) =>
-      buildStableResources(
-        neighborhoods,
-        [
-          ...entities.map((entity) => ({ kind: 'entity' as const, entity })),
-          ...(matchedResources ?? []),
-        ],
-        current,
-      ),
+    setEntities((current) =>
+      buildStableEntities(neighborhoods, [...listedEntities, ...(matchedEntities ?? [])], current),
     );
-  }, [entities, matchedResources, neighborhoods]);
+  }, [listedEntities, matchedEntities, neighborhoods]);
 
   const handleViewportSettled = useCallback(
     ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
-      onVisibleResourcesChange(focus);
+      onVisibleEntitiesChange(focus);
       if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
         void fetchNextEntityPage();
       }
@@ -199,13 +186,13 @@ export function HypermediaExplorer({
       const candidates = [
         boundaryAnchor,
         ...focus.filter(
-          (resource) => hypermediaResourceKey(resource) !== hypermediaResourceKey(boundaryAnchor),
+          (entity) => hypermediaEntityKey(entity) !== hypermediaEntityKey(boundaryAnchor),
         ),
       ];
       const anchor = candidates.find((candidate) => {
-        const key = hypermediaResourceKey(candidate);
+        const key = hypermediaEntityKey(candidate);
         const matchingRequests = neighborhoodRequests.filter(
-          (request) => hypermediaResourceKey(request.anchor) === key,
+          (request) => hypermediaEntityKey(request.anchor) === key,
         );
         const lastRequest = matchingRequests.at(-1);
         const result = lastRequest
@@ -216,9 +203,9 @@ export function HypermediaExplorer({
       if (!anchor) {
         return;
       }
-      const anchorKey = hypermediaResourceKey(anchor);
+      const anchorKey = hypermediaEntityKey(anchor);
       const matching = neighborhoodRequests.flatMap((request) =>
-        hypermediaResourceKey(request.anchor) === anchorKey
+        hypermediaEntityKey(request.anchor) === anchorKey
           ? [{ request, result: neighborhoodQueries[neighborhoodRequests.indexOf(request)] }]
           : [],
       );
@@ -236,16 +223,16 @@ export function HypermediaExplorer({
       isFetchingNextEntityPage,
       neighborhoodQueries,
       neighborhoodRequests,
-      onVisibleResourcesChange,
+      onVisibleEntitiesChange,
     ],
   );
 
   const handleSelect = useCallback(
     (nextSelection: HypermediaSelection) => {
-      const resource = resourceSelection(nextSelection);
-      if (resource) {
+      const entity = entitySelection(nextSelection);
+      if (entity) {
         setExploredNeighborhoodRequests((current) =>
-          appendNeighborhoodRequest({ current, request: { anchor: resource } }),
+          appendNeighborhoodRequest({ current, request: { anchor: entity } }),
         );
       }
       onSelect(nextSelection);
@@ -256,20 +243,20 @@ export function HypermediaExplorer({
   const neighborhoodError = neighborhoodQueries.find(({ error }) => error)?.error ?? entityError;
   const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
-    neighborhoodRequests.map(({ anchor }) => hypermediaResourceKey(anchor)),
+    neighborhoodRequests.map(({ anchor }) => hypermediaEntityKey(anchor)),
   );
   const canExplore =
     hasNextEntityPage ||
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
-    visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
+    visualizedHypermedia.entities.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
     <div className="relative size-full min-h-[28rem]">
       <HypermediaCanvas
         key={query.trim().toLocaleLowerCase()}
-        resources={visualizedHypermedia.resources}
+        entities={visualizedHypermedia.entities}
         pages={visualizedHypermedia.pages}
         month={month}
-        selectedResources={visualizedSelectedResources}
+        selectedEntities={visualizedSelectedEntities}
         selectedKey={selectedKey}
         onSelect={handleSelect}
         onViewportSettled={handleViewportSettled}
@@ -277,7 +264,7 @@ export function HypermediaExplorer({
         onIntervalScrollingChange={setIntervalScrolling}
         canExplore={canExplore}
         isInitialLoading={
-          visualizedHypermedia.resources.length === 0 &&
+          visualizedHypermedia.entities.length === 0 &&
           (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
         }
         neighborhoodError={neighborhoodError}

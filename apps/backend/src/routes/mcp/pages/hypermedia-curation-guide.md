@@ -39,10 +39,10 @@ replace them. Split material readers would retrieve or revise independently; nev
 catch-all page. Give an overview truthful spanning `temporalCoverage` when meaningful, otherwise
 leave coverage unset.
 
-Build structure bottom-up. An entity is a stable, identifiable referent, not a keyword.
-Mention entities; reference pages or records, explaining each relationship. A page should help someone understand
-the user, not prove that source material was processed. Link targets must exist before writing;
-create them first and add reverse links later.
+An entity is a stable, identifiable referent, not a keyword.
+Each page should mention the entities in the user's life it concerns and explain those
+relationships. Assets and records are evidence; referencing them alone is insufficient.
+Link targets must exist before writing; create them first and add reverse links later.
 
 Before creating entities/pages or materially revising a neighborhood, call `search_hypermedia`
 with names, aliases, identifiers, and topic phrases. Read

@@ -1,4 +1,5 @@
-import type { HypermediaResource, HypermediaResourceReference } from '#models/hypermedia/model.ts';
+import type { Entity } from '#models/entities/model.ts';
+import type { HypermediaEntityReference } from '#models/hypermedia/model.ts';
 import {
   HYPERMEDIA_RESOURCE_TYPES,
   type HypermediaResourceType,
@@ -47,8 +48,8 @@ export class HypermediaRetrievalService {
 
   async searchPageView(input: {
     ownerId: string;
-    resources: HypermediaResourceReference[];
-    visibleResources: HypermediaResourceReference[];
+    entities: HypermediaEntityReference[];
+    visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;
     query: string;
@@ -66,11 +67,11 @@ export class HypermediaRetrievalService {
         },
       },
     });
-    const matchedResources: HypermediaResource[] = [];
+    const matchedEntities: Entity[] = [];
     const pageReadableIds: string[] = [];
     for (const result of retrieval.results) {
       if (result.resourceType === 'entity') {
-        matchedResources.push({ kind: 'entity', entity: result.entity });
+        matchedEntities.push(result.entity);
       } else if (result.resourceType === 'knowledge_page') {
         pageReadableIds.push(result.knowledgePage.readableId);
       }
@@ -80,16 +81,15 @@ export class HypermediaRetrievalService {
       ...pageInput,
       retrievalMatches: {
         pageReadableIds,
-        resources: matchedResources.map((resource) => ({
-          kind: resource.kind,
-          readableId: resource.entity.readableId,
+        entities: matchedEntities.map((entity) => ({
+          readableId: entity.readableId,
         })),
       },
     });
     return {
       ...pages,
-      matchedResources,
-      resourceReferencesTruncated: retrieval.truncated || pages.resourceReferencesTruncated,
+      matchedEntities,
+      entityReferencesTruncated: retrieval.truncated || pages.entityReferencesTruncated,
     };
   }
 }

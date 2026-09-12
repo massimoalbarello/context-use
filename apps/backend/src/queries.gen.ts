@@ -245,9 +245,8 @@ export interface ISearchHypermediaResult {
     updatedAt: string;
 }
 
-/** Result of query `FindHypermediaResource`. */
-export interface IFindHypermediaResourceResult {
-    kind: "entity";
+/** Result of query `FindHypermediaEntity`. */
+export interface IFindHypermediaEntityResult {
     id: string;
     readableId: string;
     name: string;
@@ -266,9 +265,8 @@ export interface IFindHypermediaResourceResult {
     updatedAt: string;
 }
 
-/** Result of query `ListHypermediaResourceNeighbors`. */
-export interface IListHypermediaResourceNeighborsResult {
-    kind: "entity";
+/** Result of query `ListHypermediaEntityNeighbors`. */
+export interface IListHypermediaEntityNeighborsResult {
     id: string;
     readableId: string;
     name: string;
@@ -303,10 +301,9 @@ export interface IListHypermediaPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `ListHypermediaPageResources`. */
-export interface IListHypermediaPageResourcesResult {
+/** Result of query `ListHypermediaPageEntities`. */
+export interface IListHypermediaPageEntitiesResult {
     sourcePageReadableId: string;
-    kind: "entity";
     readableId: string;
 }
 
@@ -727,10 +724,10 @@ export interface Queries {
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
     SearchHypermedia: ISearchHypermediaResult;
-    FindHypermediaResource: IFindHypermediaResourceResult;
-    ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
+    FindHypermediaEntity: IFindHypermediaEntityResult;
+    ListHypermediaEntityNeighbors: IListHypermediaEntityNeighborsResult;
     ListHypermediaPages: IListHypermediaPagesResult;
-    ListHypermediaPageResources: IListHypermediaPageResourcesResult;
+    ListHypermediaPageEntities: IListHypermediaPageEntitiesResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
     ResolveRecordLink: IResolveRecordLinkResult;

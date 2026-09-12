@@ -4,40 +4,37 @@ import { HypermediaFilters } from '../../src/components/hypermedia/hypermedia-fi
 
 afterEach(cleanup);
 
-function HypermediaResourceFilterFixture() {
+function HypermediaEntityFilterFixture() {
   return (
     <HypermediaFilters
       query=""
-      selectedResources={[]}
+      selectedEntities={[]}
       onQueryApply={() => undefined}
-      onClearSelectedResources={() => undefined}
+      onClearSelectedEntities={() => undefined}
     />
   );
 }
 
-test('Hypermedia displays the current keyword and selected resources', () => {
+test('Hypermedia displays the current keyword and selected entities', () => {
   render(
     <HypermediaFilters
       query="launch"
-      selectedResources={[
-        { kind: 'entity', readableId: 'maya-chen' },
-        { kind: 'entity', readableId: 'rollout-metrics' },
-      ]}
+      selectedEntities={[{ readableId: 'maya-chen' }, { readableId: 'rollout-metrics' }]}
       onQueryApply={() => undefined}
-      onClearSelectedResources={() => undefined}
+      onClearSelectedEntities={() => undefined}
     />,
   );
 
-  expect(screen.queryByRole('group', { name: 'Hypermedia resource types' })).toBeNull();
+  expect(screen.queryByRole('group', { name: 'Hypermedia entity types' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Assets' })).toBeNull();
   expect(screen.getByRole('searchbox', { name: 'Keyword' }).getAttribute('value')).toBe('launch');
   expect(screen.getByText('2 entities selected')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Clear selected resources' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Clear selected entities' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Apply' })).toBeTruthy();
 });
 
 test('Command K focuses the Hypermedia keyword search', () => {
-  render(<HypermediaResourceFilterFixture />);
+  render(<HypermediaEntityFilterFixture />);
   const keyword = screen.getByRole('searchbox', { name: 'Keyword' });
   const apply = screen.getByRole('button', { name: 'Apply' });
   fireEvent.change(keyword, { target: { value: 'search' } });

@@ -14,9 +14,9 @@ import {
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
 import {
+  type HypermediaEntityReference,
   type HypermediaPage,
-  type HypermediaResourceReference,
-  hypermediaResourceReference,
+  hypermediaEntityReference,
 } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
@@ -24,30 +24,30 @@ import {
   buildHypermediaLayout,
   type CanvasBounds,
   type HypermediaLayout,
-  type HypermediaLayoutResource,
+  type HypermediaLayoutEntity,
   initialHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
 import {
   type HypermediaSelection,
   hypermediaSelectionKey,
-  selectedHypermediaResourceKeys,
+  selectedHypermediaEntityKeys,
 } from './hypermedia-selection';
 import {
+  HypermediaEntityNode,
   HypermediaHoverPreview,
   HypermediaPageCloud,
   HypermediaPageLabel,
   HypermediaPageLink,
   type HypermediaPreview,
-  HypermediaResourceNode,
   hypermediaPreviewKey,
 } from './hypermedia-view';
 import {
-  focusedResources,
+  focusedEntities,
   hypermediaLayoutInViewport,
-  nearestBoundaryResource,
+  nearestBoundaryEntity,
   type SettledHypermediaViewport,
-  viewportNeedsResourceDiscovery,
+  viewportNeedsEntityDiscovery,
 } from './hypermedia-visibility';
 import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
 
@@ -57,28 +57,28 @@ const MAX_WHEEL_ZOOM_DELTA = 80;
 const WHEEL_ZOOM_RATE = 0.0046;
 const VIEWPORT_SETTLE_MS = 280;
 
-function ResourceDot({
-  resource,
+function EntityDot({
+  entity,
   active,
   onActivate,
   onPreview,
   onPreviewEnd,
 }: {
-  resource: HypermediaLayoutResource;
+  entity: HypermediaLayoutEntity;
   active: boolean;
   onActivate: () => void;
   onPreview: () => void;
   onPreviewEnd: () => void;
 }) {
-  const label = resource.entity.name;
-  const reference = hypermediaResourceReference(resource);
+  const label = entity.entity.name;
+  const reference = hypermediaEntityReference(entity.entity);
   const href = `/entities/${encodeURIComponent(reference.readableId)}`;
 
   return (
     <a
       href={href}
-      data-hypermedia-resource
-      aria-label={`Open ${resource.kind} ${label}`}
+      data-hypermedia-item
+      aria-label={`Open entity ${label}`}
       className="cursor-pointer outline-none"
       onPointerEnter={onPreview}
       onPointerLeave={onPreviewEnd}
@@ -90,7 +90,7 @@ function ResourceDot({
         onActivate();
       }}
     >
-      <HypermediaResourceNode resource={resource} active={active} />
+      <HypermediaEntityNode entity={entity} active={active} />
     </a>
   );
 }
@@ -98,7 +98,7 @@ function ResourceDot({
 const HypermediaScene = memo(function HypermediaScene({
   layout,
   activeKey,
-  selectedResourceKeys,
+  selectedEntityKeys,
   suppressNextCloudClick,
   onSelect,
   onPreview,
@@ -106,7 +106,7 @@ const HypermediaScene = memo(function HypermediaScene({
 }: {
   layout: HypermediaLayout;
   activeKey: string | undefined;
-  selectedResourceKeys: Set<string>;
+  selectedEntityKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: HypermediaSelection) => void;
   onPreview: (preview: HypermediaPreview) => void;
@@ -147,7 +147,7 @@ const HypermediaScene = memo(function HypermediaScene({
           <HypermediaPageLink
             key={item.page.readableId}
             page={item.page}
-            data-hypermedia-resource
+            data-hypermedia-item
             aria-label={`Open knowledge page ${item.page.title}`}
             onSelect={onSelect}
             onPreview={onPreview}
@@ -158,16 +158,18 @@ const HypermediaScene = memo(function HypermediaScene({
         );
       })}
 
-      {layout.resources.map((resource) => {
-        const preview = { kind: 'entity', entity: resource.entity } as const;
+      {layout.entities.map((entity) => {
+        const preview = { kind: 'entity', entity: entity.entity } as const;
         return (
-          <ResourceDot
-            key={resource.key}
-            resource={resource}
-            active={activeKey === resource.key || selectedResourceKeys.has(resource.key)}
+          <EntityDot
+            key={entity.key}
+            entity={entity}
+            active={activeKey === entity.key || selectedEntityKeys.has(entity.key)}
             onPreview={() => onPreview(preview)}
-            onPreviewEnd={() => onPreviewEnd(resource.key)}
-            onActivate={() => onSelect(hypermediaResourceReference(resource))}
+            onPreviewEnd={() => onPreviewEnd(entity.key)}
+            onActivate={() =>
+              onSelect({ kind: 'entity', ...hypermediaEntityReference(entity.entity) })
+            }
           />
         );
       })}
@@ -195,7 +197,7 @@ function HypermediaExplorationCue({
           className="pointer-events-auto rounded-full bg-card/92 shadow-sm backdrop-blur"
           onClick={onRetry}
         >
-          Retry loading nearby resources
+          Retry loading nearby entities
         </Button>
       ) : (
         <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
@@ -208,10 +210,10 @@ function HypermediaExplorationCue({
 }
 
 export function HypermediaCanvas({
-  resources,
+  entities,
   pages,
   month,
-  selectedResources,
+  selectedEntities,
   selectedKey,
   onSelect,
   onViewportSettled,
@@ -222,9 +224,9 @@ export function HypermediaCanvas({
   neighborhoodError,
   onRetryNeighborhood,
 }: {
-  resources: HypermediaLayoutResource[];
+  entities: HypermediaLayoutEntity[];
   pages: HypermediaPage[];
-  selectedResources: HypermediaResourceReference[];
+  selectedEntities: HypermediaEntityReference[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
@@ -236,18 +238,18 @@ export function HypermediaCanvas({
   onMonthChange: (month?: CalendarMonth) => void;
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
-  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(resources));
+  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(entities));
   const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const selectedResourceKeys = useMemo(
-    () => selectedHypermediaResourceKeys(selectedResources),
-    [selectedResources],
+  const selectedEntityKeys = useMemo(
+    () => selectedHypermediaEntityKeys(selectedEntities),
+    [selectedEntities],
   );
   const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
   const clearPreview = useCallback((key: string) => {
     setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
   }, []);
-  const spotlightActive = selectedResources.length > 0;
-  const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
+  const spotlightActive = selectedEntities.length > 0;
+  const layout = useMemo(() => buildHypermediaLayout(entities, pages), [pages, entities]);
   const viewBoxRef = useRef(viewBox);
   const canvasRef = useRef<SVGSVGElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -282,14 +284,14 @@ export function HypermediaCanvas({
 
   const publishViewport = useCallback(
     (viewport: ViewBox) => {
-      const focus = focusedResources({ resources: layout.resources, viewport, selectedKey });
-      const discoverMoreEntities = viewportNeedsResourceDiscovery({
-        resources: layout.resources,
+      const focus = focusedEntities({ entities: layout.entities, viewport, selectedKey });
+      const discoverMoreEntities = viewportNeedsEntityDiscovery({
+        entities: layout.entities,
         viewport,
-        bounds: layout.resourceBounds,
+        bounds: layout.entityBounds,
       });
       const boundaryAnchor = discoverMoreEntities
-        ? nearestBoundaryResource(layout.resources, viewport)
+        ? nearestBoundaryEntity(layout.entities, viewport)
         : undefined;
       if (focus.length === 0 && !discoverMoreEntities) {
         return;
@@ -300,7 +302,7 @@ export function HypermediaCanvas({
         boundaryAnchor,
       });
     },
-    [layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
+    [layout.entityBounds, layout.entities, onViewportSettled, selectedKey],
   );
 
   const scheduleViewport = useCallback(
@@ -330,7 +332,7 @@ export function HypermediaCanvas({
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, layout.resourceBounds.width * 2.5);
+    const maximumWidth = Math.max(2400, layout.entityBounds.width * 2.5);
     const nextViewBox = zoomedHypermediaViewBox({
       current,
       factor,
@@ -383,7 +385,7 @@ export function HypermediaCanvas({
   }, []);
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
-    if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-resource]')) {
+    if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-item]')) {
       return;
     }
     suppressNextCloudClick.current = false;
@@ -460,7 +462,7 @@ export function HypermediaCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
-      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities`}
+      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.entities.length} visible entities`}
     >
       <svg
         ref={canvasRef}
@@ -479,7 +481,7 @@ export function HypermediaCanvas({
         <HypermediaScene
           layout={visibleLayout}
           activeKey={activeKey}
-          selectedResourceKeys={selectedResourceKeys}
+          selectedEntityKeys={selectedEntityKeys}
           suppressNextCloudClick={suppressNextCloudClick}
           onSelect={onSelect}
           onPreview={setPreview}
@@ -503,7 +505,7 @@ export function HypermediaCanvas({
           className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
           aria-live="polite"
         >
-          Loading nearby resources…
+          Loading nearby entities…
         </div>
       )}
 

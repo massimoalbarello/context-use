@@ -8,17 +8,17 @@ import {
   temporalBoundsFrom,
 } from '#models/knowledge-pages/temporal-coverage.ts';
 import {
+  DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
   DEFAULT_HYPERMEDIA_PAGE_LIMIT,
-  DEFAULT_HYPERMEDIA_RESOURCE_LIMIT,
-  decodeHypermediaResourceCursor,
+  decodeHypermediaEntityCursor,
+  HypermediaEntityNeighborhoodQuerySchema,
+  HypermediaEntityNeighborhoodSchema,
   HypermediaPagesQuerySchema,
   HypermediaPagesSchema,
-  HypermediaResourceNeighborhoodQuerySchema,
-  HypermediaResourceNeighborhoodSchema,
+  hypermediaEntityNeighborhoodResponse,
   hypermediaPagesResponse,
-  hypermediaResourceNeighborhoodResponse,
-  parseHypermediaResourceReference,
-  parseHypermediaResources,
+  parseHypermediaEntities,
+  parseHypermediaEntityReference,
 } from '#routes/api/hypermedia/model.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
@@ -36,28 +36,28 @@ export function createHypermediaController({
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .get(
-      '/resources',
+      '/entities',
       async ({ query, user, status }) => {
-        const anchor = parseHypermediaResourceReference(query.anchor);
-        const decodedCursor = decodeHypermediaResourceCursor(query.cursor);
+        const anchor = parseHypermediaEntityReference(query.anchor);
+        const decodedCursor = decodeHypermediaEntityCursor(query.cursor);
         if (!anchor || decodedCursor.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid resource neighborhood query' });
+          return status(StatusMap['Bad Request'], { error: 'Invalid entity neighborhood query' });
         }
-        const neighborhood = await hypermediaService.resourceNeighborhood({
+        const neighborhood = await hypermediaService.entityNeighborhood({
           ownerId: user.id,
           anchor,
-          limit: query.limit ?? DEFAULT_HYPERMEDIA_RESOURCE_LIMIT,
+          limit: query.limit ?? DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
           cursor: decodedCursor.cursor,
         });
         return neighborhood
-          ? status(StatusMap.OK, hypermediaResourceNeighborhoodResponse(neighborhood))
-          : status(StatusMap['Not Found'], { error: 'Hypermedia resource not found' });
+          ? status(StatusMap.OK, hypermediaEntityNeighborhoodResponse(neighborhood))
+          : status(StatusMap['Not Found'], { error: 'Hypermedia entity not found' });
       },
       {
-        detail: { tags: ['Hypermedia'], summary: 'Read a bounded resource neighborhood' },
-        query: HypermediaResourceNeighborhoodQuerySchema,
+        detail: { tags: ['Hypermedia'], summary: 'Read a bounded entity neighborhood' },
+        query: HypermediaEntityNeighborhoodQuerySchema,
         response: {
-          [StatusMap.OK]: HypermediaResourceNeighborhoodSchema,
+          [StatusMap.OK]: HypermediaEntityNeighborhoodSchema,
           [StatusMap['Bad Request']]: ErrorResponseSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
         },
@@ -66,8 +66,8 @@ export function createHypermediaController({
     .get(
       '/pages',
       async ({ query, user, status }) => {
-        const resources = parseHypermediaResources(query.resources);
-        const visibleResources = parseHypermediaResources(query.visible);
+        const entities = parseHypermediaEntities(query.entities);
+        const visibleEntities = parseHypermediaEntities(query.visible);
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -77,13 +77,13 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!resources || !visibleResources) {
+        if (!entities || !visibleEntities) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const input = {
           ownerId: user.id,
-          resources,
-          visibleResources,
+          entities,
+          visibleEntities,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           temporalBounds,

@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { Library } from 'lucide-react';
 import { cn } from '../../lib/class-names';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import type { HypermediaEntityReference } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
   KnowledgeSidebarFooter,
@@ -14,15 +14,15 @@ import { HypermediaFilters } from './hypermedia-filters';
 export function HypermediaSidebar({
   profile,
   query,
-  selectedResources,
+  selectedEntities,
   onQueryApply,
-  onClearSelectedResources,
+  onClearSelectedEntities,
 }: {
   profile: KnowledgeProfile;
   query: string;
-  selectedResources: HypermediaResourceReference[];
+  selectedEntities: HypermediaEntityReference[];
   onQueryApply: (query: string) => void;
-  onClearSelectedResources: () => void;
+  onClearSelectedEntities: () => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
 
@@ -46,9 +46,9 @@ export function HypermediaSidebar({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-4 py-6">
           <HypermediaFilters
             query={query}
-            selectedResources={selectedResources}
+            selectedEntities={selectedEntities}
             onQueryApply={onQueryApply}
-            onClearSelectedResources={onClearSelectedResources}
+            onClearSelectedEntities={onClearSelectedEntities}
           />
         </div>
 

@@ -7,7 +7,7 @@ import type { Session } from '../../src/lib/auth';
 import { entitiesQueryOptions } from '../../src/queries/entities';
 import {
   type HypermediaPages,
-  hypermediaResourceNeighborhoodQueryOptions,
+  hypermediaEntityNeighborhoodQueryOptions,
 } from '../../src/queries/hypermedia';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
 import { sessionQueryOptions } from '../../src/queries/session';
@@ -55,12 +55,12 @@ test('map page failures stay inside the canvas and can be retried', async () => 
         revisionNumber: 1,
         createdAt: timestamp,
         updatedAt: timestamp,
-        resources: [{ kind: 'entity', readableId: 'owner' }],
+        entities: [{ readableId: 'owner' }],
       },
     ],
-    matchedResources: null,
+    matchedEntities: null,
     nextOffset: null,
-    resourceReferencesTruncated: false,
+    entityReferencesTruncated: false,
   };
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
@@ -72,10 +72,10 @@ test('map page failures stay inside the canvas and can be retried', async () => 
     pageParams: [0],
   });
   client.setQueryData(
-    hypermediaResourceNeighborhoodQueryOptions({
-      anchor: { kind: 'entity', readableId: 'owner' },
+    hypermediaEntityNeighborhoodQueryOptions({
+      anchor: { readableId: 'owner' },
     }).queryKey,
-    { anchor: { kind: 'entity', entity: profile.selfEntity }, neighbors: [], nextCursor: null },
+    { anchor: profile.selfEntity, neighbors: [], nextCursor: null },
   );
   let unavailable = true;
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(

@@ -7,9 +7,9 @@ test('scroll months select the API time and keep dated and undated results in se
   const requests: URL[] = [];
   const response: HypermediaPages = {
     pages: [],
-    matchedResources: null,
+    matchedEntities: null,
     nextOffset: null,
-    resourceReferencesTruncated: false,
+    entityReferencesTruncated: false,
   };
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
@@ -28,8 +28,8 @@ test('scroll months select the API time and keep dated and undated results in se
     for (const month of months) {
       await client.fetchInfiniteQuery(
         hypermediaPagesQueryOptions({
-          resources: [],
-          visibleResources: [],
+          entities: [],
+          visibleEntities: [],
           month,
         }),
       );
