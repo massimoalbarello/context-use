@@ -9,6 +9,7 @@ import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
+import { ENTITY_TYPES, type Entity } from '#models/entities/model.ts';
 import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#models/hypermedia-retrieval/model.ts';
 import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
@@ -154,6 +155,9 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       }),
     );
     expect(profileResponse.status).toBe(StatusMap.Created);
+    expect(await profileResponse.clone().json()).toMatchObject({
+      selfEntity: { entityType: null },
+    });
     expectNoInternalResourceIds(await profileResponse.clone().json());
     expect(await profileResponse.json()).toEqual({
       selfEntity: expect.objectContaining({
@@ -1260,6 +1264,65 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       ((await profileReadResponse.json()) as { selfEntity: { readableId: string } }).selfEntity
         .readableId,
     ).toBe('test-owner');
+    // Exercise the HTTP type contract after the graph journey so its counts stay independent.
+    for (const entityType of [...ENTITY_TYPES, null]) {
+      const name = `AAA typed fixture ${entityType ?? 'untyped'}`;
+      const created = await app.handle(
+        jsonRequest({
+          method: 'POST',
+          path: '/entities',
+          body: { name, description: 'Type contract fixture', entityType },
+        }),
+      );
+      expect(created.status).toBe(StatusMap.Created);
+      const body = (await created.json()) as Pick<Entity, 'readableId' | 'entityType'>;
+      expect(body.entityType).toBe(entityType);
+      const preserved = await app.handle(
+        jsonRequest({
+          method: 'PATCH',
+          path: `/entities/${body.readableId}`,
+          body: { name, description: 'Updated type contract fixture' },
+        }),
+      );
+      expect(((await preserved.json()) as Pick<Entity, 'entityType'>).entityType).toBe(entityType);
+      const listed = await app.handle(
+        jsonRequest({ method: 'GET', path: `/entities?entityType=${entityType ?? 'untyped'}` }),
+      );
+      expect(
+        ((await listed.json()) as { items: Pick<Entity, 'readableId'>[] }).items.some(
+          (item: { readableId: string }) => item.readableId === body.readableId,
+        ),
+      ).toBe(true);
+      const searched = await app.handle(
+        jsonRequest({
+          method: 'GET',
+          path: `/hypermedia/search?query=fixture&entityType=${entityType ?? 'untyped'}`,
+        }),
+      );
+      expect(((await searched.json()) as { results: unknown[] }).results).toContainEqual(
+        expect.objectContaining({
+          entity: expect.objectContaining({ readableId: body.readableId, entityType }),
+        }),
+      );
+      const cleared = await app.handle(
+        jsonRequest({
+          method: 'PATCH',
+          path: `/entities/${body.readableId}`,
+          body: { name, description: 'Updated type contract fixture', entityType: null },
+        }),
+      );
+      expect(((await cleared.json()) as Pick<Entity, 'entityType'>).entityType).toBeNull();
+    }
+    for (const entityType of ['event', 'company', 'all', 'untyped', ['person', 'place']]) {
+      const rejected = await app.handle(
+        jsonRequest({
+          method: 'POST',
+          path: '/entities',
+          body: { name: 'Invalid type', description: 'Invalid type fixture', entityType },
+        }),
+      );
+      expect(rejected.status).toBe(StatusMap['Bad Request']);
+    }
   } finally {
     await database.close();
     await rm(dataFolder, { recursive: true, force: true });

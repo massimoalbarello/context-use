@@ -15,7 +15,11 @@ import {
   recordAddress,
 } from '#models/readable-ids/addresses.ts';
 import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
-import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
+import {
+  EntitySchema,
+  EntityTypeFilterSchema,
+  entityResponse,
+} from '#routes/api/entities/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
 import {
   RecordListQuerySchema,
@@ -32,6 +36,7 @@ const RecordFilterValueSchema = t.Optional(
 );
 
 export const HypermediaSearchQuerySchema = t.Object({
+  entityType: t.Optional(EntityTypeFilterSchema),
   query: t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH, pattern: '\\S' }),
   resourceTypes: t.Optional(
     t.String({

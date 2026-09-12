@@ -40,6 +40,7 @@ export function registerHypermediaRetrievalTools({
       interval,
       time,
       assetKind,
+      entityType,
       recordFilter,
       limit = DEFAULT_HYPERMEDIA_SEARCH_LIMIT,
     }) => {
@@ -58,6 +59,7 @@ export function registerHypermediaRetrievalTools({
         resourceTypes,
         limit,
         filters: {
+          entityType,
           knowledgePage: { interval, temporalBounds },
           asset: { kind: assetKind },
           record: recordFilter,

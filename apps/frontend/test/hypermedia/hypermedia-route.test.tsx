@@ -20,6 +20,7 @@ test('map page failures stay inside the canvas and can be retried', async () => 
       readableId: 'owner',
       name: 'Owner',
       description: 'The owner.',
+      entityType: null,
       isSelf: true,
       image: null,
       createdAt: timestamp,

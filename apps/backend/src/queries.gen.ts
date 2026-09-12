@@ -92,6 +92,7 @@ export interface IListActiveEntityImageAssetUsagesResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     isSelf: number;
 }
 
@@ -101,6 +102,7 @@ export interface ICreateEntityResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -112,6 +114,7 @@ export interface IListEntitiesResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -136,6 +139,7 @@ export interface IFindEntityResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -209,6 +213,7 @@ export interface ISearchHypermediaResult {
     entityId: string | null;
     entityName: string | null;
     entityDescription: string | null;
+    entityType: string | null;
     isSelf: number;
     imageId: string | null;
     imageReadableId: string | null;
@@ -247,6 +252,7 @@ export interface IFindHypermediaResourceResult {
     readableId: string;
     name: string;
     description: string | null;
+    entityType: string | null;
     isSelf: number;
     imageId: string | null;
     imageReadableId: string | null;
@@ -270,6 +276,7 @@ export interface IListHypermediaResourceNeighborsResult {
     readableId: string;
     name: string;
     description: string | null;
+    entityType: string | null;
     isSelf: number;
     imageId: string | null;
     imageReadableId: string | null;
@@ -419,6 +426,7 @@ export interface IListKnowledgePageMentionsResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -514,6 +522,7 @@ export interface ICreateKnowledgeProfileEntityResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -524,6 +533,7 @@ export interface IFindKnowledgeProfileResult {
     readableId: string;
     name: string;
     description: string;
+    entityType: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;

@@ -1,3 +1,4 @@
+import type { EntityType } from '#models/entities/model.ts';
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
@@ -22,6 +23,7 @@ export class KnowledgeProfilesService {
     ownerId: string;
     name: string;
     description: string;
+    entityType?: EntityType | null;
     allowDuplicate?: boolean;
   }): Promise<KnowledgeProfileMutationResult> {
     const derivedReadableId = readableIdFrom(input.name);
@@ -37,6 +39,7 @@ export class KnowledgeProfilesService {
       readableId,
       name: input.name.trim(),
       description: input.description.trim(),
+      entityType: input.entityType,
       createdAt: new Date().toISOString(),
     });
     return result.state === 'readable_id_conflict' ? { state: 'name_conflict' } : result;

@@ -1,5 +1,5 @@
 import { isEmbeddableAssetMedia } from '#models/assets/media.ts';
-import type { Entity, EntityDetail } from '#models/entities/model.ts';
+import type { Entity, EntityDetail, EntityType, EntityTypeFilter } from '#models/entities/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
@@ -32,6 +32,7 @@ export class EntitiesService {
     ownerId: string;
     name: string;
     description: string;
+    entityType?: EntityType | null;
     allowDuplicate?: boolean;
   }): Promise<{ state: 'created'; entity: Entity } | { state: 'name_conflict' }> {
     const derivedReadableId = readableIdFrom(input.name);
@@ -48,6 +49,7 @@ export class EntitiesService {
         readableId,
         name: input.name.trim(),
         description: input.description.trim(),
+        entityType: input.entityType,
         createdAt: new Date().toISOString(),
       })
       .then((result) =>
@@ -55,7 +57,7 @@ export class EntitiesService {
       );
   }
 
-  list(input: { ownerId: string; limit: number; offset: number }) {
+  list(input: { ownerId: string; limit: number; offset: number; entityType?: EntityTypeFilter }) {
     return this.entities.list(input);
   }
 
@@ -85,12 +87,14 @@ export class EntitiesService {
     readableId: string;
     name: string;
     description: string;
+    entityType?: EntityType | null;
   }): Promise<Entity | null> {
     return this.entities.update({
       ownerId: input.ownerId,
       readableId: input.readableId,
       name: input.name.trim(),
       description: input.description.trim(),
+      entityType: input.entityType,
       updatedAt: new Date().toISOString(),
     });
   }

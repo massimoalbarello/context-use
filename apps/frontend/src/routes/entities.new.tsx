@@ -9,7 +9,7 @@ import { useCreateProfile } from '../lib/hooks/use-create-profile';
 import { internalAppPath } from '../lib/internal-app-path';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 
-const EMPTY_ENTITY: EntityFormValues = { name: '', description: '' };
+const EMPTY_ENTITY: EntityFormValues = { name: '', description: '', entityType: null };
 
 export const Route = createFileRoute('/entities/new')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({

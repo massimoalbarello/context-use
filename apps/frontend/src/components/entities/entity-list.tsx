@@ -1,4 +1,5 @@
 import { useRouterState } from '@tanstack/react-router';
+import type { EntitySearch } from '../../lib/entity-filters';
 import { knowledgeResourceFromPath } from '../../lib/knowledge-navigation';
 import type { EntitySummary } from '../../queries/entities';
 import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
@@ -7,9 +8,11 @@ import { EntityLink } from './entity-link';
 export function EntityList({
   entities,
   filtered = false,
+  search,
 }: {
   entities: EntitySummary[];
   filtered?: boolean;
+  search?: EntitySearch;
 }) {
   const activeEntityId = useRouterState({
     select: (state) => {
@@ -22,7 +25,7 @@ export function EntityList({
     return (
       <ResourceListEmpty title={filtered ? 'No entities match this search.' : 'No entities yet.'}>
         {filtered
-          ? 'Clear or change the keyword search.'
+          ? 'Clear or change the entity filters.'
           : 'Create a stable coordinate before mentioning it from a page.'}
       </ResourceListEmpty>
     );
@@ -35,6 +38,7 @@ export function EntityList({
           <EntityLink
             entity={entity}
             presentation="card"
+            search={search}
             active={entity.readableId === activeEntityId}
           />
         </li>

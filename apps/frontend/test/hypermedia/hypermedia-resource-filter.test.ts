@@ -24,6 +24,7 @@ const resources: HypermediaLayoutResource[] = [
       readableId: 'owner',
       name: 'Owner',
       description: 'The owner.',
+      entityType: null,
       isSelf: true,
       image: null,
       createdAt,

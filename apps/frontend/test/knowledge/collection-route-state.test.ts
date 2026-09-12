@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 import { MAX_ASSET_NAME_LENGTH } from '@repo/backend/asset';
-import { MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
+import { ENTITY_TYPE_FILTERS, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
+import { entitySearch } from '../../src/lib/entity-filters';
 import { assetsQueryOptions } from '../../src/queries/assets';
 import { entitiesQueryOptions } from '../../src/queries/entities';
 import { assetSearch } from '../../src/routes/assets';
-import { entitySearch } from '../../src/routes/entities';
 
 test('entity and asset keyword searches are canonical URL state', () => {
   expect(entitySearch({ q: '  Maya  ' })).toEqual({ q: 'Maya' });
@@ -20,6 +20,26 @@ test('entity and asset keyword searches are canonical URL state', () => {
 });
 
 test('filtered collection pages use distinct query caches', () => {
-  expect(entitiesQueryOptions('maya').queryKey).not.toEqual(entitiesQueryOptions().queryKey);
+  expect(entitiesQueryOptions({ query: 'maya' }).queryKey).not.toEqual(
+    entitiesQueryOptions().queryKey,
+  );
   expect(assetsQueryOptions('rollout').queryKey).not.toEqual(assetsQueryOptions().queryKey);
+});
+
+test('entity type URL state rejects invented types and separates every filtered cache', () => {
+  expect(entitySearch({ q: ' Maya ', entityType: 'person' })).toEqual({
+    q: 'Maya',
+    entityType: 'person',
+  });
+  expect(entitySearch({ entityType: 'untyped' }).entityType).toBe('untyped');
+  expect(entitySearch({ entityType: 'all' }).entityType).toBeUndefined();
+  expect(entitySearch({ entityType: 'event' }).entityType).toBeUndefined();
+  expect(entitySearch({ entityType: ['person', 'place'] }).entityType).toBeUndefined();
+  const keys = ENTITY_TYPE_FILTERS.map((entityType) =>
+    JSON.stringify(
+      entitiesQueryOptions({ query: 'maya', entityType: entitySearch({ entityType }).entityType })
+        .queryKey,
+    ),
+  );
+  expect(new Set(keys).size).toBe(ENTITY_TYPE_FILTERS.length);
 });

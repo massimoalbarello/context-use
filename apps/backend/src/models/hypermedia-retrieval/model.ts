@@ -1,5 +1,5 @@
 import type { AssetSummary } from '#models/assets/model.ts';
-import type { Entity } from '#models/entities/model.ts';
+import type { Entity, EntityTypeFilter } from '#models/entities/model.ts';
 import type {
   KnowledgePageIntervalFilter,
   KnowledgePageSummary,
@@ -44,6 +44,8 @@ export interface HypermediaRetrievalResults {
 }
 
 export interface HypermediaRetrievalFilters {
+  /** When present, restrict retrieval to entities with the selected type. */
+  entityType?: EntityTypeFilter;
   knowledgePage?: {
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;

@@ -833,7 +833,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", profile."self_entity_id" is not null as "isSelf",
+        entity."description", entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",

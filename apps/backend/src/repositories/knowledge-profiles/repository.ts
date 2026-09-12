@@ -1,8 +1,9 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import type { EntityType } from '#models/entities/model.ts';
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
 import type { Queries } from '#queries.gen.ts';
-import { entityFrom } from '#views/entities/entity-view.ts';
+import { entityFrom, entityTypeFrom } from '#views/entities/entity-view.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
@@ -12,6 +13,7 @@ export interface KnowledgeProfilesRepositoryContract {
     readableId: string;
     name: string;
     description: string;
+    entityType?: EntityType | null;
     createdAt: string;
   }): Promise<
     | { state: 'created'; profile: KnowledgeProfile }
@@ -24,7 +26,9 @@ export interface KnowledgeProfilesRepositoryContract {
 type CreatedProfileRow = Queries['CreateKnowledgeProfileEntity'];
 
 function createdProfileFrom(row: CreatedProfileRow): KnowledgeProfile {
-  return { selfEntity: { ...row, isSelf: true, image: null } };
+  return {
+    selfEntity: { ...row, entityType: entityTypeFrom(row.entityType), isSelf: true, image: null },
+  };
 }
 
 export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryContract {
@@ -40,6 +44,7 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
     readableId: string;
     name: string;
     description: string;
+    entityType?: EntityType | null;
     createdAt: string;
   }): Promise<
     | { state: 'created'; profile: KnowledgeProfile }
@@ -59,12 +64,12 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
       const entities = await db.CreateKnowledgeProfileEntity`
         /* @notNull id readableId name description createdAt updatedAt */
         insert into "entity"
-          ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
+          ("id", "owner_id", "readable_id", "name", "description", "entity_type", "created_at", "updated_at")
         values
           (${input.entityId}, ${input.ownerId}, ${input.readableId}, ${input.name},
-           ${input.description}, ${input.createdAt}, ${input.createdAt})
+           ${input.description}, ${input.entityType ?? null}, ${input.createdAt}, ${input.createdAt})
         on conflict ("owner_id", "readable_id") do nothing
-        returning "id", "readable_id" as "readableId", "name", "description",
+        returning "id", "readable_id" as "readableId", "name", "description", "entity_type" as "entityType",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;
       const entity = entities[0];
@@ -93,7 +98,7 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", 1 as "isSelf", entity."created_at" as "createdAt",
+        entity."description", entity."entity_type" as "entityType", 1 as "isSelf", entity."created_at" as "createdAt",
         entity."updated_at" as "updatedAt", image."id" as "imageId",
         image."readable_id" as "imageReadableId", image."name" as "imageName",
         image."media_type" as "imageMediaType", image."extension" as "imageExtension",

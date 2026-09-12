@@ -1,4 +1,8 @@
-import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
+import {
+  type EntityType,
+  MAX_ENTITY_DESCRIPTION_LENGTH,
+  MAX_ENTITY_NAME_LENGTH,
+} from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
 import { Pencil } from 'lucide-react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
@@ -11,11 +15,13 @@ import { Button } from '../ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Textarea } from '../ui/textarea';
 import { EntityAvatar } from './entity-link';
+import { EntityTypeField } from './entity-type-field';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export function EntityIdentityEditor({
   name,
   description,
+  entityType,
   isSelf,
   image,
   imageEditorOpen,
@@ -27,6 +33,7 @@ export function EntityIdentityEditor({
 }: {
   name: string;
   description: string;
+  entityType: EntityType | null;
   isSelf: boolean;
   image: EntitySummary['image'];
   imageEditorOpen: boolean;
@@ -34,13 +41,21 @@ export function EntityIdentityEditor({
   error: Error | null;
   onEditImage: () => void;
   onCancel: () => void;
-  onSubmit: (identity: { name: string; description: string }) => void;
+  onSubmit: (identity: {
+    name: string;
+    description: string;
+    entityType: EntityType | null;
+  }) => void;
 }) {
   const form = useForm({
-    defaultValues: { name, description },
+    defaultValues: { name, description, entityType },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) =>
-      onSubmit({ name: value.name.trim(), description: value.description.trim() }),
+      onSubmit({
+        name: value.name.trim(),
+        description: value.description.trim(),
+        entityType: value.entityType,
+      }),
   });
 
   return (
@@ -124,6 +139,17 @@ export function EntityIdentityEditor({
               </Field>
             )}
           </form.Field>
+          <div className="mt-5 max-w-sm">
+            <form.Field name="entityType">
+              {(field) => (
+                <EntityTypeField
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  onBlur={field.handleBlur}
+                />
+              )}
+            </form.Field>
+          </div>
           {error && <FieldError>{error.message}</FieldError>}
         </FieldGroup>
       </div>

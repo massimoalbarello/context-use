@@ -557,6 +557,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
           readableId: 'luca-bianchi',
           name: 'Luca Bianchi',
           description: 'Researcher and collaborator',
+          entityType: null,
           isSelf: false,
         },
       },
