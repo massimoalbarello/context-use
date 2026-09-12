@@ -15,7 +15,7 @@ type InternalLink =
   | { kind: 'record'; readableId: string };
 
 export type KnowledgePageMarkdownSelection = {
-  kind: Exclude<InternalLink['kind'], 'record'>;
+  kind: Extract<InternalLink['kind'], 'entity' | 'page'>;
   readableId: string;
 };
 
@@ -155,21 +155,12 @@ function PageMarkdownLink({
 function AssetMarkdownLink({
   target,
   children,
-  onSelectResource,
 }: {
   target: Extract<InternalLink, { kind: 'asset' }>;
   children: ReactNode;
-  onSelectResource?: SelectMarkdownResource;
 }) {
   const className =
     'font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground';
-  if (onSelectResource) {
-    return (
-      <button type="button" className={className} onClick={() => onSelectResource(target)}>
-        {children}
-      </button>
-    );
-  }
   return (
     <a className={className} href={assetContentUrl(target.readableId)}>
       {children}
@@ -227,11 +218,7 @@ function MarkdownLink({
     );
   }
   if (target?.kind === 'asset') {
-    return (
-      <AssetMarkdownLink target={target} onSelectResource={onSelectResource}>
-        {children}
-      </AssetMarkdownLink>
-    );
+    return <AssetMarkdownLink target={target}>{children}</AssetMarkdownLink>;
   }
   return (
     <a
@@ -243,41 +230,17 @@ function MarkdownLink({
   );
 }
 
-function MarkdownImage({
-  src,
-  alt,
-  onSelectResource,
-}: {
-  src?: string;
-  alt?: string;
-  onSelectResource?: SelectMarkdownResource;
-}) {
+function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
   const target = src ? internalLink(src) : null;
   if (target?.kind !== 'asset') {
     return null;
   }
-  if (!onSelectResource) {
-    return (
-      <img
-        className="my-7 max-h-[36rem] w-full rounded-xl bg-muted object-contain"
-        src={assetContentUrl(target.readableId)}
-        alt={alt ?? ''}
-      />
-    );
-  }
   return (
-    <button
-      type="button"
-      className="my-7 block w-full"
-      aria-label={`Open ${alt || 'asset'} preview`}
-      onClick={() => onSelectResource(target)}
-    >
-      <img
-        className="max-h-[36rem] w-full rounded-xl bg-muted object-contain"
-        src={assetContentUrl(target.readableId)}
-        alt={alt ?? ''}
-      />
-    </button>
+    <img
+      className="my-7 max-h-[36rem] w-full rounded-xl bg-muted object-contain"
+      src={assetContentUrl(target.readableId)}
+      alt={alt ?? ''}
+    />
   );
 }
 
@@ -307,9 +270,7 @@ export function KnowledgePageMarkdown({
               {children}
             </MarkdownLink>
           ),
-          img: ({ src, alt }) => (
-            <MarkdownImage src={src} alt={alt} onSelectResource={onSelectResource} />
-          ),
+          img: ({ src, alt }) => <MarkdownImage src={src} alt={alt} />,
           h1: ({ children }) => (
             <h1 className="mb-7 font-semibold text-4xl tracking-tight">{children}</h1>
           ),

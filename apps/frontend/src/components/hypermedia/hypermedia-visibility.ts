@@ -2,24 +2,24 @@
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and sort callbacks.
 
 import {
-  type HypermediaResourceReference,
-  hypermediaResourceReference,
+  type HypermediaEntityReference,
+  hypermediaEntityReference,
 } from '../../queries/hypermedia';
 import type {
   CanvasBounds,
   CanvasPoint,
   HypermediaLayout,
-  HypermediaLayoutResource,
+  HypermediaLayoutEntity,
 } from './hypermedia-layout';
 import { hypermediaSelectionKey } from './hypermedia-selection';
 
 export type SettledHypermediaViewport = {
-  focus: HypermediaResourceReference[];
+  focus: HypermediaEntityReference[];
   discoverMoreEntities: boolean;
-  boundaryAnchor?: HypermediaResourceReference;
+  boundaryAnchor?: HypermediaEntityReference;
 };
 
-const MAX_FOCUSED_RESOURCES = 24;
+const MAX_FOCUSED_ENTITIES = 24;
 
 function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
@@ -29,30 +29,30 @@ function squaredDistance(first: CanvasPoint, second: CanvasPoint): number {
   return (first.x - second.x) ** 2 + (first.y - second.y) ** 2;
 }
 
-export function focusedResources({
-  resources,
+export function focusedEntities({
+  entities,
   viewport,
   selectedKey,
 }: {
-  resources: HypermediaLayoutResource[];
+  entities: HypermediaLayoutEntity[];
   viewport: CanvasBounds;
   selectedKey?: string;
-}): HypermediaResourceReference[] {
+}): HypermediaEntityReference[] {
   const center = viewportCenter(viewport);
-  const ordered = resources
-    .filter(
-      (resource) => resource.key === selectedKey || pointNearViewport(resource.point, viewport),
-    )
+  const ordered = entities
+    .filter((entity) => entity.key === selectedKey || pointNearViewport(entity.point, viewport))
     .sort(
       (first, second) =>
         Number(second.key === selectedKey) - Number(first.key === selectedKey) ||
         squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
         first.key.localeCompare(second.key),
     );
-  return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(hypermediaResourceReference);
+  return ordered
+    .slice(0, MAX_FOCUSED_ENTITIES)
+    .map(({ entity }) => hypermediaEntityReference(entity));
 }
 
-function viewportNearResourceBoundary(viewport: CanvasBounds, bounds: CanvasBounds): boolean {
+function viewportNearEntityBoundary(viewport: CanvasBounds, bounds: CanvasBounds): boolean {
   const marginX = Math.min(viewport.width * 0.16, bounds.width * 0.2);
   const marginY = Math.min(viewport.height * 0.16, bounds.height * 0.2);
   return (
@@ -63,17 +63,17 @@ function viewportNearResourceBoundary(viewport: CanvasBounds, bounds: CanvasBoun
   );
 }
 
-export function nearestBoundaryResource(
-  resources: HypermediaLayoutResource[],
+export function nearestBoundaryEntity(
+  entities: HypermediaLayoutEntity[],
   viewport: CanvasBounds,
-): HypermediaResourceReference | undefined {
+): HypermediaEntityReference | undefined {
   const center = viewportCenter(viewport);
-  const nearest = [...resources].sort(
+  const nearest = [...entities].sort(
     (first, second) =>
       squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
       first.key.localeCompare(second.key),
   )[0];
-  return nearest ? hypermediaResourceReference(nearest) : undefined;
+  return nearest ? hypermediaEntityReference(nearest.entity) : undefined;
 }
 
 function pointNearViewport(point: CanvasPoint, viewport: CanvasBounds): boolean {
@@ -87,24 +87,24 @@ function pointNearViewport(point: CanvasPoint, viewport: CanvasBounds): boolean 
   );
 }
 
-export function viewportNeedsResourceDiscovery({
-  resources,
+export function viewportNeedsEntityDiscovery({
+  entities,
   viewport,
   bounds,
 }: {
-  resources: HypermediaLayoutResource[];
+  entities: HypermediaLayoutEntity[];
   viewport: CanvasBounds;
   bounds: CanvasBounds;
 }): boolean {
-  if (!viewportNearResourceBoundary(viewport, bounds)) {
+  if (!viewportNearEntityBoundary(viewport, bounds)) {
     return false;
   }
   const targetEntityCount = Math.max(
     4,
     Math.floor(viewport.width / 180) * Math.floor(viewport.height / 140),
   );
-  const nearbyEntityCount = resources.filter(
-    (resource) => resource.kind === 'entity' && pointNearViewport(resource.point, viewport),
+  const nearbyEntityCount = entities.filter((entity) =>
+    pointNearViewport(entity.point, viewport),
   ).length;
   return nearbyEntityCount < targetEntityCount;
 }
@@ -118,21 +118,19 @@ export function hypermediaLayoutInViewport({
   viewport: CanvasBounds;
   selectedKey?: string;
 }): HypermediaLayout {
-  const visibleResourceKeys = new Set(
-    layout.resources
-      .filter(
-        (resource) => resource.key === selectedKey || pointNearViewport(resource.point, viewport),
-      )
+  const visibleEntityKeys = new Set(
+    layout.entities
+      .filter((entity) => entity.key === selectedKey || pointNearViewport(entity.point, viewport))
       .map(({ key }) => key),
   );
   return {
     ...layout,
-    resources: layout.resources.filter(({ key }) => visibleResourceKeys.has(key)),
+    entities: layout.entities.filter(({ key }) => visibleEntityKeys.has(key)),
     pages: layout.pages.filter(
-      ({ page, point, resourceKeys }) =>
+      ({ page, point, entityKeys }) =>
         hypermediaSelectionKey({ kind: 'page', readableId: page.readableId }) === selectedKey ||
-        resourceKeys.some((key) => visibleResourceKeys.has(key)) ||
-        (resourceKeys.length === 0 && pointNearViewport(point, viewport)),
+        entityKeys.some((key) => visibleEntityKeys.has(key)) ||
+        (entityKeys.length === 0 && pointNearViewport(point, viewport)),
     ),
   };
 }

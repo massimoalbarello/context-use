@@ -335,86 +335,34 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const assetNeighborhoodResponse = await app.handle(
-      new Request(
-        'http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart&kinds=entity&limit=1',
-      ),
+      new Request('http://localhost/api/hypermedia/entities?anchor=asset:quarterly-chart&limit=1'),
     );
-    expect(assetNeighborhoodResponse.status).toBe(StatusMap.OK);
-    expect(await assetNeighborhoodResponse.json()).toEqual(
-      expect.objectContaining({
-        anchor: expect.objectContaining({
-          kind: 'asset',
-          asset: expect.objectContaining({ readableId: 'quarterly-chart' }),
-        }),
-        neighbors: [
-          expect.objectContaining({
-            resource: expect.objectContaining({
-              kind: 'entity',
-              entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
-            }),
-          }),
-        ],
-        nextCursor: null,
-      }),
+    expect(assetNeighborhoodResponse.status).toBe(StatusMap['Bad Request']);
+    const assetSelectionResponse = await app.handle(
+      new Request('http://localhost/api/hypermedia/pages?entities=asset:quarterly-chart'),
     );
+    expect(assetSelectionResponse.status).toBe(StatusMap['Bad Request']);
 
-    const assetOnlyNeighborhoodResponse = await app.handle(
-      new Request(
-        'http://localhost/api/hypermedia/resources?anchor=asset:quarterly-chart&kinds=asset&limit=1',
-      ),
+    const entityNeighborhoodResponse = await app.handle(
+      new Request('http://localhost/api/hypermedia/entities?anchor=luca-bianchi'),
     );
-    expect(assetOnlyNeighborhoodResponse.status).toBe(StatusMap.OK);
-    expect(await assetOnlyNeighborhoodResponse.json()).toEqual(
-      expect.objectContaining({
-        neighbors: [
-          expect.objectContaining({
-            resource: expect.objectContaining({
-              kind: 'asset',
-              asset: expect.objectContaining({ readableId: 'investment-memo' }),
-            }),
-          }),
-        ],
-        nextCursor: null,
-      }),
+    expect(entityNeighborhoodResponse.status).toBe(StatusMap.OK);
+    expect(await entityNeighborhoodResponse.json()).toMatchObject({
+      anchor: { readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } },
+      neighbors: [],
+      nextCursor: null,
+    });
+    const graphPagesResponse = await app.handle(
+      new Request('http://localhost/api/hypermedia/pages?query=Quarterly%20chart'),
     );
-
-    const filteredAssetPagesResponse = await app.handle(
-      new Request(
-        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&kinds=entity,asset&query=Quarterly%20chart',
-      ),
-    );
-    expect(filteredAssetPagesResponse.status).toBe(StatusMap.OK);
-    const filteredAssetPages = (await filteredAssetPagesResponse.json()) as {
-      pages: Array<{
-        readableId: string;
-        resources: Array<{ kind: string; readableId: string }>;
-      }>;
-    };
-    expectNoInternalResourceIds(filteredAssetPages);
-    expect(filteredAssetPages.pages).toEqual([
-      expect.objectContaining({
-        readableId: 'evidence-report',
-        resources: [{ kind: 'asset', readableId: 'quarterly-chart' }],
-      }),
-    ]);
-
-    const entityOnlyAssetPagesResponse = await app.handle(
-      new Request(
-        'http://localhost/api/hypermedia/pages?resources=asset:quarterly-chart&kinds=entity&query=Quarterly%20chart',
-      ),
-    );
-    expect(entityOnlyAssetPagesResponse.status).toBe(StatusMap.OK);
-    expect(await entityOnlyAssetPagesResponse.json()).toEqual(
-      expect.objectContaining({
-        pages: [
-          expect.objectContaining({
-            readableId: 'evidence-report',
-            resources: [],
-          }),
-        ],
-        resourceReferencesTruncated: false,
-      }),
-    );
+    expect(graphPagesResponse.status).toBe(StatusMap.OK);
+    const graphPages = await graphPagesResponse.json();
+    expectNoInternalResourceIds(graphPages);
+    expect(graphPages).toMatchObject({
+      pages: [{ readableId: 'evidence-report', entities: [] }],
+      matchedEntities: [],
+      entityReferencesTruncated: false,
+    });
 
     const detailResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart'),

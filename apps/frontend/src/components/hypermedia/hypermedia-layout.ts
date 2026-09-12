@@ -2,17 +2,18 @@
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and collection indexes.
 
 import type {
+  HypermediaEntity,
+  HypermediaEntityNeighborhood,
   HypermediaPage,
-  HypermediaResource,
-  HypermediaResourceNeighborhood,
 } from '../../queries/hypermedia';
-import { hypermediaResourceKey, hypermediaResourceReference } from '../../queries/hypermedia';
+import { hypermediaEntityKey, hypermediaEntityReference } from '../../queries/hypermedia';
 import { hypermediaSelectionKey } from './hypermedia-selection';
 
 export type CanvasPoint = { x: number; y: number };
 export type CanvasBounds = CanvasPoint & { width: number; height: number };
 
-export type HypermediaLayoutResource = HypermediaResource & {
+export type HypermediaLayoutEntity = {
+  entity: HypermediaEntity;
   key: string;
   point: CanvasPoint;
 };
@@ -21,23 +22,23 @@ type HypermediaPageLayout = {
   page: HypermediaPage;
   point: CanvasPoint;
   cloudPath: string;
-  resourceKeys: string[];
+  entityKeys: string[];
 };
 
 export type HypermediaLayout = {
-  resources: HypermediaLayoutResource[];
+  entities: HypermediaLayoutEntity[];
   pages: HypermediaPageLayout[];
-  resourceBounds: CanvasBounds;
+  entityBounds: CanvasBounds;
 };
 
 const CANVAS_PADDING = 160;
 const INITIAL_VIEW_WIDTH = 900;
 const INITIAL_VIEW_HEIGHT = 620;
-const RESOURCE_MIN_DISTANCE = 150;
-const RESOURCE_SPIRAL_STEP = 56;
+const ENTITY_MIN_DISTANCE = 150;
+const ENTITY_SPIRAL_STEP = 56;
 const PAGE_SPIRAL_STEP = 76;
-const RESOURCE_RESERVED_WIDTH = 200;
-const RESOURCE_RESERVED_HEIGHT = 144;
+const ENTITY_RESERVED_WIDTH = 200;
+const ENTITY_RESERVED_HEIGHT = 144;
 const PAGE_LABEL_CHARACTER_WIDTH = 9;
 const PAGE_LABEL_HORIZONTAL_PADDING = 56;
 const PAGE_LABEL_RESERVED_HEIGHT = 72;
@@ -103,11 +104,11 @@ function areasOverlap(first: CanvasArea, second: CanvasArea): boolean {
   );
 }
 
-function resourceArea(resource: HypermediaLayoutResource): CanvasArea {
+function entityArea(entity: HypermediaLayoutEntity): CanvasArea {
   return {
-    point: resource.point,
-    halfWidth: RESOURCE_RESERVED_WIDTH / 2,
-    halfHeight: RESOURCE_RESERVED_HEIGHT / 2,
+    point: entity.point,
+    halfWidth: ENTITY_RESERVED_WIDTH / 2,
+    halfHeight: ENTITY_RESERVED_HEIGHT / 2,
   };
 }
 
@@ -120,64 +121,61 @@ function pageLabelArea(title: string, point: CanvasPoint): CanvasArea {
   };
 }
 
-function resourceAt(resource: HypermediaResource, point: CanvasPoint): HypermediaLayoutResource {
-  const key = hypermediaResourceKey(hypermediaResourceReference(resource));
-  return { ...resource, key, point };
+function entityAt(entity: HypermediaEntity, point: CanvasPoint): HypermediaLayoutEntity {
+  const key = hypermediaEntityKey(hypermediaEntityReference(entity));
+  return { entity, key, point };
 }
 
-function samePositionedResource(
-  first: HypermediaLayoutResource,
-  second: HypermediaLayoutResource,
+function samePositionedEntity(
+  first: HypermediaLayoutEntity,
+  second: HypermediaLayoutEntity,
 ): boolean {
   if (
     first.key !== second.key ||
-    first.kind !== second.kind ||
     first.point.x !== second.point.x ||
     first.point.y !== second.point.y
   ) {
     return false;
   }
-  return first.kind === 'entity' && second.kind === 'entity'
-    ? first.entity === second.entity
-    : first.kind === 'asset' && second.kind === 'asset' && first.asset === second.asset;
+  return first.entity === second.entity;
 }
 
-export function buildStableResources(
-  neighborhoods: HypermediaResourceNeighborhood[],
-  standaloneResources: HypermediaResource[] = [],
-  previousResources: HypermediaLayoutResource[] = [],
-): HypermediaLayoutResource[] {
-  const resources = new Map<string, HypermediaLayoutResource>();
+export function buildStableEntities(
+  neighborhoods: HypermediaEntityNeighborhood[],
+  standaloneEntities: HypermediaEntity[] = [],
+  previousEntities: HypermediaLayoutEntity[] = [],
+): HypermediaLayoutEntity[] {
+  const entities = new Map<string, HypermediaLayoutEntity>();
   const placed: CanvasPoint[] = [];
   const neighborCountByAnchor = new Map<string, number>();
 
   const availableKeys = new Set(
     neighborhoods.flatMap((neighborhood) => [
-      hypermediaResourceKey(hypermediaResourceReference(neighborhood.anchor)),
-      ...neighborhood.neighbors.map(({ resource }) =>
-        hypermediaResourceKey(hypermediaResourceReference(resource)),
+      hypermediaEntityKey(hypermediaEntityReference(neighborhood.anchor)),
+      ...neighborhood.neighbors.map(({ entity }) =>
+        hypermediaEntityKey(hypermediaEntityReference(entity)),
       ),
     ]),
   );
-  for (const resource of standaloneResources) {
-    availableKeys.add(hypermediaResourceKey(hypermediaResourceReference(resource)));
+  for (const entity of standaloneEntities) {
+    availableKeys.add(hypermediaEntityKey(hypermediaEntityReference(entity)));
   }
-  for (const resource of previousResources) {
-    if (availableKeys.has(resource.key)) {
-      resources.set(resource.key, resource);
-      placed.push(resource.point);
+  for (const entity of previousEntities) {
+    if (availableKeys.has(entity.key)) {
+      entities.set(entity.key, entity);
+      placed.push(entity.point);
     }
   }
 
-  function addAnchor(resource: HypermediaResource): HypermediaLayoutResource {
-    const key = hypermediaResourceKey(hypermediaResourceReference(resource));
-    const existing = resources.get(key);
+  function addAnchor(entity: HypermediaEntity): HypermediaLayoutEntity {
+    const key = hypermediaEntityKey(hypermediaEntityReference(entity));
+    const existing = entities.get(key);
     if (existing) {
-      const refreshed = resourceAt(resource, existing.point);
-      resources.set(key, refreshed);
+      const refreshed = entityAt(entity, existing.point);
+      entities.set(key, refreshed);
       return refreshed;
     }
-    const index = resources.size;
+    const index = entities.size;
     const preferred =
       index === 0
         ? { x: 0, y: 0 }
@@ -188,22 +186,22 @@ export function buildStableResources(
     const point = openPoint({
       key,
       preferred,
-      step: RESOURCE_SPIRAL_STEP,
+      step: ENTITY_SPIRAL_STEP,
       isAvailable: (candidate) =>
-        placed.every((placedPoint) => distance(candidate, placedPoint) >= RESOURCE_MIN_DISTANCE),
+        placed.every((placedPoint) => distance(candidate, placedPoint) >= ENTITY_MIN_DISTANCE),
     });
-    const positionedResource = resourceAt(resource, point);
-    resources.set(key, positionedResource);
+    const positionedEntity = entityAt(entity, point);
+    entities.set(key, positionedEntity);
     placed.push(point);
-    return positionedResource;
+    return positionedEntity;
   }
 
   for (const neighborhood of neighborhoods) {
     const anchor = addAnchor(neighborhood.anchor);
     const anchorOffset = neighborCountByAnchor.get(anchor.key) ?? 0;
     for (const [index, neighbor] of neighborhood.neighbors.entries()) {
-      const key = hypermediaResourceKey(hypermediaResourceReference(neighbor.resource));
-      if (resources.has(key)) {
+      const key = hypermediaEntityKey(hypermediaEntityReference(neighbor.entity));
+      if (entities.has(key)) {
         continue;
       }
       const placementIndex = anchorOffset + index;
@@ -217,27 +215,25 @@ export function buildStableResources(
       const point = openPoint({
         key,
         preferred,
-        step: RESOURCE_SPIRAL_STEP,
+        step: ENTITY_SPIRAL_STEP,
         isAvailable: (candidate) =>
-          placed.every((placedPoint) => distance(candidate, placedPoint) >= RESOURCE_MIN_DISTANCE),
+          placed.every((placedPoint) => distance(candidate, placedPoint) >= ENTITY_MIN_DISTANCE),
       });
-      resources.set(key, resourceAt(neighbor.resource, point));
+      entities.set(key, entityAt(neighbor.entity, point));
       placed.push(point);
     }
     neighborCountByAnchor.set(anchor.key, anchorOffset + neighborhood.neighbors.length);
   }
 
-  for (const resource of standaloneResources) {
-    addAnchor(resource);
+  for (const entity of standaloneEntities) {
+    addAnchor(entity);
   }
 
-  const nextResources = [...resources.values()];
-  return previousResources.length === nextResources.length &&
-    previousResources.every((resource, index) =>
-      samePositionedResource(resource, nextResources[index]!),
-    )
-    ? previousResources
-    : nextResources;
+  const nextEntities = [...entities.values()];
+  return previousEntities.length === nextEntities.length &&
+    previousEntities.every((entity, index) => samePositionedEntity(entity, nextEntities[index]!))
+    ? previousEntities
+    : nextEntities;
 }
 
 function cross(origin: CanvasPoint, first: CanvasPoint, second: CanvasPoint): number {
@@ -293,14 +289,14 @@ function cloudPath(points: CanvasPoint[]): string {
 }
 
 function pageLayouts(
-  resources: HypermediaLayoutResource[],
+  entities: HypermediaLayoutEntity[],
   pages: HypermediaPage[],
 ): HypermediaPageLayout[] {
-  const pointsByKey = new Map(resources.map((resource) => [resource.key, resource.point]));
-  const occupiedAreas = resources.map(resourceArea);
+  const pointsByKey = new Map(entities.map((entity) => [entity.key, entity.point]));
+  const occupiedAreas = entities.map(entityArea);
   return pages.map((page, index) => {
-    const resourceKeys = page.resources.map(hypermediaResourceKey);
-    const connectedPoints = resourceKeys.flatMap((key) => {
+    const entityKeys = page.entities.map(hypermediaEntityKey);
+    const connectedPoints = entityKeys.flatMap((key) => {
       const point = pointsByKey.get(key);
       return point ? [point] : [];
     });
@@ -325,44 +321,44 @@ function pageLayouts(
       page,
       point,
       cloudPath: cloudPath([point, ...connectedPoints]),
-      resourceKeys,
+      entityKeys,
     };
   });
 }
 
 export function buildHypermediaLayout(
-  resources: HypermediaLayoutResource[],
+  entities: HypermediaLayoutEntity[],
   pages: HypermediaPage[],
 ): HypermediaLayout {
-  const laidOutPages = pageLayouts(resources, pages);
-  const boundedResourcePoints = (resources.length > 0 ? resources : laidOutPages).map(
+  const laidOutPages = pageLayouts(entities, pages);
+  const boundedEntityPoints = (entities.length > 0 ? entities : laidOutPages).map(
     ({ point }) => point,
   );
-  if (boundedResourcePoints.length === 0) {
+  if (boundedEntityPoints.length === 0) {
     return {
-      resources,
+      entities,
       pages: laidOutPages,
-      resourceBounds: initialHypermediaViewBox(resources),
+      entityBounds: initialHypermediaViewBox(entities),
     };
   }
-  const resourceMinX = Math.min(...boundedResourcePoints.map(({ x }) => x)) - CANVAS_PADDING;
-  const resourceMaxX = Math.max(...boundedResourcePoints.map(({ x }) => x)) + CANVAS_PADDING;
-  const resourceMinY = Math.min(...boundedResourcePoints.map(({ y }) => y)) - CANVAS_PADDING;
-  const resourceMaxY = Math.max(...boundedResourcePoints.map(({ y }) => y)) + CANVAS_PADDING;
+  const entityMinX = Math.min(...boundedEntityPoints.map(({ x }) => x)) - CANVAS_PADDING;
+  const entityMaxX = Math.max(...boundedEntityPoints.map(({ x }) => x)) + CANVAS_PADDING;
+  const entityMinY = Math.min(...boundedEntityPoints.map(({ y }) => y)) - CANVAS_PADDING;
+  const entityMaxY = Math.max(...boundedEntityPoints.map(({ y }) => y)) + CANVAS_PADDING;
   return {
-    resources,
+    entities,
     pages: laidOutPages,
-    resourceBounds: {
-      x: resourceMinX,
-      y: resourceMinY,
-      width: resourceMaxX - resourceMinX,
-      height: resourceMaxY - resourceMinY,
+    entityBounds: {
+      x: entityMinX,
+      y: entityMinY,
+      width: entityMaxX - entityMinX,
+      height: entityMaxY - entityMinY,
     },
   };
 }
 
-export function initialHypermediaViewBox(resources: HypermediaLayoutResource[]): CanvasBounds {
-  const focus = resources[0]?.point ?? { x: 0, y: 0 };
+export function initialHypermediaViewBox(entities: HypermediaLayoutEntity[]): CanvasBounds {
+  const focus = entities[0]?.point ?? { x: 0, y: 0 };
   return {
     x: focus.x - INITIAL_VIEW_WIDTH / 2,
     y: focus.y - INITIAL_VIEW_HEIGHT / 2,

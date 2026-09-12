@@ -1,20 +1,13 @@
-import { FileText } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useId } from 'react';
-import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
+import { assetContentUrl } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
-import type {
-  HypermediaAsset,
-  HypermediaEntity,
-  HypermediaPage,
-  HypermediaResourceReference,
-} from '../../queries/hypermedia';
-import { AssetCardContent } from '../assets/asset-link';
+import type { HypermediaEntity, HypermediaPage } from '../../queries/hypermedia';
 import { EntityCardContent, entityInitial } from '../entities/entity-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import {
   HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
-  type HypermediaLayoutResource,
+  type HypermediaLayoutEntity,
 } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 
@@ -25,63 +18,46 @@ const ACTIVE_CLOUD_STROKE_OPACITY = 0.9;
 const INACTIVE_CLOUD_STROKE_OPACITY = 0.48;
 const ACTIVE_CLOUD_STROKE_WIDTH = 3;
 const INACTIVE_CLOUD_STROKE_WIDTH = 1.5;
-const HYPERMEDIA_RESOURCE_NODE_RADIUS = 25;
-const HYPERMEDIA_RESOURCE_LABEL_WIDTH = 120;
-const HYPERMEDIA_RESOURCE_LABEL_HEIGHT = 42;
-const HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET = 6;
-const HYPERMEDIA_RESOURCE_LABEL_MAX_CHARACTERS = 20;
-const HYPERMEDIA_ASSET_NODE_CORNER_RADIUS = 10;
-const HYPERMEDIA_RESOURCE_ICON_SIZE = 22;
+const HYPERMEDIA_ENTITY_NODE_RADIUS = 25;
+const HYPERMEDIA_ENTITY_LABEL_WIDTH = 120;
+const HYPERMEDIA_ENTITY_LABEL_HEIGHT = 42;
+const HYPERMEDIA_ENTITY_INITIAL_BASELINE_OFFSET = 6;
+const HYPERMEDIA_ENTITY_LABEL_MAX_CHARACTERS = 20;
 
-function hypermediaResourceNodeEmphasis(active: boolean): {
+function hypermediaEntityNodeEmphasis(active: boolean): {
   sizeOffset: number;
   strokeWidth: number;
 } {
   return active ? { sizeOffset: 5, strokeWidth: 5 } : { sizeOffset: 1, strokeWidth: 2 };
 }
 
-type HypermediaResourceNodeIdentity = {
-  kind: HypermediaResourceReference['kind'];
+type HypermediaEntityNodeIdentity = {
   label: string;
   imageUrl?: string;
 };
 
-function hypermediaResourceNodeIdentity(
-  resource: HypermediaLayoutResource,
-): HypermediaResourceNodeIdentity {
-  if (resource.kind === 'entity') {
-    return {
-      kind: resource.kind,
-      label: resource.entity.name,
-      imageUrl: resource.entity.image
-        ? assetContentUrl(resource.entity.image.readableId)
-        : undefined,
-    };
-  }
+function hypermediaEntityNodeIdentity(
+  entity: HypermediaLayoutEntity,
+): HypermediaEntityNodeIdentity {
   return {
-    kind: resource.kind,
-    label: resource.asset.name,
-    imageUrl: isEmbeddableAsset(resource.asset)
-      ? assetContentUrl(resource.asset.readableId)
-      : undefined,
+    label: entity.entity.name,
+    imageUrl: entity.entity.image ? assetContentUrl(entity.entity.image.readableId) : undefined,
   };
 }
 
-function HypermediaResourceShape({
-  kind,
+function HypermediaEntityShape({
   point,
   sizeOffset = 0,
   className,
   strokeWidth,
 }: {
-  kind: HypermediaResourceReference['kind'];
   point: { x: number; y: number };
   sizeOffset?: number;
   className?: string;
   strokeWidth?: number;
 }) {
-  const radius = HYPERMEDIA_RESOURCE_NODE_RADIUS + sizeOffset;
-  return kind === 'entity' ? (
+  const radius = HYPERMEDIA_ENTITY_NODE_RADIUS + sizeOffset;
+  return (
     <circle
       cx={point.x}
       cy={point.y}
@@ -90,36 +66,23 @@ function HypermediaResourceShape({
       strokeWidth={strokeWidth}
       vectorEffect="non-scaling-stroke"
     />
-  ) : (
-    <rect
-      x={point.x - radius}
-      y={point.y - radius}
-      width={radius * 2}
-      height={radius * 2}
-      rx={HYPERMEDIA_ASSET_NODE_CORNER_RADIUS + sizeOffset}
-      className={className}
-      strokeWidth={strokeWidth}
-      vectorEffect="non-scaling-stroke"
-    />
   );
 }
 
-function HypermediaResourceMark({
+function HypermediaEntityMark({
   identity,
   point,
   active,
 }: {
-  identity: HypermediaResourceNodeIdentity;
+  identity: HypermediaEntityNodeIdentity;
   point: { x: number; y: number };
   active: boolean;
 }) {
-  const clipPathId = `hypermedia-resource-${useId().replaceAll(':', '')}`;
-  const emphasis = hypermediaResourceNodeEmphasis(active);
-  const iconOffset = HYPERMEDIA_RESOURCE_ICON_SIZE / 2;
+  const clipPathId = `hypermedia-entity-${useId().replaceAll(':', '')}`;
+  const emphasis = hypermediaEntityNodeEmphasis(active);
   return (
-    <g data-hypermedia-resource-kind={identity.kind}>
-      <HypermediaResourceShape
-        kind={identity.kind}
+    <g data-hypermedia-entity-mark>
+      <HypermediaEntityShape
         point={point}
         sizeOffset={emphasis.sizeOffset}
         className={cn(
@@ -128,40 +91,28 @@ function HypermediaResourceMark({
         )}
         strokeWidth={emphasis.strokeWidth}
       />
-      <HypermediaResourceShape kind={identity.kind} point={point} className="fill-card" />
-      {identity.kind === 'entity' ? (
-        <text
-          x={point.x}
-          y={point.y + HYPERMEDIA_RESOURCE_INITIAL_BASELINE_OFFSET}
-          textAnchor="middle"
-          className="fill-foreground font-semibold text-lg uppercase"
-        >
-          {entityInitial(identity.label)}
-        </text>
-      ) : (
-        <FileText
-          x={point.x - iconOffset}
-          y={point.y - iconOffset}
-          width={HYPERMEDIA_RESOURCE_ICON_SIZE}
-          height={HYPERMEDIA_RESOURCE_ICON_SIZE}
-          className="text-muted-foreground"
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-      )}
+      <HypermediaEntityShape point={point} className="fill-card" />
+      <text
+        x={point.x}
+        y={point.y + HYPERMEDIA_ENTITY_INITIAL_BASELINE_OFFSET}
+        textAnchor="middle"
+        className="fill-foreground font-semibold text-lg uppercase"
+      >
+        {entityInitial(identity.label)}
+      </text>
       {identity.imageUrl && (
         <>
           <defs>
             <clipPath id={clipPathId}>
-              <HypermediaResourceShape kind={identity.kind} point={point} />
+              <HypermediaEntityShape point={point} />
             </clipPath>
           </defs>
           <image
             href={identity.imageUrl}
-            x={point.x - HYPERMEDIA_RESOURCE_NODE_RADIUS}
-            y={point.y - HYPERMEDIA_RESOURCE_NODE_RADIUS}
-            width={HYPERMEDIA_RESOURCE_NODE_RADIUS * 2}
-            height={HYPERMEDIA_RESOURCE_NODE_RADIUS * 2}
+            x={point.x - HYPERMEDIA_ENTITY_NODE_RADIUS}
+            y={point.y - HYPERMEDIA_ENTITY_NODE_RADIUS}
+            width={HYPERMEDIA_ENTITY_NODE_RADIUS * 2}
+            height={HYPERMEDIA_ENTITY_NODE_RADIUS * 2}
             preserveAspectRatio="xMidYMid slice"
             clipPath={`url(#${clipPathId})`}
           />
@@ -173,17 +124,13 @@ function HypermediaResourceMark({
 
 export type HypermediaPreview =
   | { kind: 'page'; page: HypermediaPage }
-  | { kind: 'entity'; entity: HypermediaEntity }
-  | { kind: 'asset'; asset: HypermediaAsset };
+  | { kind: 'entity'; entity: HypermediaEntity };
 
 export function hypermediaPreviewKey(preview: HypermediaPreview): string {
   if (preview.kind === 'page') {
     return hypermediaSelectionKey({ kind: 'page', readableId: preview.page.readableId });
   }
-  if (preview.kind === 'entity') {
-    return hypermediaSelectionKey({ kind: 'entity', readableId: preview.entity.readableId });
-  }
-  return hypermediaSelectionKey({ kind: 'asset', readableId: preview.asset.readableId });
+  return hypermediaSelectionKey({ kind: 'entity', readableId: preview.entity.readableId });
 }
 
 function shortHypermediaLabel({
@@ -198,27 +145,27 @@ function shortHypermediaLabel({
     : value;
 }
 
-export function HypermediaResourceNode({
-  resource,
+export function HypermediaEntityNode({
+  entity,
   active,
 }: {
-  resource: HypermediaLayoutResource;
+  entity: HypermediaLayoutEntity;
   active: boolean;
 }) {
-  const { point } = resource;
-  const identity = hypermediaResourceNodeIdentity(resource);
+  const { point } = entity;
+  const identity = hypermediaEntityNodeIdentity(entity);
   const displayLabel = shortHypermediaLabel({
     value: identity.label,
-    maximumCharacters: HYPERMEDIA_RESOURCE_LABEL_MAX_CHARACTERS,
+    maximumCharacters: HYPERMEDIA_ENTITY_LABEL_MAX_CHARACTERS,
   });
   return (
     <g>
-      <HypermediaResourceMark identity={identity} point={point} active={active} />
+      <HypermediaEntityMark identity={identity} point={point} active={active} />
       <foreignObject
-        x={point.x - HYPERMEDIA_RESOURCE_LABEL_WIDTH / 2}
-        y={point.y + HYPERMEDIA_RESOURCE_NODE_RADIUS + 10}
-        width={HYPERMEDIA_RESOURCE_LABEL_WIDTH}
-        height={HYPERMEDIA_RESOURCE_LABEL_HEIGHT}
+        x={point.x - HYPERMEDIA_ENTITY_LABEL_WIDTH / 2}
+        y={point.y + HYPERMEDIA_ENTITY_NODE_RADIUS + 10}
+        width={HYPERMEDIA_ENTITY_LABEL_WIDTH}
+        height={HYPERMEDIA_ENTITY_LABEL_HEIGHT}
         className="pointer-events-none overflow-visible"
       >
         <div className="flex size-full justify-center whitespace-normal text-center font-medium text-[12px] text-foreground leading-[14px] [overflow-wrap:anywhere]">
@@ -234,10 +181,8 @@ function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
     <div className="flex min-w-0 items-start gap-3 overflow-hidden">
       {preview.kind === 'page' ? (
         <KnowledgePageCardContent page={preview.page} />
-      ) : preview.kind === 'entity' ? (
-        <EntityCardContent entity={preview.entity} />
       ) : (
-        <AssetCardContent asset={preview.asset} />
+        <EntityCardContent entity={preview.entity} />
       )}
     </div>
   );
@@ -270,7 +215,7 @@ export function HypermediaHoverPreview({
 
 type HypermediaPageLinkProps = Pick<ComponentProps<'a'>, 'aria-label' | 'tabIndex'> & {
   'data-hypermedia-cloud'?: string;
-  'data-hypermedia-resource'?: boolean;
+  'data-hypermedia-item'?: boolean;
   page: HypermediaPage;
   children: ReactNode;
   onSelect: (selection: HypermediaSelection) => void;

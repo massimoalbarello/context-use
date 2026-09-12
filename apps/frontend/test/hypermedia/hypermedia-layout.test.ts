@@ -4,48 +4,42 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildHypermediaLayout,
-  buildStableResources,
+  buildStableEntities,
   zoomedHypermediaViewBox,
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
-  focusedResources,
+  focusedEntities,
   hypermediaLayoutInViewport,
-  viewportNeedsResourceDiscovery,
+  viewportNeedsEntityDiscovery,
 } from '../../src/components/hypermedia/hypermedia-visibility';
 import type {
+  HypermediaEntity,
+  HypermediaEntityNeighborhood,
   HypermediaPage,
-  HypermediaResource,
-  HypermediaResourceNeighborhood,
 } from '../../src/queries/hypermedia';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
-function entity(
-  readableId: string,
-  isSelf = false,
-): Extract<HypermediaResource, { kind: 'entity' }> {
+function entity(readableId: string, isSelf = false): HypermediaEntity {
   return {
-    kind: 'entity',
-    entity: {
-      readableId,
-      name: readableId,
-      description: `${readableId} description`,
-      isSelf,
-      entityType: null,
-      image: null,
-      createdAt,
-      updatedAt: createdAt,
-    },
+    readableId,
+    name: readableId,
+    description: `${readableId} description`,
+    isSelf,
+    entityType: null,
+    image: null,
+    createdAt,
+    updatedAt: createdAt,
   };
 }
 
 function neighborhood(
-  anchor: HypermediaResource,
-  neighbors: HypermediaResource[],
-): HypermediaResourceNeighborhood {
+  anchor: HypermediaEntity,
+  neighbors: HypermediaEntity[],
+): HypermediaEntityNeighborhood {
   return {
     anchor,
-    neighbors: neighbors.map((resource) => ({ resource, sharedPageCount: 1 })),
+    neighbors: neighbors.map((entity) => ({ entity, sharedPageCount: 1 })),
     nextCursor: null,
   };
 }
@@ -59,25 +53,22 @@ function page(readableId: string): HypermediaPage {
     revisionNumber: 1,
     createdAt,
     updatedAt: createdAt,
-    resources: [
-      { kind: 'entity', readableId: 'self' },
-      { kind: 'entity', readableId: 'alpha' },
-    ],
+    entities: [{ readableId: 'self' }, { readableId: 'alpha' }],
   };
 }
 
-describe('resource-first hypermedia layout', () => {
-  test('never moves resources when another neighborhood is appended', () => {
+describe('entity-first hypermedia layout', () => {
+  test('never moves entities when another neighborhood is appended', () => {
     const self = entity('self', true);
     const alpha = entity('alpha');
-    const initial = buildStableResources([neighborhood(self, [alpha])]);
-    const expanded = buildStableResources([
+    const initial = buildStableEntities([neighborhood(self, [alpha])]);
+    const expanded = buildStableEntities([
       neighborhood(self, [alpha]),
       neighborhood(alpha, [entity('beta')]),
     ]);
 
-    for (const resource of initial) {
-      expect(expanded.find(({ key }) => key === resource.key)?.point).toEqual(resource.point);
+    for (const entity of initial) {
+      expect(expanded.find(({ key }) => key === entity.key)?.point).toEqual(entity.point);
     }
   });
 
@@ -85,86 +76,73 @@ describe('resource-first hypermedia layout', () => {
     const self = entity('self', true);
     const alpha = entity('alpha');
     const orphan = entity('orphan');
-    const initial = buildStableResources([neighborhood(self, [alpha])], [self, alpha, orphan]);
-    const expanded = buildStableResources(
+    const initial = buildStableEntities([neighborhood(self, [alpha])], [self, alpha, orphan]);
+    const expanded = buildStableEntities(
       [neighborhood(self, [alpha]), neighborhood(alpha, [entity('beta')])],
       [self, alpha, orphan, entity('zeta')],
       initial,
     );
 
     expect(initial.map(({ key }) => key)).toContain('entity:orphan');
-    for (const resource of initial) {
-      expect(expanded.find(({ key }) => key === resource.key)?.point).toEqual(resource.point);
+    for (const entity of initial) {
+      expect(expanded.find(({ key }) => key === entity.key)?.point).toEqual(entity.point);
     }
   });
 
   test('places standalone search matches without waiting for graph discovery', () => {
-    const match: HypermediaResource = {
-      kind: 'asset',
-      asset: {
-        readableId: 'diagram',
-        name: 'Diagram',
-        mediaType: 'image/png',
-        extension: 'png',
-        sizeBytes: 42,
-        createdAt,
-        updatedAt: createdAt,
-      },
-    };
-    const initial = buildStableResources([], [match]);
-    expect(initial.map(({ key }) => key)).toEqual(['asset:diagram']);
-    const expanded = buildStableResources(
+    const match = entity('diagram');
+    const initial = buildStableEntities([], [match]);
+    expect(initial.map(({ key }) => key)).toEqual(['entity:diagram']);
+    const expanded = buildStableEntities(
       [neighborhood(entity('self', true), [match])],
       [match],
       initial,
     );
-    expect(expanded.find(({ key }) => key === 'asset:diagram')?.point).toEqual(initial[0]?.point);
+    expect(expanded.find(({ key }) => key === 'entity:diagram')?.point).toEqual(initial[0]?.point);
   });
 
-  test('focus follows the viewport while retaining a selected resource', () => {
-    const resources = buildStableResources([
+  test('focus follows the viewport while retaining a selected entity', () => {
+    const entities = buildStableEntities([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
     ]);
-    const beta = resources.find(({ key }) => key === 'entity:beta')!;
+    const beta = entities.find(({ key }) => key === 'entity:beta')!;
     const viewport = { x: beta.point.x - 50, y: beta.point.y - 50, width: 100, height: 100 };
 
-    expect(focusedResources({ resources, viewport })[0]).toEqual({
-      kind: 'entity',
+    expect(focusedEntities({ entities, viewport })[0]).toEqual({
       readableId: 'beta',
     });
-    expect(focusedResources({ resources, viewport, selectedKey: 'entity:self' })[0]).toEqual({
-      kind: 'entity',
+    expect(focusedEntities({ entities, viewport, selectedKey: 'entity:self' })[0]).toEqual({
       readableId: 'self',
     });
-    expect(focusedResources({ resources, viewport })).toHaveLength(1);
+    expect(focusedEntities({ entities, viewport })).toHaveLength(1);
   });
 
   test('discovers another neighborhood only at a sparse map edge', () => {
-    const resources = buildStableResources([
+    const entities = buildStableEntities([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta'), entity('gamma')]),
-    ]).map((resource, index) => ({ ...resource, point: { x: index * 40, y: 0 } }));
+    ]).map((entity, index) => ({ ...entity, point: { x: index * 40, y: 0 } }));
     const bounds = { x: -100, y: -100, width: 500, height: 200 };
 
-    expect(viewportNeedsResourceDiscovery({ resources, viewport: bounds, bounds })).toBe(false);
+    expect(viewportNeedsEntityDiscovery({ entities, viewport: bounds, bounds })).toBe(false);
     expect(
-      viewportNeedsResourceDiscovery({
-        resources,
+      viewportNeedsEntityDiscovery({
+        entities,
         viewport: { x: bounds.x + bounds.width, y: bounds.y, width: 500, height: 200 },
         bounds,
       }),
     ).toBe(true);
     expect(
-      viewportNeedsResourceDiscovery({
-        resources,
+      viewportNeedsEntityDiscovery({
+        entities,
         viewport: { x: -750, y: -500, width: 1500, height: 1000 },
         bounds,
       }),
     ).toBe(true);
   });
 
-  test('viewport culling cannot remove the selected page or resource', () => {
-    const resources = buildStableResources([neighborhood(entity('self', true), [entity('alpha')])]);
-    const layout = buildHypermediaLayout(resources, [page('selected-page')]);
+  test('viewport culling cannot remove the selected page or entity', () => {
+    const entities = buildStableEntities([neighborhood(entity('self', true), [entity('alpha')])]);
+    const layout = buildHypermediaLayout(entities, [page('selected-page')]);
     const hiddenViewport = { x: 10_000, y: 10_000, width: 100, height: 100 };
 
     expect(
@@ -179,13 +157,13 @@ describe('resource-first hypermedia layout', () => {
         layout,
         viewport: hiddenViewport,
         selectedKey: 'entity:self',
-      }).resources.map(({ key }) => key),
+      }).entities.map(({ key }) => key),
     ).toEqual(['entity:self']);
   });
 
-  test('keeps a page cloud while one of its connected resources remains visible', () => {
-    const resources = buildStableResources([neighborhood(entity('self', true), [])]);
-    const layout = buildHypermediaLayout(resources, [page('connected-page')]);
+  test('keeps a page cloud while one of its connected entities remains visible', () => {
+    const entities = buildStableEntities([neighborhood(entity('self', true), [])]);
+    const layout = buildHypermediaLayout(entities, [page('connected-page')]);
     const connectedPage = layout.pages[0]!;
     const viewport = { x: -50, y: -50, width: 100, height: 100 };
     const displacedLayout = {

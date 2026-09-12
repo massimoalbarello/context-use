@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { displayedHypermediaResourceKinds } from '../../src/components/hypermedia/hypermedia-resource-filter';
 import { hypermediaSearch, hypermediaSearchAfterEscape } from '../../src/routes/hypermedia';
 
 test('Hypermedia validates its scroll month in URL state', () => {
@@ -8,33 +7,36 @@ test('Hypermedia validates its scroll month in URL state', () => {
   expect(hypermediaSearch({ month: '2025-13' }).month).toBeUndefined();
 });
 
-test('Hypermedia resource visibility is canonical URL state with entities as the default', () => {
-  expect(displayedHypermediaResourceKinds(hypermediaSearch({}).show)).toEqual(['entity']);
-  expect(displayedHypermediaResourceKinds(hypermediaSearch({ show: 'assets' }).show)).toEqual([
-    'asset',
-  ]);
-  expect(displayedHypermediaResourceKinds(hypermediaSearch({ show: 'all' }).show)).toEqual([
-    'entity',
-    'asset',
-  ]);
-  expect(hypermediaSearch({ show: 'neither' }).show).toBeUndefined();
-  expect(hypermediaSearch({ show: 'assets', kind: 'entity', id: 'hidden-entity' })).toEqual({
-    show: 'assets',
-    focus: undefined,
+test('Hypermedia accepts only entity and page URL selections', () => {
+  expect(
+    hypermediaSearch({
+      show: 'assets',
+      kind: 'asset',
+      id: 'chart',
+      focus: 'asset:chart,entity:owner',
+    }),
+  ).toEqual({ focus: 'entity:owner' });
+  expect(hypermediaSearch({ kind: 'entity', id: 'owner' })).toMatchObject({
+    kind: 'entity',
+    id: 'owner',
+  });
+  expect(hypermediaSearch({ kind: 'page', id: 'notes' })).toMatchObject({
+    kind: 'page',
+    id: 'notes',
   });
 });
 
-test('Escape closes the current preview and deselects only its resource', () => {
+test('Escape closes the current preview and deselects only its entity', () => {
   const previous = {
-    kind: 'asset' as const,
+    kind: 'entity' as const,
     id: 'rollout-metrics',
-    focus: 'entity:jun-park,asset:rollout-metrics,entity:maya-chen',
+    focus: 'entity:jun-park,entity:rollout-metrics,entity:maya-chen',
   };
 
   expect(
     hypermediaSearchAfterEscape({
       previous,
-      selection: { kind: 'asset', readableId: 'rollout-metrics' },
+      selection: { kind: 'entity', readableId: 'rollout-metrics' },
     }),
   ).toEqual({
     kind: undefined,

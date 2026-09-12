@@ -1,12 +1,12 @@
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
-import { hypermediaResourceKey } from '../../queries/hypermedia';
+import type { HypermediaEntityReference } from '../../queries/hypermedia';
+import { hypermediaEntityKey } from '../../queries/hypermedia';
 
 export type HypermediaSelection = {
-  kind: 'page' | 'entity' | 'asset';
+  kind: 'page' | 'entity';
   readableId: string;
 };
 
-export const MAX_SELECTED_HYPERMEDIA_RESOURCES = 24;
+export const MAX_SELECTED_HYPERMEDIA_ENTITIES = 24;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const HYPERMEDIA_READABLE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -14,89 +14,77 @@ export function hypermediaSelectionKey(selection: HypermediaSelection): string {
   return `${selection.kind}:${selection.readableId}`;
 }
 
-export function selectedHypermediaResourceKeys(
-  resources: HypermediaResourceReference[],
-): Set<string> {
-  return new Set(resources.map(hypermediaResourceKey));
+export function selectedHypermediaEntityKeys(entities: HypermediaEntityReference[]): Set<string> {
+  return new Set(entities.map(hypermediaEntityKey));
 }
 
-function resourceReferenceFromKey(key: string): HypermediaResourceReference | undefined {
+function entityReferenceFromKey(key: string): HypermediaEntityReference | undefined {
   const separator = key.indexOf(':');
   const kind = key.slice(0, separator);
   const readableId = key.slice(separator + 1);
-  return (kind === 'entity' || kind === 'asset') &&
+  return kind === 'entity' &&
     readableId.length > 0 &&
     readableId.length <= MAX_HYPERMEDIA_READABLE_ID_LENGTH &&
     HYPERMEDIA_READABLE_ID_PATTERN.test(readableId)
-    ? { kind, readableId }
+    ? { readableId }
     : undefined;
 }
 
-export function selectedHypermediaResources(value: unknown): HypermediaResourceReference[] {
+export function selectedHypermediaEntities(value: unknown): HypermediaEntityReference[] {
   if (typeof value !== 'string') {
     return [];
   }
-  const resources = new Map<string, HypermediaResourceReference>();
+  const entities = new Map<string, HypermediaEntityReference>();
   for (const key of value.split(',')) {
-    const resource = resourceReferenceFromKey(key);
-    if (resource) {
-      resources.set(hypermediaResourceKey(resource), resource);
+    const entity = entityReferenceFromKey(key);
+    if (entity) {
+      entities.set(hypermediaEntityKey(entity), entity);
     }
-    if (resources.size === MAX_SELECTED_HYPERMEDIA_RESOURCES) {
+    if (entities.size === MAX_SELECTED_HYPERMEDIA_ENTITIES) {
       break;
     }
   }
-  return [...resources.values()];
+  return [...entities.values()];
 }
 
-export function selectedHypermediaResourcesValue(
-  resources: HypermediaResourceReference[],
+export function selectedHypermediaEntitiesValue(
+  entities: HypermediaEntityReference[],
 ): string | undefined {
-  return resources.length > 0 ? resources.map(hypermediaResourceKey).join(',') : undefined;
+  return entities.length > 0 ? entities.map(hypermediaEntityKey).join(',') : undefined;
 }
 
-export function selectedHypermediaResourcesLabel(resources: HypermediaResourceReference[]): string {
-  const entityCount = resources.filter(({ kind }) => kind === 'entity').length;
-  const assetCount = resources.length - entityCount;
-  if (assetCount === 0) {
-    return `${entityCount} ${entityCount === 1 ? 'entity' : 'entities'} selected`;
-  }
-  if (entityCount === 0) {
-    return `${assetCount} ${assetCount === 1 ? 'asset' : 'assets'} selected`;
-  }
-  return `${resources.length} resources selected`;
+export function selectedHypermediaEntitiesLabel(entities: HypermediaEntityReference[]): string {
+  return `${entities.length} ${entities.length === 1 ? 'entity' : 'entities'} selected`;
 }
 
-export function toggleHypermediaResourceSelection({
-  resources,
+export function toggleHypermediaEntitySelection({
+  entities,
   selection,
 }: {
-  resources: HypermediaResourceReference[];
+  entities: HypermediaEntityReference[];
   selection: HypermediaSelection;
-}): HypermediaResourceReference[] {
+}): HypermediaEntityReference[] {
   if (selection.kind === 'page') {
-    return resources;
+    return entities;
   }
-  const resource = { kind: selection.kind, readableId: selection.readableId };
-  const key = hypermediaResourceKey(resource);
-  if (resources.some((item) => hypermediaResourceKey(item) === key)) {
-    return resources.filter((item) => hypermediaResourceKey(item) !== key);
+  const entity = { readableId: selection.readableId };
+  const key = hypermediaEntityKey(entity);
+  if (entities.some((item) => hypermediaEntityKey(item) === key)) {
+    return entities.filter((item) => hypermediaEntityKey(item) !== key);
   }
-  return resources.length === MAX_SELECTED_HYPERMEDIA_RESOURCES
-    ? resources
-    : [...resources, resource];
+  return entities.length === MAX_SELECTED_HYPERMEDIA_ENTITIES ? entities : [...entities, entity];
 }
 
-export function removeHypermediaResourceSelection({
-  resources,
+export function removeHypermediaEntitySelection({
+  entities,
   selection,
 }: {
-  resources: HypermediaResourceReference[];
+  entities: HypermediaEntityReference[];
   selection: HypermediaSelection;
-}): HypermediaResourceReference[] {
+}): HypermediaEntityReference[] {
   if (selection.kind === 'page') {
-    return resources;
+    return entities;
   }
   const key = hypermediaSelectionKey(selection);
-  return resources.filter((resource) => hypermediaResourceKey(resource) !== key);
+  return entities.filter((entity) => hypermediaEntityKey(entity) !== key);
 }

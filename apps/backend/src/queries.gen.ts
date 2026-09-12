@@ -245,13 +245,12 @@ export interface ISearchHypermediaResult {
     updatedAt: string;
 }
 
-/** Result of query `FindHypermediaResource`. */
-export interface IFindHypermediaResourceResult {
-    kind: "entity" | "asset";
+/** Result of query `FindHypermediaEntity`. */
+export interface IFindHypermediaEntityResult {
     id: string;
     readableId: string;
     name: string;
-    description: string | null;
+    description: string;
     entityType: string | null;
     isSelf: number;
     imageId: string | null;
@@ -262,20 +261,16 @@ export interface IFindHypermediaResourceResult {
     imageSizeBytes: number | null;
     imageCreatedAt: string | null;
     imageUpdatedAt: string | null;
-    mediaType: string | null;
-    extension: string | null;
-    sizeBytes: number | null;
     createdAt: string;
     updatedAt: string;
 }
 
-/** Result of query `ListHypermediaResourceNeighbors`. */
-export interface IListHypermediaResourceNeighborsResult {
-    kind: "entity" | "asset";
+/** Result of query `ListHypermediaEntityNeighbors`. */
+export interface IListHypermediaEntityNeighborsResult {
     id: string;
     readableId: string;
     name: string;
-    description: string | null;
+    description: string;
     entityType: string | null;
     isSelf: number;
     imageId: string | null;
@@ -286,9 +281,6 @@ export interface IListHypermediaResourceNeighborsResult {
     imageSizeBytes: number | null;
     imageCreatedAt: string | null;
     imageUpdatedAt: string | null;
-    mediaType: string | null;
-    extension: string | null;
-    sizeBytes: number | null;
     createdAt: string;
     updatedAt: string;
     sharedPageCount: number;
@@ -309,10 +301,9 @@ export interface IListHypermediaPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `ListHypermediaPageResources`. */
-export interface IListHypermediaPageResourcesResult {
+/** Result of query `ListHypermediaPageEntities`. */
+export interface IListHypermediaPageEntitiesResult {
     sourcePageReadableId: string;
-    kind: "entity" | "asset";
     readableId: string;
 }
 
@@ -733,10 +724,10 @@ export interface Queries {
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
     SearchHypermedia: ISearchHypermediaResult;
-    FindHypermediaResource: IFindHypermediaResourceResult;
-    ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
+    FindHypermediaEntity: IFindHypermediaEntityResult;
+    ListHypermediaEntityNeighbors: IListHypermediaEntityNeighborsResult;
     ListHypermediaPages: IListHypermediaPagesResult;
-    ListHypermediaPageResources: IListHypermediaPageResourcesResult;
+    ListHypermediaPageEntities: IListHypermediaPageEntitiesResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
     ResolveRecordLink: IResolveRecordLinkResult;

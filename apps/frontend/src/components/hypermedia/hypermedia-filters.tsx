@@ -1,71 +1,34 @@
-import { Check, X } from 'lucide-react';
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import { X } from 'lucide-react';
+import type { HypermediaEntityReference } from '../../queries/hypermedia';
 import { KeywordFilter } from '../knowledge/keyword-filter';
 import { Button } from '../ui/button';
-import type { HypermediaResourceKind } from './hypermedia-resource-filter';
-import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
+import { selectedHypermediaEntitiesLabel } from './hypermedia-selection';
 
 export function HypermediaFilters({
-  resourceKinds,
   query,
-  selectedResources,
-  onResourceKindToggle,
+  selectedEntities,
   onQueryApply,
-  onClearSelectedResources,
+  onClearSelectedEntities,
 }: {
-  resourceKinds: HypermediaResourceKind[];
   query: string;
-  selectedResources: HypermediaResourceReference[];
-  onResourceKindToggle: (kind: HypermediaResourceKind) => void;
+  selectedEntities: HypermediaEntityReference[];
   onQueryApply: (query: string) => void;
-  onClearSelectedResources: () => void;
+  onClearSelectedEntities: () => void;
 }) {
   return (
     <div className="grid gap-3">
-      <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
-        <legend className="font-medium text-xs">Visualize</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { kind: 'entity', label: 'Entities' },
-              { kind: 'asset', label: 'Assets' },
-            ] as const
-          ).map(({ kind, label }) => {
-            const selected = resourceKinds.includes(kind);
-            return (
-              <Button
-                key={kind}
-                type="button"
-                variant={selected ? 'secondary' : 'outline'}
-                className="h-9 justify-start px-3"
-                aria-pressed={selected}
-                onClick={() => onResourceKindToggle(kind)}
-              >
-                <span
-                  className="grid size-4 place-items-center rounded-sm border border-current"
-                  aria-hidden="true"
-                >
-                  {selected && <Check className="size-3" />}
-                </span>
-                {label}
-              </Button>
-            );
-          })}
-        </div>
-        <p className="sr-only">Select one or both resource types to visualize.</p>
-      </fieldset>
       <KeywordFilter
         key={query}
         inputId="hypermedia-keyword"
         value={query}
-        placeholder="Page, entity, or asset"
+        placeholder="Page or entity"
         onApply={onQueryApply}
       />
-      {selectedResources.length > 0 && (
+      {selectedEntities.length > 0 && (
         <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm">
-              {selectedHypermediaResourcesLabel(selectedResources)}
+              {selectedHypermediaEntitiesLabel(selectedEntities)}
             </p>
             <p className="mt-0.5 text-muted-foreground text-xs">Pages include every selection.</p>
           </div>
@@ -74,8 +37,8 @@ export function HypermediaFilters({
             variant="ghost"
             size="icon"
             className="size-8 shrink-0 rounded-full"
-            aria-label="Clear selected resources"
-            onClick={onClearSelectedResources}
+            aria-label="Clear selected entities"
+            onClick={onClearSelectedEntities}
           >
             <X className="size-4" aria-hidden="true" />
           </Button>

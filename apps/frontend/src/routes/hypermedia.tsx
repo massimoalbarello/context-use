@@ -4,17 +4,11 @@ import { useState } from 'react';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
 import {
-  displayedHypermediaResourceKinds,
-  displayedHypermediaResourceKindsValue,
-  type HypermediaResourceDisplay,
-  toggleDisplayedHypermediaResourceKind,
-} from '../components/hypermedia/hypermedia-resource-filter';
-import {
   type HypermediaSelection,
-  removeHypermediaResourceSelection,
-  selectedHypermediaResources,
-  selectedHypermediaResourcesValue,
-  toggleHypermediaResourceSelection,
+  removeHypermediaEntitySelection,
+  selectedHypermediaEntities,
+  selectedHypermediaEntitiesValue,
+  toggleHypermediaEntitySelection,
 } from '../components/hypermedia/hypermedia-selection';
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
@@ -22,25 +16,24 @@ import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-work
 import { type CalendarMonth, calendarMonth } from '../lib/calendar-month';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
+  type HypermediaEntity,
+  type HypermediaEntityReference,
   type HypermediaPage,
-  type HypermediaResource,
-  type HypermediaResourceReference,
+  hypermediaEntityKey,
+  hypermediaEntityNeighborhoodQueryOptions,
   hypermediaPagesQueryOptions,
-  hypermediaResourceKey,
-  hypermediaResourceNeighborhoodQueryOptions,
 } from '../queries/hypermedia';
 
 const MAX_HYPERMEDIA_SEARCH_LENGTH = 160;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
-const EMPTY_HYPERMEDIA_RESOURCES: HypermediaResource[] = [];
+const EMPTY_HYPERMEDIA_ENTITIES: HypermediaEntity[] = [];
 export type HypermediaSearch = {
   q?: string;
   month?: CalendarMonth;
   kind?: HypermediaSelection['kind'];
   id?: string;
   focus?: string;
-  show?: HypermediaResourceDisplay;
 };
 
 export function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
@@ -52,22 +45,13 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   if (selectedMonth) {
     result.month = selectedMonth;
   }
-  if (search.show === 'assets' || search.show === 'all') {
-    result.show = search.show;
-  }
   const selectionKind =
-    search.kind === 'page' || search.kind === 'entity' || search.kind === 'asset'
-      ? search.kind
-      : undefined;
-  const selectionIsVisible =
-    selectionKind === 'page' ||
-    (selectionKind !== undefined &&
-      displayedHypermediaResourceKinds(result.show).includes(selectionKind));
-  if (selectionKind && selectionIsVisible && typeof search.id === 'string' && search.id.trim()) {
+    search.kind === 'page' || search.kind === 'entity' ? search.kind : undefined;
+  if (selectionKind && typeof search.id === 'string' && search.id.trim()) {
     result.kind = selectionKind;
     result.id = search.id.trim().slice(0, MAX_HYPERMEDIA_READABLE_ID_LENGTH);
   }
-  result.focus = selectedHypermediaResourcesValue(selectedHypermediaResources(search.focus));
+  result.focus = selectedHypermediaEntitiesValue(selectedHypermediaEntities(search.focus));
   return result;
 }
 
@@ -78,15 +62,15 @@ export function hypermediaSearchAfterEscape({
   previous: HypermediaSearch;
   selection: HypermediaSelection;
 }): HypermediaSearch {
-  const resources = removeHypermediaResourceSelection({
-    resources: selectedHypermediaResources(previous.focus),
+  const entities = removeHypermediaEntitySelection({
+    entities: selectedHypermediaEntities(previous.focus),
     selection,
   });
   return {
     ...previous,
     kind: undefined,
     id: undefined,
-    focus: selectedHypermediaResourcesValue(resources),
+    focus: selectedHypermediaEntitiesValue(entities),
   };
 }
 
@@ -97,24 +81,18 @@ export const Route = createFileRoute('/hypermedia')({
     }
   },
   validateSearch: hypermediaSearch,
-  loaderDeps: ({ search }) => ({
-    kinds: displayedHypermediaResourceKinds(search.show),
-  }),
-  loader: async ({ context, deps }) => {
+  loader: async ({ context }) => {
     if (!context.profile) {
       return;
     }
-    const self: HypermediaResourceReference = {
-      kind: 'entity',
+    const self: HypermediaEntityReference = {
       readableId: context.profile.selfEntity.readableId,
     };
     await Promise.all([
       context.queryClient.ensureQueryData(
-        hypermediaResourceNeighborhoodQueryOptions({ anchor: self, kinds: deps.kinds }),
+        hypermediaEntityNeighborhoodQueryOptions({ anchor: self }),
       ),
-      deps.kinds.includes('entity')
-        ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions())
-        : Promise.resolve(),
+      context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions()),
     ]);
   },
   component: HypermediaRoute,
@@ -123,18 +101,16 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', kind, id, focus, show, month } = search;
-  const resourceKinds = displayedHypermediaResourceKinds(show);
+  const { q = '', kind, id, focus, month } = search;
   const navigate = Route.useNavigate();
-  const [visibleResources, setVisibleResources] = useState<HypermediaResourceReference[]>([]);
+  const [visibleEntities, setVisibleEntities] = useState<HypermediaEntityReference[]>([]);
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
-  const selectedResources = selectedHypermediaResources(focus);
+  const selectedEntities = selectedHypermediaEntities(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      resources: selectedResources,
-      visibleResources,
-      kinds: resourceKinds,
+      entities: selectedEntities,
+      visibleEntities,
       month,
       query: q,
     }),
@@ -146,33 +122,32 @@ function HypermediaRoute() {
   const loadedPages =
     pageQuery.data?.pages.flatMap(({ pages: pageItems }) => pageItems) ?? EMPTY_HYPERMEDIA_PAGES;
   const pageReferencesTruncated =
-    pageQuery.data?.pages.some(({ resourceReferencesTruncated }) => resourceReferencesTruncated) ??
+    pageQuery.data?.pages.some(({ entityReferencesTruncated }) => entityReferencesTruncated) ??
     false;
   function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
       search: (previous) => {
-        const previousResources = selectedHypermediaResources(previous.focus);
+        const previousEntities = selectedHypermediaEntities(previous.focus);
         const wasSelected =
           nextSelection.kind !== 'page' &&
-          previousResources.some(
-            (resource) =>
-              hypermediaResourceKey(resource) ===
-              `${nextSelection.kind}:${nextSelection.readableId}`,
+          previousEntities.some(
+            (entity) =>
+              hypermediaEntityKey(entity) === `${nextSelection.kind}:${nextSelection.readableId}`,
           );
-        const resources = toggleHypermediaResourceSelection({
-          resources: previousResources,
+        const entities = toggleHypermediaEntitySelection({
+          entities: previousEntities,
           selection: nextSelection,
         });
         return {
           ...previous,
           kind: wasSelected ? undefined : nextSelection.kind,
           id: wasSelected ? undefined : nextSelection.readableId,
-          focus: selectedHypermediaResourcesValue(resources),
+          focus: selectedHypermediaEntitiesValue(entities),
         };
       },
     });
   }
-  function clearSelectedResources() {
+  function clearSelectedEntities() {
     void navigate({
       search: (previous) => ({
         ...previous,
@@ -187,31 +162,9 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
-        resourceKinds={resourceKinds}
         query={q}
-        selectedResources={selectedResources}
-        onResourceKindToggle={(kind) => {
-          void navigate({
-            search: (previous) => {
-              const nextKinds = toggleDisplayedHypermediaResourceKind({
-                kinds: displayedHypermediaResourceKinds(previous.show),
-                kind,
-              });
-              const previewRemainsVisible =
-                previous.kind === undefined ||
-                previous.kind === 'page' ||
-                nextKinds.includes(previous.kind);
-              return {
-                ...previous,
-                show: displayedHypermediaResourceKindsValue(nextKinds),
-                kind: previewRemainsVisible ? previous.kind : undefined,
-                id: previewRemainsVisible ? previous.id : undefined,
-              };
-            },
-            replace: true,
-          });
-        }}
-        onClearSelectedResources={clearSelectedResources}
+        selectedEntities={selectedEntities}
+        onClearSelectedEntities={clearSelectedEntities}
         onQueryApply={(query) => {
           void navigate({
             search: (previous) => ({
@@ -227,16 +180,14 @@ function HypermediaRoute() {
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
           <HypermediaExplorer
-            key={resourceKinds.join(':')}
-            resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
-            selectedResources={selectedResources}
+            selectedEntities={selectedEntities}
             query={q}
             pages={loadedPages}
-            matchedResources={
-              pageQuery.data?.pages[0]?.matchedResources ??
-              (q.trim() ? EMPTY_HYPERMEDIA_RESOURCES : null)
+            matchedEntities={
+              pageQuery.data?.pages[0]?.matchedEntities ??
+              (q.trim() ? EMPTY_HYPERMEDIA_ENTITIES : null)
             }
             month={month}
             pagesLoading={pageQuery.isFetching}
@@ -256,14 +207,14 @@ function HypermediaRoute() {
                 replace: true,
               });
             }}
-            onVisibleResourcesChange={(nextResources) => {
-              setVisibleResources((current) => {
-                const currentKeys = current.map(hypermediaResourceKey);
-                const nextKeys = nextResources.map(hypermediaResourceKey);
+            onVisibleEntitiesChange={(nextEntities) => {
+              setVisibleEntities((current) => {
+                const currentKeys = current.map(hypermediaEntityKey);
+                const nextKeys = nextEntities.map(hypermediaEntityKey);
                 return currentKeys.length === nextKeys.length &&
                   currentKeys.join('\u0000') === nextKeys.join('\u0000')
                   ? current
-                  : nextResources;
+                  : nextEntities;
               });
             }}
             onRetryPages={() => {

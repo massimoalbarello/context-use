@@ -1,62 +1,64 @@
 import { describe, expect, test } from 'bun:test';
 import {
-  removeHypermediaResourceSelection,
-  selectedHypermediaResources,
-  selectedHypermediaResourcesLabel,
-  selectedHypermediaResourcesValue,
-  toggleHypermediaResourceSelection,
+  removeHypermediaEntitySelection,
+  selectedHypermediaEntities,
+  selectedHypermediaEntitiesLabel,
+  selectedHypermediaEntitiesValue,
+  toggleHypermediaEntitySelection,
 } from '../../src/components/hypermedia/hypermedia-selection';
 
-describe('Hypermedia resource filters', () => {
-  test('accumulates canonical entity and asset selections without page previews changing them', () => {
+describe('Hypermedia entity filters', () => {
+  test('accumulates canonical entity selections without page previews changing them', () => {
     const entitySelection = { kind: 'entity' as const, readableId: 'jun-park' };
-    const initial = selectedHypermediaResources('entity:jun-park,entity:jun-park,invalid');
-    const withAsset = toggleHypermediaResourceSelection({
-      resources: initial,
-      selection: { kind: 'asset', readableId: 'rollout-metrics' },
+    const initial = selectedHypermediaEntities(
+      'entity:jun-park,entity:jun-park,asset:ignored,record:ignored,invalid',
+    );
+    const withSecondEntity = toggleHypermediaEntitySelection({
+      entities: initial,
+      selection: { kind: 'entity', readableId: 'rollout-metrics' },
     });
 
-    expect(initial).toEqual([{ kind: 'entity', readableId: 'jun-park' }]);
-    expect(withAsset).toEqual([
-      { kind: 'entity', readableId: 'jun-park' },
-      { kind: 'asset', readableId: 'rollout-metrics' },
+    expect(initial).toEqual([{ readableId: 'jun-park' }]);
+    expect(withSecondEntity).toEqual([
+      { readableId: 'jun-park' },
+      { readableId: 'rollout-metrics' },
     ]);
     expect(
-      toggleHypermediaResourceSelection({
-        resources: withAsset,
+      toggleHypermediaEntitySelection({
+        entities: withSecondEntity,
         selection: { kind: 'page', readableId: 'preview-cache-strategy' },
       }),
-    ).toBe(withAsset);
-    expect(selectedHypermediaResourcesValue(withAsset)).toBe(
-      'entity:jun-park,asset:rollout-metrics',
+    ).toBe(withSecondEntity);
+    expect(selectedHypermediaEntitiesValue(withSecondEntity)).toBe(
+      'entity:jun-park,entity:rollout-metrics',
     );
-    expect(selectedHypermediaResourcesLabel(initial)).toBe('1 entity selected');
-    expect(selectedHypermediaResourcesLabel([withAsset[1]!])).toBe('1 asset selected');
-    expect(selectedHypermediaResourcesLabel(withAsset)).toBe('2 resources selected');
+    expect(selectedHypermediaEntitiesLabel(initial)).toBe('1 entity selected');
+    expect(selectedHypermediaEntitiesLabel([withSecondEntity[1]!])).toBe('1 entity selected');
+    expect(selectedHypermediaEntitiesLabel(withSecondEntity)).toBe('2 entities selected');
     expect(
-      toggleHypermediaResourceSelection({ resources: withAsset, selection: entitySelection }),
-    ).toEqual([{ kind: 'asset', readableId: 'rollout-metrics' }]);
+      toggleHypermediaEntitySelection({
+        entities: withSecondEntity,
+        selection: entitySelection,
+      }),
+    ).toEqual([{ readableId: 'rollout-metrics' }]);
   });
 
-  test('removes only the current resource and leaves page previews out of resource state', () => {
-    const resources = selectedHypermediaResources(
-      'entity:jun-park,asset:rollout-metrics,entity:maya-chen',
+  test('removes only the current entity and leaves page previews out of entity state', () => {
+    const entities = selectedHypermediaEntities(
+      'entity:jun-park,entity:rollout-metrics,entity:maya-chen',
     );
 
     expect(
-      removeHypermediaResourceSelection({
-        resources,
-        selection: { kind: 'asset', readableId: 'rollout-metrics' },
+      removeHypermediaEntitySelection({
+        entities,
+        selection: { kind: 'entity', readableId: 'rollout-metrics' },
       }),
-    ).toEqual([
-      { kind: 'entity', readableId: 'jun-park' },
-      { kind: 'entity', readableId: 'maya-chen' },
-    ]);
+    ).toEqual([{ readableId: 'jun-park' }, { readableId: 'maya-chen' }]);
     expect(
-      removeHypermediaResourceSelection({
-        resources,
+      removeHypermediaEntitySelection({
+        entities,
         selection: { kind: 'page', readableId: 'launch-plan' },
       }),
-    ).toBe(resources);
+    ).toBe(entities);
   });
 });
