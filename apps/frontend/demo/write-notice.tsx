@@ -55,22 +55,40 @@ export function DemoWriteNotice({ events }: { events: EventTarget }) {
   }, [events]);
 
   return (
-    <AlertDialog
+    <DemoNoticeDialog
       open={notice?.open ?? false}
+      onClose={() => setNotice((current) => current && { ...current, open: false })}
+      returnFocus={notice?.returnFocus}
+    />
+  );
+}
+
+export function DemoNoticeDialog({
+  open,
+  onClose,
+  returnFocus,
+}: {
+  open: boolean;
+  onClose: () => void;
+  returnFocus?: HTMLElement | null;
+}) {
+  return (
+    <AlertDialog
+      open={open}
       // biome-ignore lint/complexity/useMaxParams: Base UI supplies the next state and event details.
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen && details.reason === 'close-press') {
-          setNotice((current) => current && { ...current, open: false });
+          onClose();
         } else {
           details.cancel();
         }
       }}
     >
-      <AlertDialogContent className="demo-surface" finalFocus={() => notice?.returnFocus ?? false}>
+      <AlertDialogContent className="demo-surface" finalFocus={() => returnFocus ?? false}>
         <AlertDialogTitle>This is a read-only demo</AlertDialogTitle>
         <AlertDialogDescription>
-          Changes are disabled in this shared demo. You can keep exploring Steve’s context and
-          trying the controls.
+          Changes and account actions are disabled in this shared demo. You can keep exploring
+          Steve’s context and trying the controls.
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button>OK</Button>} />
