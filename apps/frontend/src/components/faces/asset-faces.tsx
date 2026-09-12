@@ -23,14 +23,10 @@ export function AssetFaces({
   const analyze = useAnalyzeAsset();
   const annotate = useAnnotateFace();
   const [selected, setSelected] = useState<string | null>(null);
-  const [showDismissed, setShowDismissed] = useState(false);
   const result = analysis.data;
   const selectedFace = result?.faces.find((face) => face.readableId === selected);
   const processing = analyze.isPending || result?.state === 'processing';
   const pending = processing || annotate.isPending;
-  const visible =
-    result?.faces.filter((face) => showDismissed || face.decision !== 'dismissed') ?? [];
-  const dismissed = result?.faces.filter((face) => face.decision === 'dismissed') ?? [];
 
   const preview = (
     <section className="grid min-w-0 gap-5" aria-label="Detected faces">
@@ -41,11 +37,11 @@ export function AssetFaces({
             alt={asset.name}
             className="block max-h-[32rem] max-w-full rounded-lg object-contain"
           />
-          {visible.map((face) => (
+          {result?.faces.map((face) => (
             <button
               key={face.readableId}
               type="button"
-              aria-label={`Review face: ${face.decision === 'dismissed' ? 'Not a face' : (face.entity?.name ?? 'Unknown')}`}
+              aria-label={`Review face: ${face.decision === 'dismissed' ? 'Dismissed' : (face.entity?.name ?? 'Unknown')}`}
               aria-haspopup="dialog"
               aria-pressed={selected === face.readableId}
               className={cn(
@@ -61,7 +57,7 @@ export function AssetFaces({
               onClick={() => setSelected(face.readableId)}
             >
               <span className="absolute top-full left-0 max-w-40 truncate rounded-b-sm bg-background px-1.5 py-0.5 text-foreground text-xs shadow-sm">
-                {face.decision === 'dismissed' ? 'Not a face' : (face.entity?.name ?? 'Unknown')}
+                {face.decision === 'dismissed' ? 'Dismissed' : (face.entity?.name ?? 'Unknown')}
               </span>
             </button>
           ))}
@@ -71,17 +67,6 @@ export function AssetFaces({
         <FieldError>{(analysis.error ?? analyze.error)?.message}</FieldError>
       )}
       <FacesStatus pending={analysis.isPending} result={result} />
-      {dismissed.length > 0 && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-fit"
-          aria-expanded={showDismissed}
-          onClick={() => setShowDismissed((show) => !show)}
-        >
-          {showDismissed ? 'Hide' : 'Show'} dismissed faces ({dismissed.length})
-        </Button>
-      )}
     </section>
   );
   const processAction = result?.state !== 'unsupported' && (
@@ -147,11 +132,6 @@ function FacesStatus({
       {result?.outdated && (
         <p className="text-muted-foreground text-sm">
           A newer face model is available. Process this image again to update automatic matches.
-        </p>
-      )}
-      {result?.state === 'processing' && (
-        <p role="status" className="text-muted-foreground text-sm">
-          Processing image…
         </p>
       )}
       {result?.state === 'not_processed' && (
