@@ -88,7 +88,7 @@ export function AssetFaces({
         }}
       >
         {selectedFace && (
-          <DialogContent>
+          <DialogContent className="sm:max-w-2xl">
             <div className="flex items-center justify-between gap-4">
               <DialogTitle>Review face</DialogTitle>
               <Button variant="ghost" onClick={() => setSelected(null)}>

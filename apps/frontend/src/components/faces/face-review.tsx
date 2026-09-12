@@ -89,18 +89,55 @@ export function FaceReview({
   }
   return (
     <section className="grid gap-4" aria-label="Review face">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <img
           src={faceCropUrl({ assetReadableId, faceReadableId: face.readableId })}
           alt="Face being reviewed"
-          className="size-20 rounded-lg object-cover"
+          className="size-20 shrink-0 rounded-lg object-cover"
         />
-        <div className="min-w-0 flex-1">
+        <div className="grid min-w-0 flex-1 justify-items-start gap-3">
           {face.entity ? (
             <EntityLink entity={face.entity} presentation="inline" />
           ) : (
             <strong>{face.decision === 'dismissed' ? 'Not a face' : 'Unknown person'}</strong>
           )}
+          <div className="flex flex-wrap gap-1.5 sm:flex-nowrap">
+            {face.entity && face.decision === 'automatic' && (
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() =>
+                  onChange({ decision: 'person', entityReadableId: face.entity!.readableId })
+                }
+              >
+                Confirm person
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setChoosing((value) => !value)}
+            >
+              Change person
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => onChange({ decision: 'unknown' })}
+            >
+              Leave unidentified
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => onChange({ decision: 'dismissed' })}
+            >
+              Not a face
+            </Button>
+          </div>
         </div>
       </div>
       {face.needsReview && (
@@ -109,35 +146,6 @@ export function FaceReview({
           preserved.
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        {face.entity && face.decision === 'automatic' && (
-          <Button
-            disabled={pending}
-            onClick={() =>
-              onChange({ decision: 'person', entityReadableId: face.entity!.readableId })
-            }
-          >
-            Confirm person
-          </Button>
-        )}
-        <Button variant="outline" disabled={pending} onClick={() => setChoosing((value) => !value)}>
-          Change person
-        </Button>
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => onChange({ decision: 'unknown' })}
-        >
-          Leave unidentified
-        </Button>
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => onChange({ decision: 'dismissed' })}
-        >
-          Not a face
-        </Button>
-      </div>
       {choosing && (
         <PersonChoices
           pending={pending}
