@@ -5,6 +5,8 @@
 
 [![Deploy on nibrun](https://nibrun.com/button.svg)](https://app.nibrun.com/deploy?name=context-use&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fnibrun-latest%2Fcontext-use&port=3000&minimal)
 
+[**View the Steve Jobs demo**](https://steve-jobs-demo-fye81b.nibrun.app/hypermedia) · Read-only, no account needed.
+
 </div>
 
 ## Run it locally
