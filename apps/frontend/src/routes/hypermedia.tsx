@@ -16,7 +16,6 @@ import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-work
 import { type CalendarMonth, calendarMonth } from '../lib/calendar-month';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
-  type HypermediaEntity,
   type HypermediaEntityReference,
   type HypermediaPage,
   hypermediaEntityKey,
@@ -24,12 +23,9 @@ import {
   hypermediaPagesQueryOptions,
 } from '../queries/hypermedia';
 
-const MAX_HYPERMEDIA_SEARCH_LENGTH = 160;
 const MAX_HYPERMEDIA_READABLE_ID_LENGTH = 120;
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
-const EMPTY_HYPERMEDIA_ENTITIES: HypermediaEntity[] = [];
 export type HypermediaSearch = {
-  q?: string;
   month?: CalendarMonth;
   kind?: HypermediaSelection['kind'];
   id?: string;
@@ -38,9 +34,6 @@ export type HypermediaSearch = {
 
 export function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
   const result: HypermediaSearch = {};
-  if (typeof search.q === 'string' && search.q.trim()) {
-    result.q = search.q.trim().slice(0, MAX_HYPERMEDIA_SEARCH_LENGTH);
-  }
   const selectedMonth = calendarMonth(search.month);
   if (selectedMonth) {
     result.month = selectedMonth;
@@ -101,7 +94,7 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', kind, id, focus, month } = search;
+  const { kind, id, focus, month } = search;
   const navigate = Route.useNavigate();
   const [visibleEntities, setVisibleEntities] = useState<HypermediaEntityReference[]>([]);
   const selection: HypermediaSelection | undefined =
@@ -112,7 +105,6 @@ function HypermediaRoute() {
       entities: selectedEntities,
       visibleEntities,
       month,
-      query: q,
     }),
     enabled: Boolean(profile),
   });
@@ -162,20 +154,8 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
-        query={q}
         selectedEntities={selectedEntities}
         onClearSelectedEntities={clearSelectedEntities}
-        onQueryApply={(query) => {
-          void navigate({
-            search: (previous) => ({
-              ...previous,
-              q: query.trim() ? query : undefined,
-              kind: undefined,
-              id: undefined,
-            }),
-            replace: true,
-          });
-        }}
       />
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
@@ -183,12 +163,7 @@ function HypermediaRoute() {
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedEntities={selectedEntities}
-            query={q}
             pages={loadedPages}
-            matchedEntities={
-              pageQuery.data?.pages[0]?.matchedEntities ??
-              (q.trim() ? EMPTY_HYPERMEDIA_ENTITIES : null)
-            }
             month={month}
             pagesLoading={pageQuery.isFetching}
             pagesTransitioning={pageQuery.isPlaceholderData}

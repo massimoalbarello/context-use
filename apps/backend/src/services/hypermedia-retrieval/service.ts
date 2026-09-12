@@ -1,5 +1,3 @@
-import type { Entity } from '#models/entities/model.ts';
-import type { HypermediaEntityReference } from '#models/hypermedia/model.ts';
 import {
   HYPERMEDIA_RESOURCE_TYPES,
   type HypermediaResourceType,
@@ -7,15 +5,12 @@ import {
   type HypermediaRetrievalResults,
   MAX_HYPERMEDIA_SEARCH_LIMIT,
 } from '#models/hypermedia-retrieval/model.ts';
-import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
-import type { HypermediaRepositoryContract } from '#repositories/hypermedia/repository.ts';
 import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
 
 export class HypermediaRetrievalService {
   constructor(
     private readonly dependencies: {
       retrieval: HypermediaRetrievalRepositoryContract;
-      hypermedia: Pick<HypermediaRepositoryContract, 'pages'>;
     },
   ) {}
 
@@ -45,56 +40,6 @@ export class HypermediaRetrievalService {
       filters,
     });
   }
-
-  async searchPageView(input: {
-    ownerId: string;
-    entities: HypermediaEntityReference[];
-    visibleEntities: HypermediaEntityReference[];
-    limit: number;
-    offset: number;
-    query: string;
-    temporalBounds?: TemporalBounds;
-  }) {
-    const retrieval = await this.search({
-      ownerId: input.ownerId,
-      query: input.query,
-      resourceTypes: ['knowledge_page', 'entity'],
-      limit: MAX_HYPERMEDIA_SEARCH_LIMIT,
-      filters: {
-        knowledgePage: {
-          interval: input.temporalBounds ? undefined : 'without',
-          temporalBounds: input.temporalBounds,
-        },
-      },
-    });
-    const matchedEntities: Entity[] = [];
-    const pageReadableIds: string[] = [];
-    for (const result of retrieval.results) {
-      if (result.resourceType === 'entity') {
-        matchedEntities.push(result.entity);
-      } else if (result.resourceType === 'knowledge_page') {
-        pageReadableIds.push(result.knowledgePage.readableId);
-      }
-    }
-    const { query: _query, ...pageInput } = input;
-    const pages = await this.dependencies.hypermedia.pages({
-      ...pageInput,
-      retrievalMatches: {
-        pageReadableIds,
-        entities: matchedEntities.map((entity) => ({
-          readableId: entity.readableId,
-        })),
-      },
-    });
-    return {
-      ...pages,
-      matchedEntities,
-      entityReferencesTruncated: retrieval.truncated || pages.entityReferencesTruncated,
-    };
-  }
 }
 
-export type HypermediaRetrievalServiceContract = Pick<
-  HypermediaRetrievalService,
-  'search' | 'searchPageView'
->;
+export type HypermediaRetrievalServiceContract = Pick<HypermediaRetrievalService, 'search'>;

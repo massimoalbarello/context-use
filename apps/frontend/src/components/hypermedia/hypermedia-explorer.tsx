@@ -6,14 +6,11 @@ import { useEntities } from '../../lib/hooks/use-entities';
 import {
   type HypermediaEntityReference,
   type HypermediaPage,
-  type HypermediaPages,
   hypermediaEntityKey,
   hypermediaEntityNeighborhoodQueryOptions,
-  hypermediaEntityReference,
 } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
-import { filterHypermedia } from './hypermedia-entity-filter';
 import { buildStableEntities } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
@@ -61,9 +58,7 @@ export function HypermediaExplorer({
   selfReadableId,
   selection,
   selectedEntities,
-  query,
   pages,
-  matchedEntities,
   month,
   pagesLoading,
   pagesTransitioning,
@@ -79,9 +74,7 @@ export function HypermediaExplorer({
   selfReadableId: string;
   selection?: HypermediaSelection;
   selectedEntities: HypermediaEntityReference[];
-  query: string;
   pages: HypermediaPage[];
-  matchedEntities: HypermediaPages['matchedEntities'];
   month?: CalendarMonth;
   pagesLoading: boolean;
   pagesTransitioning: boolean;
@@ -139,40 +132,9 @@ export function HypermediaExplorer({
   const [entities, setEntities] = useState(() => buildStableEntities([], []));
   const [intervalScrolling, setIntervalScrolling] = useState(false);
 
-  const visualizedHypermedia = useMemo(
-    () =>
-      filterHypermedia({
-        entities,
-        pages,
-        matchingEntityKeys:
-          matchedEntities === null
-            ? undefined
-            : new Set(
-                matchedEntities.map((entity) =>
-                  hypermediaEntityKey(hypermediaEntityReference(entity)),
-                ),
-              ),
-      }),
-    [pages, matchedEntities, entities],
-  );
-  const visualizedSelectedEntities = useMemo(() => {
-    const normalizedQuery = query.trim();
-    const visibleEntityKeys = new Set([
-      ...visualizedHypermedia.entities.map(({ key }) => key),
-      ...visualizedHypermedia.pages.flatMap(({ entities: references }) =>
-        references.map(hypermediaEntityKey),
-      ),
-    ]);
-    return selectedEntities.filter(
-      (entity) => !normalizedQuery || visibleEntityKeys.has(hypermediaEntityKey(entity)),
-    );
-  }, [query, selectedEntities, visualizedHypermedia]);
-
   useEffect(() => {
-    setEntities((current) =>
-      buildStableEntities(neighborhoods, [...listedEntities, ...(matchedEntities ?? [])], current),
-    );
-  }, [listedEntities, matchedEntities, neighborhoods]);
+    setEntities((current) => buildStableEntities(neighborhoods, listedEntities, current));
+  }, [listedEntities, neighborhoods]);
 
   const handleViewportSettled = useCallback(
     ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
@@ -248,15 +210,14 @@ export function HypermediaExplorer({
   const canExplore =
     hasNextEntityPage ||
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
-    visualizedHypermedia.entities.some(({ key }) => !requestedAnchorKeys.has(key));
+    entities.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
     <div className="relative size-full min-h-[28rem]">
       <HypermediaCanvas
-        key={query.trim().toLocaleLowerCase()}
-        entities={visualizedHypermedia.entities}
-        pages={visualizedHypermedia.pages}
+        entities={entities}
+        pages={pages}
         month={month}
-        selectedEntities={visualizedSelectedEntities}
+        selectedEntities={selectedEntities}
         selectedKey={selectedKey}
         onSelect={handleSelect}
         onViewportSettled={handleViewportSettled}
@@ -264,7 +225,7 @@ export function HypermediaExplorer({
         onIntervalScrollingChange={setIntervalScrolling}
         canExplore={canExplore}
         isInitialLoading={
-          visualizedHypermedia.entities.length === 0 &&
+          entities.length === 0 &&
           (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
         }
         neighborhoodError={neighborhoodError}

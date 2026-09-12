@@ -353,14 +353,13 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       nextCursor: null,
     });
     const graphPagesResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages?query=Quarterly%20chart'),
+      new Request('http://localhost/api/hypermedia/pages'),
     );
     expect(graphPagesResponse.status).toBe(StatusMap.OK);
     const graphPages = await graphPagesResponse.json();
     expectNoInternalResourceIds(graphPages);
     expect(graphPages).toMatchObject({
-      pages: [{ readableId: 'evidence-report', entities: [] }],
-      matchedEntities: [],
+      pages: [{ readableId: 'evidence-report', entities: [{ readableId: 'luca-bianchi' }] }],
       entityReferencesTruncated: false,
     });
 

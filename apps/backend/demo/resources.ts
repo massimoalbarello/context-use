@@ -33,7 +33,6 @@ export function createDemoResources({ database, storage }: { database: SQL; stor
     hypermediaService: new HypermediaService({ hypermedia }),
     retrievalService: new HypermediaRetrievalService({
       retrieval: new HypermediaRetrievalRepository({ database, storage }),
-      hypermedia,
     }),
     pagesService: new KnowledgePagesService({ pages, storage }),
     profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),

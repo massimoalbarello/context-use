@@ -62,7 +62,6 @@ export function RecordFilters({
         value={search.q ?? ''}
         placeholder="Search records"
         maxLength={MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH}
-        autoFocus
         onApply={(query) => onChange({ ...search, q: query || undefined })}
       />
       <FilterSelect

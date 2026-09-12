@@ -53,7 +53,6 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
         inputId="entity-keyword"
         placeholder="Search entities"
         maxLength={MAX_ENTITY_NAME_LENGTH}
-        autoFocus
         onApply={(query) => onChange({ ...search, q: query || undefined })}
       />
       <div className="grid gap-1.5">

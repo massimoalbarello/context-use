@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Library } from 'lucide-react';
+import { Library, X } from 'lucide-react';
 import { cn } from '../../lib/class-names';
 import type { HypermediaEntityReference } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
@@ -8,20 +8,15 @@ import {
   KnowledgeSidebarHeader,
 } from '../knowledge/knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
-import { buttonVariants } from '../ui/button';
-import { HypermediaFilters } from './hypermedia-filters';
+import { Button, buttonVariants } from '../ui/button';
 
 export function HypermediaSidebar({
   profile,
-  query,
   selectedEntities,
-  onQueryApply,
   onClearSelectedEntities,
 }: {
   profile: KnowledgeProfile;
-  query: string;
   selectedEntities: HypermediaEntityReference[];
-  onQueryApply: (query: string) => void;
   onClearSelectedEntities: () => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
@@ -44,12 +39,29 @@ export function HypermediaSidebar({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-4 py-6">
-          <HypermediaFilters
-            query={query}
-            selectedEntities={selectedEntities}
-            onQueryApply={onQueryApply}
-            onClearSelectedEntities={onClearSelectedEntities}
-          />
+          {selectedEntities.length > 0 && (
+            <div className="flex items-center gap-3 rounded-xl bg-muted/55 p-3" aria-live="polite">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-sm">
+                  {selectedEntities.length} {selectedEntities.length === 1 ? 'entity' : 'entities'}{' '}
+                  selected
+                </p>
+                <p className="mt-0.5 text-muted-foreground text-xs">
+                  Pages include every selection.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0 rounded-full"
+                aria-label="Clear selected entities"
+                onClick={onClearSelectedEntities}
+              >
+                <X className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          )}
         </div>
 
         <KnowledgeSidebarFooter profile={profile} />

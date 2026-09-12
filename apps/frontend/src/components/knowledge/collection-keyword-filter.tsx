@@ -24,7 +24,6 @@ export function CollectionKeywordFilter({
         value={query}
         placeholder={placeholder}
         maxLength={maxLength}
-        autoFocus
         onApply={onApply}
       />
     </KnowledgeFilterPopover>

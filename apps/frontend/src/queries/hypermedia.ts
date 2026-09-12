@@ -56,7 +56,6 @@ type HypermediaPageQuery = {
   entities: HypermediaEntityReference[];
   visibleEntities: HypermediaEntityReference[];
   month?: CalendarMonth;
-  query?: string;
 };
 
 const HYPERMEDIA_PAGE_LIMIT = 32;
@@ -65,11 +64,9 @@ export function hypermediaPagesQueryOptions({
   entities,
   visibleEntities,
   month,
-  query,
 }: HypermediaPageQuery) {
   const entityKeys = entities.map(({ readableId }) => readableId).sort();
   const visibleEntityKeys = visibleEntities.map(({ readableId }) => readableId).sort();
-  const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
     queryKey: [
       ...hypermediaQueryKey,
@@ -78,7 +75,6 @@ export function hypermediaPagesQueryOptions({
         entities: entityKeys,
         visibleEntities: visibleEntityKeys,
         month: month ?? null,
-        query: normalizedQuery ?? null,
       },
     ] as const,
     initialPageParam: 0,
@@ -91,7 +87,6 @@ export function hypermediaPagesQueryOptions({
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,
           time: month,
-          query: normalizedQuery,
         },
         fetch: { signal },
       });

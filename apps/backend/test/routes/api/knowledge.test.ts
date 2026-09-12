@@ -10,7 +10,6 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#lib/auth/owner-registration.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { ENTITY_TYPES, type Entity } from '#models/entities/model.ts';
-import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#models/hypermedia-retrieval/model.ts';
 import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#models/readable-ids/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
@@ -39,6 +38,7 @@ import {
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
+const DENSE_PAGE_REFERENCE_LIMIT = 122;
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
@@ -1186,21 +1186,6 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       from sequence
     `;
     await database`
-      insert into "hypermedia_search_document"
-        ("owner_id", "resource_type", "readable_id")
-      select "owner_id", 'entity', "readable_id"
-      from "entity"
-      where "owner_id" = ${OWNER_USER_ID} and "readable_id" like 'dense-entity-%'
-    `;
-    await database`
-      insert into "hypermedia_search_fts" ("rowid", "readable_id", "label", "summary", "body", "metadata")
-      select document."id", entity."readable_id", entity."name", entity."description", '', ''
-      from "entity" entity join "hypermedia_search_document" document
-        on document."owner_id" = entity."owner_id" and document."resource_type" = 'entity'
-          and document."readable_id" = entity."readable_id"
-      where entity."owner_id" = ${OWNER_USER_ID} and entity."readable_id" like 'dense-entity-%'
-    `;
-    await database`
       insert into "knowledge_page_entity_mention"
         ("owner_id", "source_revision_id", "target_entity_id")
       select ${OWNER_USER_ID}, page."current_revision_id", entity."id"
@@ -1210,26 +1195,10 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
        and entity."readable_id" like 'dense-entity-%'
       where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'alpha-principles'
     `;
-    const pageTextHypermediaResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/hypermedia/pages?entities=temporal-subject&query=alpha',
-      }),
-    );
-    const pageTextHypermedia = (await pageTextHypermediaResponse.json()) as {
-      pages: Array<{
-        readableId: string;
-        entities: Array<{ readableId: string }>;
-      }>;
-    };
-    expect(pageTextHypermedia.pages).toEqual([
-      expect.objectContaining({ readableId: 'alpha-principles', entities: [] }),
-    ]);
-
     const denseHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?entities=temporal-subject&query=dense',
+        path: '/hypermedia/pages?entities=temporal-subject&visible=test-owner',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {
@@ -1242,12 +1211,9 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     };
     expect(denseHypermedia.pages).toHaveLength(1);
     expect(denseHypermedia.pages[0]?.readableId).toBe('alpha-principles');
-    expect(
-      denseHypermedia.pages[0]?.entities.every(({ readableId }) =>
-        readableId.startsWith('dense-entity-'),
-      ),
-    ).toBe(true);
-    expect(denseHypermedia.pages[0]?.entities).toHaveLength(MAX_HYPERMEDIA_SEARCH_LIMIT);
+    expect(denseHypermedia.pages[0]?.entities).toContainEqual({ readableId: 'temporal-subject' });
+    expect(denseHypermedia.pages[0]?.entities).toContainEqual({ readableId: 'test-owner' });
+    expect(denseHypermedia.pages[0]?.entities).toHaveLength(DENSE_PAGE_REFERENCE_LIMIT);
     expect(denseHypermedia.nextOffset).toBeNull();
     expect(denseHypermedia.entityReferencesTruncated).toBe(true);
 

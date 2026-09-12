@@ -74,7 +74,7 @@ export function createApiController({
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
-    .use(createHypermediaController({ auth, hypermediaService, retrievalService }))
+    .use(createHypermediaController({ auth, hypermediaService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
     .use(createRecordsController({ auth, recordsService }))

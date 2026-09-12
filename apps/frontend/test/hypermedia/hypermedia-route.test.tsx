@@ -13,7 +13,7 @@ import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/pr
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
 
-test('map page failures stay inside the canvas and can be retried', async () => {
+test('Hypermedia ignores keyword URL state and recovers from page failures without search', async () => {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const profile: KnowledgeProfile = {
     selfEntity: {
@@ -58,7 +58,6 @@ test('map page failures stay inside the canvas and can be retried', async () => 
         entities: [{ readableId: 'owner' }],
       },
     ],
-    matchedEntities: null,
     nextOffset: null,
     entityReferencesTruncated: false,
   };
@@ -82,6 +81,7 @@ test('map page failures stay inside the canvas and can be retried', async () => 
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = new URL(input instanceof Request ? input.url : input);
+        expect(url.searchParams.has('query')).toBe(false);
         if (url.pathname !== '/api/hypermedia/pages') {
           throw new Error(`Unexpected request: ${url.pathname}`);
         }
@@ -98,7 +98,9 @@ test('map page failures stay inside the canvas and can be retried', async () => 
     const router = createRouter({
       routeTree,
       context: { queryClient: client },
-      history: createMemoryHistory({ initialEntries: ['/hypermedia'] }),
+      history: createMemoryHistory({
+        initialEntries: ['/hypermedia?q=nonexistent-keyword&focus=entity%3Aowner'],
+      }),
     });
     await router.load();
     render(
@@ -107,12 +109,18 @@ test('map page failures stay inside the canvas and can be retried', async () => 
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByRole('searchbox', { name: 'Keyword' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Browse resources' })).toBeTruthy();
+    expect(screen.getByText('1 entity selected')).toBeTruthy();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull();
     expect((await screen.findByRole('alert')).textContent).toContain('Couldn’t load pages.');
     unavailable = false;
     await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Clear selected entities' }));
+    expect(screen.queryByRole('button', { name: 'Clear selected entities' })).toBeNull();
+    expect(router.state.location.search).not.toHaveProperty('focus');
   } finally {
     cleanup();
     client.clear();
