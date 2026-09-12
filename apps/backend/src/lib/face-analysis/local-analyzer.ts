@@ -129,12 +129,12 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
       return;
     }
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
+    const binary = await this.binary();
     this.modelPaths ??= await prepareFaceModels({
       directory: join(this.directory, 'models'),
       signal,
     });
     const [detector, recognizer] = this.modelPaths;
-    const binary = await this.binary();
     signal.throwIfAborted();
     // Model verification and saved uploads leave temporary byte buffers. Reclaim them
     // before loading native weights so both runtimes fit on small instances.

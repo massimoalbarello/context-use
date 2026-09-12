@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 const backend = resolve(import.meta.dir, '..');
 const root = resolve(backend, '../..');
 
-export async function buildFaceAnalyzer({ host }: { host: boolean }) {
+async function buildFaceAnalyzer({ host }: { host: boolean }) {
   const destination = join(backend, '.cache', host ? 'face-engine-host' : 'face-engine-linux');
   const build = join(root, '.cache', host ? 'face-build-host' : 'face-build-linux');
   await mkdir(build, { recursive: true });

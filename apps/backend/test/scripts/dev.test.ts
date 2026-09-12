@@ -16,11 +16,7 @@ async function fixture() {
   for (const path of ['dev.ts', 'build-faces.ts', 'shared/constants.ts']) {
     await cp(join(backend, 'scripts', path), join(app, 'scripts', path));
   }
-  await Bun.write(
-    join(app, 'src/main.ts'),
-    `if (!(await Bun.file('.cache/face-engine-host/face-analyzer').exists())) throw new Error('Missing engine');
-console.log('Backend started with native engine');`,
-  );
+  await Bun.write(join(app, 'src/main.ts'), `console.log('Backend started');`);
   // Only the slow external compiler is substituted; the actual dev and build scripts run in Bun.
   await Bun.write(
     join(bin, 'cmake'),
@@ -45,8 +41,8 @@ if (process.argv.includes('--build')) {
     app,
     engine: join(app, '.cache/face-engine-host/face-analyzer'),
     log: join(root, '.cache/face-build-host/build.log'),
-    run: async (fail = false) => {
-      const child = Bun.spawn([process.execPath, 'run', 'scripts/dev.ts'], {
+    run: async ({ command, fail = false }: { command: string[]; fail?: boolean }) => {
+      const child = Bun.spawn([process.execPath, 'run', ...command], {
         cwd: app,
         env: {
           ...process.env,
@@ -67,26 +63,37 @@ if (process.argv.includes('--build')) {
   };
 }
 
-test('dev builds a missing native engine before starting the backend', async () => {
+test('dev starts without a native engine or working compiler', async () => {
   const context = await fixture();
   try {
     expect(await Bun.file(context.engine).exists()).toBe(false);
-    const result = await context.run();
+    const result = await context.run({ command: ['scripts/dev.ts'], fail: true });
     expect(result.code).toBe(0);
-    expect(result.stdout).toContain('Backend started with native engine');
+    expect(result.stdout).toContain('Backend started');
+    expect(await Bun.file(context.engine).exists()).toBe(false);
+    expect(await Bun.file(context.log).exists()).toBe(false);
+  } finally {
+    await context.close();
+  }
+});
+
+test('the optional native build installs the local engine', async () => {
+  const context = await fixture();
+  try {
+    const result = await context.run({ command: ['scripts/build-faces.ts', '--host'] });
+    expect(result.code).toBe(0);
     expect(await Bun.file(context.engine).text()).toBe('compiled engine');
   } finally {
     await context.close();
   }
 });
 
-test('a failed native build preserves the engine and full diagnostics without starting the backend', async () => {
+test('a failed optional native build preserves the engine and full diagnostics', async () => {
   const context = await fixture();
   try {
     await Bun.write(context.engine, 'previous working engine');
-    const result = await context.run(true);
+    const result = await context.run({ command: ['scripts/build-faces.ts', '--host'], fail: true });
     expect(result.code).toBe(1);
-    expect(result.stdout).not.toContain('Backend started');
     expect(result.stderr).toContain('exit 7');
     expect(result.stderr).toContain(context.log);
     const log = await Bun.file(context.log).text();
