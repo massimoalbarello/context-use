@@ -27,6 +27,10 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
   '../../../src/db/migrations/0005_add_mcp_client_authorizations.sql',
   import.meta.url,
 );
+const RECORD_MIGRATION = new URL(
+  '../../../src/db/migrations/0006_add_record_syncs_and_records.sql',
+  import.meta.url,
+);
 const CONTENT_HASH_LENGTH = 64;
 
 test('asset size constraint enforces the configured limit', async () => {
@@ -216,6 +220,7 @@ test('entity image columns preserve ownership and exclusive assignment', async (
     database.exec(await Bun.file(ASSET_MIGRATION).text());
     database.exec(await Bun.file(OAUTH_MIGRATION).text());
     database.exec(await Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION).text());
+    database.exec(await Bun.file(RECORD_MIGRATION).text());
     for (const ownerId of ['owner-a', 'owner-b']) {
       database.run(
         `insert into "auth_user"
