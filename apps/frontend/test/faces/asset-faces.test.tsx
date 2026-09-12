@@ -87,7 +87,7 @@ test('face boxes support keyboard review and dismissed detections can be restore
     expect(view.queryByText('No faces found.')).toBeNull();
     await user.click(view.getByRole('button', { name: 'Show dismissed faces (1)' }));
     await user.click(view.getByRole('button', { name: 'Review face: Not a face' }));
-    await user.click(await view.findByRole('button', { name: 'Use automatic matching' }));
+    await user.click(await view.findByRole('button', { name: 'Leave unidentified' }));
     await waitFor(() =>
       expect(view.getByText('Unknown person', { selector: 'strong' })).toBeTruthy(),
     );
@@ -95,7 +95,7 @@ test('face boxes support keyboard review and dismissed detections can be restore
     await waitFor(() => expect(view.queryByRole('dialog')).toBeNull());
     expect(view.getByRole('button', { name: 'Review face: Unknown' })).toBeTruthy();
     expect(view.queryByRole('button', { name: /dismissed faces/ })).toBeNull();
-    expect(decisions).toEqual([{ decision: 'dismissed' }, { decision: 'automatic' }]);
+    expect(decisions).toEqual([{ decision: 'dismissed' }, { decision: 'unknown' }]);
   } finally {
     dispose();
   }

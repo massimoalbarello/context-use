@@ -102,14 +102,18 @@ export function AssetFaces({
       >
         {selectedFace && (
           <DialogContent>
-            <DialogTitle>Review face</DialogTitle>
+            <div className="flex items-center justify-between gap-4">
+              <DialogTitle>Review face</DialogTitle>
+              <Button variant="ghost" onClick={() => setSelected(null)}>
+                Done
+              </Button>
+            </div>
             {annotate.error && <FieldError>{annotate.error.message}</FieldError>}
             <FaceReview
               key={selectedFace.readableId}
               assetReadableId={asset.readableId}
               face={selectedFace}
               pending={pending}
-              onDone={() => setSelected(null)}
               onChange={(body) =>
                 annotate.mutate({
                   assetReadableId: asset.readableId,

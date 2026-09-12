@@ -76,13 +76,11 @@ export function FaceReview({
   face,
   pending,
   onChange: saveDecision,
-  onDone,
 }: {
   assetReadableId: string;
   face: Face;
   pending: boolean;
   onChange: (body: AnnotationInput['body']) => void;
-  onDone: () => void;
 }) {
   const [choosing, setChoosing] = useState(!face.entity && face.decision !== 'dismissed');
   function onChange(body: AnnotationInput['body']) {
@@ -104,9 +102,6 @@ export function FaceReview({
             <strong>{face.decision === 'dismissed' ? 'Not a face' : 'Unknown person'}</strong>
           )}
         </div>
-        <Button variant="ghost" onClick={onDone}>
-          Done
-        </Button>
       </div>
       {face.needsReview && (
         <p className="text-muted-foreground text-sm">
@@ -142,15 +137,6 @@ export function FaceReview({
         >
           Not a face
         </Button>
-        {face.decision !== 'automatic' && (
-          <Button
-            variant="ghost"
-            disabled={pending}
-            onClick={() => onChange({ decision: 'automatic' })}
-          >
-            Use automatic matching
-          </Button>
-        )}
       </div>
       {choosing && (
         <PersonChoices
