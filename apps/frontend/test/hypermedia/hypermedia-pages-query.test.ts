@@ -29,8 +29,6 @@ test('scroll months select the API time and keep dated and undated results in se
       await client.fetchInfiniteQuery(
         hypermediaPagesQueryOptions({
           resources: [],
-          visibleResources: [],
-          kinds: ['entity'],
           month,
         }),
       );

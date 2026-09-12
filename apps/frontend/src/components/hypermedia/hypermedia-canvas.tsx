@@ -47,6 +47,7 @@ import {
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
   type SettledHypermediaViewport,
+  viewportNearResourceBoundary,
   viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
 import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
@@ -70,9 +71,9 @@ function ResourceDot({
   onPreview: () => void;
   onPreviewEnd: () => void;
 }) {
-  const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
+  const label = resource.entity.name;
   const reference = hypermediaResourceReference(resource);
-  const href = `/${reference.kind === 'entity' ? 'entities' : 'assets'}/${encodeURIComponent(reference.readableId)}`;
+  const href = `/entities/${encodeURIComponent(reference.readableId)}`;
 
   return (
     <a
@@ -159,10 +160,7 @@ const HypermediaScene = memo(function HypermediaScene({
       })}
 
       {layout.resources.map((resource) => {
-        const preview =
-          resource.kind === 'entity'
-            ? ({ kind: 'entity', entity: resource.entity } as const)
-            : ({ kind: 'asset', asset: resource.asset } as const);
+        const preview = { kind: 'entity', entity: resource.entity } as const;
         return (
           <ResourceDot
             key={resource.key}
@@ -294,16 +292,14 @@ export function HypermediaCanvas({
       const boundaryAnchor = discoverMoreEntities
         ? nearestBoundaryResource(layout.resources, viewport)
         : undefined;
-      if (focus.length === 0 && !discoverMoreEntities) {
-        return;
-      }
       onViewportSettled({
         focus,
         discoverMoreEntities,
+        discoverMorePages: viewportNearResourceBoundary(viewport, layout.bounds),
         boundaryAnchor,
       });
     },
-    [layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
+    [layout.bounds, layout.resourceBounds, layout.resources, onViewportSettled, selectedKey],
   );
 
   const scheduleViewport = useCallback(
@@ -333,7 +329,7 @@ export function HypermediaCanvas({
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
     const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, layout.resourceBounds.width * 2.5);
+    const maximumWidth = Math.max(2400, layout.bounds.width * 2.5);
     const nextViewBox = zoomedHypermediaViewBox({
       current,
       factor,
@@ -463,7 +459,7 @@ export function HypermediaCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
-      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities and assets`}
+      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.resources.length} visible entities`}
     >
       <svg
         ref={canvasRef}

@@ -17,7 +17,6 @@ import {
   HypermediaResourceNeighborhoodSchema,
   hypermediaPagesResponse,
   hypermediaResourceNeighborhoodResponse,
-  parseHypermediaResourceKinds,
   parseHypermediaResourceReference,
   parseHypermediaResources,
 } from '#routes/api/hypermedia/model.ts';
@@ -40,15 +39,13 @@ export function createHypermediaController({
       '/resources',
       async ({ query, user, status }) => {
         const anchor = parseHypermediaResourceReference(query.anchor);
-        const kinds = parseHypermediaResourceKinds(query.kinds);
         const decodedCursor = decodeHypermediaResourceCursor(query.cursor);
-        if (!anchor || !kinds || decodedCursor.state === 'invalid') {
+        if (!anchor || decodedCursor.state === 'invalid') {
           return status(StatusMap['Bad Request'], { error: 'Invalid resource neighborhood query' });
         }
         const neighborhood = await hypermediaService.resourceNeighborhood({
           ownerId: user.id,
           anchor,
-          kinds,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_RESOURCE_LIMIT,
           cursor: decodedCursor.cursor,
         });
@@ -70,8 +67,6 @@ export function createHypermediaController({
       '/pages',
       async ({ query, user, status }) => {
         const resources = parseHypermediaResources(query.resources);
-        const visibleResources = parseHypermediaResources(query.visible);
-        const kinds = parseHypermediaResourceKinds(query.kinds);
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -81,14 +76,12 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!resources || !visibleResources || !kinds) {
+        if (!resources) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const input = {
           ownerId: user.id,
           resources,
-          visibleResources,
-          kinds,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           temporalBounds,

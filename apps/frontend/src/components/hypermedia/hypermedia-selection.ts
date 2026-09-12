@@ -2,7 +2,7 @@ import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import { hypermediaResourceKey } from '../../queries/hypermedia';
 
 export type HypermediaSelection = {
-  kind: 'page' | 'entity' | 'asset';
+  kind: 'page' | 'entity';
   readableId: string;
 };
 
@@ -24,7 +24,7 @@ function resourceReferenceFromKey(key: string): HypermediaResourceReference | un
   const separator = key.indexOf(':');
   const kind = key.slice(0, separator);
   const readableId = key.slice(separator + 1);
-  return (kind === 'entity' || kind === 'asset') &&
+  return kind === 'entity' &&
     readableId.length > 0 &&
     readableId.length <= MAX_HYPERMEDIA_READABLE_ID_LENGTH &&
     HYPERMEDIA_READABLE_ID_PATTERN.test(readableId)
@@ -56,15 +56,7 @@ export function selectedHypermediaResourcesValue(
 }
 
 export function selectedHypermediaResourcesLabel(resources: HypermediaResourceReference[]): string {
-  const entityCount = resources.filter(({ kind }) => kind === 'entity').length;
-  const assetCount = resources.length - entityCount;
-  if (assetCount === 0) {
-    return `${entityCount} ${entityCount === 1 ? 'entity' : 'entities'} selected`;
-  }
-  if (entityCount === 0) {
-    return `${assetCount} ${assetCount === 1 ? 'asset' : 'assets'} selected`;
-  }
-  return `${resources.length} resources selected`;
+  return `${resources.length} ${resources.length === 1 ? 'entity' : 'entities'} selected`;
 }
 
 export function toggleHypermediaResourceSelection({

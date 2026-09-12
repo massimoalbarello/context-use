@@ -3,14 +3,12 @@ import type {
   HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
-  HypermediaResourceKind,
   HypermediaResourceNeighborhood,
   HypermediaResourceReference,
 } from '#models/hypermedia/model.ts';
 import { MAX_KNOWLEDGE_PAGE_TITLE_LENGTH } from '#models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-ids/model.ts';
-import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#routes/api/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
@@ -21,22 +19,18 @@ export const DEFAULT_HYPERMEDIA_PAGE_LIMIT = 32;
 export const MAX_HYPERMEDIA_PAGE_LIMIT = 32;
 export const MAX_HYPERMEDIA_PAGE_FOCUS_RESOURCES = 24;
 const MAX_HYPERMEDIA_CURSOR_LENGTH = 512;
-const MIN_RESOURCE_KEY_LENGTH = 'asset:'.length + 1;
+const MIN_RESOURCE_KEY_LENGTH = 'entity:'.length + 1;
 const RESOURCE_KIND_PREFIX_LENGTH = 'entity:'.length;
 const MAX_HYPERMEDIA_FOCUS_LENGTH =
   MAX_HYPERMEDIA_PAGE_FOCUS_RESOURCES * (MAX_READABLE_ID_LENGTH + 'entity:,'.length);
-const RESOURCE_KEY_PATTERN = `^(?:entity|asset):${READABLE_ID_PATTERN.source.slice(1, -1)}$`;
-const RESOURCE_KINDS_PATTERN = '^(?:entity|asset)(?:,(?:entity|asset))?$';
+const RESOURCE_KEY_PATTERN = `^entity:${READABLE_ID_PATTERN.source.slice(1, -1)}$`;
 
 const HypermediaResourceReferenceSchema = t.Object({
-  kind: t.Union([t.Literal('entity'), t.Literal('asset')]),
+  kind: t.Literal('entity'),
   readableId: ReadableIdSchema,
 });
 
-const HypermediaResourceSchema = t.Union([
-  t.Object({ kind: t.Literal('entity'), entity: EntitySchema }),
-  t.Object({ kind: t.Literal('asset'), asset: AssetSummarySchema }),
-]);
+const HypermediaResourceSchema = t.Object({ kind: t.Literal('entity'), entity: EntitySchema });
 
 export const HypermediaResourceNeighborhoodQuerySchema = t.Object({
   anchor: t.String({
@@ -52,11 +46,6 @@ export const HypermediaResourceNeighborhoodQuerySchema = t.Object({
     }),
   ),
   cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_CURSOR_LENGTH })),
-  kinds: t.String({
-    minLength: 'asset'.length,
-    maxLength: 'entity,asset'.length,
-    pattern: RESOURCE_KINDS_PATTERN,
-  }),
 });
 
 export const HypermediaResourceNeighborhoodSchema = t.Object({
@@ -71,18 +60,7 @@ export const HypermediaResourceNeighborhoodSchema = t.Object({
 });
 
 export const HypermediaPagesQuerySchema = t.Object({
-  kinds: t.String({
-    minLength: 'asset'.length,
-    maxLength: 'entity,asset'.length,
-    pattern: RESOURCE_KINDS_PATTERN,
-  }),
   resources: t.Optional(
-    t.String({
-      minLength: MIN_RESOURCE_KEY_LENGTH,
-      maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
-    }),
-  ),
-  visible: t.Optional(
     t.String({
       minLength: MIN_RESOURCE_KEY_LENGTH,
       maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
@@ -125,21 +103,13 @@ export function parseHypermediaResourceReference(
   const kind = value.slice(0, separator);
   const readableId = value.slice(separator + 1);
   if (
-    (kind !== 'entity' && kind !== 'asset') ||
+    kind !== 'entity' ||
     readableId.length > MAX_READABLE_ID_LENGTH ||
     !READABLE_ID_PATTERN.test(readableId)
   ) {
     return null;
   }
   return { kind, readableId };
-}
-
-export function parseHypermediaResourceKinds(value: string): HypermediaResourceKind[] | null {
-  const kinds = new Set(value.split(','));
-  if (kinds.size === 0 || [...kinds].some((kind) => kind !== 'entity' && kind !== 'asset')) {
-    return null;
-  }
-  return (['entity', 'asset'] as const).filter((kind) => kinds.has(kind));
 }
 
 export function parseHypermediaResources(value?: string): HypermediaResourceReference[] | null {
@@ -208,7 +178,6 @@ export function decodeHypermediaResourceCursor(
     typeof payload.sharedPageCount !== 'number' ||
     !Number.isSafeInteger(payload.sharedPageCount) ||
     payload.sharedPageCount < 1 ||
-    (payload.kind !== 'entity' && payload.kind !== 'asset') ||
     !validReadableId(payload.readableId)
   ) {
     return { state: 'invalid' };
@@ -217,16 +186,13 @@ export function decodeHypermediaResourceCursor(
     state: 'valid',
     cursor: {
       sharedPageCount: payload.sharedPageCount,
-      kind: payload.kind,
       readableId: payload.readableId,
     },
   };
 }
 
 function hypermediaResourceResponse(resource: HypermediaResource) {
-  return resource.kind === 'entity'
-    ? { kind: resource.kind, entity: entityResponse(resource.entity) }
-    : { kind: resource.kind, asset: assetSummaryResponse(resource.asset) };
+  return { kind: resource.kind, entity: entityResponse(resource.entity) };
 }
 
 export function hypermediaResourceNeighborhoodResponse(

@@ -99,26 +99,15 @@ describe('resource-first hypermedia layout', () => {
   });
 
   test('places standalone search matches without waiting for graph discovery', () => {
-    const match: HypermediaResource = {
-      kind: 'asset',
-      asset: {
-        readableId: 'diagram',
-        name: 'Diagram',
-        mediaType: 'image/png',
-        extension: 'png',
-        sizeBytes: 42,
-        createdAt,
-        updatedAt: createdAt,
-      },
-    };
+    const match = entity('diagram');
     const initial = buildStableResources([], [match]);
-    expect(initial.map(({ key }) => key)).toEqual(['asset:diagram']);
+    expect(initial.map(({ key }) => key)).toEqual(['entity:diagram']);
     const expanded = buildStableResources(
       [neighborhood(entity('self', true), [match])],
       [match],
       initial,
     );
-    expect(expanded.find(({ key }) => key === 'asset:diagram')?.point).toEqual(initial[0]?.point);
+    expect(expanded.find(({ key }) => key === 'entity:diagram')?.point).toEqual(initial[0]?.point);
   });
 
   test('focus follows the viewport while retaining a selected resource', () => {
@@ -198,6 +187,24 @@ describe('resource-first hypermedia layout', () => {
         ({ page: item }) => item.readableId,
       ),
     ).toEqual(['connected-page']);
+  });
+
+  test('unloaded entity references cannot hide a page whose label is in the viewport', () => {
+    const resources = buildStableResources([], [entity('self', true)]);
+    const layout = buildHypermediaLayout(resources, [
+      { ...page('disconnected'), resources: [{ kind: 'entity', readableId: 'unloaded' }] },
+    ]);
+    const point = layout.pages[0]!.point;
+    const viewport = { x: point.x - 50, y: point.y - 50, width: 100, height: 100 };
+    expect(
+      hypermediaLayoutInViewport({ layout, viewport }).pages.map(
+        ({ page: item }) => item.readableId,
+      ),
+    ).toEqual(['disconnected']);
+    expect(layout.bounds.x).toBeLessThanOrEqual(point.x);
+    expect(layout.bounds.x + layout.bounds.width).toBeGreaterThanOrEqual(point.x);
+    expect(layout.bounds.y).toBeLessThanOrEqual(point.y);
+    expect(layout.bounds.y + layout.bounds.height).toBeGreaterThanOrEqual(point.y);
   });
 
   test('returns the same view when zoom-out is already clamped at its maximum', () => {

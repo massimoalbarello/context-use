@@ -8,45 +8,50 @@ import {
 } from '../../src/components/hypermedia/hypermedia-selection';
 
 describe('Hypermedia resource filters', () => {
-  test('accumulates canonical entity and asset selections without page previews changing them', () => {
+  test('accumulates canonical entity selections without page previews changing them', () => {
     const entitySelection = { kind: 'entity' as const, readableId: 'jun-park' };
-    const initial = selectedHypermediaResources('entity:jun-park,entity:jun-park,invalid');
-    const withAsset = toggleHypermediaResourceSelection({
+    const initial = selectedHypermediaResources(
+      'entity:jun-park,entity:jun-park,asset:ignored,record:ignored,invalid',
+    );
+    const withSecondEntity = toggleHypermediaResourceSelection({
       resources: initial,
-      selection: { kind: 'asset', readableId: 'rollout-metrics' },
+      selection: { kind: 'entity', readableId: 'rollout-metrics' },
     });
 
     expect(initial).toEqual([{ kind: 'entity', readableId: 'jun-park' }]);
-    expect(withAsset).toEqual([
+    expect(withSecondEntity).toEqual([
       { kind: 'entity', readableId: 'jun-park' },
-      { kind: 'asset', readableId: 'rollout-metrics' },
+      { kind: 'entity', readableId: 'rollout-metrics' },
     ]);
     expect(
       toggleHypermediaResourceSelection({
-        resources: withAsset,
+        resources: withSecondEntity,
         selection: { kind: 'page', readableId: 'preview-cache-strategy' },
       }),
-    ).toBe(withAsset);
-    expect(selectedHypermediaResourcesValue(withAsset)).toBe(
-      'entity:jun-park,asset:rollout-metrics',
+    ).toBe(withSecondEntity);
+    expect(selectedHypermediaResourcesValue(withSecondEntity)).toBe(
+      'entity:jun-park,entity:rollout-metrics',
     );
     expect(selectedHypermediaResourcesLabel(initial)).toBe('1 entity selected');
-    expect(selectedHypermediaResourcesLabel([withAsset[1]!])).toBe('1 asset selected');
-    expect(selectedHypermediaResourcesLabel(withAsset)).toBe('2 resources selected');
+    expect(selectedHypermediaResourcesLabel([withSecondEntity[1]!])).toBe('1 entity selected');
+    expect(selectedHypermediaResourcesLabel(withSecondEntity)).toBe('2 entities selected');
     expect(
-      toggleHypermediaResourceSelection({ resources: withAsset, selection: entitySelection }),
-    ).toEqual([{ kind: 'asset', readableId: 'rollout-metrics' }]);
+      toggleHypermediaResourceSelection({
+        resources: withSecondEntity,
+        selection: entitySelection,
+      }),
+    ).toEqual([{ kind: 'entity', readableId: 'rollout-metrics' }]);
   });
 
   test('removes only the current resource and leaves page previews out of resource state', () => {
     const resources = selectedHypermediaResources(
-      'entity:jun-park,asset:rollout-metrics,entity:maya-chen',
+      'entity:jun-park,entity:rollout-metrics,entity:maya-chen',
     );
 
     expect(
       removeHypermediaResourceSelection({
         resources,
-        selection: { kind: 'asset', readableId: 'rollout-metrics' },
+        selection: { kind: 'entity', readableId: 'rollout-metrics' },
       }),
     ).toEqual([
       { kind: 'entity', readableId: 'jun-park' },

@@ -1,15 +1,10 @@
 import { Link } from '@tanstack/react-router';
-import { File, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { isEmbeddableAsset, isVideoAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
-import { useAssetPreview } from '../../lib/hooks/use-assets';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
-import type { Asset } from '../../queries/assets';
 import type { KnowledgePageSummary } from '../../queries/pages';
-import { formatAssetSize } from '../assets/asset-link';
-import { AssetMedia } from '../assets/asset-media';
 import { EntityAvatar } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
@@ -128,36 +123,6 @@ function PreviewPageSection({
   );
 }
 
-function assetPreviewPages(usages: Asset['usages']): PreviewPageItem[] {
-  const pages = new Map<
-    string,
-    { page: KnowledgePageSummary; presentations: Set<'embed' | 'attachment'> }
-  >();
-  for (const usage of usages) {
-    if (usage.kind !== 'page') {
-      continue;
-    }
-    const existing = pages.get(usage.page.readableId);
-    if (existing) {
-      existing.presentations.add(usage.presentation);
-    } else {
-      pages.set(usage.page.readableId, {
-        page: usage.page,
-        presentations: new Set([usage.presentation]),
-      });
-    }
-  }
-  return [...pages.values()].map(({ page, presentations }) => ({
-    page,
-    context:
-      presentations.size === 2
-        ? 'Embedded · Attached'
-        : presentations.has('embed')
-          ? 'Embedded'
-          : 'Attached',
-  }));
-}
-
 type PreviewProps = {
   readableId: string;
   onClose: () => void;
@@ -248,60 +213,6 @@ function EntityPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps
   );
 }
 
-function AssetPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) {
-  const { data: asset, error, refetch } = useAssetPreview(readableId);
-  return (
-    <PreviewPanelShell
-      label="Asset"
-      onClose={onClose}
-      onEscape={onEscape}
-      openLink={
-        <Link
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-          to="/assets/$id"
-          params={{ id: readableId }}
-          aria-label="Open asset"
-        >
-          Open asset
-        </Link>
-      }
-    >
-      {error ? (
-        <PreviewError error={error} retry={refetch} />
-      ) : asset ? (
-        <div className="grid gap-5 py-2">
-          <div
-            className={cn(
-              'flex min-h-48 items-center justify-center overflow-hidden rounded-xl bg-muted text-muted-foreground',
-              (isEmbeddableAsset(asset) || isVideoAsset(asset)) && 'min-h-0',
-            )}
-          >
-            {isEmbeddableAsset(asset) || isVideoAsset(asset) ? (
-              <AssetMedia asset={asset} className="max-h-80 w-full object-contain" />
-            ) : (
-              <File className="size-12 stroke-[1.3]" aria-hidden="true" />
-            )}
-          </div>
-          <div>
-            <h2 className="font-semibold text-2xl tracking-tight">{asset.name}</h2>
-            <p className="mt-2 text-muted-foreground text-sm">
-              {asset.extension?.toUpperCase() ?? asset.mediaType} ·{' '}
-              {formatAssetSize(asset.sizeBytes)}
-            </p>
-          </div>
-          <PreviewPageSection
-            title="Used by knowledge pages"
-            items={assetPreviewPages(asset.usages)}
-            onSelect={onSelect}
-          />
-        </div>
-      ) : (
-        <PreviewStatus>Loading asset…</PreviewStatus>
-      )}
-    </PreviewPanelShell>
-  );
-}
-
 export function HypermediaPreviewPanel({
   selection,
   onClose,
@@ -326,19 +237,8 @@ export function HypermediaPreviewPanel({
       />
     );
   }
-  if (selection.kind === 'entity') {
-    return (
-      <EntityPreview
-        key={key}
-        readableId={selection.readableId}
-        onClose={onClose}
-        onEscape={onEscape}
-        onSelect={onSelect}
-      />
-    );
-  }
   return (
-    <AssetPreview
+    <EntityPreview
       key={key}
       readableId={selection.readableId}
       onClose={onClose}

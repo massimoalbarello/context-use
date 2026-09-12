@@ -1,14 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useState } from 'react';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
-import {
-  displayedHypermediaResourceKinds,
-  displayedHypermediaResourceKindsValue,
-  type HypermediaResourceDisplay,
-  toggleDisplayedHypermediaResourceKind,
-} from '../components/hypermedia/hypermedia-resource-filter';
 import {
   type HypermediaSelection,
   removeHypermediaResourceSelection,
@@ -40,7 +33,6 @@ export type HypermediaSearch = {
   kind?: HypermediaSelection['kind'];
   id?: string;
   focus?: string;
-  show?: HypermediaResourceDisplay;
 };
 
 export function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
@@ -52,18 +44,9 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   if (selectedMonth) {
     result.month = selectedMonth;
   }
-  if (search.show === 'assets' || search.show === 'all') {
-    result.show = search.show;
-  }
   const selectionKind =
-    search.kind === 'page' || search.kind === 'entity' || search.kind === 'asset'
-      ? search.kind
-      : undefined;
-  const selectionIsVisible =
-    selectionKind === 'page' ||
-    (selectionKind !== undefined &&
-      displayedHypermediaResourceKinds(result.show).includes(selectionKind));
-  if (selectionKind && selectionIsVisible && typeof search.id === 'string' && search.id.trim()) {
+    search.kind === 'page' || search.kind === 'entity' ? search.kind : undefined;
+  if (selectionKind && typeof search.id === 'string' && search.id.trim()) {
     result.kind = selectionKind;
     result.id = search.id.trim().slice(0, MAX_HYPERMEDIA_READABLE_ID_LENGTH);
   }
@@ -97,10 +80,7 @@ export const Route = createFileRoute('/hypermedia')({
     }
   },
   validateSearch: hypermediaSearch,
-  loaderDeps: ({ search }) => ({
-    kinds: displayedHypermediaResourceKinds(search.show),
-  }),
-  loader: async ({ context, deps }) => {
+  loader: async ({ context }) => {
     if (!context.profile) {
       return;
     }
@@ -110,11 +90,9 @@ export const Route = createFileRoute('/hypermedia')({
     };
     await Promise.all([
       context.queryClient.ensureQueryData(
-        hypermediaResourceNeighborhoodQueryOptions({ anchor: self, kinds: deps.kinds }),
+        hypermediaResourceNeighborhoodQueryOptions({ anchor: self }),
       ),
-      deps.kinds.includes('entity')
-        ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions())
-        : Promise.resolve(),
+      context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions()),
     ]);
   },
   component: HypermediaRoute,
@@ -123,18 +101,14 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', kind, id, focus, show, month } = search;
-  const resourceKinds = displayedHypermediaResourceKinds(show);
+  const { q = '', kind, id, focus, month } = search;
   const navigate = Route.useNavigate();
-  const [visibleResources, setVisibleResources] = useState<HypermediaResourceReference[]>([]);
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
       resources: selectedResources,
-      visibleResources,
-      kinds: resourceKinds,
       month,
       query: q,
     }),
@@ -187,30 +161,8 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
-        resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}
-        onResourceKindToggle={(kind) => {
-          void navigate({
-            search: (previous) => {
-              const nextKinds = toggleDisplayedHypermediaResourceKind({
-                kinds: displayedHypermediaResourceKinds(previous.show),
-                kind,
-              });
-              const previewRemainsVisible =
-                previous.kind === undefined ||
-                previous.kind === 'page' ||
-                nextKinds.includes(previous.kind);
-              return {
-                ...previous,
-                show: displayedHypermediaResourceKindsValue(nextKinds),
-                kind: previewRemainsVisible ? previous.kind : undefined,
-                id: previewRemainsVisible ? previous.id : undefined,
-              };
-            },
-            replace: true,
-          });
-        }}
         onClearSelectedResources={clearSelectedResources}
         onQueryApply={(query) => {
           void navigate({
@@ -227,8 +179,6 @@ function HypermediaRoute() {
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
           <HypermediaExplorer
-            key={resourceKinds.join(':')}
-            resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
             selectedResources={selectedResources}
@@ -254,16 +204,6 @@ function HypermediaRoute() {
                   id: previous.kind === 'page' ? undefined : previous.id,
                 }),
                 replace: true,
-              });
-            }}
-            onVisibleResourcesChange={(nextResources) => {
-              setVisibleResources((current) => {
-                const currentKeys = current.map(hypermediaResourceKey);
-                const nextKeys = nextResources.map(hypermediaResourceKey);
-                return currentKeys.length === nextKeys.length &&
-                  currentKeys.join('\u0000') === nextKeys.join('\u0000')
-                  ? current
-                  : nextResources;
               });
             }}
             onRetryPages={() => {

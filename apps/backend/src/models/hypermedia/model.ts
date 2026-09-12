@@ -1,11 +1,8 @@
-import type { AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
-export type HypermediaResourceKind = 'entity' | 'asset';
-
 export type HypermediaResourceReference = {
-  kind: HypermediaResourceKind;
+  kind: 'entity';
   readableId: string;
 };
 
@@ -14,13 +11,10 @@ export interface HypermediaRetrievalMatches {
   resources: HypermediaResourceReference[];
 }
 
-export type HypermediaResource =
-  | { kind: 'entity'; entity: Entity }
-  | { kind: 'asset'; asset: AssetSummary };
+export type HypermediaResource = { kind: 'entity'; entity: Entity };
 
 export type HypermediaResourceContinuation = {
   sharedPageCount: number;
-  kind: HypermediaResourceKind;
   readableId: string;
 };
 

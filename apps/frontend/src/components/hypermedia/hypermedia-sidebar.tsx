@@ -10,22 +10,17 @@ import {
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { buttonVariants } from '../ui/button';
 import { HypermediaFilters } from './hypermedia-filters';
-import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 
 export function HypermediaSidebar({
   profile,
-  resourceKinds,
   query,
   selectedResources,
-  onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
   profile: KnowledgeProfile;
-  resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
-  onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
 }) {
@@ -50,10 +45,8 @@ export function HypermediaSidebar({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-4 py-6">
           <HypermediaFilters
-            resourceKinds={resourceKinds}
             query={query}
             selectedResources={selectedResources}
-            onResourceKindToggle={onResourceKindToggle}
             onQueryApply={onQueryApply}
             onClearSelectedResources={onClearSelectedResources}
           />

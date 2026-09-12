@@ -7,16 +7,12 @@ export type HypermediaResourceNeighborhood = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.resources)['get']>>['data']
 >;
 export type HypermediaResource = HypermediaResourceNeighborhood['anchor'];
-export type HypermediaResourceReference =
-  | { kind: 'entity'; readableId: string }
-  | { kind: 'asset'; readableId: string };
-export type HypermediaResourceKind = HypermediaResourceReference['kind'];
+export type HypermediaResourceReference = { kind: 'entity'; readableId: string };
 export type HypermediaPages = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.pages)['get']>>['data']
 >;
 export type HypermediaPage = HypermediaPages['pages'][number];
-export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
-export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
+export type HypermediaEntity = HypermediaResource['entity'];
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
 const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;
@@ -28,34 +24,23 @@ export function hypermediaResourceKey(resource: HypermediaResourceReference): st
 export function hypermediaResourceReference(
   resource: HypermediaResource,
 ): HypermediaResourceReference {
-  return resource.kind === 'entity'
-    ? { kind: 'entity', readableId: resource.entity.readableId }
-    : { kind: 'asset', readableId: resource.asset.readableId };
+  return { kind: 'entity', readableId: resource.entity.readableId };
 }
 
 export function hypermediaResourceNeighborhoodQueryOptions({
   anchor,
-  kinds,
   cursor,
 }: {
   anchor: HypermediaResourceReference;
-  kinds: HypermediaResourceKind[];
   cursor?: string;
 }) {
   const anchorKey = hypermediaResourceKey(anchor);
-  const resourceKinds = [...kinds].sort();
   return queryOptions({
-    queryKey: [
-      ...hypermediaQueryKey,
-      'resources',
-      anchorKey,
-      { kinds: resourceKinds, cursor: cursor ?? null },
-    ] as const,
+    queryKey: [...hypermediaQueryKey, 'resources', anchorKey, { cursor: cursor ?? null }] as const,
     queryFn: async ({ signal }) => {
       const { data, error } = await api.api.hypermedia.resources.get({
         query: {
           anchor: anchorKey,
-          kinds: resourceKinds.join(','),
           cursor,
           limit: HYPERMEDIA_NEIGHBORHOOD_SIZE,
         },
@@ -72,24 +57,14 @@ export function hypermediaResourceNeighborhoodQueryOptions({
 
 type HypermediaPageQuery = {
   resources: HypermediaResourceReference[];
-  visibleResources: HypermediaResourceReference[];
-  kinds: HypermediaResourceKind[];
   month?: CalendarMonth;
   query?: string;
 };
 
 const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({
-  resources,
-  visibleResources,
-  kinds,
-  month,
-  query,
-}: HypermediaPageQuery) {
+export function hypermediaPagesQueryOptions({ resources, month, query }: HypermediaPageQuery) {
   const resourceKeys = resources.map(hypermediaResourceKey).sort();
-  const visibleResourceKeys = visibleResources.map(hypermediaResourceKey).sort();
-  const resourceKinds = [...kinds].sort();
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
     queryKey: [
@@ -97,8 +72,6 @@ export function hypermediaPagesQueryOptions({
       'pages',
       {
         resources: resourceKeys,
-        visibleResources: visibleResourceKeys,
-        kinds: resourceKinds,
         month: month ?? null,
         query: normalizedQuery ?? null,
       },
@@ -109,8 +82,6 @@ export function hypermediaPagesQueryOptions({
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
-          visible: visibleResourceKeys.length > 0 ? visibleResourceKeys.join(',') : undefined,
-          kinds: resourceKinds.join(','),
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,
           time: month,

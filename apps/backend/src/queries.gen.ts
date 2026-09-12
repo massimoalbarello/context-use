@@ -247,11 +247,11 @@ export interface ISearchHypermediaResult {
 
 /** Result of query `FindHypermediaResource`. */
 export interface IFindHypermediaResourceResult {
-    kind: "entity" | "asset";
+    kind: "entity";
     id: string;
     readableId: string;
     name: string;
-    description: string | null;
+    description: string;
     entityType: string | null;
     isSelf: number;
     imageId: string | null;
@@ -262,20 +262,17 @@ export interface IFindHypermediaResourceResult {
     imageSizeBytes: number | null;
     imageCreatedAt: string | null;
     imageUpdatedAt: string | null;
-    mediaType: string | null;
-    extension: string | null;
-    sizeBytes: number | null;
     createdAt: string;
     updatedAt: string;
 }
 
 /** Result of query `ListHypermediaResourceNeighbors`. */
 export interface IListHypermediaResourceNeighborsResult {
-    kind: "entity" | "asset";
+    kind: "entity";
     id: string;
     readableId: string;
     name: string;
-    description: string | null;
+    description: string;
     entityType: string | null;
     isSelf: number;
     imageId: string | null;
@@ -286,9 +283,6 @@ export interface IListHypermediaResourceNeighborsResult {
     imageSizeBytes: number | null;
     imageCreatedAt: string | null;
     imageUpdatedAt: string | null;
-    mediaType: string | null;
-    extension: string | null;
-    sizeBytes: number | null;
     createdAt: string;
     updatedAt: string;
     sharedPageCount: number;
@@ -312,7 +306,7 @@ export interface IListHypermediaPagesResult {
 /** Result of query `ListHypermediaPageResources`. */
 export interface IListHypermediaPageResourcesResult {
     sourcePageReadableId: string;
-    kind: "entity" | "asset";
+    kind: "entity";
     readableId: string;
 }
 

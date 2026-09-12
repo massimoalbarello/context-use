@@ -14,7 +14,7 @@ import {
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
-import { filterHypermedia, type HypermediaResourceKind } from './hypermedia-resource-filter';
+import { filterHypermedia } from './hypermedia-resource-filter';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
@@ -62,7 +62,6 @@ function resourceSelection(
 }
 
 export function HypermediaExplorer({
-  resourceKinds,
   selfReadableId,
   selection,
   selectedResources,
@@ -77,11 +76,9 @@ export function HypermediaExplorer({
   pageReferencesTruncated,
   onSelect,
   onMonthChange,
-  onVisibleResourcesChange,
   onRetryPages,
   onDiscoverMorePages,
 }: {
-  resourceKinds: HypermediaResourceKind[];
   selfReadableId: string;
   selection?: HypermediaSelection;
   selectedResources: HypermediaResourceReference[];
@@ -96,7 +93,6 @@ export function HypermediaExplorer({
   pageReferencesTruncated: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onMonthChange: (month?: CalendarMonth) => void;
-  onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
@@ -124,7 +120,7 @@ export function HypermediaExplorer({
   );
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map((request) =>
-      hypermediaResourceNeighborhoodQueryOptions({ ...request, kinds: resourceKinds }),
+      hypermediaResourceNeighborhoodQueryOptions(request),
     ),
   });
   const neighborhoods = useMemo(
@@ -139,13 +135,10 @@ export function HypermediaExplorer({
     isPending: entitiesPending,
     fetchNextPage: fetchNextEntityPage,
     refetch: refetchEntities,
-  } = useEntities({ enabled: resourceKinds.includes('entity') });
+  } = useEntities();
   const entities = useMemo(
-    () =>
-      resourceKinds.includes('entity')
-        ? (entityData?.pages.flatMap((page) => page.items) ?? [])
-        : [],
-    [entityData, resourceKinds],
+    () => entityData?.pages.flatMap((page) => page.items) ?? [],
+    [entityData],
   );
   const [resources, setResources] = useState(() => buildStableResources([], []));
   const [intervalScrolling, setIntervalScrolling] = useState(false);
@@ -155,7 +148,6 @@ export function HypermediaExplorer({
       filterHypermedia({
         resources,
         pages,
-        kinds: resourceKinds,
         matchingResourceKeys:
           matchedResources === null
             ? undefined
@@ -165,7 +157,7 @@ export function HypermediaExplorer({
                 ),
               ),
       }),
-    [pages, matchedResources, resourceKinds, resources],
+    [pages, matchedResources, resources],
   );
   const visualizedSelectedResources = useMemo(() => {
     const normalizedQuery = query.trim();
@@ -176,11 +168,9 @@ export function HypermediaExplorer({
       ),
     ]);
     return selectedResources.filter(
-      (resource) =>
-        resourceKinds.includes(resource.kind) &&
-        (!normalizedQuery || visibleResourceKeys.has(hypermediaResourceKey(resource))),
+      (resource) => !normalizedQuery || visibleResourceKeys.has(hypermediaResourceKey(resource)),
     );
-  }, [query, resourceKinds, selectedResources, visualizedHypermedia]);
+  }, [query, selectedResources, visualizedHypermedia]);
 
   useEffect(() => {
     setResources((current) =>
@@ -196,14 +186,16 @@ export function HypermediaExplorer({
   }, [entities, matchedResources, neighborhoods]);
 
   const handleViewportSettled = useCallback(
-    ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
-      onVisibleResourcesChange(focus);
-      if (
-        resourceKinds.includes('entity') &&
-        discoverMoreEntities &&
-        hasNextEntityPage &&
-        !isFetchingNextEntityPage
-      ) {
+    ({
+      focus,
+      discoverMoreEntities,
+      discoverMorePages,
+      boundaryAnchor,
+    }: SettledHypermediaViewport) => {
+      if (discoverMorePages && hasNextPage && !pagesLoading && !pagesTransitioning && !pagesError) {
+        onDiscoverMorePages();
+      }
+      if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
         void fetchNextEntityPage();
       }
       if (!boundaryAnchor || neighborhoodQueries.some(({ isPending }) => isPending)) {
@@ -245,12 +237,15 @@ export function HypermediaExplorer({
     },
     [
       fetchNextEntityPage,
+      hasNextPage,
+      pagesLoading,
+      pagesTransitioning,
+      pagesError,
+      onDiscoverMorePages,
       hasNextEntityPage,
       isFetchingNextEntityPage,
       neighborhoodQueries,
       neighborhoodRequests,
-      onVisibleResourcesChange,
-      resourceKinds,
     ],
   );
 
@@ -267,15 +262,13 @@ export function HypermediaExplorer({
     [onSelect],
   );
 
-  const neighborhoodError =
-    neighborhoodQueries.find(({ error }) => error)?.error ??
-    (resourceKinds.includes('entity') ? entityError : null);
+  const neighborhoodError = neighborhoodQueries.find(({ error }) => error)?.error ?? entityError;
   const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
     neighborhoodRequests.map(({ anchor }) => hypermediaResourceKey(anchor)),
   );
   const canExplore =
-    (resourceKinds.includes('entity') && hasNextEntityPage) ||
+    hasNextEntityPage ||
     neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
     visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
@@ -294,12 +287,11 @@ export function HypermediaExplorer({
         canExplore={canExplore}
         isInitialLoading={
           visualizedHypermedia.resources.length === 0 &&
-          ((resourceKinds.includes('entity') && entitiesPending) ||
-            neighborhoodQueries.some(({ isPending }) => isPending))
+          (entitiesPending || neighborhoodQueries.some(({ isPending }) => isPending))
         }
         neighborhoodError={neighborhoodError}
         onRetryNeighborhood={() => {
-          if (resourceKinds.includes('entity') && entityError) {
+          if (entityError) {
             void refetchEntities();
           }
           for (const result of neighborhoodQueries) {

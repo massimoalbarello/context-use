@@ -68,7 +68,7 @@ describe('knowledge page Markdown', () => {
     );
   });
 
-  test('can replace internal links with embedded resource-selection controls', () => {
+  test('selects entities and pages while retaining asset attachments and embeds', () => {
     const html = renderToStaticMarkup(
       <KnowledgePageMarkdown
         markdown={
@@ -80,10 +80,10 @@ describe('knowledge page Markdown', () => {
 
     expect(html).toContain('<button');
     expect(html).toContain('>plan</button>');
-    expect(html).toContain('>metrics</button>');
-    expect(html).toContain('aria-label="Open Dashboard preview"');
+    expect(html).toContain('>metrics</a>');
+    expect(html).toContain('src="/api/assets/dashboard/content"');
     expect(html).not.toContain('href="/entities/alex-morgan"');
     expect(html).not.toContain('href="/pages/launch-plan"');
-    expect(html).not.toContain('href="/api/assets/rollout-metrics/content"');
+    expect(html).toContain('href="/api/assets/rollout-metrics/content"');
   });
 });

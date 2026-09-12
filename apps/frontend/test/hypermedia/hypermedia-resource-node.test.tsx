@@ -65,37 +65,9 @@ const resources: HypermediaLayoutResource[] = [
     },
     point: { x: 180, y: 0 },
   },
-  {
-    key: 'asset:system-diagram',
-    kind: 'asset',
-    asset: {
-      readableId: 'system-diagram',
-      name: 'System diagram',
-      mediaType: 'image/webp',
-      extension: 'webp',
-      sizeBytes: 4_096,
-      createdAt,
-      updatedAt: createdAt,
-    },
-    point: { x: 360, y: 0 },
-  },
-  {
-    key: 'asset:project-brief',
-    kind: 'asset',
-    asset: {
-      readableId: 'project-brief',
-      name: 'Project brief',
-      mediaType: 'application/pdf',
-      extension: 'pdf',
-      sizeBytes: 8_192,
-      createdAt,
-      updatedAt: createdAt,
-    },
-    point: { x: 540, y: 0 },
-  },
 ];
 
-function resourceMark({ name, kind }: { name: string; kind: 'entity' | 'asset' }): SVGGElement {
+function resourceMark({ name, kind }: { name: string; kind: 'entity' }): SVGGElement {
   const interactive = screen.getByRole('link', { name: `Open ${kind} ${name}` });
   const mark = interactive.querySelector<SVGGElement>(`[data-hypermedia-resource-kind="${kind}"]`);
   expect(mark).toBeTruthy();
@@ -105,8 +77,6 @@ function resourceMark({ name, kind }: { name: string; kind: 'entity' | 'asset' }
 function expectResourceIdentities() {
   const grace = resourceMark({ name: 'Grace Hopper', kind: 'entity' });
   const ada = resourceMark({ name: 'Ada Lovelace', kind: 'entity' });
-  const diagram = resourceMark({ name: 'System diagram', kind: 'asset' });
-  const brief = resourceMark({ name: 'Project brief', kind: 'asset' });
 
   expect(grace.querySelector('circle')).toBeTruthy();
   expect(grace.querySelector('rect')).toBeNull();
@@ -117,16 +87,6 @@ function expectResourceIdentities() {
   expect(ada.querySelector('circle')).toBeTruthy();
   expect(ada.querySelector('image')).toBeNull();
   expect(ada.textContent).toContain('A');
-
-  expect(diagram.querySelector('rect')?.getAttribute('rx')).toBeTruthy();
-  expect(diagram.querySelector('circle')).toBeNull();
-  expect(diagram.querySelector('image')?.getAttribute('href')).toBe(
-    '/api/assets/system-diagram/content',
-  );
-  expect(diagram.querySelector('svg.lucide-file-text')).toBeTruthy();
-  expect(brief.querySelector('rect')?.getAttribute('rx')).toBeTruthy();
-  expect(brief.querySelector('image')).toBeNull();
-  expect(brief.querySelector('svg.lucide-file-text')).toBeTruthy();
 }
 
 function HypermediaMapFixture({

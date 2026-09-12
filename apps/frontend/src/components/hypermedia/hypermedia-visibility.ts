@@ -16,6 +16,7 @@ import { hypermediaSelectionKey } from './hypermedia-selection';
 export type SettledHypermediaViewport = {
   focus: HypermediaResourceReference[];
   discoverMoreEntities: boolean;
+  discoverMorePages: boolean;
   boundaryAnchor?: HypermediaResourceReference;
 };
 
@@ -52,7 +53,10 @@ export function focusedResources({
   return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(hypermediaResourceReference);
 }
 
-function viewportNearResourceBoundary(viewport: CanvasBounds, bounds: CanvasBounds): boolean {
+export function viewportNearResourceBoundary(
+  viewport: CanvasBounds,
+  bounds: CanvasBounds,
+): boolean {
   const marginX = Math.min(viewport.width * 0.16, bounds.width * 0.2);
   const marginY = Math.min(viewport.height * 0.16, bounds.height * 0.2);
   return (
@@ -103,8 +107,8 @@ export function viewportNeedsResourceDiscovery({
     4,
     Math.floor(viewport.width / 180) * Math.floor(viewport.height / 140),
   );
-  const nearbyEntityCount = resources.filter(
-    (resource) => resource.kind === 'entity' && pointNearViewport(resource.point, viewport),
+  const nearbyEntityCount = resources.filter((resource) =>
+    pointNearViewport(resource.point, viewport),
   ).length;
   return nearbyEntityCount < targetEntityCount;
 }
@@ -132,7 +136,7 @@ export function hypermediaLayoutInViewport({
       ({ page, point, resourceKeys }) =>
         hypermediaSelectionKey({ kind: 'page', readableId: page.readableId }) === selectedKey ||
         resourceKeys.some((key) => visibleResourceKeys.has(key)) ||
-        (resourceKeys.length === 0 && pointNearViewport(point, viewport)),
+        pointNearViewport(point, viewport),
     ),
   };
 }

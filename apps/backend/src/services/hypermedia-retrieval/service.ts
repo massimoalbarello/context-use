@@ -1,8 +1,4 @@
-import type {
-  HypermediaResource,
-  HypermediaResourceKind,
-  HypermediaResourceReference,
-} from '#models/hypermedia/model.ts';
+import type { HypermediaResource, HypermediaResourceReference } from '#models/hypermedia/model.ts';
 import {
   HYPERMEDIA_RESOURCE_TYPES,
   type HypermediaResourceType,
@@ -52,8 +48,6 @@ export class HypermediaRetrievalService {
   async searchPageView(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
-    visibleResources: HypermediaResourceReference[];
-    kinds: HypermediaResourceKind[];
     limit: number;
     offset: number;
     query: string;
@@ -62,7 +56,7 @@ export class HypermediaRetrievalService {
     const retrieval = await this.search({
       ownerId: input.ownerId,
       query: input.query,
-      resourceTypes: ['knowledge_page', ...input.kinds],
+      resourceTypes: ['knowledge_page', 'entity'],
       limit: MAX_HYPERMEDIA_SEARCH_LIMIT,
       filters: {
         knowledgePage: {
@@ -76,8 +70,6 @@ export class HypermediaRetrievalService {
     for (const result of retrieval.results) {
       if (result.resourceType === 'entity') {
         matchedResources.push({ kind: 'entity', entity: result.entity });
-      } else if (result.resourceType === 'asset') {
-        matchedResources.push({ kind: 'asset', asset: result.asset });
       } else if (result.resourceType === 'knowledge_page') {
         pageReadableIds.push(result.knowledgePage.readableId);
       }
@@ -89,8 +81,7 @@ export class HypermediaRetrievalService {
         pageReadableIds,
         resources: matchedResources.map((resource) => ({
           kind: resource.kind,
-          readableId:
-            resource.kind === 'entity' ? resource.entity.readableId : resource.asset.readableId,
+          readableId: resource.entity.readableId,
         })),
       },
     });

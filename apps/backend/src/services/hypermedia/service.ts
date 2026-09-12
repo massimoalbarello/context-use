@@ -1,6 +1,5 @@
 import type {
   HypermediaResourceContinuation,
-  HypermediaResourceKind,
   HypermediaResourceReference,
 } from '#models/hypermedia/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
@@ -20,7 +19,6 @@ export class HypermediaService {
   resourceNeighborhood(input: {
     ownerId: string;
     anchor: HypermediaResourceReference;
-    kinds: HypermediaResourceKind[];
     limit: number;
     cursor?: HypermediaResourceContinuation;
   }) {
@@ -30,8 +28,6 @@ export class HypermediaService {
   pages(input: {
     ownerId: string;
     resources: HypermediaResourceReference[];
-    visibleResources: HypermediaResourceReference[];
-    kinds: HypermediaResourceKind[];
     limit: number;
     offset: number;
     temporalBounds?: TemporalBounds;

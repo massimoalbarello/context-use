@@ -339,8 +339,6 @@ test.each([
     const input = {
       ownerId: OWNER_A,
       resources: [{ kind: 'entity' as const, readableId: 'topic' }],
-      visibleResources: [],
-      kinds: ['entity' as const],
       limit: 1,
       temporalBounds: time ? temporalBoundsFrom(time) : undefined,
     };
@@ -376,8 +374,6 @@ test('excluded canvas resource kinds cannot crowd out eligible entity matches', 
     const input = {
       ownerId: OWNER_A,
       resources: [],
-      visibleResources: [],
-      kinds: ['entity' as const],
       query: 'needle',
       limit: 10,
       offset: 0,
