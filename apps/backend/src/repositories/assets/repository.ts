@@ -305,7 +305,22 @@ export class AssetsRepository implements AssetsRepositoryContract {
       order by entity."name" collate nocase, entity."readable_id"
       limit ${entityUsageLimit}
     `;
+    const recordUsageLimit =
+      limit === undefined ? -1 : Math.max(0, limit - pageRows.length - entityRows.length);
+    const recordRows =
+      recordUsageLimit === 0
+        ? []
+        : await db.ListActiveRecordAssetUsages`
+      /* @notNull readableId title provider kind */
+      select record.readable_id as readableId, record.title, record.provider, record.kind
+      from record_asset_reference reference join record
+        on record.owner_id = reference.owner_id and record.readable_id = reference.record_readable_id
+      where reference.owner_id = ${ownerId} and reference.asset_id = ${assetId}
+        and record.operation <> 'deleted'
+      order by record.title, record.readable_id limit ${recordUsageLimit}
+    `;
     return [
+      ...recordRows.map((record) => ({ kind: 'record' as const, record })),
       ...pageRows.map(({ presentation, ...page }) => ({
         kind: 'page' as const,
         page: { ...page, revisionNumber: Number(page.revisionNumber) },

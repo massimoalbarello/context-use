@@ -81,6 +81,17 @@ export const BaseRecordDeliveryEnvelopeSchema = z
                       'Provider-defined JSON object, limited to 16 KiB when canonically serialized.',
                     )
                     .optional(),
+                  assetIds: z
+                    .array(z.string().regex(new RegExp('\\S')).min(1).max(1024))
+                    .max(1000)
+                    .refine(
+                      (arr) => arr.every((item, i) => arr.indexOf(item) == i),
+                      'All items must be unique!',
+                    )
+                    .describe(
+                      'Complete set of destination asset identifiers referenced by this record. Assets are uploaded independently before record delivery. Omission means no asset references.',
+                    )
+                    .optional(),
                 })
                 .strict(),
               committedAt: z.string().datetime({ offset: true }),
@@ -150,6 +161,17 @@ export const BaseRecordDeliveryEnvelopeSchema = z
                     .record(z.string(), z.any())
                     .describe(
                       'Provider-defined JSON object, limited to 16 KiB when canonically serialized.',
+                    )
+                    .optional(),
+                  assetIds: z
+                    .array(z.string().regex(new RegExp('\\S')).min(1).max(1024))
+                    .max(1000)
+                    .refine(
+                      (arr) => arr.every((item, i) => arr.indexOf(item) == i),
+                      'All items must be unique!',
+                    )
+                    .describe(
+                      'Complete set of destination asset identifiers referenced by this record. Assets are uploaded independently before record delivery. Omission means no asset references.',
                     )
                     .optional(),
                 })

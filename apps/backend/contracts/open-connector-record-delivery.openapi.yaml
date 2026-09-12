@@ -167,6 +167,13 @@ components:
           additionalProperties: true
           description: Provider-defined JSON object, limited to 16 KiB when canonically serialized.
           x-open-connector-maximum-bytes: 16384
+        assetIds:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          description: Complete set of destination asset identifiers referenced by this record. Assets are uploaded independently before record delivery. Omission means no asset references.
+          items:
+            $ref: "#/components/schemas/OpaqueIdentifier"
     Participant:
       type: object
       additionalProperties: false

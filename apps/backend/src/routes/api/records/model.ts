@@ -6,6 +6,7 @@ import {
   recordParticipantNames,
 } from '#models/records/model.ts';
 import { MAX_SYNC_NAME_LENGTH } from '#models/syncs/model.ts';
+import { AssetSummarySchema, assetSummaryResponse } from '#routes/api/assets/summary-model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#routes/api/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
 
@@ -32,6 +33,7 @@ export const RecordSchema = t.Object({
   markdown: t.String({ minLength: 1 }),
   participantNames: t.Array(t.String()),
   backlinks: t.Array(KnowledgePageSummarySchema),
+  assets: t.Array(AssetSummarySchema),
 });
 
 export const RecordFilterOptionsSchema = t.Object({
@@ -83,5 +85,6 @@ export function recordResponse(record: RecordResource) {
     markdown: record.markdown,
     participantNames: recordParticipantNames(record.record),
     backlinks: record.backlinks.map(pageSummaryResponse),
+    assets: record.assets.map(assetSummaryResponse),
   };
 }

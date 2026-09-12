@@ -1,3 +1,4 @@
+import type { AssetSummary } from '#models/assets/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { DeliveredRecord } from './delivery-contract.generated.ts';
 
@@ -16,6 +17,7 @@ export type RecordSummary = {
 
 export type RecordResource = RecordSummary & {
   markdown: string;
+  assets: AssetSummary[];
   backlinks: KnowledgePageSummary[];
   record: Exclude<DeliveredRecord, { operation: 'deleted' }>;
 };
@@ -62,4 +64,5 @@ export type RecordPage = {
 export type RecordAcceptanceResult =
   | { state: 'accepted' }
   | { state: 'inactive_sync' }
-  | { state: 'conflict' };
+  | { state: 'conflict' }
+  | { state: 'missing_assets' };
