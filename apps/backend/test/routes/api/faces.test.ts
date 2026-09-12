@@ -129,7 +129,11 @@ async function fixture() {
     storage,
     faces,
   });
-  const entities = new EntitiesService({ entities: entitiesRepository, pages: pagesRepository });
+  const entities = new EntitiesService({
+    entities: entitiesRepository,
+    pages: pagesRepository,
+    onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
+  });
   const auth: Auth = {
     handler: () => Promise.resolve(new Response(null, { status: 404 })),
     getSession: ({ headers }) => {
@@ -325,6 +329,72 @@ test('a new portrait matches earlier unknown faces and exposes links in both dir
   expect(await confirmedAsset.json()).toMatchObject({
     depicts: [{ source: 'confirmed', entity: { readableId: person.readableId } }],
   });
+});
+
+test('a confirmed face can become the same person’s portrait and match earlier unknown faces', async () => {
+  await using context = await fixture();
+  const photo = await context.upload('Earlier photo');
+  const portrait = await context.upload('Confirmed portrait');
+  const person = await context.person();
+  const input = { ownerId: OWNER, readableId: portrait.readableId };
+  const face = (await context.faces.detail(input))!.faces[0]!;
+  await context.faces.annotate({
+    ...input,
+    faceReadableId: face.readableId,
+    decision: 'person',
+    entityReadableId: person.readableId,
+  });
+  await context.assignPortrait({
+    personReadableId: person.readableId,
+    assetReadableId: portrait.readableId,
+  });
+  expect(
+    (await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId }))!.faces[0]!.entity
+      ?.readableId,
+  ).toBe(person.readableId);
+  await context.faces.process(input);
+  expect(
+    (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
+      .referenceFaceReadableId,
+  ).toBe(face.readableId);
+  expect((await context.faces.detail(input))!.faces[0]!.decision).toBe('person');
+});
+
+test('changing an entity with an image to Person enrolls its portrait and matches earlier photos', async () => {
+  await using context = await fixture();
+  const photo = await context.upload('Earlier photo');
+  const portrait = await context.upload('Portrait');
+  const created = await context.entities.create({
+    ownerId: OWNER,
+    name: 'Unclassified entity',
+    description: 'An entity with an image',
+    entityType: null,
+  });
+  if (created.state !== 'created') {
+    throw new Error('Test entity creation failed');
+  }
+  const person = created.entity;
+  await context.assets.setEntityImage({
+    ownerId: OWNER,
+    readableId: person.readableId,
+    assetReadableId: portrait.readableId,
+  });
+  expect(
+    (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
+      .referenceFaceReadableId,
+  ).toBeNull();
+  const response = await context.request({
+    path: `/entities/${person.readableId}`,
+    method: 'PATCH',
+    body: { name: person.name, description: person.description, entityType: 'person' },
+  });
+  expect(response.status).toBe(StatusMap.OK);
+  const reference = await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId });
+  expect(reference!.referenceFaceReadableId).toBe(reference!.analysis!.faces[0]!.readableId);
+  expect(
+    (await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId }))!.faces[0]!.entity
+      ?.readableId,
+  ).toBe(person.readableId);
 });
 
 test('threshold saves affect subsequent matches; explicit re-matching preserves all human decisions', async () => {
@@ -567,24 +637,35 @@ test('multiple portrait faces require selection and correcting a reference retir
   expect((await context.faces.detail(input))!.faces[0]!.entity).toBeNull();
 });
 
-test('retrying a portrait does not undo an explicit unidentified decision or silently enroll it again', async () => {
-  await using context = await fixture();
-  const person = await context.person();
-  const portrait = await context.upload('Portrait');
-  const input = { ownerId: OWNER, readableId: portrait.readableId };
-  await context.assignPortrait({
-    personReadableId: person.readableId,
-    assetReadableId: portrait.readableId,
-  });
-  const face = (await context.faces.detail(input))!.faces[0]!;
-  await context.faces.annotate({ ...input, faceReadableId: face.readableId, decision: 'unknown' });
-  await context.faces.process(input);
-  expect((await context.faces.detail(input))!.faces[0]!.decision).toBe('unknown');
-  expect(
-    (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
-      .referenceFaceReadableId,
-  ).toBeNull();
-});
+test.each(['unknown', 'dismissed', 'person'] as const)(
+  'retrying a portrait preserves a conflicting %s decision without enrolling it again',
+  async (decision) => {
+    await using context = await fixture();
+    const person = await context.person();
+    const portrait = await context.upload('Portrait');
+    const input = { ownerId: OWNER, readableId: portrait.readableId };
+    await context.assignPortrait({
+      personReadableId: person.readableId,
+      assetReadableId: portrait.readableId,
+    });
+    const face = (await context.faces.detail(input))!.faces[0]!;
+    const otherPerson = decision === 'person' ? await context.person('Bob') : null;
+    await context.faces.annotate({
+      ...input,
+      faceReadableId: face.readableId,
+      decision,
+      entityReadableId: otherPerson?.readableId,
+    });
+    await context.faces.process(input);
+    const reviewed = (await context.faces.detail(input))!.faces[0]!;
+    expect(reviewed.decision).toBe(decision);
+    expect(reviewed.entity?.readableId ?? null).toBe(otherPerson?.readableId ?? null);
+    expect(
+      (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
+        .referenceFaceReadableId,
+    ).toBeNull();
+  },
+);
 
 test('a match computed before a reference was re-embedded cannot be published afterward', async () => {
   await using context = await fixture();

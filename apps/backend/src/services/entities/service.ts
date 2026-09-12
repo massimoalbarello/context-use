@@ -7,19 +7,25 @@ import {
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 
+type PersonPortraitAvailable = (input: { ownerId: string; readableId: string }) => Promise<void>;
+
 export class EntitiesService {
   private readonly entities: EntityRepositoryContract;
   private readonly pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
+  private readonly onPersonPortraitAvailable: PersonPortraitAvailable;
 
   constructor({
     entities,
     pages,
+    onPersonPortraitAvailable,
   }: {
     entities: EntityRepositoryContract;
     pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
+    onPersonPortraitAvailable: PersonPortraitAvailable;
   }) {
     this.entities = entities;
     this.pages = pages;
+    this.onPersonPortraitAvailable = onPersonPortraitAvailable;
   }
 
   create(input: {
@@ -76,14 +82,15 @@ export class EntitiesService {
     return { ...entity, pages };
   }
 
-  update(input: {
+  async update(input: {
     ownerId: string;
     readableId: string;
     name: string;
     description: string;
     entityType?: EntityType | null;
   }): Promise<Entity | null> {
-    return this.entities.update({
+    const previous = input.entityType === 'person' ? await this.entities.find(input) : null;
+    const entity = await this.entities.update({
       ownerId: input.ownerId,
       readableId: input.readableId,
       name: input.name.trim(),
@@ -91,6 +98,18 @@ export class EntitiesService {
       entityType: input.entityType,
       updatedAt: new Date().toISOString(),
     });
+    if (
+      input.entityType === 'person' &&
+      previous?.entityType !== 'person' &&
+      entity?.entityType === 'person' &&
+      entity.image
+    ) {
+      await this.onPersonPortraitAvailable({
+        ownerId: input.ownerId,
+        readableId: input.readableId,
+      });
+    }
+    return entity;
   }
 
   archive(input: { ownerId: string; readableId: string }) {

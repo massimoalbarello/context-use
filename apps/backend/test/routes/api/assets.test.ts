@@ -111,6 +111,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
+        onPersonPortraitAvailable: unusedAssetFacesService.preparePortrait,
         entities: new EntitiesRepository(database),
         pages: pagesRepository,
       }),

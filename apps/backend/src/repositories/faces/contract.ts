@@ -29,6 +29,9 @@ export interface FacesRepositoryContract {
   complete(input: AnalysisAttempt & { faces: FaceObservation[] }): Promise<string[]>;
   fail(input: AnalysisAttempt & { error: string }): Promise<void>;
   references(input: { ownerId: string; embeddingSpace: string }): Promise<FaceReference[]>;
+  enrollPortrait(
+    input: FaceAssetInput & { entityId: string; analysisVersion: string; updatedAt: string },
+  ): Promise<boolean>;
   selectReference(
     input: FaceAssetInput & { entityId: string; faceReadableId: string; updatedAt: string },
   ): Promise<boolean>;

@@ -107,6 +107,7 @@ try {
   const frontendAssetsService = new FrontendAssetsService(new FrontendAssetsRepository());
   const pagesRepository = new KnowledgePagesRepository(database);
   const entitiesService = new EntitiesService({
+    onPersonPortraitAvailable: (input) => facesService.preparePortrait(input),
     entities: entitiesRepository,
     pages: pagesRepository,
   });

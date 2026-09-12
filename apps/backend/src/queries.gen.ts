@@ -262,6 +262,11 @@ export interface IListFaceReferencesResult {
     vector: Uint8Array;
 }
 
+/** Result of query `FindPortraitReferenceCandidates`. */
+export interface IFindPortraitReferenceCandidatesResult {
+    faceId: string;
+}
+
 /** Result of query `SelectPersonReferenceFace`. */
 export interface ISelectPersonReferenceFaceResult {
     faceId: string;
@@ -833,6 +838,7 @@ export interface Queries {
     ReadAssetFaceViews: IReadAssetFaceViewsResult;
     CheckFaceAnalysisAttempt: ICheckFaceAnalysisAttemptResult;
     ListFaceReferences: IListFaceReferencesResult;
+    FindPortraitReferenceCandidates: IFindPortraitReferenceCandidatesResult;
     SelectPersonReferenceFace: ISelectPersonReferenceFaceResult;
     ReadPersonReferenceFace: IReadPersonReferenceFaceResult;
     FindFaceAnnotationTarget: IFindFaceAnnotationTargetResult;

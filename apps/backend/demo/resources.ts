@@ -24,14 +24,16 @@ export function createDemoResources({ database, storage }: { database: SQL; stor
   const entities = new EntitiesRepository(database);
   const pages = new KnowledgePagesRepository(database);
   const hypermedia = new HypermediaRepository(database);
+  const faces = createDemoFaces({ assets, entities });
   return {
     assetsService: new AssetsService({
       assets,
       storage,
       entities,
-      faces: createDemoFaces({ assets, entities }),
+      faces,
     }),
     entitiesService: new EntitiesService({
+      onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
       entities,
       pages,
     }),

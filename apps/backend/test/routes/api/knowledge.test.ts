@@ -133,6 +133,7 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
+        onPersonPortraitAvailable: unusedAssetFacesService.preparePortrait,
         entities: entitiesRepository,
         pages: pagesRepository,
       }),

@@ -215,20 +215,9 @@ export class AssetFacesService {
       await this.rematch({ ownerId: input.ownerId });
       return;
     }
-    const faces = await this.repository.observations(input);
-    const candidates = faces.filter(
-      (face) =>
-        face.current &&
-        !face.needsReview &&
-        !face.protected &&
-        face.analysisVersion === this.analyzer.model.analysisVersion,
-    );
-    if (candidates.length !== 1) {
-      return;
-    }
-    const selected = await this.repository.selectReference({
+    const selected = await this.repository.enrollPortrait({
       ...input,
-      faceReadableId: candidates[0]!.readableId,
+      analysisVersion: this.analyzer.model.analysisVersion,
       updatedAt: new Date().toISOString(),
     });
     if (selected) {
