@@ -7,7 +7,8 @@ const INTERRUPTED_EXIT_CODE = 130;
 const TERMINATED_EXIT_CODE = 143;
 const FAILURE_EXIT_CODE = 1;
 const APP_URL = LOCAL_PUBLIC_ORIGIN;
-const APP_START_TIMEOUT_MS = 30_000;
+// A fresh checkout compiles OpenCV before the backend can accept registration.
+const APP_START_TIMEOUT_MS = 1_800_000;
 const APP_PROBE_TIMEOUT_MS = 1_000;
 const APP_PROBE_INTERVAL_MS = 200;
 const BROWSER_SCRIPTS_FOLDER = join(import.meta.dir, '..', '.agents', 'scripts');
@@ -113,7 +114,7 @@ try {
     }
 
     try {
-      const response = await fetch(APP_URL, {
+      const response = await fetch(new URL('/api/health', APP_URL), {
         signal: AbortSignal.timeout(APP_PROBE_TIMEOUT_MS),
       });
       if (response.ok) {

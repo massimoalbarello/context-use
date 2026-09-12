@@ -1,3 +1,4 @@
+import { buildFaceAnalyzer } from './build-faces';
 import {
   BACKEND_ENTRYPOINT,
   DB_MIGRATIONS_DIR_NAME,
@@ -8,6 +9,13 @@ import {
 // Vite owns the frontend during development. Pointing the backend at a deliberately absent folder
 // prevents an old production build in `public` from exposing a second, stale application origin.
 const DEV_PUBLIC_FRONTEND_DIR_NAME = '.frontend-served-by-vite';
+
+try {
+  await buildFaceAnalyzer({ host: true });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+}
 
 const proc = Bun.spawn(
   [

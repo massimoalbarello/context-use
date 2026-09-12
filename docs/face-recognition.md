@@ -77,11 +77,14 @@ implementations demonstrate a useful common boundary.
 For source development, install CMake 3.24+ and a C++ toolchain, then run:
 
 ```sh
-bun --filter @repo/backend build:faces:local
 bun run dev
 ```
 
-The first native build downloads and compiles pinned OpenCV 4.10. Later host builds reuse it.
+Development startup automatically builds the analyzer before starting the backend. The first native
+build downloads and compiles pinned OpenCV 4.10. Later startups use CMake's incremental build cache.
+Full output is saved in `.cache/face-build-host/build.log`, including failures hidden by workspace
+output truncation. To run just the build with all output visible, use
+`bun --filter @repo/backend --elide-lines=0 build:faces:local`.
 `bun run build:local` includes the host analyzer in the standalone app. The normal Linux build uses
 Docker to compile a static x86-64 analyzer and embeds it in the Bun binary, so deployment does not
 need Python, pip, a compiler or system OpenCV. The Linux native artifact is cached by Docker.

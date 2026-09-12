@@ -13,11 +13,12 @@
 ```sh
 bun install
 cp apps/backend/.env.example apps/backend/.env
-bun --filter @repo/backend build:faces:local
 bun run dev
 ```
 
-The native face analyzer build requires CMake 3.24+ and a C++ toolchain. See
+Development startup builds the native face analyzer automatically and reuses the CMake build cache.
+The first build requires CMake 3.24+ and a C++ toolchain. Full compiler output is saved in
+`.cache/face-build-host/build.log`. See
 [face recognition](docs/face-recognition.md) for processing, corrections, model boundaries and build details.
 
 Open [http://localhost:5173](http://localhost:5173). The first person to register a passkey becomes
