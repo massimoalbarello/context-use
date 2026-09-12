@@ -124,13 +124,11 @@ describe('Hypermedia resource type filter', () => {
       kinds: ['asset'],
     });
     const entityPages = hypermediaPagesQueryOptions({
-      interval: 'without',
       resources: [],
       visibleResources: [],
       kinds: ['entity'],
     });
     const allPages = hypermediaPagesQueryOptions({
-      interval: 'without',
       resources: [],
       visibleResources: [],
       kinds: ['entity', 'asset'],
@@ -142,7 +140,6 @@ describe('Hypermedia resource type filter', () => {
 
   test('retains the displayed page set while a changed interval loads', () => {
     const pages = hypermediaPagesQueryOptions({
-      interval: 'with',
       resources: [],
       visibleResources: [],
       kinds: ['entity'],

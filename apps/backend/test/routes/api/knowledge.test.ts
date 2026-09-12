@@ -580,7 +580,7 @@ Every observation changes the next action.`,
     const withoutIntervalResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=without&kinds=entity&limit=10',
+        path: '/hypermedia/pages?kinds=entity&limit=10',
       }),
     );
     const withoutInterval = (await withoutIntervalResponse.json()) as {
@@ -595,7 +595,7 @@ Every observation changes the next action.`,
     const withIntervalResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=with&kinds=entity&limit=10',
+        path: '/hypermedia/pages?time=2025&kinds=entity&limit=10',
       }),
     );
     expect(withIntervalResponse.status).toBe(StatusMap.OK);
@@ -611,18 +611,18 @@ Every observation changes the next action.`,
       true,
     );
 
-    const undatedTimeResponse = await app.handle(
+    const invalidTimeResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=without&kinds=entity&time=2025-04',
+        path: '/hypermedia/pages?kinds=entity&time=2025-13',
       }),
     );
-    expect(undatedTimeResponse.status).toBe(StatusMap['Bad Request']);
+    expect(invalidTimeResponse.status).toBe(StatusMap['Bad Request']);
 
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=with&resources=entity:temporal-subject&kinds=entity&limit=2',
+        path: '/hypermedia/pages?time=2025&resources=entity:temporal-subject&kinds=entity&limit=2',
       }),
     );
     expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -651,7 +651,7 @@ Every observation changes the next action.`,
     const remainingFilteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=with&resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
+        path: '/hypermedia/pages?time=2025&resources=entity:temporal-subject&kinds=entity&limit=2&offset=2',
       }),
     );
     expect(remainingFilteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -665,7 +665,7 @@ Every observation changes the next action.`,
     const intersectedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=without&resources=entity:temporal-subject,entity:test-owner&kinds=entity',
+        path: '/hypermedia/pages?resources=entity:temporal-subject,entity:test-owner&kinds=entity',
       }),
     );
     const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
@@ -678,7 +678,7 @@ Every observation changes the next action.`,
     const viewportHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=with&visible=entity:temporal-subject,entity:test-owner&kinds=entity',
+        path: '/hypermedia/pages?time=2025&visible=entity:temporal-subject,entity:test-owner&kinds=entity',
       }),
     );
     const viewportHypermedia = (await viewportHypermediaResponse.json()) as {
@@ -693,7 +693,7 @@ Every observation changes the next action.`,
     const combinedScopeResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=with&resources=entity:test-owner&visible=entity:temporal-subject&kinds=entity',
+        path: '/hypermedia/pages?time=2025&resources=entity:test-owner&visible=entity:temporal-subject&kinds=entity',
       }),
     );
     expect(
@@ -703,7 +703,7 @@ Every observation changes the next action.`,
     const rangedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=with&resources=entity:temporal-subject&kinds=entity&time=2025-04',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&time=2025-04',
       }),
     );
     const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
@@ -1215,7 +1215,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const pageTextHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=without&resources=entity:temporal-subject&kinds=entity&query=alpha',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=alpha',
       }),
     );
     const pageTextHypermedia = (await pageTextHypermediaResponse.json()) as {
@@ -1231,7 +1231,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const denseHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?interval=without&resources=entity:temporal-subject&kinds=entity&query=dense',
+        path: '/hypermedia/pages?resources=entity:temporal-subject&kinds=entity&query=dense',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {

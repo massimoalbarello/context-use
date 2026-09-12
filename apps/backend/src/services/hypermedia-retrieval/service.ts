@@ -1,5 +1,4 @@
 import type {
-  HypermediaPageInterval,
   HypermediaResource,
   HypermediaResourceKind,
   HypermediaResourceReference,
@@ -55,7 +54,6 @@ export class HypermediaRetrievalService {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     query: string;
@@ -68,8 +66,8 @@ export class HypermediaRetrievalService {
       limit: MAX_HYPERMEDIA_SEARCH_LIMIT,
       filters: {
         knowledgePage: {
-          interval: input.interval,
-          temporalBounds: input.interval === 'with' ? input.temporalBounds : undefined,
+          interval: input.temporalBounds ? undefined : 'without',
+          temporalBounds: input.temporalBounds,
         },
       },
     });

@@ -2,7 +2,6 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type {
   HypermediaPage,
-  HypermediaPageInterval,
   HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
@@ -134,7 +133,6 @@ export interface HypermediaRepositoryContract {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     retrievalMatches?: HypermediaRetrievalMatches;
@@ -341,7 +339,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resources,
     visibleResources,
     kinds,
-    interval,
     limit,
     offset,
     retrievalMatches,
@@ -351,7 +348,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     retrievalMatches?: HypermediaRetrievalMatches;
@@ -390,7 +386,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       selectedResourceCount,
       visibleResourceKeys,
       visibleResourceCount,
-      interval,
       retrievalPageReadableIds,
       retrievalResourceKeys,
       searchApplied,
@@ -444,7 +439,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedResourceCount,
     visibleResourceKeys,
     visibleResourceCount,
-    interval,
     retrievalPageReadableIds,
     retrievalResourceKeys,
     searchApplied,
@@ -458,7 +452,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedResourceCount: number;
     visibleResourceKeys: string;
     visibleResourceCount: number;
-    interval: HypermediaPageInterval;
     retrievalPageReadableIds: string;
     retrievalResourceKeys: string;
     searchApplied: number;
@@ -542,14 +535,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           and (${searchApplied} = 0
             or page."current_revision_id" in (select "revisionId" from retrieval_matched_revision))
           and (
-            (${interval} = 'without' and revision."temporal_coverage" is null)
-            or (${interval} = 'with' and revision."temporal_coverage" is not null)
-          )
-          and (
-            ${interval} = 'without'
-            or ${filterStart} is null
+            (${filterStart} is null and revision."temporal_coverage" is null)
             or (
-              (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
+              ${filterStart} is not null and revision."temporal_coverage" is not null
+              and (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
               and (revision."temporal_end_exclusive_ms" is null
                 or revision."temporal_end_exclusive_ms" > ${filterStart})
             )

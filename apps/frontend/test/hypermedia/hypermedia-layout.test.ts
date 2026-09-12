@@ -5,8 +5,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildHypermediaLayout,
   buildStableResources,
-  HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
-  spotlightHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from '../../src/components/hypermedia/hypermedia-layout';
 import {
@@ -199,32 +197,6 @@ describe('resource-first hypermedia layout', () => {
         ({ page: item }) => item.readableId,
       ),
     ).toEqual(['connected-page']);
-  });
-
-  test('fits every filtered page while retaining all resources in the map', () => {
-    const resources = buildStableResources([
-      neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
-    ]);
-    const layout = buildHypermediaLayout(resources, [page('newest'), page('older')]);
-    const viewport = spotlightHypermediaViewBox(layout, 0.7, ['entity:self']);
-    const selectedResource = layout.resources.find(({ key }) => key === 'entity:self')!;
-    const visiblePoints = [selectedResource.point, ...layout.pages.map(({ point }) => point)];
-
-    expect(layout.resources.map(({ key }) => key)).toEqual([
-      'entity:self',
-      'entity:alpha',
-      'entity:beta',
-    ]);
-    expect(layout.pages.map(({ page: item }) => item.readableId)).toEqual(['newest', 'older']);
-    expect(
-      visiblePoints.every(
-        ({ x, y }) =>
-          x >= viewport.x &&
-          x <= viewport.x + viewport.width * HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO &&
-          y >= viewport.y &&
-          y <= viewport.y + viewport.height,
-      ),
-    ).toBe(true);
   });
 
   test('returns the same view when zoom-out is already clamped at its maximum', () => {

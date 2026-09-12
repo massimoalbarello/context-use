@@ -81,12 +81,7 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (
-          !resources ||
-          !visibleResources ||
-          !kinds ||
-          (query.interval === 'without' && query.time)
-        ) {
+        if (!resources || !visibleResources || !kinds) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const input = {
@@ -94,7 +89,6 @@ export function createHypermediaController({
           resources,
           visibleResources,
           kinds,
-          interval: query.interval,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,
           temporalBounds,

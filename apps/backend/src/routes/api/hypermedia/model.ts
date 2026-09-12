@@ -71,7 +71,6 @@ export const HypermediaResourceNeighborhoodSchema = t.Object({
 });
 
 export const HypermediaPagesQuerySchema = t.Object({
-  interval: t.Union([t.Literal('with'), t.Literal('without')]),
   kinds: t.String({
     minLength: 'asset'.length,
     maxLength: 'entity,asset'.length,
@@ -98,7 +97,13 @@ export const HypermediaPagesQuerySchema = t.Object({
   ),
   offset: PaginationQuerySchema.properties.offset,
   query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
-  time: t.Optional(t.String({ minLength: 1, maxLength: MAX_TEMPORAL_COVERAGE_LENGTH })),
+  time: t.Optional(
+    t.String({
+      minLength: 1,
+      maxLength: MAX_TEMPORAL_COVERAGE_LENGTH,
+      description: 'Return pages overlapping this time interval. Omit for undated pages.',
+    }),
+  ),
 });
 
 const HypermediaPageSchema = t.Object({

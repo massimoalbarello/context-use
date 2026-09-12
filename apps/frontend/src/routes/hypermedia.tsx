@@ -98,9 +98,6 @@ export const Route = createFileRoute('/hypermedia')({
   },
   validateSearch: hypermediaSearch,
   loaderDeps: ({ search }) => ({
-    query: search.q,
-    month: search.month,
-    resources: selectedHypermediaResources(search.focus),
     kinds: displayedHypermediaResourceKinds(search.show),
   }),
   loader: async ({ context, deps }) => {
@@ -118,16 +115,6 @@ export const Route = createFileRoute('/hypermedia')({
       deps.kinds.includes('entity')
         ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions())
         : Promise.resolve(),
-      context.queryClient.ensureInfiniteQueryData(
-        hypermediaPagesQueryOptions({
-          interval: deps.month ? 'with' : 'without',
-          resources: deps.resources,
-          visibleResources: [],
-          kinds: deps.kinds,
-          month: deps.month,
-          query: deps.query,
-        }),
-      ),
     ]);
   },
   component: HypermediaRoute,
@@ -145,7 +132,6 @@ function HypermediaRoute() {
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      interval: month ? 'with' : 'without',
       resources: selectedResources,
       visibleResources,
       kinds: resourceKinds,

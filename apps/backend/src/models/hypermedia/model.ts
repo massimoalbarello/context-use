@@ -1,12 +1,8 @@
 import type { AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
-import type {
-  KnowledgePageIntervalFilter,
-  KnowledgePageSummary,
-} from '#models/knowledge-pages/model.ts';
+import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 export type HypermediaResourceKind = 'entity' | 'asset';
-export type HypermediaPageInterval = KnowledgePageIntervalFilter;
 
 export type HypermediaResourceReference = {
   kind: HypermediaResourceKind;

@@ -186,12 +186,12 @@ export function hypermediaPreviewKey(preview: HypermediaPreview): string {
   return hypermediaSelectionKey({ kind: 'asset', readableId: preview.asset.readableId });
 }
 
-export function shortHypermediaLabel({
+function shortHypermediaLabel({
   value,
-  maximumCharacters = HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
+  maximumCharacters,
 }: {
   value: string;
-  maximumCharacters?: number;
+  maximumCharacters: number;
 }): string {
   return value.length > maximumCharacters
     ? `${value.slice(0, maximumCharacters - 1).trimEnd()}…`
@@ -199,14 +199,13 @@ export function shortHypermediaLabel({
 }
 
 export function HypermediaResourceNode({
-  point,
   resource,
   active,
 }: {
-  point: { x: number; y: number };
   resource: HypermediaLayoutResource;
   active: boolean;
 }) {
+  const { point } = resource;
   const identity = hypermediaResourceNodeIdentity(resource);
   const displayLabel = shortHypermediaLabel({
     value: identity.label,
@@ -230,7 +229,7 @@ export function HypermediaResourceNode({
   );
 }
 
-export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
+function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
   return (
     <div className="flex min-w-0 items-start gap-3 overflow-hidden">
       {preview.kind === 'page' ? (
@@ -247,11 +246,9 @@ export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview 
 export function HypermediaHoverPreview({
   preview,
   selectedKey,
-  className,
 }: {
   preview: HypermediaPreview | null;
   selectedKey?: string;
-  className: string;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   if (!preview || hypermediaPreviewKey(preview) === selectedKey) {
@@ -260,10 +257,9 @@ export function HypermediaHoverPreview({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+        'pointer-events-none absolute top-4 z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
         sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
         !sidebarCollapsed && 'left-4',
-        className,
       )}
       aria-live="polite"
     >
@@ -272,29 +268,20 @@ export function HypermediaHoverPreview({
   );
 }
 
-type HypermediaPageLinkProps = Omit<
-  ComponentProps<'a'>,
-  | 'children'
-  | 'href'
-  | 'onBlur'
-  | 'onClick'
-  | 'onFocus'
-  | 'onPointerEnter'
-  | 'onPointerLeave'
-  | 'onSelect'
-> & {
+type HypermediaPageLinkProps = Pick<ComponentProps<'a'>, 'aria-label' | 'tabIndex'> & {
+  'data-hypermedia-cloud'?: string;
+  'data-hypermedia-resource'?: boolean;
   page: HypermediaPage;
   children: ReactNode;
   onSelect: (selection: HypermediaSelection) => void;
-  onPreview?: (preview: HypermediaPreview) => void;
-  onPreviewEnd?: (key: string) => void;
+  onPreview: (preview: HypermediaPreview) => void;
+  onPreviewEnd: (key: string) => void;
   shouldSelect?: () => boolean;
 };
 
 export function HypermediaPageLink({
   page,
   children,
-  className,
   onSelect,
   onPreview,
   onPreviewEnd,
@@ -310,12 +297,11 @@ export function HypermediaPageLink({
       className={cn(
         'cursor-pointer outline-none',
         page.temporalCoverage !== null ? 'text-chart-1' : 'text-[oklch(0.81_0.1_145)]',
-        className,
       )}
-      onPointerEnter={() => onPreview?.({ kind: 'page', page })}
-      onPointerLeave={() => onPreviewEnd?.(key)}
-      onFocus={() => onPreview?.({ kind: 'page', page })}
-      onBlur={() => onPreviewEnd?.(key)}
+      onPointerEnter={() => onPreview({ kind: 'page', page })}
+      onPointerLeave={() => onPreviewEnd(key)}
+      onFocus={() => onPreview({ kind: 'page', page })}
+      onBlur={() => onPreviewEnd(key)}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -351,12 +337,10 @@ export function HypermediaPageLabel({
   page,
   point,
   active,
-  maximumCharacters = HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
 }: {
   page: HypermediaPage;
   point: { x: number; y: number };
   active: boolean;
-  maximumCharacters?: number;
 }) {
   return (
     <text
@@ -367,7 +351,10 @@ export function HypermediaPageLabel({
         active ? 'underline decoration-2 underline-offset-4' : ''
       }`}
     >
-      {shortHypermediaLabel({ value: page.title, maximumCharacters })}
+      {shortHypermediaLabel({
+        value: page.title,
+        maximumCharacters: HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
+      })}
     </text>
   );
 }
