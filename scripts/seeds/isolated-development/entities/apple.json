@@ -1,5 +1,6 @@
 {
   "readableId": "apple",
   "name": "Apple",
-  "description": "My company and the team behind the Mac, iTunes, iPod and iPhone in this chapter."
+  "description": "My company and the team behind the Mac, iTunes, iPod and iPhone in this chapter.",
+  "entityType": "organization"
 }

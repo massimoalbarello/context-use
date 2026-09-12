@@ -134,12 +134,16 @@ def create_profile(profile):
     created = api_request("POST", "/api/profile", profile)
     if created["selfEntity"]["readableId"] != profile["readableId"]:
         raise RuntimeError("Created profile did not match the fixture")
+    if created["selfEntity"]["entityType"] != "person":
+        raise RuntimeError("Created profile did not have the self entity type")
 
 
 def create_entity(entity):
     created = api_request("POST", "/api/entities", entity)
     if created["readableId"] != entity["readableId"]:
         raise RuntimeError("Created entity did not match the fixture")
+    if created["entityType"] != entity.get("entityType"):
+        raise RuntimeError("Created entity type did not match the fixture")
 
 
 def assign_entity_image(asset):

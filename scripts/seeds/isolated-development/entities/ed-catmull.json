@@ -1,5 +1,6 @@
 {
   "readableId": "ed-catmull",
   "name": "Ed Catmull",
-  "description": "My Pixar colleague, appointed to lead the Pixar and Disney animation studios after the acquisition."
+  "description": "My Pixar colleague, appointed to lead the Pixar and Disney animation studios after the acquisition.",
+  "entityType": "person"
 }

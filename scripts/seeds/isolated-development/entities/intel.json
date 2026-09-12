@@ -1,5 +1,6 @@
 {
   "readableId": "intel",
   "name": "Intel",
-  "description": "Our processor partner for the Mac transition I announce in 2005."
+  "description": "Our processor partner for the Mac transition I announce in 2005.",
+  "entityType": "organization"
 }

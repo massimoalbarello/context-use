@@ -1,5 +1,6 @@
 {
   "readableId": "scott-forstall",
   "name": "Scott Forstall",
-  "description": "My software colleague from NeXT and the software leader on our original iPhone."
+  "description": "My software colleague from NeXT and the software leader on our original iPhone.",
+  "entityType": "person"
 }

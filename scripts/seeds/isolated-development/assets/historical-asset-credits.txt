@@ -1,5 +1,6 @@
 Historical asset credits — Steve Jobs, iPod to iPhone
-Bundled images are public reference photographs; no authorship by Steve is implied.
+Bundled images are public visual references; no authorship by Steve is implied.
+Later portraits and campus photographs identify entities; they do not add later events to the 2001–2007 narrative.
 
 Steve Jobs portrait 2010
 https://commons.wikimedia.org/wiki/File:Steve_Jobs_Headshot_2010-CROP.jpg
@@ -24,6 +25,120 @@ https://commons.wikimedia.org/wiki/File:Steve_Jobs_presents_iPhone.jpg
 Blake Patterson; unchanged Commons file
 CC BY 2.0 — https://creativecommons.org/licenses/by/2.0/
 January 9, 2007 according to the photographer metadata; later Flickr publication and 2009 Commons upload. Photograph of the Macworld unveiling.
+
+Apple company mark
+https://commons.wikimedia.org/wiki/File:Apple_logo_black.svg
+Original:  Rob Janoff; Wikimedia Commons PNG rendering of the Commons SVG, composition unchanged
+Public domain — https://commons.wikimedia.org/wiki/File:Apple_logo_black.svg#Licensing
+Monochrome Apple mark used as a company identifier; no event or capture date is implied.
+
+Bob Iger portrait 2010
+https://commons.wikimedia.org/wiki/File:BobIgerJun10_(cropped).jpg
+hyku; Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 2.0 — https://creativecommons.org/licenses/by-sa/2.0
+10 June 2010 at the World of Color premiere, outside the story period; identity reference only.
+
+Disney studio water tower 2014
+https://commons.wikimedia.org/wiki/File:Disneystudiowatertower.JPG
+Coolcaesar; Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
+8 November 2014 at the Walt Disney Studios in Burbank, outside the story period; company reference only.
+
+Ed Catmull portrait 2015
+https://commons.wikimedia.org/wiki/File:Ed_Catmull_at_Web_Summit_2015_(cropped).jpg
+Web Summit; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+4 November 2015 at Web Summit, outside the story period; identity reference only.
+
+Intel company mark 2006
+https://commons.wikimedia.org/wiki/File:Intel_logo_(2006-2020).svg
+Intel; SVG uploaded by VD64992; Wikimedia Commons PNG rendering of the Commons SVG, composition unchanged
+Public domain — https://commons.wikimedia.org/wiki/File:Intel_logo_(2006-2020).svg#Licensing
+The 2006–2020 Intel wordmark; the Commons vector file is dated 2 March 2012. Company identifier, not an event photograph.
+
+First generation iPod mini photo
+https://commons.wikimedia.org/wiki/File:Green_ipodmini_1stgen.jpg
+JayKeaton (attribution inferred by Commons from the uploader’s copyright claim); Wikimedia Commons thumbnail, composition unchanged
+Public domain — https://commons.wikimedia.org/wiki/File:Green_ipodmini_1stgen.jpg#Licensing
+The uploader describes a photograph taken in 2006; 7 September 2007 is the upload date. Depicts the first-generation model.
+
+First generation iPod nano photo
+https://commons.wikimedia.org/wiki/File:IPod_nano_alongside_pack_of_gum_-_Flickr_-_dan_taylor.jpg
+Dan Taylor-Watt from London, UK; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+15 September 2005. The first-generation nano is shown beside a packet of gum for scale.
+
+First generation iPod shuffle image
+https://commons.wikimedia.org/wiki/File:IPod_shuffle_1G.png
+Kyro; Wikimedia Commons thumbnail, composition unchanged
+CC BY 3.0 — https://creativecommons.org/licenses/by/3.0
+Source dated 16 March 2009, outside the story period; reference image of the first-generation device, not an event photograph.
+
+First generation iPod touch photo
+https://commons.wikimedia.org/wiki/File:Apple_iPod_touch_and_plastic_stand-2007-10-06.jpg
+https://www.flickr.com/people/sigwyg20/; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+6 October 2007. The first-generation iPod touch is photographed on its plastic stand.
+
+John Lasseter portrait 2002
+https://commons.wikimedia.org/wiki/File:John_Lasseter_2002.jpg
+Eric Charbonneau; Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 3.0 — https://creativecommons.org/licenses/by-sa/3.0
+19 August 2002 according to the source metadata; a public reference portrait, not a meeting with Steve.
+
+Jon Rubinstein portrait 2011
+https://commons.wikimedia.org/wiki/File:Jon_Rubinstein_(2011).jpg
+'GlobalX'; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+9 February 2011 while presenting for HP, outside the story period; identity reference only, not an Apple event.
+
+Jony Ive at Macworld 2006
+https://commons.wikimedia.org/wiki/File:Jonathan_Ive_2006.jpeg
+Michael Johnston; Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 2.0 — https://creativecommons.org/licenses/by-sa/2.0
+10 January 2006, after the Macworld keynote; a public photograph by Michael Johnston, not Steve.
+
+Motorola ROKR E1 photo 2006
+https://commons.wikimedia.org/wiki/File:Motorola_Rokr_E1_-_3.jpg
+Diego Salatino; Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 4.0 — https://creativecommons.org/licenses/by-sa/4.0
+3 August 2006 according to the source metadata. Depicts the ROKR E1 used with iTunes, not a later ROKR model.
+
+Phil Schiller portrait 2012
+https://commons.wikimedia.org/wiki/File:Phil_Schiller_at_AWDC_2012.jpg
+Mike Deerkoski; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+14 June 2012 at the WWDC Bash, outside the story period; identity reference only.
+
+Pixar campus photo 2016
+https://commons.wikimedia.org/wiki/File:Steve_Jobs_building_at_Pixar.gk.jpg
+Grendelkhan; Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 3.0 — https://creativecommons.org/licenses/by-sa/3.0
+20 July 2016, outside the story period. Campus reference only; the building’s later Steve Jobs name does not date an event in this story.
+
+Ron Johnson portrait 2015
+https://commons.wikimedia.org/wiki/File:Ron_Johnson_TCD_2015.jpg
+TechCrunch; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+23 September 2015 while speaking for Enjoy at TechCrunch Disrupt, outside the story period; identity reference only.
+
+Scott Forstall portrait 2008
+https://commons.wikimedia.org/wiki/File:Scott_Forstall2.png
+Nskrill; Wikimedia Commons thumbnail, composition unchanged
+Public domain — https://commons.wikimedia.org/wiki/File:Scott_Forstall2.png#Licensing
+6 March 2008 at the iPhone Software Roadmap event, after the story ends; identity reference only.
+
+Tim Cook portrait 2009
+https://commons.wikimedia.org/wiki/File:Tim_Cook_2009.jpg
+Kindly granted by Valery Marchive (LeMagIT); Wikimedia Commons thumbnail, composition unchanged
+CC BY-SA 2.0 — https://creativecommons.org/licenses/by-sa/2.0
+6 January 2009, after the Macworld keynote, outside the story period; identity reference only.
+
+Tony Fadell portrait 2012
+https://commons.wikimedia.org/wiki/File:Tony_Fadell.jpg
+OFFICIAL LEWEB PHOTOS; photographer credit Kmeron / Vincent Philbert in the source metadata; Wikimedia Commons thumbnail, composition unchanged
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0
+4 December 2012, outside the story period; identity reference only.
 
 The two synthetic checklists are newly authored fiction, not recovered Apple documents.
 The commitment CSV is an original compilation of cited announcements. Dates distinguish publication, event and target.

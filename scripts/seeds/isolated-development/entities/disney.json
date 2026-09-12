@@ -1,5 +1,6 @@
 {
   "readableId": "disney",
   "name": "Disney",
-  "description": "Our video-content partner and Pixar’s acquirer; I join its board when the transaction closes."
+  "description": "Our video-content partner and Pixar’s acquirer; I join its board when the transaction closes.",
+  "entityType": "organization"
 }

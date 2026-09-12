@@ -1,5 +1,6 @@
 {
   "readableId": "motorola",
   "name": "Motorola",
-  "description": "Our partner for putting an iTunes music player on its mobile handsets."
+  "description": "Our partner for putting an iTunes music player on its mobile handsets.",
+  "entityType": "organization"
 }

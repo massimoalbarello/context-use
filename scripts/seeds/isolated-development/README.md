@@ -23,7 +23,11 @@ bun run dev:isolated:seeded
 The command registers a real passkey and opens [Hypermedia](http://localhost:5173/hypermedia).
 Start at [My work from iPod to iPhone](http://localhost:5173/pages/my-work-from-ipod-to-iphone).
 The full corpus loads by default: **one profile, 29 other entities, 49 pages, 12 page updates,
-39 records and eight assets**. `--all` loads the same complete story.
+39 records and 27 assets**. `--all` loads the same complete story.
+
+The entities include **11 people and seven organizations**. Steve's profile is automatically typed
+as a person; the other types are supplied by the entity fixtures. The 12 products and software
+platforms remain untyped because the supported vocabulary has no matching type.
 
 The seeded isolated app treats **17 October 2007** as today for map date navigation and date pickers.
 It uses the current map interface; there is no separate timeline view. The override is enabled only
@@ -96,11 +100,14 @@ links before submitting pages. References and backlinks use the native record su
 
 ## Assets
 
-Four licensed photographs are bundled: the original iPod, iPhone displayed at Macworld, Steve
-presenting iPhone, and an identity portrait. The portrait is from 2010, outside the narrative;
-the iPod cutout’s capture date is unconfirmed. The two Macworld photographs depict 2007, despite
-later online uploads. [Credits](assets/historical-asset-credits.txt) and [metadata](assets/index.json)
-retain authors, licenses, sources and date caveats. No photo is represented as taken by Steve.
+The 23 bundled images give **22 of the 30 entities** an image: all 11 people, seven devices and four
+companies. Alongside Steve presenting iPhone, they include collaborator portraits, the original
+mini, nano, shuffle, touch and ROKR E1, Apple and Intel marks, and Disney and Pixar campus photographs.
+
+Later portraits and campus photographs are identity references, not evidence of events within the
+story. Each image's [credit](assets/historical-asset-credits.txt) and [metadata](assets/index.json)
+identify its source, creator, license and date caveats. New images use small Commons thumbnails;
+the two company marks use Commons PNG renderings. No photo is represented as taken by Steve.
 
 The other assets are two fictional demo checklists, a sourced commitment ledger separating targets
 from results, and the credits file. The CHM source page provides the original interview video.
