@@ -156,7 +156,7 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
     );
     expect(profileResponse.status).toBe(StatusMap.Created);
     expect(await profileResponse.clone().json()).toMatchObject({
-      selfEntity: { entityType: null },
+      selfEntity: { entityType: 'person' },
     });
     expectNoInternalResourceIds(await profileResponse.clone().json());
     expect(await profileResponse.json()).toEqual({
@@ -174,12 +174,13 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
         body: {
           name: 'Test Owner',
           description: 'The person represented as self inside this private knowledge base.',
+          entityType: null,
         },
       }),
     );
     expect(updatedProfileEntityResponse.status).toBe(StatusMap.OK);
     expect(await updatedProfileEntityResponse.json()).toEqual(
-      expect.objectContaining({ readableId: 'test-owner', isSelf: true }),
+      expect.objectContaining({ readableId: 'test-owner', isSelf: true, entityType: 'person' }),
     );
 
     const nonAsciiNameResponse = await app.handle(
@@ -1313,7 +1314,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       );
       expect(((await cleared.json()) as Pick<Entity, 'entityType'>).entityType).toBeNull();
     }
-    for (const entityType of ['event', 'company', 'all', 'untyped', ['person', 'place']]) {
+    for (const entityType of ['event', 'company', 'all', 'untyped', ['person', 'location']]) {
       const rejected = await app.handle(
         jsonRequest({
           method: 'POST',

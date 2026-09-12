@@ -34,7 +34,7 @@ test('entity type URL state rejects invented types and separates every filtered 
   expect(entitySearch({ entityType: 'untyped' }).entityType).toBe('untyped');
   expect(entitySearch({ entityType: 'all' }).entityType).toBeUndefined();
   expect(entitySearch({ entityType: 'event' }).entityType).toBeUndefined();
-  expect(entitySearch({ entityType: ['person', 'place'] }).entityType).toBeUndefined();
+  expect(entitySearch({ entityType: ['person', 'location'] }).entityType).toBeUndefined();
   const keys = ENTITY_TYPE_FILTERS.map((entityType) =>
     JSON.stringify(
       entitiesQueryOptions({ query: 'maya', entityType: entitySearch({ entityType }).entityType })

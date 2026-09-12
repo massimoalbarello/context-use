@@ -208,7 +208,7 @@ test('HTTP search rejects unauthenticated or invalid queries before reaching the
     '',
     'query=%20',
     'query=research&entityType=event',
-    'query=research&entityType=person,place',
+    'query=research&entityType=person,location',
     'query=research&limit=0',
     'query=research&limit=2.5',
     'query=research&limit=51',

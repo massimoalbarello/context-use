@@ -1,3 +1,4 @@
+import { SELF_ENTITY_TYPE } from '@repo/backend/entity';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { EntityForm, type EntityFormValues } from '../components/entities/entity-form';
@@ -39,7 +40,8 @@ function NewEntityRoute() {
         </p>
       </header>
       <EntityForm
-        initialValues={EMPTY_ENTITY}
+        initialValues={profile ? EMPTY_ENTITY : { ...EMPTY_ENTITY, entityType: SELF_ENTITY_TYPE }}
+        entityTypeReadOnly={!profile}
         pending={pending}
         error={error}
         submitLabel={profile ? 'Create entity' : 'Create first entity'}

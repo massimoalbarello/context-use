@@ -1,7 +1,12 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#lib/pagination.ts';
-import type { Entity, EntityType, EntityTypeFilter } from '#models/entities/model.ts';
+import {
+  type Entity,
+  type EntityType,
+  type EntityTypeFilter,
+  SELF_ENTITY_TYPE,
+} from '#models/entities/model.ts';
 import type { KnowledgePageReference } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
@@ -215,7 +220,14 @@ export class EntitiesRepository implements EntityRepositoryContract {
         /* @notNull id */
         update "entity"
         set "name" = ${name}, "description" = ${description}, "updated_at" = ${updatedAt},
-          "entity_type" = case when ${entityType === undefined} then "entity_type" else ${entityType ?? null} end
+          "entity_type" = case
+            when exists (
+              select 1 from "knowledge_profile" profile
+              where profile."owner_id" = "entity"."owner_id" and profile."self_entity_id" = "entity"."id"
+            ) then ${SELF_ENTITY_TYPE}
+            when ${entityType === undefined} then "entity_type"
+            else ${entityType ?? null}
+          end
         where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
           and "archived_at" is null
         returning "id"

@@ -26,12 +26,14 @@ export function EntityForm({
   pending,
   error,
   submitLabel,
+  entityTypeReadOnly = false,
   onSubmit,
 }: {
   initialValues: EntityFormValues;
   pending: boolean;
   error: Error | null;
   submitLabel: string;
+  entityTypeReadOnly?: boolean;
   onSubmit: (values: EntityFormSubmission) => void;
 }) {
   const form = useForm({
@@ -109,6 +111,7 @@ export function EntityForm({
               value={field.state.value}
               onChange={field.handleChange}
               onBlur={field.handleBlur}
+              readOnly={entityTypeReadOnly}
             />
           )}
         </form.Field>

@@ -1,6 +1,6 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
-import type { EntityType } from '#models/entities/model.ts';
+import { SELF_ENTITY_TYPE } from '#models/entities/model.ts';
 import type { KnowledgeProfile } from '#models/knowledge-profiles/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom, entityTypeFrom } from '#views/entities/entity-view.ts';
@@ -13,7 +13,6 @@ export interface KnowledgeProfilesRepositoryContract {
     readableId: string;
     name: string;
     description: string;
-    entityType?: EntityType | null;
     createdAt: string;
   }): Promise<
     | { state: 'created'; profile: KnowledgeProfile }
@@ -44,7 +43,6 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
     readableId: string;
     name: string;
     description: string;
-    entityType?: EntityType | null;
     createdAt: string;
   }): Promise<
     | { state: 'created'; profile: KnowledgeProfile }
@@ -67,7 +65,7 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
           ("id", "owner_id", "readable_id", "name", "description", "entity_type", "created_at", "updated_at")
         values
           (${input.entityId}, ${input.ownerId}, ${input.readableId}, ${input.name},
-           ${input.description}, ${input.entityType ?? null}, ${input.createdAt}, ${input.createdAt})
+           ${input.description}, ${SELF_ENTITY_TYPE}, ${input.createdAt}, ${input.createdAt})
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "readable_id" as "readableId", "name", "description", "entity_type" as "entityType",
           "created_at" as "createdAt", "updated_at" as "updatedAt"

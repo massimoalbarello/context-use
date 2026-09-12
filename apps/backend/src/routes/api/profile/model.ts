@@ -7,7 +7,7 @@ import {
 } from '#routes/api/entities/model.ts';
 
 export const KnowledgeProfileSchema = t.Object({ selfEntity: EntitySchema });
-export const CreateKnowledgeProfileBodySchema = CreateEntityBodySchema;
+export const CreateKnowledgeProfileBodySchema = t.Omit(CreateEntityBodySchema, ['entityType']);
 
 export function knowledgeProfileResponse(profile: KnowledgeProfile) {
   return { selfEntity: entityResponse(profile.selfEntity) };

@@ -146,6 +146,7 @@ export function EntityIdentityEditor({
                   value={field.state.value}
                   onChange={field.handleChange}
                   onBlur={field.handleBlur}
+                  readOnly={isSelf}
                 />
               )}
             </form.Field>

@@ -6,15 +6,18 @@ export function EntityTypeField({
   value,
   onChange,
   onBlur,
+  readOnly = false,
 }: {
   value: EntityType | null;
   onChange: (value: EntityType | null) => void;
   onBlur: () => void;
+  readOnly?: boolean;
 }) {
   return (
     <Field>
-      <FieldLabel htmlFor="entity-type">Type (optional)</FieldLabel>
+      <FieldLabel htmlFor="entity-type">{readOnly ? 'Type' : 'Type (optional)'}</FieldLabel>
       <Select<EntityType | 'untyped'>
+        disabled={readOnly}
         value={value ?? 'untyped'}
         onValueChange={(next) => onChange(next === 'untyped' ? null : next)}
       >
@@ -30,7 +33,11 @@ export function EntityTypeField({
           ))}
         </SelectContent>
       </Select>
-      <FieldDescription>Leave untyped when none fits or you’re unsure.</FieldDescription>
+      <FieldDescription>
+        {readOnly
+          ? 'Your own entity is always a person.'
+          : 'Leave untyped when none fits or you’re unsure.'}
+      </FieldDescription>
     </Field>
   );
 }

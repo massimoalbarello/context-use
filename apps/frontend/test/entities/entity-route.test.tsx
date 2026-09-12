@@ -13,14 +13,14 @@ import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/pr
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
 
-test('entity filters survive navigation and keyword changes, and editing clears the stored type', async () => {
+test('entity filters survive navigation, self stays a person, and other types can be cleared', async () => {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const people: EntitySummary[] = ['alice', 'zoe'].map((name) => ({
     readableId: name,
     name,
     description: 'Research colleague',
     entityType: 'person',
-    isSelf: false,
+    isSelf: name === 'alice',
     image: null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -135,13 +135,23 @@ test('entity filters survive navigation and keyword changes, and editing clears 
     expect(router.state.location.search.entityType).toBe('person');
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: 'Edit entity' }));
+    expect((screen.getByRole('combobox', { name: 'Type' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect((screen.getByRole('textbox', { name: 'Name' }) as HTMLTextAreaElement).readOnly).toBe(
+      false,
+    );
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('link', { name: /zoe Person Research colleague/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/entities/zoe'));
+    await user.click(screen.getByRole('button', { name: 'Edit entity' }));
     await user.click(screen.getByRole('combobox', { name: 'Type (optional)' }));
     await user.click(await screen.findByRole('option', { name: 'Untyped' }));
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
     await waitFor(() => expect(updates).toHaveLength(1));
     expect(updates[0]?.entityType).toBeNull();
     await waitFor(() =>
-      expect(screen.queryByRole('link', { name: /alice Person Research colleague/ })).toBeNull(),
+      expect(screen.queryByRole('link', { name: /zoe Person Research colleague/ })).toBeNull(),
     );
   } finally {
     cleanup();

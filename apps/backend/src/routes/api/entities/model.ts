@@ -43,7 +43,8 @@ export const EntityReferenceSchema = t.Object({
 export const EntityIdentityBodySchema = t.Object({
   entityType: t.Optional(
     t.Nullable(EntityTypeSchema, {
-      description: 'Omit to preserve an existing type; null clears it.',
+      description:
+        'Omit to preserve an existing type; null clears it. The self entity always remains a Person.',
     }),
   ),
   name: t.String({ minLength: 1, maxLength: MAX_ENTITY_NAME_LENGTH, pattern: '.*\\S.*' }),

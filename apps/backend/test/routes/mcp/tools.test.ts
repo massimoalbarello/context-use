@@ -1124,7 +1124,7 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
 test('MCP creates the self entity once through the knowledge profile invariant', async () => {
   let createCalls = 0;
   let imageCalls = 0;
-  const selfEntity = { ...entity, isSelf: true };
+  const selfEntity = { ...entity, entityType: 'person' as const, isSelf: true };
   const entitiesService: EntitiesServiceContract = {
     ...unusedEntitiesService,
     setImage: (input) => {
@@ -1432,7 +1432,7 @@ test('MCP exposes optional entity assignments and entity-only filters from the c
         arguments: { query: 'Luca', entityType: 'untyped' },
       });
       expect(search.structuredContent).toMatchObject({ results: [{ entityType: null }] });
-      for (const entityType of ['event', 'company', 'all', 'untyped', ['person', 'place']]) {
+      for (const entityType of ['event', 'company', 'all', 'untyped', ['person', 'location']]) {
         expect(
           (
             await client.callTool({

@@ -21,6 +21,7 @@ import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
 import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
+import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { replaceSearchDocument } from '#repositories/search-index.ts';
 import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
@@ -1327,7 +1328,7 @@ test('entity types filter candidates before ranking, counts, and pagination whil
     };
     // These stronger name matches must not consume a people search's result limit.
     await create({ readableId: 'needle-organization', entityType: 'organization' });
-    await create({ readableId: 'needle-place', entityType: 'place' });
+    await create({ readableId: 'needle-location', entityType: 'location' });
     await create({ readableId: 'needle-untyped', entityType: null });
     await create({ readableId: 'alice', entityType: 'person' });
     await create({ readableId: 'zoe', entityType: 'person' });
@@ -1369,7 +1370,7 @@ test('entity types filter candidates before ranking, counts, and pagination whil
       offset: first.nextOffset!,
     });
     expect(second).toMatchObject({ total: 2, nextOffset: null, items: [{ readableId: 'zoe' }] });
-    for (const entityType of ['organization', 'place', 'untyped', 'all'] as const) {
+    for (const entityType of ['organization', 'location', 'untyped', 'all'] as const) {
       const listed = await entities.list({ ownerId: OWNER_A, entityType, limit: 50, offset: 0 });
       const searched = await retrieval.search({
         ownerId: OWNER_A,
@@ -1408,7 +1409,9 @@ test('entity type updates preserve omissions, clear null, and immediately affect
     expect((await entities.find(update))?.entityType).toBeNull();
     expect((await entities.update({ ...update, entityType: 'person' }))?.entityType).toBe('person');
     expect((await entities.update(update))?.entityType).toBe('person');
-    expect(await entities.update({ ...update, ownerId: OWNER_B, entityType: 'place' })).toBeNull();
+    expect(
+      await entities.update({ ...update, ownerId: OWNER_B, entityType: 'location' }),
+    ).toBeNull();
     expect((await entities.find(update))?.entityType).toBe('person');
     expect((await entities.update({ ...update, entityType: null }))?.entityType).toBeNull();
     const people = await retrieval.search({
@@ -1428,4 +1431,46 @@ test('entity type updates preserve omissions, clear null, and immediately affect
       totalMatches: 1,
       results: [{ entity: { readableId: 'alice', entityType: null } }],
     });
+  }));
+
+test('self entities are created as people and cannot leave the people filter through an update', () =>
+  withRetrievalTest(async ({ database, entities, retrieval }) => {
+    const profiles = new KnowledgeProfilesRepository(database);
+    const created = await profiles.create({
+      ownerId: OWNER_A,
+      entityId: 'self-entity',
+      readableId: 'owner',
+      name: 'Owner',
+      description: 'needle',
+      createdAt: NOW,
+    });
+    expect(created).toMatchObject({
+      state: 'created',
+      profile: { selfEntity: { entityType: 'person', isSelf: true } },
+    });
+    for (const entityType of [undefined, null, 'location', 'organization'] as const) {
+      const updated = await entities.update({
+        ownerId: OWNER_A,
+        readableId: 'owner',
+        name: 'Updated Owner',
+        description: 'needle',
+        entityType,
+        updatedAt: NOW,
+      });
+      expect(updated).toMatchObject({ name: 'Updated Owner', entityType: 'person', isSelf: true });
+    }
+    expect(await profiles.find({ ownerId: OWNER_A })).toMatchObject({
+      selfEntity: { entityType: 'person' },
+    });
+    for (const entityType of ['person', 'untyped', 'location', 'organization'] as const) {
+      const listed = await entities.list({ ownerId: OWNER_A, entityType, limit: 1, offset: 0 });
+      const searched = await retrieval.search({
+        ownerId: OWNER_A,
+        query: 'needle',
+        limit: 1,
+        filters: { entityType },
+      });
+      expect(listed.total).toBe(entityType === 'person' ? 1 : 0);
+      expect(searched.totalMatches).toBe(listed.total);
+    }
   }));

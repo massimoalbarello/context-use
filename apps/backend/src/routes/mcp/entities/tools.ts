@@ -154,7 +154,7 @@ export function registerEntityTools({
     {
       title: 'Create entity',
       description:
-        'Create one entity identity, optionally assigning an existing image asset. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
+        'Create one entity identity, optionally assigning an existing image asset. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once and is always typed as Person. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
       inputSchema: CreateEntityInputSchema,
       outputSchema: CreateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
