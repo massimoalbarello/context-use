@@ -40,6 +40,7 @@ create table "knowledge_page" (
   "current_revision_id" text not null,
   "created_at" text not null,
   "updated_at" text not null,
+  "archived_at" text check ("archived_at" is null or length(trim("archived_at")) > 0),
   primary key ("id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
