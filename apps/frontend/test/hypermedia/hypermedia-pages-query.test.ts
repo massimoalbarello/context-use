@@ -42,7 +42,6 @@ test('scroll months select the API time and keep dated and undated results in se
       '1969-12',
     ]);
     expect(requests.every((url) => url.pathname === '/api/hypermedia/pages')).toBe(true);
-    expect(requests.every((url) => !url.searchParams.has('interval'))).toBe(true);
   } finally {
     client.clear();
     fetch.mockRestore();

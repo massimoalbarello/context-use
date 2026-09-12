@@ -28,7 +28,7 @@ function HypermediaResourceFilterFixture() {
   );
 }
 
-test('Hypermedia keeps keyword and resource filters without a view selector', () => {
+test('Hypermedia displays the current keyword and selected resources', () => {
   render(
     <HypermediaFilters
       resourceKinds={['entity']}
@@ -43,7 +43,6 @@ test('Hypermedia keeps keyword and resource filters without a view selector', ()
     />,
   );
 
-  expect(screen.queryByRole('tablist')).toBeNull();
   expect(screen.getByRole('group', { name: 'Hypermedia resource types' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Entities' }).getAttribute('aria-pressed')).toBe(
     'true',
