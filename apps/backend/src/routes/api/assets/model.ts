@@ -37,7 +37,7 @@ export const AssetSchema = t.Object({
   depicts: t.Array(
     t.Object({
       entity: EntityReferenceSchema,
-      source: t.Union([t.Literal('automatic'), t.Literal('confirmed')]),
+      source: t.Union([t.Literal('detected'), t.Literal('confirmed')]),
     }),
   ),
 });

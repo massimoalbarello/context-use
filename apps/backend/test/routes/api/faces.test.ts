@@ -299,7 +299,7 @@ test('a new portrait matches earlier unknown faces and exposes links in both dir
   expectNoInternalResourceIds(detail);
   const assetResponse = await context.request({ path: `/assets/${photo.readableId}` });
   expect(await assetResponse.json()).toMatchObject({
-    depicts: [{ source: 'automatic', entity: { readableId: person.readableId } }],
+    depicts: [{ source: 'detected', entity: { readableId: person.readableId } }],
   });
   const images = await context.request({ path: `/entities/${person.readableId}/images` });
   expect(
@@ -315,6 +315,16 @@ test('a new portrait matches earlier unknown faces and exposes links in both dir
   });
   expect(crop.status).toBe(StatusMap.OK);
   expect(crop.headers.get('content-type')).toBe('image/jpeg');
+  const confirmation = await context.request({
+    path: `/assets/${photo.readableId}/faces/${detail.faces[0]!.readableId}/annotation`,
+    method: 'PUT',
+    body: { decision: 'person', entityReadableId: person.readableId },
+  });
+  expect(confirmation.status).toBe(StatusMap.OK);
+  const confirmedAsset = await context.request({ path: `/assets/${photo.readableId}` });
+  expect(await confirmedAsset.json()).toMatchObject({
+    depicts: [{ source: 'confirmed', entity: { readableId: person.readableId } }],
+  });
 });
 
 test('threshold saves affect subsequent matches; explicit re-matching preserves all human decisions', async () => {

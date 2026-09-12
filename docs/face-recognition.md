@@ -1,9 +1,9 @@
 # Face recognition
 
-Image assets `depicts` person entities. Asset details expose each linked person and whether the
-assignment is automatic or confirmed. On person pages, **Appears in** shows compact image cards
-beside **Mentioned by**, using the same effective links. Cropped faces are derived files, not assets
-or separate people.
+Image assets `depicts` person entities. Asset details expose each linked person with a `source` of
+`detected` for model matches or `confirmed` for human decisions. On person pages, **Appears in** shows
+compact image cards beside **Mentioned by**, using the same effective links. Cropped faces are derived
+files, not assets or separate people.
 
 ## Using it
 

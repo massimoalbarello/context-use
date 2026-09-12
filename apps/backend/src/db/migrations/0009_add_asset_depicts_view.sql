@@ -1,7 +1,7 @@
 -- Depicts is derived once from effective face assignments; people and faces keep their own identities.
 create view "asset_depicts_entity" as
 select distinct face."owner_id", face."asset_id", entity."id" as "entity_id", face."id" as "face_id",
-  case when annotation."face_id" is null then 'automatic' else 'confirmed' end as "source"
+  case when annotation."face_id" is null then 'detected' else 'confirmed' end as "source"
 from "asset_face" face
 join "asset" asset on asset."id" = face."asset_id" and asset."owner_id" = face."owner_id" and asset."archived_at" is null
 left join "face_annotation" annotation on annotation."face_id" = face."id" and annotation."owner_id" = face."owner_id"

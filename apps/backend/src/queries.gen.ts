@@ -81,7 +81,7 @@ export interface IListAssetDepictedPeopleResult {
     description: string;
     entityType: string | null;
     isSelf: number;
-    source: "automatic" | "confirmed";
+    source: "detected" | "confirmed";
 }
 
 /** Result of query `ListActivePageAssetUsages`. */

@@ -263,10 +263,10 @@ export class AssetsRepository implements AssetsRepositoryContract {
     const rows = await db.ListAssetDepictedPeople`
       /* @notNull id readableId name description source */
       /* @type isSelf number */
-      /* @type source 'automatic' | 'confirmed' */
+      /* @type source 'detected' | 'confirmed' */
       select entity."id", entity."readable_id" as "readableId", entity."name", entity."description",
         entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf",
-        case when max(link."source" = 'confirmed') then 'confirmed' else 'automatic' end as "source"
+        case when max(link."source" = 'confirmed') then 'confirmed' else 'detected' end as "source"
       from "asset_depicts_entity" link
       join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id"
       left join "knowledge_profile" profile on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"

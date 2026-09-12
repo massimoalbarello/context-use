@@ -32,7 +32,7 @@ const McpAssetUsageSchema = z.union([
 export const McpAssetSchema = McpAssetSummarySchema.extend({
   usages: z.array(McpAssetUsageSchema),
   depicts: z.array(
-    z.object({ entity: McpEntityReferenceSchema, source: z.enum(['automatic', 'confirmed']) }),
+    z.object({ entity: McpEntityReferenceSchema, source: z.enum(['detected', 'confirmed']) }),
   ),
 });
 

@@ -35,7 +35,7 @@ export type AssetUsage = KnowledgePageAssetUsage | EntityImageAssetUsage;
 
 export interface Asset extends AssetSummary {
   usages: AssetUsage[];
-  depicts: Array<{ entity: EntityReference; source: 'automatic' | 'confirmed' }>;
+  depicts: Array<{ entity: EntityReference; source: 'detected' | 'confirmed' }>;
 }
 
 export interface StoredAsset extends AssetSummary {
