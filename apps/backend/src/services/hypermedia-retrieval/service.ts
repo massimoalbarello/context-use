@@ -1,5 +1,5 @@
 import type { Entity } from '#models/entities/model.ts';
-import type { HypermediaEntityReference } from '#models/hypermedia/model.ts';
+import type { HypermediaEntityReference } from '#models/hypermedia-graph/model.ts';
 import {
   HYPERMEDIA_RESOURCE_TYPES,
   type HypermediaResourceType,
@@ -8,14 +8,14 @@ import {
   MAX_HYPERMEDIA_SEARCH_LIMIT,
 } from '#models/hypermedia-retrieval/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
-import type { HypermediaRepositoryContract } from '#repositories/hypermedia/repository.ts';
 import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
+import type { HypermediaGraphServiceContract } from '#services/hypermedia-graph/service.ts';
 
 export class HypermediaRetrievalService {
   constructor(
     private readonly dependencies: {
       retrieval: HypermediaRetrievalRepositoryContract;
-      hypermedia: Pick<HypermediaRepositoryContract, 'pages'>;
+      graph: Pick<HypermediaGraphServiceContract, 'pages'>;
     },
   ) {}
 
@@ -77,7 +77,7 @@ export class HypermediaRetrievalService {
       }
     }
     const { query: _query, ...pageInput } = input;
-    const pages = await this.dependencies.hypermedia.pages({
+    const pages = await this.dependencies.graph.pages({
       ...pageInput,
       retrievalMatches: {
         pageReadableIds,

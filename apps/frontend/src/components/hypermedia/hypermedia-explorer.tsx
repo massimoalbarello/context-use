@@ -5,53 +5,24 @@ import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
 import {
   type HypermediaEntityReference,
+  type HypermediaNeighborhoodRequest,
   type HypermediaPage,
   type HypermediaPages,
   hypermediaEntityKey,
-  hypermediaEntityNeighborhoodQueryOptions,
   hypermediaEntityReference,
+  hypermediaNeighborhoodsQueryOptions,
 } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
 import { filterHypermedia } from './hypermedia-entity-filter';
+import {
+  appendNeighborhoodRequests,
+  HYPERMEDIA_EXPANSION_BATCH_SIZE,
+  mergeHypermediaNeighborhoods,
+} from './hypermedia-graph-data';
 import { buildStableEntities } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
-
-type NeighborhoodRequest = {
-  anchor: HypermediaEntityReference;
-  cursor?: string;
-};
-
-function requestKey(request: NeighborhoodRequest): string {
-  return `${hypermediaEntityKey(request.anchor)}:${request.cursor ?? 'first'}`;
-}
-
-function appendNeighborhoodRequest({
-  current,
-  request,
-}: {
-  current: NeighborhoodRequest[];
-  request: NeighborhoodRequest;
-}): NeighborhoodRequest[] {
-  return current.some((candidate) => requestKey(candidate) === requestKey(request))
-    ? current
-    : [...current, request];
-}
-
-function neighborhoodRequestsForEntities({
-  entities,
-  initial = [],
-}: {
-  entities: HypermediaEntityReference[];
-  initial?: NeighborhoodRequest[];
-}): NeighborhoodRequest[] {
-  let requests = initial;
-  for (const anchor of entities) {
-    requests = appendNeighborhoodRequest({ current: requests, request: { anchor } });
-  }
-  return requests;
-}
 
 function entitySelection(selection?: HypermediaSelection): HypermediaEntityReference | undefined {
   return selection && selection.kind !== 'page' ? { readableId: selection.readableId } : undefined;
@@ -104,23 +75,27 @@ export function HypermediaExplorer({
     [selectedEntity, selectedEntities],
   );
   const [exploredNeighborhoodRequests, setExploredNeighborhoodRequests] = useState<
-    NeighborhoodRequest[]
-  >(() => neighborhoodRequestsForEntities({ entities: [self, ...selectedNeighborhoodEntities] }));
+    HypermediaNeighborhoodRequest[][]
+  >(() =>
+    appendNeighborhoodRequests({
+      current: [],
+      requests: [self, ...selectedNeighborhoodEntities].map((anchor) => ({ anchor })),
+    }),
+  );
   const neighborhoodRequests = useMemo(
     () =>
-      neighborhoodRequestsForEntities({
-        entities: selectedNeighborhoodEntities,
-        initial: exploredNeighborhoodRequests,
+      appendNeighborhoodRequests({
+        current: exploredNeighborhoodRequests,
+        requests: selectedNeighborhoodEntities.map((anchor) => ({ anchor })),
       }),
     [exploredNeighborhoodRequests, selectedNeighborhoodEntities],
   );
   const neighborhoodQueries = useQueries({
-    queries: neighborhoodRequests.map((request) =>
-      hypermediaEntityNeighborhoodQueryOptions(request),
-    ),
+    queries: neighborhoodRequests.map(hypermediaNeighborhoodsQueryOptions),
   });
   const neighborhoods = useMemo(
-    () => neighborhoodQueries.flatMap(({ data }) => (data ? [data] : [])),
+    () =>
+      mergeHypermediaNeighborhoods(neighborhoodQueries.flatMap(({ data }) => (data ? [data] : []))),
     [neighborhoodQueries],
   );
   const {
@@ -189,32 +164,23 @@ export function HypermediaExplorer({
           (entity) => hypermediaEntityKey(entity) !== hypermediaEntityKey(boundaryAnchor),
         ),
       ];
-      const anchor = candidates.find((candidate) => {
-        const key = hypermediaEntityKey(candidate);
-        const matchingRequests = neighborhoodRequests.filter(
-          (request) => hypermediaEntityKey(request.anchor) === key,
-        );
-        const lastRequest = matchingRequests.at(-1);
-        const result = lastRequest
-          ? neighborhoodQueries[neighborhoodRequests.indexOf(lastRequest)]
-          : undefined;
-        return matchingRequests.length === 0 || Boolean(result?.data?.nextCursor);
-      });
-      if (!anchor) {
-        return;
-      }
-      const anchorKey = hypermediaEntityKey(anchor);
-      const matching = neighborhoodRequests.flatMap((request) =>
-        hypermediaEntityKey(request.anchor) === anchorKey
-          ? [{ request, result: neighborhoodQueries[neighborhoodRequests.indexOf(request)] }]
-          : [],
-      );
-      const next: NeighborhoodRequest = {
-        anchor,
-        cursor: matching.at(-1)?.result?.data?.nextCursor ?? undefined,
-      };
+      const next = candidates
+        .flatMap((anchor) => {
+          const key = hypermediaEntityKey(anchor);
+          const lastBatchIndex = neighborhoodRequests.findLastIndex((batch) =>
+            batch.some((request) => hypermediaEntityKey(request.anchor) === key),
+          );
+          if (lastBatchIndex === -1) {
+            return [{ anchor }];
+          }
+          const result = neighborhoodQueries[lastBatchIndex]?.data?.neighborhoods.find(
+            (neighborhood) => hypermediaEntityKey(neighborhood.anchor) === key,
+          );
+          return result?.nextCursor ? [{ anchor, cursor: result.nextCursor }] : [];
+        })
+        .slice(0, HYPERMEDIA_EXPANSION_BATCH_SIZE);
       setExploredNeighborhoodRequests((current) =>
-        appendNeighborhoodRequest({ current, request: next }),
+        appendNeighborhoodRequests({ current, requests: next }),
       );
     },
     [
@@ -232,7 +198,7 @@ export function HypermediaExplorer({
       const entity = entitySelection(nextSelection);
       if (entity) {
         setExploredNeighborhoodRequests((current) =>
-          appendNeighborhoodRequest({ current, request: { anchor: entity } }),
+          appendNeighborhoodRequests({ current, requests: [{ anchor: entity }] }),
         );
       }
       onSelect(nextSelection);
@@ -243,11 +209,19 @@ export function HypermediaExplorer({
   const neighborhoodError = neighborhoodQueries.find(({ error }) => error)?.error ?? entityError;
   const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
-    neighborhoodRequests.map(({ anchor }) => hypermediaEntityKey(anchor)),
+    neighborhoodRequests.flat().map(({ anchor }) => hypermediaEntityKey(anchor)),
+  );
+  const latestNeighborhoods = new Map(
+    neighborhoodQueries.flatMap(
+      ({ data }) =>
+        data?.neighborhoods.map(
+          (neighborhood) => [hypermediaEntityKey(neighborhood.anchor), neighborhood] as const,
+        ) ?? [],
+    ),
   );
   const canExplore =
     hasNextEntityPage ||
-    neighborhoodQueries.some(({ data }) => Boolean(data?.nextCursor)) ||
+    [...latestNeighborhoods.values()].some(({ nextCursor }) => Boolean(nextCursor)) ||
     visualizedHypermedia.entities.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
     <div className="relative size-full min-h-[28rem]">

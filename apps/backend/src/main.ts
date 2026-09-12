@@ -17,7 +17,7 @@ import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
-import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#repositories/hypermedia-graph/repository.ts';
 import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
@@ -31,7 +31,7 @@ import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
-import { HypermediaService } from '#services/hypermedia/service.ts';
+import { HypermediaGraphService } from '#services/hypermedia-graph/service.ts';
 import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
@@ -70,9 +70,11 @@ try {
     database: retrievalDatabase,
     storage,
   });
+  const graphRepository = new HypermediaGraphRepository(retrievalDatabase);
+  const graphService = new HypermediaGraphService({ graph: graphRepository });
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
-    hypermedia: new HypermediaRepository(retrievalDatabase),
+    graph: graphService,
   });
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
@@ -88,9 +90,6 @@ try {
     pages: pagesRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
-  const hypermediaService = new HypermediaService({
-    hypermedia: new HypermediaRepository(database),
-  });
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
   );
@@ -137,7 +136,7 @@ try {
     frontendAssetsService,
     entitiesService,
     healthService,
-    hypermediaService,
+    graphService,
     retrievalService,
     mcpClientAuthorizationsService,
     mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),

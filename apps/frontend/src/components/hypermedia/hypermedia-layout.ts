@@ -1,12 +1,9 @@
 // biome-ignore-all lint/style/noMagicNumbers: The deterministic Hypermedia geometry is defined by visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and collection indexes.
 
-import type {
-  HypermediaEntity,
-  HypermediaEntityNeighborhood,
-  HypermediaPage,
-} from '../../queries/hypermedia';
+import type { HypermediaEntity, HypermediaPage } from '../../queries/hypermedia';
 import { hypermediaEntityKey, hypermediaEntityReference } from '../../queries/hypermedia';
+import type { HypermediaLayoutNeighborhood } from './hypermedia-graph-data';
 import { hypermediaSelectionKey } from './hypermedia-selection';
 
 export type CanvasPoint = { x: number; y: number };
@@ -140,14 +137,38 @@ function samePositionedEntity(
   return first.entity === second.entity;
 }
 
+function connectedEntityCenter({
+  neighbors,
+  entities,
+}: {
+  neighbors: HypermediaLayoutNeighborhood['neighbors'] | undefined;
+  entities: Map<string, HypermediaLayoutEntity>;
+}): CanvasPoint | undefined {
+  const connected = (neighbors ?? []).flatMap(({ entity, sharedPageCount }) => {
+    const placedEntity = entities.get(hypermediaEntityKey(entity));
+    return placedEntity ? [{ point: placedEntity.point, weight: sharedPageCount }] : [];
+  });
+  if (connected.length < 2) {
+    return undefined;
+  }
+  const weight = connected.reduce((sum, item) => sum + item.weight, 0);
+  return {
+    x: connected.reduce((sum, item) => sum + item.point.x * item.weight, 0) / weight,
+    y: connected.reduce((sum, item) => sum + item.point.y * item.weight, 0) / weight,
+  };
+}
+
 export function buildStableEntities(
-  neighborhoods: HypermediaEntityNeighborhood[],
+  neighborhoods: HypermediaLayoutNeighborhood[],
   standaloneEntities: HypermediaEntity[] = [],
   previousEntities: HypermediaLayoutEntity[] = [],
 ): HypermediaLayoutEntity[] {
   const entities = new Map<string, HypermediaLayoutEntity>();
   const placed: CanvasPoint[] = [];
   const neighborCountByAnchor = new Map<string, number>();
+  const neighborsByEntity = new Map(
+    neighborhoods.map(({ anchor, neighbors }) => [hypermediaEntityKey(anchor), neighbors]),
+  );
 
   const availableKeys = new Set(
     neighborhoods.flatMap((neighborhood) => [
@@ -208,10 +229,12 @@ export function buildStableEntities(
       const radius =
         280 + Math.sqrt(placementIndex) * 76 - Math.min(6, neighbor.sharedPageCount) * 12;
       const angle = (stableHash(`${anchor.key}:${key}`) / 0xffffffff) * Math.PI * 2;
-      const preferred = {
+      const radialPoint = {
         x: anchor.point.x + Math.cos(angle) * radius,
         y: anchor.point.y + Math.sin(angle) * radius,
       };
+      const preferred =
+        connectedEntityCenter({ neighbors: neighborsByEntity.get(key), entities }) ?? radialPoint;
       const point = openPoint({
         key,
         preferred,

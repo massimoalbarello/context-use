@@ -3,10 +3,13 @@ import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
 import type { CalendarMonth } from '../lib/calendar-month';
 
-export type HypermediaEntityNeighborhood = NonNullable<
-  Awaited<ReturnType<(typeof api.api.hypermedia.entities)['get']>>['data']
+export type HypermediaNeighborhoods = NonNullable<
+  Awaited<ReturnType<(typeof api.api.hypermedia.neighborhoods)['post']>>['data']
 >;
-export type HypermediaEntity = HypermediaEntityNeighborhood['anchor'];
+export type HypermediaEntity = HypermediaNeighborhoods['entities'][number];
+export type HypermediaNeighborhoodRequest = Parameters<
+  (typeof api.api.hypermedia.neighborhoods)['post']
+>[0]['anchors'][number];
 export type HypermediaEntityReference = Pick<HypermediaEntity, 'readableId'>;
 export type HypermediaPages = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.pages)['get']>>['data']
@@ -24,25 +27,19 @@ export function hypermediaEntityReference(entity: HypermediaEntity): HypermediaE
   return { readableId: entity.readableId };
 }
 
-export function hypermediaEntityNeighborhoodQueryOptions({
-  anchor,
-  cursor,
-}: {
-  anchor: HypermediaEntityReference;
-  cursor?: string;
-}) {
-  const anchorKey = hypermediaEntityKey(anchor);
+export function hypermediaNeighborhoodsQueryOptions(anchors: HypermediaNeighborhoodRequest[]) {
   return queryOptions({
-    queryKey: [...hypermediaQueryKey, 'entities', anchorKey, { cursor: cursor ?? null }] as const,
+    queryKey: [...hypermediaQueryKey, 'neighborhoods', anchors] as const,
     queryFn: async ({ signal }) => {
-      const { data, error } = await api.api.hypermedia.entities.get({
-        query: {
-          anchor: anchor.readableId,
-          cursor,
+      const { data, error } = await api.api.hypermedia.neighborhoods.post(
+        {
+          anchors,
           limit: HYPERMEDIA_NEIGHBORHOOD_SIZE,
         },
-        fetch: { signal },
-      });
+        {
+          fetch: { signal },
+        },
+      );
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -60,6 +57,17 @@ type HypermediaPageQuery = {
 };
 
 const HYPERMEDIA_PAGE_LIMIT = 32;
+
+export function mergeHypermediaPages(batches: HypermediaPages[]): HypermediaPage[] {
+  const pages = new Map<string, HypermediaPage>();
+  for (const page of batches.flatMap(({ pages }) => pages)) {
+    const current = pages.get(page.readableId);
+    if (!current || page.revisionNumber >= current.revisionNumber) {
+      pages.set(page.readableId, page);
+    }
+  }
+  return [...pages.values()];
+}
 
 export function hypermediaPagesQueryOptions({
   entities,

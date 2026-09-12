@@ -1,13 +1,13 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type {
-  HypermediaEntityContinuation,
-  HypermediaEntityNeighborhood,
   HypermediaEntityReference,
+  HypermediaNeighborhoods,
   HypermediaPage,
   HypermediaPages,
   HypermediaRetrievalMatches,
-} from '#models/hypermedia/model.ts';
+} from '#models/hypermedia-graph/model.ts';
+import { MAX_HYPERMEDIA_EXTRA_RELATIONSHIPS } from '#models/hypermedia-graph/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
 import type {
@@ -15,7 +15,8 @@ import type {
   IListHypermediaPagesResult,
   Queries,
 } from '#queries.gen.ts';
-import { entityFrom } from '#views/entities/entity-view.ts';
+import type { HypermediaGraphRepositoryContract } from './contract.ts';
+import { neighborhoodsFromRows } from './neighborhoods.ts';
 
 const MAX_HYPERMEDIA_PAGE_ENTITY_REFERENCES = 120;
 
@@ -34,143 +35,136 @@ function pageSummaryFrom(row: PageRow): KnowledgePageSummary {
   return { ...row, revisionNumber: Number(row.revisionNumber) };
 }
 
-function entityCursorParameters(cursor?: HypermediaEntityContinuation) {
-  return {
-    cursorSharedPageCount: cursor?.sharedPageCount ?? null,
-    cursorReadableId: cursor?.readableId ?? null,
-  };
-}
-
-export interface HypermediaRepositoryContract {
-  entityNeighborhood(input: {
-    ownerId: string;
-    anchor: HypermediaEntityReference;
-    limit: number;
-    cursor?: HypermediaEntityContinuation;
-  }): Promise<HypermediaEntityNeighborhood | null>;
-  pages(input: {
-    ownerId: string;
-    entities: HypermediaEntityReference[];
-    visibleEntities: HypermediaEntityReference[];
-    limit: number;
-    offset: number;
-    retrievalMatches?: HypermediaRetrievalMatches;
-    temporalBounds?: TemporalBounds;
-  }): Promise<HypermediaPages>;
-}
-
-export class HypermediaRepository implements HypermediaRepositoryContract {
+export class HypermediaGraphRepository implements HypermediaGraphRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
   }
 
-  async entityNeighborhood({
+  async neighborhoods({
     ownerId,
-    anchor,
+    anchors,
     limit,
-    cursor,
-  }: {
-    ownerId: string;
-    anchor: HypermediaEntityReference;
-    limit: number;
-    cursor?: HypermediaEntityContinuation;
-  }): Promise<HypermediaEntityNeighborhood | null> {
-    const { cursorSharedPageCount, cursorReadableId } = entityCursorParameters(cursor);
-    const rowLimit = limit + 1;
-    const [anchorRows, neighborRows] = await Promise.all([
-      this.sql.FindHypermediaEntity`
-        /* @notNull id readableId name description isSelf createdAt updatedAt */
-        /* @type isSelf number */
-        select entity."id", entity."readable_id" as "readableId", entity."name",
-          entity."description", entity."entity_type" as "entityType", coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
-          image."id" as "imageId", image."readable_id" as "imageReadableId",
-          image."name" as "imageName", image."media_type" as "imageMediaType",
-          image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
-          image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt",
-          entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
-        from "entity" entity
-        left join "knowledge_profile" profile
-          on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-        left join "asset" image
-          on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
-         and image."archived_at" is null
-        where entity."owner_id" = ${ownerId} and entity."readable_id" = ${anchor.readableId}
-          and entity."archived_at" is null
-      `,
-      this.sql.ListHypermediaEntityNeighbors`
-        /* @notNull id readableId name description isSelf createdAt updatedAt sharedPageCount */
-        /* @type isSelf number */
-        /* @type sharedPageCount number */
-        with anchor_revision as (
-          select mention."source_revision_id" as "revisionId"
-          from "entity" anchor_entity
-          join "knowledge_page_entity_mention" mention
-            on mention."owner_id" = anchor_entity."owner_id"
-           and mention."target_entity_id" = anchor_entity."id"
-          join "knowledge_page" page
-            on page."owner_id" = mention."owner_id"
-           and page."current_revision_id" = mention."source_revision_id"
-           and page."archived_at" is null
-          where anchor_entity."owner_id" = ${ownerId}
-            and anchor_entity."readable_id" = ${anchor.readableId}
-            and anchor_entity."archived_at" is null
-        ), candidate as (
-          select entity."id" as "entityId", entity."readable_id" as "readableId",
-            count(distinct anchor_revision."revisionId") as "sharedPageCount"
-          from anchor_revision
-          join "knowledge_page_entity_mention" mention
-            on mention."owner_id" = ${ownerId}
-           and mention."source_revision_id" = anchor_revision."revisionId"
-          join "entity" entity
-            on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
-          where entity."archived_at" is null and entity."readable_id" != ${anchor.readableId}
-          group by entity."id", entity."readable_id"
-        )
-        select entity."id", candidate."readableId", entity."name",
-          entity."description", entity."entity_type" as "entityType", coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
-          image."id" as "imageId", image."readable_id" as "imageReadableId",
-          image."name" as "imageName", image."media_type" as "imageMediaType",
-          image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
-          image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt",
-          entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
-          candidate."sharedPageCount"
-        from candidate
-        join "entity" entity on entity."id" = candidate."entityId" and entity."owner_id" = ${ownerId}
-        left join "knowledge_profile" profile
-          on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
-        left join "asset" image
-          on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
-         and image."archived_at" is null
-        where ${cursorSharedPageCount} is null
-          or candidate."sharedPageCount" < ${cursorSharedPageCount}
-          or (candidate."sharedPageCount" = ${cursorSharedPageCount}
-            and candidate."readableId" > ${cursorReadableId})
-        order by candidate."sharedPageCount" desc, candidate."readableId"
-        limit ${rowLimit}
-      `,
-    ]);
-    const anchorRow = anchorRows[0];
-    if (!anchorRow) {
-      return null;
-    }
-    const selectedRows = neighborRows.slice(0, limit);
-    const lastRow = selectedRows.at(-1);
-    return {
-      anchor: entityFrom(anchorRow),
-      neighbors: selectedRows.map(({ sharedPageCount, ...row }) => ({
-        entity: entityFrom(row),
-        sharedPageCount: Number(sharedPageCount),
+  }: Parameters<
+    HypermediaGraphRepositoryContract['neighborhoods']
+  >[0]): Promise<HypermediaNeighborhoods> {
+    const requests = JSON.stringify(
+      anchors.map(({ anchor, cursor }) => ({
+        readableId: anchor.readableId,
+        cursorSharedPageCount: cursor?.sharedPageCount ?? null,
+        cursorReadableId: cursor?.readableId ?? null,
       })),
-      nextPage:
-        neighborRows.length > limit && lastRow
-          ? {
-              sharedPageCount: Number(lastRow.sharedPageCount),
-              readableId: lastRow.readableId,
-            }
-          : null,
-    };
+    );
+    const rowLimit = limit + 1;
+    const extraLimit = MAX_HYPERMEDIA_EXTRA_RELATIONSHIPS + 1;
+    // One statement keeps ranks, entity projections and induced relationships in the same snapshot.
+    const rows = await this.sql.ListHypermediaNeighborhoods`
+      /* @notNull rowType sourceReadableId sharedPageCount position id readableId name description isSelf createdAt updatedAt */
+      /* @type rowType 'anchor' | 'neighbor' | 'relationship' */
+      /* @type isSelf number */
+      /* @type sharedPageCount number */
+      /* @type position number */
+      with requested as (
+        select json_extract(value, '$.readableId') as "readableId",
+          json_extract(value, '$.cursorSharedPageCount') as "cursorSharedPageCount",
+          json_extract(value, '$.cursorReadableId') as "cursorReadableId"
+        from json_each(${requests})
+      ), anchor as (
+        select entity."id", entity."readable_id" as "readableId",
+          requested."cursorSharedPageCount", requested."cursorReadableId"
+        from requested
+        join "entity" entity on entity."readable_id" = requested."readableId"
+        where entity."owner_id" = ${ownerId} and entity."archived_at" is null
+      ), anchor_revision as (
+        select anchor."readableId" as "anchorReadableId", mention."source_revision_id" as "revisionId"
+        from anchor
+        join "knowledge_page_entity_mention" mention
+          on mention."owner_id" = ${ownerId} and mention."target_entity_id" = anchor."id"
+        join "knowledge_page" page
+          on page."owner_id" = mention."owner_id"
+          and page."current_revision_id" = mention."source_revision_id" and page."archived_at" is null
+      ), candidate as (
+        select anchor_revision."anchorReadableId", entity."readable_id" as "readableId",
+          count(distinct anchor_revision."revisionId") as "sharedPageCount"
+        from anchor_revision
+        join "knowledge_page_entity_mention" mention
+          on mention."owner_id" = ${ownerId} and mention."source_revision_id" = anchor_revision."revisionId"
+        join "entity" entity
+          on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
+        where entity."archived_at" is null and entity."readable_id" != anchor_revision."anchorReadableId"
+        group by anchor_revision."anchorReadableId", entity."readable_id"
+      ), ranked_neighbor as (
+        select candidate.*, row_number() over (
+          partition by candidate."anchorReadableId"
+          order by candidate."sharedPageCount" desc, candidate."readableId"
+        ) as "position"
+        from candidate
+        join anchor on anchor."readableId" = candidate."anchorReadableId"
+        where anchor."cursorSharedPageCount" is null
+          or candidate."sharedPageCount" < anchor."cursorSharedPageCount"
+          or (candidate."sharedPageCount" = anchor."cursorSharedPageCount"
+            and candidate."readableId" > anchor."cursorReadableId")
+      ), returned_neighbor as (
+        select * from ranked_neighbor where "position" <= ${limit}
+      ), selected_entity as (
+        select entity."id", entity."readable_id" as "readableId"
+        from "entity" entity
+        where entity."owner_id" = ${ownerId} and entity."archived_at" is null
+          and entity."readable_id" in (
+            select "readableId" from anchor union select "readableId" from returned_neighbor
+          )
+      ), extra_relationship as (
+        select source."readableId" as "sourceReadableId", target."readableId" as "readableId",
+          count(distinct first_mention."source_revision_id") as "sharedPageCount"
+        from selected_entity source
+        join "knowledge_page_entity_mention" first_mention
+          on first_mention."owner_id" = ${ownerId} and first_mention."target_entity_id" = source."id"
+        join "knowledge_page" page
+          on page."owner_id" = first_mention."owner_id"
+          and page."current_revision_id" = first_mention."source_revision_id" and page."archived_at" is null
+        join "knowledge_page_entity_mention" second_mention
+          on second_mention."owner_id" = first_mention."owner_id"
+          and second_mention."source_revision_id" = first_mention."source_revision_id"
+        join selected_entity target on target."id" = second_mention."target_entity_id"
+          and source."readableId" < target."readableId"
+        where not exists (
+          select 1 from returned_neighbor neighbor
+          where (neighbor."anchorReadableId" = source."readableId" and neighbor."readableId" = target."readableId")
+            or (neighbor."anchorReadableId" = target."readableId" and neighbor."readableId" = source."readableId")
+        )
+        group by source."readableId", target."readableId"
+        order by "sharedPageCount" desc, source."readableId", target."readableId"
+        limit ${extraLimit}
+      ), graph_row as (
+        select 'anchor' as "rowType", "readableId" as "sourceReadableId", "readableId",
+          0 as "sharedPageCount", 0 as "position" from anchor
+        union all
+        select 'neighbor', "anchorReadableId", "readableId", "sharedPageCount", "position"
+          from ranked_neighbor where "position" <= ${rowLimit}
+        union all
+        select 'relationship', "sourceReadableId", "readableId", "sharedPageCount",
+          row_number() over (order by "sharedPageCount" desc, "sourceReadableId", "readableId")
+          from extra_relationship
+      )
+      select graph_row."rowType", graph_row."sourceReadableId", graph_row."sharedPageCount", graph_row."position",
+        entity."id", entity."readable_id" as "readableId", entity."name",
+        entity."description", entity."entity_type" as "entityType",
+        coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
+        image."id" as "imageId", image."readable_id" as "imageReadableId",
+        image."name" as "imageName", image."media_type" as "imageMediaType",
+        image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
+        image."created_at" as "imageCreatedAt", image."updated_at" as "imageUpdatedAt",
+        entity."created_at" as "createdAt", entity."updated_at" as "updatedAt"
+      from graph_row
+      join "entity" entity on entity."owner_id" = ${ownerId} and entity."readable_id" = graph_row."readableId"
+      left join "knowledge_profile" profile
+        on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
+      left join "asset" image
+        on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id" and image."archived_at" is null
+      order by graph_row."rowType", graph_row."sourceReadableId", graph_row."position"
+    `;
+    return neighborhoodsFromRows({ rows, anchors, limit });
   }
 
   async pages({

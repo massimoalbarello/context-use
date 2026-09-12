@@ -3,6 +3,10 @@ import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import {
+  type HypermediaAnchorRequest,
+  InvalidHypermediaNeighborhoodsError,
+} from '#models/hypermedia-graph/model.ts';
+import {
   InvalidTemporalCoverageError,
   type TemporalBounds,
   temporalBoundsFrom,
@@ -11,55 +15,65 @@ import {
   DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
   DEFAULT_HYPERMEDIA_PAGE_LIMIT,
   decodeHypermediaEntityCursor,
-  HypermediaEntityNeighborhoodQuerySchema,
-  HypermediaEntityNeighborhoodSchema,
+  HypermediaNeighborhoodsQuerySchema,
+  HypermediaNeighborhoodsSchema,
   HypermediaPagesQuerySchema,
   HypermediaPagesSchema,
-  hypermediaEntityNeighborhoodResponse,
+  hypermediaNeighborhoodsResponse,
   hypermediaPagesResponse,
   parseHypermediaEntities,
-  parseHypermediaEntityReference,
 } from '#routes/api/hypermedia/model.ts';
-import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
+import type { HypermediaGraphServiceContract } from '#services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 
 export function createHypermediaController({
   auth,
-  hypermediaService,
+  graphService,
   retrievalService,
 }: {
   auth: Auth;
-  hypermediaService: HypermediaServiceContract;
+  graphService: HypermediaGraphServiceContract;
   retrievalService: Pick<HypermediaRetrievalServiceContract, 'searchPageView'>;
 }) {
   return new Elysia({ prefix: '/hypermedia' })
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
-    .get(
-      '/entities',
-      async ({ query, user, status }) => {
-        const anchor = parseHypermediaEntityReference(query.anchor);
-        const decodedCursor = decodeHypermediaEntityCursor(query.cursor);
-        if (!anchor || decodedCursor.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid entity neighborhood query' });
+    .post(
+      '/neighborhoods',
+      async ({ body, user, status }) => {
+        const anchors: HypermediaAnchorRequest[] = [];
+        for (const request of body.anchors) {
+          const decoded = decodeHypermediaEntityCursor(request.cursor);
+          if (decoded.state === 'invalid') {
+            return status(StatusMap['Bad Request'], { error: 'Invalid neighborhood cursor' });
+          }
+          anchors.push({ anchor: request.anchor, cursor: decoded.cursor });
         }
-        const neighborhood = await hypermediaService.entityNeighborhood({
-          ownerId: user.id,
-          anchor,
-          limit: query.limit ?? DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
-          cursor: decodedCursor.cursor,
-        });
-        return neighborhood
-          ? status(StatusMap.OK, hypermediaEntityNeighborhoodResponse(neighborhood))
-          : status(StatusMap['Not Found'], { error: 'Hypermedia entity not found' });
+        try {
+          const result = await graphService.neighborhoods({
+            ownerId: user.id,
+            anchors,
+            limit: body.limit ?? DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
+          });
+          return status(StatusMap.OK, hypermediaNeighborhoodsResponse(result));
+        } catch (error) {
+          if (error instanceof InvalidHypermediaNeighborhoodsError) {
+            return status(StatusMap['Bad Request'], { error: error.message });
+          }
+          throw error;
+        }
       },
       {
-        detail: { tags: ['Hypermedia'], summary: 'Read a bounded entity neighborhood' },
-        query: HypermediaEntityNeighborhoodQuerySchema,
+        detail: {
+          tags: ['Hypermedia'],
+          summary: 'Read independently paginated entity neighborhoods',
+          description:
+            'Read-only batch expansion. Missing or archived anchors are unavailable. Relationships count distinct current active shared pages across all time; extra relationships between returned neighbors may be truncated.',
+        },
+        body: HypermediaNeighborhoodsQuerySchema,
         response: {
-          [StatusMap.OK]: HypermediaEntityNeighborhoodSchema,
+          [StatusMap.OK]: HypermediaNeighborhoodsSchema,
           [StatusMap['Bad Request']]: ErrorResponseSchema,
-          [StatusMap['Not Found']]: ErrorResponseSchema,
         },
       },
     )
@@ -90,7 +104,7 @@ export function createHypermediaController({
         };
         const pages = query.query?.trim()
           ? await retrievalService.searchPageView({ ...input, query: query.query })
-          : await hypermediaService.pages(input);
+          : await graphService.pages(input);
         return status(StatusMap.OK, hypermediaPagesResponse(pages));
       },
       {

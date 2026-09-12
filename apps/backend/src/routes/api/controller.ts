@@ -20,7 +20,7 @@ import { createRecordSyncsController } from '#routes/api/syncs/controller.ts';
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { HealthServiceContract } from '#services/health/service.ts';
-import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
+import type { HypermediaGraphServiceContract } from '#services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
@@ -35,7 +35,7 @@ export function createApiController({
   assetsService,
   entitiesService,
   healthService,
-  hypermediaService,
+  graphService,
   retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
@@ -49,7 +49,7 @@ export function createApiController({
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
-  hypermediaService: HypermediaServiceContract;
+  graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
@@ -74,7 +74,7 @@ export function createApiController({
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
-    .use(createHypermediaController({ auth, hypermediaService, retrievalService }))
+    .use(createHypermediaController({ auth, graphService, retrievalService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
     .use(createRecordsController({ auth, recordsService }))

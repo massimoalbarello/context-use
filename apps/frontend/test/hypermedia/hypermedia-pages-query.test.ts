@@ -1,7 +1,33 @@
 import { expect, spyOn, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 import type { CalendarMonth } from '../../src/lib/calendar-month';
-import { type HypermediaPages, hypermediaPagesQueryOptions } from '../../src/queries/hypermedia';
+import {
+  type HypermediaPages,
+  hypermediaPagesQueryOptions,
+  mergeHypermediaPages,
+} from '../../src/queries/hypermedia';
+
+test('overlapping page batches render each canonical page once without restoring an older revision', () => {
+  const timestamp = new Date('2026-01-01T00:00:00.000Z');
+  const page = {
+    readableId: 'planning',
+    revisionNumber: 1,
+    title: 'Planning',
+    excerpt: 'Plan',
+    temporalCoverage: null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    entities: [{ readableId: 'owner' }],
+  };
+  const revised = { ...page, revisionNumber: 2, title: 'Revised planning' };
+  const batch: HypermediaPages = {
+    pages: [page],
+    nextOffset: null,
+    matchedEntities: null,
+    entityReferencesTruncated: false,
+  };
+  expect(mergeHypermediaPages([batch, { ...batch, pages: [revised] }, batch])).toEqual([revised]);
+});
 
 test('scroll months select the API time and keep dated and undated results in separate caches', async () => {
   const requests: URL[] = [];

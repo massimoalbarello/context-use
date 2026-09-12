@@ -14,7 +14,7 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
-import { unusedHypermediaService } from './support/app.ts';
+import { unusedHypermediaGraphService } from './support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -89,7 +89,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     frontendAssetsService,
     entitiesService,
     healthService,
-    hypermediaService: unusedHypermediaService,
+    graphService: unusedHypermediaGraphService,
     retrievalService: unusedHypermediaRetrievalService,
     mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
@@ -124,6 +124,15 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });
   expect(healthChecks).toBe(1);
+
+  const graphResponse = await app.handle(
+    new Request('http://localhost/api/hypermedia/neighborhoods', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ anchors: [{ anchor: { readableId: 'owner' } }] }),
+    }),
+  );
+  expect(graphResponse.status).toBe(StatusMap.Unauthorized);
 
   const batchId = '01991f43-0c00-7000-8000-000000000012';
   const receiverResponse = await app.handle(

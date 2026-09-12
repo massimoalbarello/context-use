@@ -13,15 +13,40 @@ export type HypermediaEntityContinuation = {
   readableId: string;
 };
 
+export const MAX_HYPERMEDIA_GRAPH_ANCHORS = 8;
+export const MAX_HYPERMEDIA_NEIGHBOR_LIMIT = 24;
+export const MAX_HYPERMEDIA_EXTRA_RELATIONSHIPS = 512;
+
+export class InvalidHypermediaNeighborhoodsError extends Error {}
+
+export type HypermediaAnchorRequest = {
+  anchor: HypermediaEntityReference;
+  cursor?: HypermediaEntityContinuation;
+};
+
 export type HypermediaEntityNeighbor = {
-  entity: Entity;
+  entity: HypermediaEntityReference;
   sharedPageCount: number;
 };
 
 export type HypermediaEntityNeighborhood = {
-  anchor: Entity;
+  anchor: HypermediaEntityReference;
+  available: boolean;
   neighbors: HypermediaEntityNeighbor[];
   nextPage: HypermediaEntityContinuation | null;
+};
+
+export type HypermediaRelationship = {
+  source: HypermediaEntityReference;
+  target: HypermediaEntityReference;
+  sharedPageCount: number;
+};
+
+export type HypermediaNeighborhoods = {
+  entities: Entity[];
+  neighborhoods: HypermediaEntityNeighborhood[];
+  relationships: HypermediaRelationship[];
+  relationshipsTruncated: boolean;
 };
 
 export interface HypermediaPage extends KnowledgePageSummary {

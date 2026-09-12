@@ -18,12 +18,13 @@ import type {
 } from '#models/records/delivery-contract.generated.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
-import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#repositories/hypermedia-graph/repository.ts';
 import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
 import { replaceSearchDocument } from '#repositories/search-index.ts';
+import { HypermediaGraphService } from '#services/hypermedia-graph/service.ts';
 import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { RecordsService } from '#services/records/service.ts';
@@ -133,7 +134,7 @@ async function withRetrievalTest(
     const retrievalRepository = new HypermediaRetrievalRepository({ database: reader, storage });
     const retrieval = new HypermediaRetrievalService({
       retrieval: retrievalRepository,
-      hypermedia: new HypermediaRepository(reader),
+      graph: new HypermediaGraphService({ graph: new HypermediaGraphRepository(reader) }),
     });
     const pagesRepository = new KnowledgePagesRepository(database);
     const recordsRepository = new RecordsRepository(database);
@@ -335,7 +336,7 @@ test.each([
       });
       expect(result.state).toBe('saved');
     }
-    const hypermedia = new HypermediaRepository(reader);
+    const graph = new HypermediaGraphService({ graph: new HypermediaGraphRepository(reader) });
     const input = {
       ownerId: OWNER_A,
       entities: [{ readableId: 'topic' }],
@@ -344,7 +345,7 @@ test.each([
       temporalBounds: time ? temporalBoundsFrom(time) : undefined,
     };
     for (const load of [
-      (offset: number) => hypermedia.pages({ ...input, offset }),
+      (offset: number) => graph.pages({ ...input, offset }),
       (offset: number) => retrieval.searchPageView({ ...input, offset, query: 'needle' }),
     ]) {
       const readableIds: string[] = [];
