@@ -19,8 +19,11 @@ import { seedDemoSnapshot } from './seed';
 
 const EXPECTED_PAGES = 49;
 const EXPECTED_ENTITIES = 30;
+const EXPECTED_PEOPLE = 11;
+const EXPECTED_ORGANIZATIONS = 7;
+const EXPECTED_UNTYPED_ENTITIES = 12;
 const EXPECTED_RECORDS = 39;
-const EXPECTED_ASSETS = 8;
+const EXPECTED_ASSETS = 27;
 const TEST_TIMEOUT_MS = 30_000;
 
 async function fingerprint(folder: string) {
@@ -55,6 +58,9 @@ test(
         for (const [path, count] of [
           ['/api/pages?limit=50', EXPECTED_PAGES],
           ['/api/entities?limit=50', EXPECTED_ENTITIES],
+          ['/api/entities?limit=50&entityType=person', EXPECTED_PEOPLE],
+          ['/api/entities?limit=50&entityType=organization', EXPECTED_ORGANIZATIONS],
+          ['/api/entities?limit=50&entityType=untyped', EXPECTED_UNTYPED_ENTITIES],
           ['/api/records?limit=50', EXPECTED_RECORDS],
           ['/api/assets?limit=50', EXPECTED_ASSETS],
         ] as const) {

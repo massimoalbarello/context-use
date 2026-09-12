@@ -3,6 +3,7 @@ import canonicalize from 'canonicalize';
 import { createSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
+import type { EntityType } from '#models/entities/model.ts';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import { RecordSyncsRepository } from '#repositories/syncs/repository.ts';
 import { RecordSyncsService } from '#services/syncs/service.ts';
@@ -11,7 +12,12 @@ import { createDemoResources } from './resources';
 
 const FIXTURES = resolve(import.meta.dir, '../../../scripts/seeds/isolated-development');
 const RECORD_LIST_LIMIT = 50;
-type EntityFixture = { readableId: string; name: string; description: string };
+type EntityFixture = {
+  readableId: string;
+  name: string;
+  description: string;
+  entityType?: EntityType;
+};
 type AssetFixture = {
   readableId: string;
   name: string;
