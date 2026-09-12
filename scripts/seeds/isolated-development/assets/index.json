@@ -24,16 +24,16 @@
     "dateNote": "Derivative uploaded October 22, 2006; original capture date not established. Product reference only."
   },
   {
-    "name": "Original iPhone photo 2009",
+    "name": "Original iPhone front view",
     "path": "assets/iphone.jpg",
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "iphone",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:IPhone_First_Generation_(cropped).jpg",
-    "credit": "Carl Berkeley; Commons crop by KOKUYO; resized and centered with white padding on a 512 × 512 canvas to keep the device inside circular avatars",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
-    "dateNote": "1 July 2009, outside the story period. Depicts the original iPhone hardware; product reference only, not a photograph of the unveiling or retail launch.",
-    "readableId": "original-iphone-photo-2009"
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:IPhone_1.jpg",
+    "credit": "Avicente05; cropped to the front handset, resized and centered with white padding on a 512 × 512 canvas to keep the full device inside circular avatars",
+    "license": "CC BY-SA 4.0 (photograph); screen artwork separately copyrighted",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "dateNote": "Commons file dated 2 December 2024, outside the story period. Reference view of the original iPhone hardware and home screen; not evidence of a 2007 event.",
+    "readableId": "original-iphone-front-view"
   },
   {
     "name": "Steve presenting iPhone",

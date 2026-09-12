@@ -1,6 +1,6 @@
 Historical asset credits — Steve Jobs, iPod to iPhone
 Bundled images are public visual references; no authorship by Steve is implied.
-Later portraits, the 2009 iPhone photo and the 2014 iPod touch rendering identify entities; they do not add later events to the 2001–2007 narrative.
+Later portraits and iPhone/iPod touch reference images identify entities; they do not add later events to the 2001–2007 narrative.
 Entity images are framed for circular avatars. Cropping, rotation, resizing and padding are identified below; image subjects have not been redrawn.
 
 Steve Jobs portrait 2010
@@ -15,11 +15,11 @@ Aaron Logan (Lightmatter); background removal by Rjcflyer; resized and centered 
 CC BY 2.5 — https://creativecommons.org/licenses/by/2.5/
 Derivative uploaded October 22, 2006; original capture date not established. Product reference only.
 
-Original iPhone photo 2009
-https://commons.wikimedia.org/wiki/File:IPhone_First_Generation_(cropped).jpg
-Carl Berkeley; Commons crop by KOKUYO; resized and centered with white padding on a 512 × 512 canvas to keep the device inside circular avatars
-CC BY-SA 2.0 — https://creativecommons.org/licenses/by-sa/2.0/
-1 July 2009, outside the story period. Depicts the original iPhone hardware; product reference only, not a photograph of the unveiling or retail launch.
+Original iPhone front view
+https://commons.wikimedia.org/wiki/File:IPhone_1.jpg
+Avicente05; cropped to the front handset, resized and centered with white padding on a 512 × 512 canvas to keep the full device inside circular avatars
+CC BY-SA 4.0 (photograph); screen artwork separately copyrighted — https://creativecommons.org/licenses/by-sa/4.0/
+Commons file dated 2 December 2024, outside the story period. Reference view of the original iPhone hardware and home screen; not evidence of a 2007 event.
 
 Steve presenting iPhone
 https://commons.wikimedia.org/wiki/File:Steve_Jobs_presents_iPhone.jpg

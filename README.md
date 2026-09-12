@@ -17,6 +17,11 @@ Open [http://localhost:5173](http://localhost:5173). The first person to registe
 the owner of the instance. Context Use generates its auth secret inside the configured `data/`
 directory; set `BETTER_AUTH_SECRET` only when you need to supply your own.
 
+To explore Steve Jobs' context from iPod to iPhone (2001–2007), run
+`bun run dev:isolated:seeded` with Chrome and browser-harness available. Stop the ordinary dev server
+first. The command registers a real passkey and loads the story into temporary storage, which is
+deleted when it stops.
+
 ## Deploy it on nibrun
 
 [nibrun](https://github.com/ilbertt/nibrun) runs Context Use as one small server with an HTTPS URL
