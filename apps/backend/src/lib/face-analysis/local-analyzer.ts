@@ -15,6 +15,7 @@ const BOX_EDGE_TOLERANCE = 1.000001;
 const OWNER_EXECUTABLE_MODE = 0o700;
 const MAX_DECODED_PIXELS = 16_000_000;
 const FACE_ENGINE_FOLDER = 'face-engine';
+const PREPARATION_TIMEOUT_MS = 90_000;
 const NativeFaceSchema = z.object({
   box: z
     .tuple([
@@ -33,6 +34,7 @@ const NativeFaceSchema = z.object({
 const NativeResultSchema = z.object({ faces: z.array(NativeFaceSchema).max(MAX_FACES_PER_IMAGE) });
 
 type NativeProcess = Subprocess<'pipe', 'pipe', 'inherit'>;
+type PreparedRuntime = { binary: string; models: string[] };
 
 /** An inference-only child per image; release its model memory before the next upload. */
 export class LocalFaceAnalyzer implements FaceAnalyzer {
@@ -42,10 +44,15 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
   private reader: ReadableStreamDefaultReader<string> | null = null;
   private buffered = '';
   private busy = false;
-  private modelPaths: string[] | null = null;
+  private preparation: Promise<PreparedRuntime> | null = null;
+  private readonly stopping = new AbortController();
 
   constructor({ dataFolder }: { dataFolder: string }) {
     this.directory = join(dataFolder, 'runtime', 'face-analysis');
+  }
+
+  async prepare(): Promise<void> {
+    await this.runtime();
   }
 
   async analyze({
@@ -65,11 +72,15 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
     }
     this.busy = true;
     let workspace: string | undefined;
-    const abort = () => this.child?.kill();
+    const interrupted = Promise.withResolvers<never>();
+    const abort = () => {
+      this.child?.kill();
+      interrupted.reject(signal.reason);
+    };
     signal.addEventListener('abort', abort, { once: true });
     try {
       signal.throwIfAborted();
-      await this.start(signal);
+      await Promise.race([this.start(signal), interrupted.promise]);
       signal.throwIfAborted();
       const ownerFolder = join(
         this.directory,
@@ -121,21 +132,38 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
   }
 
   async close(): Promise<void> {
-    await this.stop();
+    this.stopping.abort();
+    await Promise.allSettled([this.preparation, this.stop()]);
   }
 
-  private async start(signal: AbortSignal): Promise<void> {
-    if (this.child && this.child.exitCode === null) {
-      return;
-    }
+  private runtime(): Promise<PreparedRuntime> {
+    this.preparation ??= this.prepareRuntime().catch((error) => {
+      this.preparation = null;
+      throw error;
+    });
+    return this.preparation;
+  }
+
+  private async prepareRuntime(): Promise<PreparedRuntime> {
+    const signal = AbortSignal.any([
+      this.stopping.signal,
+      AbortSignal.timeout(PREPARATION_TIMEOUT_MS),
+    ]);
+    signal.throwIfAborted();
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     const binary = await this.binary();
-    this.modelPaths ??= await prepareFaceModels({
+    const models = await prepareFaceModels({
       directory: join(this.directory, 'models'),
       signal,
     });
-    const [detector, recognizer] = this.modelPaths;
+    return { binary, models };
+  }
+
+  private async start(signal: AbortSignal): Promise<void> {
+    const { binary, models } = await this.runtime();
     signal.throwIfAborted();
+    this.stopping.signal.throwIfAborted();
+    const [detector, recognizer] = models;
     // Model verification and saved uploads leave temporary byte buffers. Reclaim them
     // before loading native weights so both runtimes fit on small instances.
     Bun.gc(true);

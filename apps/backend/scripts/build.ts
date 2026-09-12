@@ -13,17 +13,6 @@ import {
   PUBLIC_FRONTEND_DIR_NAME_CONSTANT_NAME,
 } from './shared/constants';
 
-if (BACKEND_BUILD_TARGET && !BACKEND_BUILD_TARGET.startsWith('bun-linux-x64')) {
-  throw new Error('The bundled face analyzer supports Linux x64 or BUILD_TARGET=host.');
-}
-
-const nativeBuild = Bun.spawn(
-  ['bun', 'run', 'scripts/build-faces.ts', ...(BACKEND_BUILD_TARGET ? [] : ['--host'])],
-  { stdio: ['ignore', 'inherit', 'inherit'] },
-);
-if ((await nativeBuild.exited) !== 0) {
-  throw new Error('Native face analyzer build failed');
-}
 const faceEngineDirectory = `${BACKEND_DIST_DIR}/face-engine`;
 
 console.log('🧹 Cleaning dist dir...');

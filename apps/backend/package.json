@@ -20,6 +20,7 @@
   "scripts": {
     "dev": "bun run scripts/dev.ts",
     "build": "bun run scripts/build.ts",
+    "build:faces": "bun run scripts/build-faces.ts",
     "update:delivery-contract": "bun run scripts/update-record-delivery-contract.ts",
     "generate:delivery-contract": "bun run scripts/generate-record-delivery-contract.ts",
     "check:delivery-contract": "bun run scripts/generate-record-delivery-contract.ts --check",

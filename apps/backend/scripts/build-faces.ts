@@ -1,5 +1,6 @@
 import { cp, mkdir, rename, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { BACKEND_BUILD_TARGET } from './shared/constants';
 
 const backend = resolve(import.meta.dir, '..');
 const root = resolve(backend, '../..');
@@ -100,7 +101,11 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
 
 if (import.meta.main) {
   try {
-    await buildFaceAnalyzer({ host: Bun.argv.includes('--host') });
+    const host = Bun.argv.includes('--host') || !BACKEND_BUILD_TARGET;
+    if (!host && !BACKEND_BUILD_TARGET!.startsWith('bun-linux-x64')) {
+      throw new Error('The bundled face analyzer supports Linux x64 or BUILD_TARGET=host.');
+    }
+    await buildFaceAnalyzer({ host });
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);
