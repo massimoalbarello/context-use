@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
+import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
@@ -41,9 +42,10 @@ function RouteComponent() {
         <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-sidebar/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0">
           <Link
             to="/"
-            className="whitespace-nowrap font-semibold text-lg tracking-tight"
+            className="flex items-center gap-2.5 whitespace-nowrap font-semibold text-lg tracking-tight"
             activeOptions={{ exact: true }}
           >
+            <ContextUseLogo />
             Context Use
           </Link>
           <div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-muted-foreground text-sm">

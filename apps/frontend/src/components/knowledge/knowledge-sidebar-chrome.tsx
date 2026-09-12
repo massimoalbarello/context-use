@@ -4,6 +4,7 @@ import { cn } from '../../lib/class-names';
 import { MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
+import { ContextUseLogo } from '../brand/context-use-logo';
 import { EntityAvatar } from '../entities/entity-link';
 import { Button, buttonVariants } from '../ui/button';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
@@ -19,10 +20,11 @@ export function KnowledgeSidebarHeader() {
       )}
     >
       <Link
-        className={cn('flex min-w-0 items-center', collapsed && 'hidden')}
+        className={cn('flex min-w-0 items-center gap-2.5', collapsed && 'hidden')}
         to={MAIN_KNOWLEDGE_PATH}
         aria-label="Context Use"
       >
+        <ContextUseLogo />
         <span className="grid min-w-0 leading-tight">
           <strong className="truncate font-semibold text-sm">Context Use</strong>
           <small className="truncate text-muted-foreground text-xs">Private workspace</small>
