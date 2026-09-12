@@ -79,7 +79,14 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
   for (const entity of [profile.selfEntity, colleague]) {
     client.setQueryData(hypermediaNeighborhoodsQueryOptions([{ anchor: entity }]).queryKey, {
       entities: [entity],
-      neighborhoods: [{ anchor: { readableId: entity.readableId }, available: true, neighbors: [], nextCursor: null }],
+      neighborhoods: [
+        {
+          anchor: { readableId: entity.readableId },
+          available: true,
+          neighbors: [],
+          nextCursor: null,
+        },
+      ],
       relationships: [],
       relationshipsTruncated: false,
     });

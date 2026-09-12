@@ -53,9 +53,9 @@ export function HypermediaExplorer({
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
-  const [neighborhoodRequests, setNeighborhoodRequests] = useState<HypermediaNeighborhoodRequest[][]>(() => [
-    [{ anchor: { readableId: selfReadableId } }],
-  ]);
+  const [neighborhoodRequests, setNeighborhoodRequests] = useState<
+    HypermediaNeighborhoodRequest[][]
+  >(() => [[{ anchor: { readableId: selfReadableId } }]]);
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map(hypermediaNeighborhoodsQueryOptions),
   });
@@ -114,9 +114,7 @@ export function HypermediaExplorer({
           return result?.nextCursor ? [{ anchor, cursor: result.nextCursor }] : [];
         })
         .slice(0, HYPERMEDIA_EXPANSION_BATCH_SIZE);
-      setNeighborhoodRequests((current) =>
-        appendNeighborhoodRequests({ current, requests: next }),
-      );
+      setNeighborhoodRequests((current) => appendNeighborhoodRequests({ current, requests: next }));
     },
     [
       fetchNextEntityPage,
