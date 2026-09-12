@@ -27,6 +27,8 @@ export function AssetFaces({
   const selectedFace = result?.faces.find((face) => face.readableId === selected);
   const processing = analyze.isPending || result?.state === 'processing';
   const pending = processing || annotate.isPending;
+  const processLabel =
+    result?.state === 'ready' || result?.state === 'failed' ? 'Reprocess image' : 'Process image';
 
   const preview = (
     <section className="grid min-w-0 gap-5" aria-label="Detected faces">
@@ -71,7 +73,7 @@ export function AssetFaces({
   );
   const processAction = result?.state !== 'unsupported' && (
     <Button variant="outline" disabled={pending} onClick={() => analyze.mutate(asset.readableId)}>
-      {processing ? 'Processing…' : 'Process image'}
+      {processing ? 'Processing…' : processLabel}
     </Button>
   );
   return (
@@ -132,11 +134,6 @@ function FacesStatus({
       {result?.outdated && (
         <p className="text-muted-foreground text-sm">
           A newer face model is available. Process this image again to update automatic matches.
-        </p>
-      )}
-      {result?.state === 'not_processed' && (
-        <p className="text-muted-foreground text-sm">
-          This image is saved and has not been processed yet.
         </p>
       )}
       {result?.state === 'unsupported' && (

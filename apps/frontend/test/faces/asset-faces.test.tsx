@@ -121,7 +121,7 @@ test('processing through the action slot prevents duplicate requests and remains
   });
   try {
     const user = userEvent.setup({ document });
-    await user.click(await view.findByRole('button', { name: 'Process image' }));
+    await user.click(await view.findByRole('button', { name: 'Reprocess image' }));
     const processing = (await view.findByRole('button', {
       name: 'Processing…',
     })) as HTMLButtonElement;
@@ -131,12 +131,12 @@ test('processing through the action slot prevents duplicate requests and remains
     failedAnalysis.resolve(Response.json({ error: 'Engine unavailable' }, { status: 503 }));
     expect((await view.findByRole('alert')).textContent).toContain('Engine unavailable');
     expect(view.getByRole('img', { name: 'Group photo' })).toBeTruthy();
-    await user.click(view.getByRole('button', { name: 'Process image' }));
+    await user.click(view.getByRole('button', { name: 'Reprocess image' }));
     await waitFor(() => expect(attempts).toBe(2));
     await waitFor(() => expect(view.queryByRole('alert')).toBeNull());
     await waitFor(() =>
       expect(
-        (view.getByRole('button', { name: 'Process image' }) as HTMLButtonElement).disabled,
+        (view.getByRole('button', { name: 'Reprocess image' }) as HTMLButtonElement).disabled,
       ).toBe(false),
     );
   } finally {
