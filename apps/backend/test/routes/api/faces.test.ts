@@ -269,6 +269,9 @@ async function fixture() {
 
 test('a new portrait matches earlier unknown faces and exposes links in both directions without crop assets', async () => {
   await using context = await fixture();
+  const schema =
+    await context.database`select type from sqlite_schema where name = 'asset_depicts_entity'`;
+  expect(schema).toEqual([{ type: 'table' }]);
   context.analyzer.next = [detectedFace([SIMILAR_FACE_X, SIMILAR_FACE_Y])];
   const photo = await context.upload('Earlier photo');
   const before = await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId });
@@ -646,10 +649,18 @@ test.each(['unknown', 'dismissed', 'person'] as const)(
       decision,
       entityReadableId: otherPerson?.readableId,
     });
+    context.analyzer.model = {
+      ...context.analyzer.model,
+      analysisVersion: 'test-v2',
+      embeddingSpace: 'test-space-2',
+    };
+    context.analyzer.next = [detectedFace([0, 1])];
     await context.faces.process(input);
     const reviewed = (await context.faces.detail(input))!.faces[0]!;
     expect(reviewed.decision).toBe(decision);
     expect(reviewed.entity?.readableId ?? null).toBe(otherPerson?.readableId ?? null);
+    const stored = await context.repository.observations({ ownerId: OWNER, assetId: portrait.id });
+    expect(stored[0]).toMatchObject({ embedding: [0, 1], embeddingSpace: 'test-space-2' });
     expect(await context.reference(person)).toBeNull();
   },
 );
@@ -822,4 +833,210 @@ test('matches computed before a threshold change cannot overwrite the newer re-m
     (await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId }))!.faces[0]!
       .entity,
   ).toBeNull();
+});
+
+test('a failed replacement portrait removes automatic links immediately while preserving confirmed faces', async () => {
+  await using context = await fixture();
+  const person = await context.person();
+  const portrait = await context.upload('Original portrait');
+  await context.assignPortrait({
+    personReadableId: person.readableId,
+    assetReadableId: portrait.readableId,
+  });
+  context.analyzer.next = [detectedFace(), { ...detectedFace(), box: SECOND_BOX }];
+  const photo = await context.upload('Two views of the same person');
+  const input = { ownerId: OWNER, readableId: photo.readableId };
+  const faces = (await context.faces.detail(input))!.faces;
+  expect((await context.assets.detail(input))!.depicts).toHaveLength(1);
+  await context.faces.annotate({
+    ...input,
+    faceReadableId: faces[0]!.readableId,
+    decision: 'person',
+    entityReadableId: person.readableId,
+  });
+  const [observation] = (
+    await context.repository.observations({ ownerId: OWNER, assetId: photo.id })
+  ).filter((face) => face.readableId === faces[1]!.readableId);
+  const staleMatch = matchFace({
+    face: observation!,
+    references: await context.repository.references({
+      ownerId: OWNER,
+      embeddingSpace: context.analyzer.model.embeddingSpace,
+    }),
+    threshold: context.analyzer.model.defaultThreshold,
+  });
+  expect(staleMatch).not.toBeNull();
+  context.analyzer.failure = new Error('Replacement cannot be analyzed');
+  const replacement = await context.upload('Failed replacement');
+  await context.entities.setImage({
+    ownerId: OWNER,
+    readableId: person.readableId,
+    assetReadableId: replacement.readableId,
+  });
+  expect(await context.reference(person)).toBeNull();
+  await context.repository.saveMatches({
+    ownerId: OWNER,
+    assetId: photo.id,
+    matches: [staleMatch!],
+    threshold: context.analyzer.model.defaultThreshold,
+    embeddingSpace: context.analyzer.model.embeddingSpace,
+  });
+  const result = (await context.faces.detail(input))!;
+  expect(result.faces[0]).toMatchObject({
+    decision: 'person',
+    entity: { readableId: person.readableId },
+  });
+  expect(result.faces[1]!.entity).toBeNull();
+  expect((await context.assets.detail(input))!.depicts).toMatchObject([
+    { source: 'confirmed', entity: { readableId: person.readableId } },
+  ]);
+  expect(
+    await context.database<
+      Array<{ source: string }>
+    >`select "source" from "asset_depicts_entity" where "owner_id" = ${OWNER} and "asset_id" = ${photo.id}`,
+  ).toEqual([{ source: 'confirmed' }]);
+  await context.entities.removeImage({ ownerId: OWNER, readableId: person.readableId });
+  expect((await context.assets.detail(input))!.depicts).toHaveLength(1);
+  await context.faces.annotate({
+    ...input,
+    faceReadableId: faces[0]!.readableId,
+    decision: 'dismissed',
+  });
+  expect((await context.assets.detail(input))!.depicts).toEqual([]);
+});
+
+test('person type changes and resource archives hide stored links without erasing manual decisions', async () => {
+  await using context = await fixture();
+  const person = await context.person();
+  const portrait = await context.upload('Portrait');
+  await context.assignPortrait({
+    personReadableId: person.readableId,
+    assetReadableId: portrait.readableId,
+  });
+  const photo = await context.upload('Confirmed photo');
+  const input = { ownerId: OWNER, readableId: photo.readableId };
+  const face = (await context.faces.detail(input))!.faces[0]!;
+  await context.faces.annotate({
+    ...input,
+    faceReadableId: face.readableId,
+    decision: 'person',
+    entityReadableId: person.readableId,
+  });
+  await context.entities.update({
+    ownerId: OWNER,
+    readableId: person.readableId,
+    name: person.name,
+    description: person.description,
+    entityType: 'organization',
+  });
+  expect((await context.assets.detail(input))!.depicts).toEqual([]);
+  expect((await context.faces.detail(input))!.faces[0]).toMatchObject({
+    decision: 'person',
+    entity: null,
+  });
+  expect(
+    (await context.faces.images({
+      ownerId: OWNER,
+      entityReadableId: person.readableId,
+      offset: 0,
+    }))!.items,
+  ).toEqual([]);
+  await context.entities.update({
+    ownerId: OWNER,
+    readableId: person.readableId,
+    name: person.name,
+    description: person.description,
+    entityType: 'person',
+  });
+  expect((await context.assets.detail(input))!.depicts).toMatchObject([
+    { source: 'confirmed', entity: { readableId: person.readableId } },
+  ]);
+  expect(await context.assets.archive(input)).toMatchObject({ state: 'archived' });
+  expect(
+    (await context.faces.images({
+      ownerId: OWNER,
+      entityReadableId: person.readableId,
+      offset: 0,
+    }))!.items.map((asset) => asset.readableId),
+  ).not.toContain(photo.readableId);
+  expect(
+    await context.entities.archive({ ownerId: OWNER, readableId: person.readableId }),
+  ).toMatchObject({ state: 'archived' });
+  expect(
+    (await context.assets.detail({ ownerId: OWNER, readableId: portrait.readableId }))!.depicts,
+  ).toEqual([]);
+});
+
+test('face and portrait mutations roll back together with their link changes', async () => {
+  await using context = await fixture();
+  const person = await context.person();
+  const portrait = await context.upload('Portrait');
+  await context.assignPortrait({
+    personReadableId: person.readableId,
+    assetReadableId: portrait.readableId,
+  });
+  const photo = await context.upload('Photo');
+  const input = { ownerId: OWNER, readableId: photo.readableId };
+  const face = (await context.faces.detail(input))!.faces[0]!;
+  await context.database.unsafe(
+    `create trigger reject_link_change before delete on asset_depicts_entity begin select raise(abort, 'Test link failure'); end`,
+  );
+  await expect(
+    context.faces.annotate({ ...input, faceReadableId: face.readableId, decision: 'unknown' }),
+  ).rejects.toThrow('Test link failure');
+  expect((await context.faces.detail(input))!.faces[0]).toMatchObject({
+    decision: 'automatic',
+    entity: { readableId: person.readableId },
+  });
+  await expect(
+    context.entities.removeImage({ ownerId: OWNER, readableId: person.readableId }),
+  ).rejects.toThrow('Test link failure');
+  expect(
+    (await context.entities.detail({ ownerId: OWNER, readableId: person.readableId }))!.image
+      ?.readableId,
+  ).toBe(portrait.readableId);
+  expect(await context.reference(person)).not.toBeNull();
+  expect((await context.assets.detail(input))!.depicts).toMatchObject([
+    { source: 'detected', entity: { readableId: person.readableId } },
+  ]);
+});
+
+test('face rows and stored links reject invalid decisions, embeddings, and cross-resource ownership', async () => {
+  await using context = await fixture();
+  const photo = await context.upload('Private photo');
+  const secondPhoto = await context.upload('Another photo');
+  const [face] = await context.repository.observations({ ownerId: OWNER, assetId: photo.id });
+  const person = await context.person();
+  const otherPerson = await context.entities.create({
+    ownerId: OTHER_OWNER,
+    name: 'Other owner person',
+    description: 'A person belonging to another owner',
+    entityType: 'person',
+  });
+  if (otherPerson.state !== 'created') {
+    throw new Error('Expected other owner person');
+  }
+  await expect(
+    (async () =>
+      await context.database`update "asset_face" set "annotation_decision" = 'person' where "id" = ${face!.id}`)(),
+  ).rejects.toThrow('CHECK');
+  await expect(
+    (async () =>
+      await context.database`update "asset_face" set "embedding_dimensions" = 1 where "id" = ${face!.id}`)(),
+  ).rejects.toThrow('CHECK');
+  await expect(
+    (async () =>
+      await context.database`update "asset_face" set "annotation_decision" = 'person', "annotation_entity_id" = ${otherPerson.entity.id}, "annotation_updated_at" = 'now' where "id" = ${face!.id}`)(),
+  ).rejects.toThrow('FOREIGN KEY');
+  await expect(
+    (async () =>
+      await context.database`insert into "asset_depicts_entity" ("face_id", "owner_id", "asset_id", "entity_id", "source") values (${face!.id}, ${OWNER}, ${secondPhoto.id}, ${person.id}, 'confirmed')`)(),
+  ).rejects.toThrow('FOREIGN KEY');
+  await expect(
+    (async () =>
+      await context.database`insert into "asset_depicts_entity" ("face_id", "owner_id", "asset_id", "entity_id", "source") values (${face!.id}, ${OWNER}, ${photo.id}, ${otherPerson.entity.id}, 'confirmed')`)(),
+  ).rejects.toThrow('FOREIGN KEY');
+  expect(
+    (await context.assets.detail({ ownerId: OWNER, readableId: photo.readableId }))!.depicts,
+  ).toEqual([]);
 });

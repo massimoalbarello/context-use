@@ -11,6 +11,7 @@ import type { KnowledgePageReference } from '#models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
 import { entityFrom, entityTypeFrom } from '#views/entities/entity-view.ts';
+import { retireInvalidPortraitReference } from '../faces/portrait-links.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export type SetEntityImageResult =
@@ -235,6 +236,9 @@ export class EntitiesRepository implements EntityRepositoryContract {
       if (!rows[0]) {
         return null;
       }
+      if (entityType !== undefined) {
+        await retireInvalidPortraitReference({ db, ownerId, entityId: rows[0].id });
+      }
       await replaceSearchDocument({
         db,
         ownerId,
@@ -288,6 +292,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
           ? ({ state: 'image_in_use' } as const)
           : ({ state: 'not_found' } as const);
       }
+      await retireInvalidPortraitReference({ db, ownerId, entityId: rows[0].entityId });
       const entity = await this.findWith({ db, ownerId, readableId });
       return entity ? { state: 'updated' as const, entity } : { state: 'not_found' as const };
     });
@@ -314,6 +319,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
       if (!targets[0]) {
         return null;
       }
+      await retireInvalidPortraitReference({ db, ownerId, entityId: targets[0].id });
       return this.findWith({ db, ownerId, readableId });
     });
   }
@@ -361,6 +367,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
         set "archived_at" = ${archivedAt}
         where "owner_id" = ${ownerId} and "id" = ${target.id}
       `;
+      await retireInvalidPortraitReference({ db, ownerId, entityId: target.id });
       await db.RemoveEntitySearchDocument`
         delete from "hypermedia_search_document"
         where "owner_id" = ${ownerId} and "resource_type" = 'entity'

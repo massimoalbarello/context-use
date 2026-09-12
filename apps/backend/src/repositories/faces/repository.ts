@@ -40,10 +40,10 @@ function readObservations({
     /* @notNull id readableId assetId box cropKey detectionScore analysisVersion current needsReview embeddingSpace embeddingRevision vector protected */
     select face."id", face."readable_id" as "readableId", face."asset_id" as "assetId", face."box",
       face."crop_key" as "cropKey", face."detection_score" as "detectionScore", face."analysis_version" as "analysisVersion",
-      face."current", face."needs_review" as "needsReview", embedding."embedding_space" as "embeddingSpace", embedding."revision" as "embeddingRevision", embedding."vector",
-      (exists(select 1 from "face_annotation" where "face_id" = face."id" and "owner_id" = face."owner_id")
+      face."current", face."needs_review" as "needsReview", face."embedding_space" as "embeddingSpace", face."embedding_revision" as "embeddingRevision", face."embedding" as "vector",
+      (face."annotation_decision" is not null
        or exists(select 1 from "entity_face_reference" where "face_id" = face."id" and "owner_id" = face."owner_id")) as "protected"
-    from "asset_face" face join "face_embedding" embedding on embedding."face_id" = face."id" and embedding."owner_id" = face."owner_id"
+    from "asset_face" face
     where face."owner_id" = ${ownerId} and face."asset_id" = ${assetId}
     order by face."readable_id"
   `;
@@ -102,17 +102,17 @@ export class FacesRepository implements FacesRepositoryContract {
       `;
       const rows = this.sql.ReadAssetFaceViews`
         /* @notNull readableId box current needsReview */
+        /* @type similarity number | null */
         select face."readable_id" as "readableId", face."box", face."current", face."needs_review" as "needsReview",
-          annotation."decision", entity."id" as "entityId", entity."readable_id" as "entityReadableId",
-          entity."name", entity."description", entity."entity_type" as "entityType", profile."self_entity_id" as "selfEntityId", match."similarity"
+          face."annotation_decision" as "decision", entity."id" as "entityId", entity."readable_id" as "entityReadableId",
+          entity."name", entity."description", entity."entity_type" as "entityType", profile."self_entity_id" as "selfEntityId",
+          case when face."annotation_decision" is null and entity."id" is not null then face."match_similarity" end as "similarity"
         from "asset_face" face
-        left join "face_annotation" annotation on annotation."face_id" = face."id" and annotation."owner_id" = face."owner_id"
         left join "asset_depicts_entity" link on link."face_id" = face."id" and link."owner_id" = face."owner_id"
-        left join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id"
+        left join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id" and entity."archived_at" is null and entity."entity_type" = 'person'
         left join "knowledge_profile" profile on profile."self_entity_id" = entity."id" and profile."owner_id" = entity."owner_id"
-        left join "face_match" match on match."face_id" = face."id" and match."owner_id" = face."owner_id" and annotation."face_id" is null and entity."id" is not null
         where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId}
-          and (face."current" = 1 or annotation."face_id" is not null)
+          and (face."current" = 1 or face."annotation_decision" is not null)
         order by face."readable_id"
       `;
       const analysis = analyses[0];
@@ -179,27 +179,38 @@ export class FacesRepository implements FacesRepositoryContract {
         this
           .sql`update "asset_face" set "current" = 0 where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId}`;
         // A changed reference invalidates scores computed from its previous pixels, even in the same embedding space.
-        this
-          .sql`delete from "face_match" where "owner_id" = ${input.ownerId} and ("face_id" in (select "id" from "asset_face" where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId}) or "reference_face_id" in (select "id" from "asset_face" where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId}))`;
+        this.sql`
+          delete from "asset_depicts_entity" where "owner_id" = ${input.ownerId} and "source" = 'detected'
+          and "face_id" in (
+            select "id" from "asset_face" where "owner_id" = ${input.ownerId}
+            and ("asset_id" = ${input.assetId} or "matched_reference_face_id" in (
+              select "id" from "asset_face" where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId}
+            ))
+          )
+        `;
+        this.sql`
+          update "asset_face" set "matched_entity_id" = null, "matched_reference_face_id" = null,
+            "match_similarity" = null, "match_threshold" = null
+          where "owner_id" = ${input.ownerId} and ("asset_id" = ${input.assetId} or "matched_reference_face_id" in (
+            select "id" from "asset_face" where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId}
+          ))
+        `;
         for (const face of next) {
           this.sql`
-          insert into "asset_face" ("id", "readable_id", "owner_id", "asset_id", "box", "crop_key", "detection_score", "analysis_version", "current", "needs_review")
-          values (${face.id}, ${face.readableId}, ${input.ownerId}, ${input.assetId}, ${JSON.stringify(face.box)}, ${face.cropKey}, ${face.detectionScore}, ${input.analysisVersion}, 1, ${Number(face.needsReview)})
-          on conflict ("id") do update set "crop_key" = excluded."crop_key", "box" = excluded."box", "detection_score" = excluded."detection_score", "analysis_version" = excluded."analysis_version", "current" = 1, "needs_review" = excluded."needs_review"
-        `;
-          this.sql`
-          insert into "face_embedding" ("face_id", "owner_id", "embedding_space", "revision", "vector", "dimensions")
-          values (${face.id}, ${input.ownerId}, ${face.embeddingSpace}, ${face.embeddingRevision}, ${vectorBytes(face.embedding)}, ${face.embedding.length})
-          on conflict ("face_id") do update set "embedding_space" = excluded."embedding_space", "revision" = excluded."revision", "vector" = excluded."vector", "dimensions" = excluded."dimensions"
+          insert into "asset_face" ("id", "readable_id", "owner_id", "asset_id", "box", "crop_key", "detection_score", "analysis_version", "current", "needs_review", "embedding_space", "embedding_revision", "embedding", "embedding_dimensions")
+          values (${face.id}, ${face.readableId}, ${input.ownerId}, ${input.assetId}, ${JSON.stringify(face.box)}, ${face.cropKey}, ${face.detectionScore}, ${input.analysisVersion}, 1, ${Number(face.needsReview)}, ${face.embeddingSpace}, ${face.embeddingRevision}, ${vectorBytes(face.embedding)}, ${face.embedding.length})
+          on conflict ("id") do update set "crop_key" = excluded."crop_key", "box" = excluded."box", "detection_score" = excluded."detection_score", "analysis_version" = excluded."analysis_version", "current" = 1, "needs_review" = excluded."needs_review",
+            "embedding_space" = excluded."embedding_space", "embedding_revision" = excluded."embedding_revision", "embedding" = excluded."embedding", "embedding_dimensions" = excluded."embedding_dimensions"
         `;
         }
         this
           .sql`delete from "asset_face" where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId} and "current" = 0
-        and not exists(select 1 from "face_annotation" where "face_id" = "asset_face"."id")
+        and "annotation_decision" is null
         and not exists(select 1 from "entity_face_reference" where "face_id" = "asset_face"."id")`;
         this
           .sql`update "asset_face_analysis" set "state" = 'ready', "error" = null, "updated_at" = ${input.updatedAt}
         where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId} and "attempt_id" = ${input.attemptId}`;
+        this.replaceLinks(input);
         const kept = new Set(next.map((face) => face.id));
         return previous
           .filter((face) => kept.has(face.id) || !face.protected)
@@ -220,13 +231,12 @@ export class FacesRepository implements FacesRepositoryContract {
     return this.run(() => {
       const rows = this.sql.ListFaceReferences`
         /* @notNull entityId faceId assetId embeddingSpace embeddingRevision vector */
-        select entity."id" as "entityId", face."id" as "faceId", face."asset_id" as "assetId", embedding."embedding_space" as "embeddingSpace", embedding."revision" as "embeddingRevision", embedding."vector"
+        select entity."id" as "entityId", face."id" as "faceId", face."asset_id" as "assetId", face."embedding_space" as "embeddingSpace", face."embedding_revision" as "embeddingRevision", face."embedding" as "vector"
         from "entity_face_reference" reference
         join "entity" entity on entity."id" = reference."entity_id" and entity."owner_id" = reference."owner_id" and entity."entity_type" = 'person' and entity."archived_at" is null
         join "asset_face" face on face."id" = reference."face_id" and face."owner_id" = reference."owner_id" and face."asset_id" = entity."image_asset_id"
         join "asset" asset on asset."id" = face."asset_id" and asset."owner_id" = face."owner_id" and asset."archived_at" is null
-        join "face_embedding" embedding on embedding."face_id" = face."id" and embedding."owner_id" = face."owner_id"
-        where reference."owner_id" = ${input.ownerId} and embedding."embedding_space" = ${input.embeddingSpace}
+        where reference."owner_id" = ${input.ownerId} and face."embedding_space" = ${input.embeddingSpace}
         order by entity."id"
       `;
       return rows.map(({ vector, ...row }) => ({ ...row, embedding: vectorFrom(vector) }));
@@ -238,10 +248,9 @@ export class FacesRepository implements FacesRepositoryContract {
       this.sql.begin(() => {
         const candidates = this.sql.FindPortraitReferenceCandidates`
           /* @notNull faceId */
-          select face."id" as "faceId", annotation."decision", annotation."entity_id" as "entityId" from "asset_face" face
+          select face."id" as "faceId", face."annotation_decision" as "decision", face."annotation_entity_id" as "entityId" from "asset_face" face
           join "asset" asset on asset."id" = face."asset_id" and asset."owner_id" = face."owner_id" and asset."archived_at" is null
           join "entity" entity on entity."owner_id" = face."owner_id" and entity."image_asset_id" = face."asset_id"
-          left join "face_annotation" annotation on annotation."face_id" = face."id" and annotation."owner_id" = face."owner_id"
           where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId}
             and entity."id" = ${input.entityId} and entity."entity_type" = 'person' and entity."archived_at" is null
             and face."current" = 1 and face."needs_review" = 0 and face."analysis_version" = ${input.analysisVersion}
@@ -263,17 +272,25 @@ export class FacesRepository implements FacesRepositoryContract {
         if (!selected) {
           return false;
         }
-        this
-          .sql`delete from "face_match" where "owner_id" = ${input.ownerId} and "entity_id" = ${input.entityId}`;
-        this
-          .sql`delete from "entity_face_reference" where "owner_id" = ${input.ownerId} and "face_id" = ${selected.faceId} and "entity_id" <> ${input.entityId}`;
-        this
-          .sql`insert into "entity_face_reference" ("entity_id", "owner_id", "face_id") values (${input.entityId}, ${input.ownerId}, ${selected.faceId})
-          on conflict ("entity_id") do update set "face_id" = excluded."face_id"`;
-        this
-          .sql`insert into "face_annotation" ("face_id", "owner_id", "decision", "entity_id", "updated_at")
-          values (${selected.faceId}, ${input.ownerId}, 'person', ${input.entityId}, ${input.updatedAt})
-          on conflict ("face_id") do update set "decision" = 'person', "entity_id" = excluded."entity_id", "updated_at" = excluded."updated_at"`;
+        this.invalidateEntityMatches({ ownerId: input.ownerId, entityId: input.entityId });
+        const retired = this.sql.RetireReassignedFaceReferences`
+          /* @notNull entityId */
+          delete from "entity_face_reference" where "owner_id" = ${input.ownerId}
+            and "face_id" = ${selected.faceId} and "entity_id" <> ${input.entityId}
+          returning "entity_id" as "entityId"
+        `;
+        for (const reference of retired) {
+          this.invalidateEntityMatches({ ownerId: input.ownerId, entityId: reference.entityId });
+        }
+        this.sql`
+          insert into "entity_face_reference" ("entity_id", "owner_id", "face_id") values (${input.entityId}, ${input.ownerId}, ${selected.faceId})
+          on conflict ("entity_id") do update set "face_id" = excluded."face_id"
+        `;
+        this.sql`
+          update "asset_face" set "annotation_decision" = 'person', "annotation_entity_id" = ${input.entityId}, "annotation_updated_at" = ${input.updatedAt}
+          where "owner_id" = ${input.ownerId} and "id" = ${selected.faceId}
+        `;
+        this.replaceLinks(input);
         return true;
       }),
     );
@@ -307,21 +324,22 @@ export class FacesRepository implements FacesRepositoryContract {
         if (!face) {
           return false;
         }
-        this
-          .sql`update "asset_face" set "needs_review" = 0 where "owner_id" = ${input.ownerId} and "id" = ${face.id}`;
-        // Reference identity is explicit. Correcting it retires the reference instead of training from the correction.
-        this
-          .sql`delete from "entity_face_reference" where "owner_id" = ${input.ownerId} and "face_id" = ${face.id}
-        and "entity_id" <> coalesce(${input.annotation?.entityId ?? null}, '')`;
-        if (input.annotation) {
-          this
-            .sql`insert into "face_annotation" ("face_id", "owner_id", "decision", "entity_id", "updated_at")
-          values (${face.id}, ${input.ownerId}, ${input.annotation.decision}, ${input.annotation.entityId}, ${input.updatedAt})
-          on conflict ("face_id") do update set "decision" = excluded."decision", "entity_id" = excluded."entity_id", "updated_at" = excluded."updated_at"`;
-        } else {
-          this
-            .sql`delete from "face_annotation" where "owner_id" = ${input.ownerId} and "face_id" = ${face.id}`;
+        this.sql`
+          update "asset_face" set "needs_review" = 0, "annotation_decision" = ${input.annotation?.decision ?? null},
+            "annotation_entity_id" = ${input.annotation?.entityId ?? null}, "annotation_updated_at" = ${input.annotation ? input.updatedAt : null}
+          where "owner_id" = ${input.ownerId} and "id" = ${face.id}
+        `;
+        // A corrected portrait must stop supplying automatic matches for its previous identity.
+        const retired = this.sql.RetireCorrectedFaceReferences`
+          /* @notNull entityId */
+          delete from "entity_face_reference" where "owner_id" = ${input.ownerId} and "face_id" = ${face.id}
+            and "entity_id" <> coalesce(${input.annotation?.entityId ?? null}, '')
+          returning "entity_id" as "entityId"
+        `;
+        for (const reference of retired) {
+          this.invalidateEntityMatches({ ownerId: input.ownerId, entityId: reference.entityId });
         }
+        this.replaceLinks(input);
         return true;
       }),
     );
@@ -334,26 +352,69 @@ export class FacesRepository implements FacesRepositoryContract {
         if (currentThreshold !== null && currentThreshold !== input.threshold) {
           return;
         }
-        this.sql`delete from "face_match" where "owner_id" = ${input.ownerId} and "face_id" in (
-        select face."id" from "asset_face" face where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId}
-          and not exists(select 1 from "face_annotation" where "face_id" = face."id" and "owner_id" = face."owner_id"))`;
+        this.sql`
+          update "asset_face" set "matched_entity_id" = null, "matched_reference_face_id" = null,
+            "match_similarity" = null, "match_threshold" = null
+          where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId} and "annotation_decision" is null
+        `;
         for (const match of input.matches) {
           this.sql`
-          insert into "face_match" ("face_id", "owner_id", "entity_id", "reference_face_id", "similarity", "threshold", "embedding_space")
-          select face."id", face."owner_id", reference."entity_id", reference."face_id", ${match.similarity}, ${input.threshold}, ${input.embeddingSpace}
-          from "asset_face" face
-          join "face_embedding" embedding on embedding."face_id" = face."id" and embedding."owner_id" = face."owner_id" and embedding."embedding_space" = ${input.embeddingSpace} and embedding."revision" = ${match.faceEmbeddingRevision}
-          join "entity_face_reference" reference on reference."owner_id" = face."owner_id" and reference."entity_id" = ${match.entityId} and reference."face_id" = ${match.referenceFaceId}
-          join "asset_face" reference_face on reference_face."id" = reference."face_id" and reference_face."owner_id" = reference."owner_id"
-          join "face_embedding" reference_embedding on reference_embedding."face_id" = reference_face."id" and reference_embedding."owner_id" = reference_face."owner_id" and reference_embedding."embedding_space" = ${input.embeddingSpace} and reference_embedding."revision" = ${match.referenceEmbeddingRevision}
-          join "entity" entity on entity."id" = reference."entity_id" and entity."owner_id" = reference."owner_id" and entity."image_asset_id" = reference_face."asset_id" and entity."entity_type" = 'person' and entity."archived_at" is null
-          where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId} and face."id" = ${match.faceId} and face."current" = 1 and face."needs_review" = 0
-            and not exists(select 1 from "face_annotation" where "face_id" = face."id" and "owner_id" = face."owner_id")
-          on conflict ("face_id") do update set "entity_id" = excluded."entity_id", "reference_face_id" = excluded."reference_face_id", "similarity" = excluded."similarity", "threshold" = excluded."threshold", "embedding_space" = excluded."embedding_space"
-        `;
+            update "asset_face" as face
+            set "matched_entity_id" = reference."entity_id", "matched_reference_face_id" = reference."face_id",
+              "match_similarity" = ${match.similarity}, "match_threshold" = ${input.threshold}
+            from "entity_face_reference" reference
+            join "asset_face" reference_face on reference_face."id" = reference."face_id" and reference_face."owner_id" = reference."owner_id"
+            join "entity" entity on entity."id" = reference."entity_id" and entity."owner_id" = reference."owner_id"
+            join "asset" portrait on portrait."id" = reference_face."asset_id" and portrait."owner_id" = reference_face."owner_id"
+            where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId} and face."id" = ${match.faceId}
+              and face."current" = 1 and face."needs_review" = 0 and face."annotation_decision" is null
+              and face."embedding_space" = ${input.embeddingSpace} and face."embedding_revision" = ${match.faceEmbeddingRevision}
+              and reference."owner_id" = face."owner_id" and reference."entity_id" = ${match.entityId} and reference."face_id" = ${match.referenceFaceId}
+              and reference_face."embedding_space" = ${input.embeddingSpace} and reference_face."embedding_revision" = ${match.referenceEmbeddingRevision}
+              and entity."image_asset_id" = reference_face."asset_id" and entity."entity_type" = 'person' and entity."archived_at" is null
+              and portrait."archived_at" is null
+              and exists (select 1 from "asset" where "id" = face."asset_id" and "owner_id" = face."owner_id" and "archived_at" is null)
+          `;
         }
+        this.replaceLinks(input);
       }),
     );
+  }
+
+  private invalidateEntityMatches(input: { ownerId: string; entityId: string }) {
+    this.sql`
+      delete from "asset_depicts_entity" where "owner_id" = ${input.ownerId}
+        and "entity_id" = ${input.entityId} and "source" = 'detected'
+    `;
+    this.sql`
+      update "asset_face" set "matched_entity_id" = null, "matched_reference_face_id" = null,
+        "match_similarity" = null, "match_threshold" = null
+      where "owner_id" = ${input.ownerId} and "matched_entity_id" = ${input.entityId}
+    `;
+  }
+
+  /** Publish links in the same transaction as their face assignments, like other resource links. */
+  private replaceLinks(input: FaceAssetInput) {
+    this
+      .sql`delete from "asset_depicts_entity" where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId}`;
+    this.sql`
+      insert into "asset_depicts_entity" ("face_id", "owner_id", "asset_id", "entity_id", "source")
+      select face."id", face."owner_id", face."asset_id",
+        coalesce(face."annotation_entity_id", face."matched_entity_id"),
+        case when face."annotation_decision" is null then 'detected' else 'confirmed' end
+      from "asset_face" face
+      left join "entity_face_reference" reference on reference."entity_id" = face."matched_entity_id"
+        and reference."owner_id" = face."owner_id" and reference."face_id" = face."matched_reference_face_id"
+      left join "asset_face" reference_face on reference_face."id" = reference."face_id" and reference_face."owner_id" = reference."owner_id"
+      left join "entity" entity on entity."id" = reference."entity_id" and entity."owner_id" = reference."owner_id"
+      where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId}
+        and (face."annotation_decision" = 'person' or (
+          face."annotation_decision" is null and face."current" = 1 and face."needs_review" = 0
+          and reference_face."asset_id" = entity."image_asset_id"
+          and reference_face."embedding_space" = face."embedding_space"
+          and entity."archived_at" is null and entity."entity_type" = 'person'
+        ))
+    `;
   }
 
   threshold(input: Input<'threshold'>) {
@@ -401,6 +462,7 @@ export class FacesRepository implements FacesRepositoryContract {
         from "asset_depicts_entity" link join "asset" asset on asset."id" = link."asset_id" and asset."owner_id" = link."owner_id"
         join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id"
         where link."owner_id" = ${input.ownerId} and entity."readable_id" = ${input.entityReadableId}
+          and asset."archived_at" is null and entity."archived_at" is null and entity."entity_type" = 'person'
         order by asset."created_at" desc, asset."readable_id" limit ${input.limit} offset ${input.offset}
       `;
       return rows.map((row) => ({ ...row, sizeBytes: Number(row.sizeBytes) }));

@@ -207,6 +207,11 @@ export interface IListActiveEntityMentioningPagesResult {
     updatedAt: string;
 }
 
+/** Result of query `ReadActivePortraitReference`. */
+export interface IReadActivePortraitReferenceResult {
+    faceId: string;
+}
+
 /** Result of query `ReadFaceObservations`. */
 export interface IReadFaceObservationsResult {
     id: string;
@@ -269,6 +274,11 @@ export interface IFindPortraitReferenceCandidatesResult {
     entityId: string | null;
 }
 
+/** Result of query `RetireReassignedFaceReferences`. */
+export interface IRetireReassignedFaceReferencesResult {
+    entityId: string;
+}
+
 /** Result of query `ReadPersonReferenceFace`. */
 export interface IReadPersonReferenceFaceResult {
     readableId: string;
@@ -277,6 +287,11 @@ export interface IReadPersonReferenceFaceResult {
 /** Result of query `FindFaceAnnotationTarget`. */
 export interface IFindFaceAnnotationTargetResult {
     id: string;
+}
+
+/** Result of query `RetireCorrectedFaceReferences`. */
+export interface IRetireCorrectedFaceReferencesResult {
+    entityId: string;
 }
 
 /** Result of query `ReadFaceThreshold`. */
@@ -830,14 +845,17 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
+    ReadActivePortraitReference: IReadActivePortraitReferenceResult;
     ReadFaceObservations: IReadFaceObservationsResult;
     ReadFaceAnalysis: IReadFaceAnalysisResult;
     ReadAssetFaceViews: IReadAssetFaceViewsResult;
     CheckFaceAnalysisAttempt: ICheckFaceAnalysisAttemptResult;
     ListFaceReferences: IListFaceReferencesResult;
     FindPortraitReferenceCandidates: IFindPortraitReferenceCandidatesResult;
+    RetireReassignedFaceReferences: IRetireReassignedFaceReferencesResult;
     ReadPersonReferenceFace: IReadPersonReferenceFaceResult;
     FindFaceAnnotationTarget: IFindFaceAnnotationTargetResult;
+    RetireCorrectedFaceReferences: IRetireCorrectedFaceReferencesResult;
     ReadFaceThreshold: IReadFaceThresholdResult;
     FaceAssetBatch: IFaceAssetBatchResult;
     ListPersonImages: IListPersonImagesResult;

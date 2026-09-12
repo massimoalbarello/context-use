@@ -271,6 +271,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id"
       left join "knowledge_profile" profile on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
       where link."owner_id" = ${ownerId} and link."asset_id" = ${assetId}
+        and entity."archived_at" is null and entity."entity_type" = 'person'
       group by entity."id"
       order by entity."name" collate nocase, entity."readable_id"
     `;
