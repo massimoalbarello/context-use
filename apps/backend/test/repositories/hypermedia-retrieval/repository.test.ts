@@ -18,7 +18,7 @@ import type {
 } from '#models/records/delivery-contract.generated.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
-import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#repositories/hypermedia-graph/repository.ts';
 import { HypermediaRetrievalRepository } from '#repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
@@ -133,7 +133,7 @@ async function withRetrievalTest(
     const retrievalRepository = new HypermediaRetrievalRepository({ database: reader, storage });
     const retrieval = new HypermediaRetrievalService({
       retrieval: retrievalRepository,
-      hypermedia: new HypermediaRepository(reader),
+      hypermedia: new HypermediaGraphRepository(reader),
     });
     const pagesRepository = new KnowledgePagesRepository(database);
     const recordsRepository = new RecordsRepository(database);
@@ -335,7 +335,7 @@ test.each([
       });
       expect(result.state).toBe('saved');
     }
-    const hypermedia = new HypermediaRepository(reader);
+    const hypermedia = new HypermediaGraphRepository(reader);
     const input = {
       ownerId: OWNER_A,
       entities: [{ readableId: 'topic' }],

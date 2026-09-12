@@ -2,6 +2,7 @@
 // biome-ignore-all lint/style/noMagicNumbers: Viewport values document the production density thresholds under test.
 
 import { describe, expect, test } from 'bun:test';
+import type { HypermediaLayoutNeighborhood } from '../../src/components/hypermedia/hypermedia-graph-data';
 import {
   buildHypermediaLayout,
   buildStableEntities,
@@ -12,11 +13,7 @@ import {
   hypermediaLayoutInViewport,
   viewportNeedsEntityDiscovery,
 } from '../../src/components/hypermedia/hypermedia-visibility';
-import type {
-  HypermediaEntity,
-  HypermediaEntityNeighborhood,
-  HypermediaPage,
-} from '../../src/queries/hypermedia';
+import type { HypermediaEntity, HypermediaPage } from '../../src/queries/hypermedia';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
@@ -36,11 +33,10 @@ function entity(readableId: string, isSelf = false): HypermediaEntity {
 function neighborhood(
   anchor: HypermediaEntity,
   neighbors: HypermediaEntity[],
-): HypermediaEntityNeighborhood {
+): HypermediaLayoutNeighborhood {
   return {
     anchor,
     neighbors: neighbors.map((entity) => ({ entity, sharedPageCount: 1 })),
-    nextCursor: null,
   };
 }
 
@@ -58,6 +54,27 @@ function page(readableId: string): HypermediaPage {
 }
 
 describe('entity-first hypermedia layout', () => {
+  test('places a new entity between its known connected entities without moving either one', () => {
+    const left = entity('left');
+    const right = entity('right');
+    const added = entity('added');
+    const previous = [
+      { entity: left, key: 'entity:left', point: { x: -600, y: 0 } },
+      { entity: right, key: 'entity:right', point: { x: 600, y: 0 } },
+    ];
+    const placed = buildStableEntities(
+      [
+        neighborhood(left, [added]),
+        neighborhood(right, [added]),
+        neighborhood(added, [left, right]),
+      ],
+      [],
+      previous,
+    );
+    expect(placed.find(({ key }) => key === 'entity:added')?.point).toEqual({ x: 0, y: 0 });
+    expect(placed.find(({ key }) => key === 'entity:left')?.point).toEqual(previous[0]!.point);
+    expect(placed.find(({ key }) => key === 'entity:right')?.point).toEqual(previous[1]!.point);
+  });
   test('never moves entities when another neighborhood is appended', () => {
     const self = entity('self', true);
     const alpha = entity('alpha');

@@ -1,4 +1,4 @@
-import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
+import type { HypermediaGraphServiceContract } from '#services/hypermedia-graph/service.ts';
 import type {
   RecordDeliveryAcceptanceContract,
   RecordResourcesServiceContract,
@@ -12,8 +12,8 @@ function unexpectedCall(): never {
   throw new Error('Unexpected hypermedia service call');
 }
 
-export const unusedHypermediaService: HypermediaServiceContract = {
-  entityNeighborhood: unexpectedCall,
+export const unusedHypermediaGraphService: HypermediaGraphServiceContract = {
+  neighborhoods: unexpectedCall,
   pages: unexpectedCall,
 };
 

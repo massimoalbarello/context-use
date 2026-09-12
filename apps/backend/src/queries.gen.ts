@@ -201,6 +201,51 @@ export interface IPingDatabaseResult {
     value: number;
 }
 
+/** Result of query `ListHypermediaNeighborhoods`. */
+export interface IListHypermediaNeighborhoodsResult {
+    rowType: "anchor" | "neighbor" | "relationship";
+    sourceReadableId: string;
+    sharedPageCount: number;
+    position: number;
+    id: string;
+    readableId: string;
+    name: string;
+    description: string;
+    entityType: string | null;
+    isSelf: number;
+    imageId: string | null;
+    imageReadableId: string | null;
+    imageName: string | null;
+    imageMediaType: string | null;
+    imageExtension: string | null;
+    imageSizeBytes: number | null;
+    imageCreatedAt: string | null;
+    imageUpdatedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `ListHypermediaPages`. */
+export interface IListHypermediaPagesResult {
+    id: string;
+    readableId: string;
+    revisionNumber: number;
+    title: string;
+    excerpt: string;
+    temporalCoverage: string | null;
+    ongoingSort: number;
+    latestSort: unknown | null;
+    startSort: unknown | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `ListHypermediaPageEntities`. */
+export interface IListHypermediaPageEntitiesResult {
+    sourcePageReadableId: string;
+    readableId: string;
+}
+
 /** Result of query `SearchHypermedia`. */
 export interface ISearchHypermediaResult {
     total: number;
@@ -243,68 +288,6 @@ export interface ISearchHypermediaResult {
     syncName: string | null;
     createdAt: string;
     updatedAt: string;
-}
-
-/** Result of query `FindHypermediaEntity`. */
-export interface IFindHypermediaEntityResult {
-    id: string;
-    readableId: string;
-    name: string;
-    description: string;
-    entityType: string | null;
-    isSelf: number;
-    imageId: string | null;
-    imageReadableId: string | null;
-    imageName: string | null;
-    imageMediaType: string | null;
-    imageExtension: string | null;
-    imageSizeBytes: number | null;
-    imageCreatedAt: string | null;
-    imageUpdatedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListHypermediaEntityNeighbors`. */
-export interface IListHypermediaEntityNeighborsResult {
-    id: string;
-    readableId: string;
-    name: string;
-    description: string;
-    entityType: string | null;
-    isSelf: number;
-    imageId: string | null;
-    imageReadableId: string | null;
-    imageName: string | null;
-    imageMediaType: string | null;
-    imageExtension: string | null;
-    imageSizeBytes: number | null;
-    imageCreatedAt: string | null;
-    imageUpdatedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
-    sharedPageCount: number;
-}
-
-/** Result of query `ListHypermediaPages`. */
-export interface IListHypermediaPagesResult {
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    ongoingSort: number;
-    latestSort: unknown | null;
-    startSort: unknown | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListHypermediaPageEntities`. */
-export interface IListHypermediaPageEntitiesResult {
-    sourcePageReadableId: string;
-    readableId: string;
 }
 
 /** Result of query `FindKnowledgePageOwnerRevisionAuthor`. */
@@ -723,11 +706,10 @@ export interface Queries {
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     PingDatabase: IPingDatabaseResult;
-    SearchHypermedia: ISearchHypermediaResult;
-    FindHypermediaEntity: IFindHypermediaEntityResult;
-    ListHypermediaEntityNeighbors: IListHypermediaEntityNeighborsResult;
+    ListHypermediaNeighborhoods: IListHypermediaNeighborhoodsResult;
     ListHypermediaPages: IListHypermediaPagesResult;
     ListHypermediaPageEntities: IListHypermediaPageEntitiesResult;
+    SearchHypermedia: ISearchHypermediaResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
     ResolveRecordLink: IResolveRecordLinkResult;

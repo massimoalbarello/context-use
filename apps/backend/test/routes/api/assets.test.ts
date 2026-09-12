@@ -12,7 +12,7 @@ import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
-import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#repositories/owner-registration/repository.ts';
@@ -20,7 +20,7 @@ import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#services/frontend-assets/service.ts';
 import { HealthService } from '#services/health/service.ts';
-import { HypermediaService } from '#services/hypermedia/service.ts';
+import { HypermediaGraphService } from '#services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
@@ -107,8 +107,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService({
-        hypermedia: new HypermediaRepository(database),
+      graphService: new HypermediaGraphService({
+        graph: new HypermediaGraphRepository(database),
       }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
@@ -335,7 +335,11 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const assetNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/entities?anchor=asset:quarterly-chart&limit=1'),
+      new Request('http://localhost/api/hypermedia/neighborhoods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anchors: [{ anchor: { readableId: 'asset:quarterly-chart' } }] }),
+      }),
     );
     expect(assetNeighborhoodResponse.status).toBe(StatusMap['Bad Request']);
     const assetSelectionResponse = await app.handle(
@@ -344,13 +348,23 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(assetSelectionResponse.status).toBe(StatusMap['Bad Request']);
 
     const entityNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/entities?anchor=luca-bianchi'),
+      new Request('http://localhost/api/hypermedia/neighborhoods', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anchors: [{ anchor: { readableId: 'luca-bianchi' } }] }),
+      }),
     );
     expect(entityNeighborhoodResponse.status).toBe(StatusMap.OK);
     expect(await entityNeighborhoodResponse.json()).toMatchObject({
-      anchor: { readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } },
-      neighbors: [],
-      nextCursor: null,
+      entities: [{ readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } }],
+      neighborhoods: [
+        {
+          anchor: { readableId: 'luca-bianchi' },
+          available: true,
+          neighbors: [],
+          nextCursor: null,
+        },
+      ],
     });
     const graphPagesResponse = await app.handle(
       new Request('http://localhost/api/hypermedia/pages?query=Quarterly%20chart'),
