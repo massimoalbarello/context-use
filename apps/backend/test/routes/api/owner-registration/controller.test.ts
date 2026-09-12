@@ -17,6 +17,7 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
+  unusedAssetImportsService,
   unusedHypermediaService,
   unusedRecordSyncsService,
   unusedRecordsService,
@@ -89,6 +90,7 @@ test('owner registration API exposes only complete registration states', async (
       migrations: new Map([['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)]]),
     });
     const app = createApp({
+      assetImportsService: unusedAssetImportsService,
       auth,
       assetsService,
       assetTransferCapabilities: unusedAssetTransferCapabilities,

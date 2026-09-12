@@ -1,3 +1,4 @@
+import type { AssetImportsServiceContract } from '#services/assets/imports.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
 import type {
   RecordDeliveryAcceptanceContract,
@@ -31,4 +32,9 @@ export const unusedRecordSyncsService: RecordSyncAuthenticationContract &
   create: unexpectedCall,
   list: unexpectedCall,
   revoke: unexpectedCall,
+};
+
+export const unusedAssetImportsService: AssetImportsServiceContract = {
+  find: unexpectedCall,
+  upload: unexpectedCall,
 };

@@ -1,9 +1,9 @@
 import { Elysia, StatusMap, t } from 'elysia';
-import type { OpenAPIV3 } from 'openapi-types';
 import { ErrorResponseSchema } from '#lib/errors.ts';
 import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/delivery-contract.generated.ts';
-import { isUuidV7, type RecordSyncPrincipal } from '#models/syncs/model.ts';
+import type { RecordSyncPrincipal } from '#models/syncs/model.ts';
 import { RecordDeliveryEnvelopeSchema } from '#routes/api/records/delivery-model.generated.ts';
+import { authenticateSyncRequest, RECORD_SYNC_SECURITY_SCHEME } from '#routes/sync-auth.ts';
 import type { RecordDeliveryAcceptanceContract } from '#services/records/service.ts';
 import type { RecordSyncAuthenticationContract } from '#services/syncs/service.ts';
 
@@ -12,15 +12,6 @@ export const RECORD_DELIVERY_ROUTE_PATH = '/api/records/batch';
 const DELIVERY_PARSER = 'recordDeliveryJson' as const;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 1024;
 const UUID_LENGTH = 36;
-
-export const RECORD_SYNC_SECURITY_SCHEME = 'recordSyncBearer';
-export const recordSyncSecuritySchemes = {
-  [RECORD_SYNC_SECURITY_SCHEME]: {
-    type: 'http',
-    scheme: 'bearer',
-    description: 'UUIDv7 API key issued to a record sync.',
-  },
-} satisfies Record<string, OpenAPIV3.SecuritySchemeObject>;
 
 const RecordDeliveryHeadersSchema = t.Object(
   {
@@ -61,15 +52,6 @@ const errorMessage = {
   unsupportedMediaType: 'Content-Type must be application/json',
   conflict: 'Conflicting record delivery',
 } as const;
-
-function syncApiKey(request: Request): string | null {
-  const authorization = request.headers.get('authorization');
-  if (!authorization?.startsWith('Bearer ')) {
-    return null;
-  }
-  const token = authorization.slice('Bearer '.length);
-  return isUuidV7(token) ? token : null;
-}
 
 function hasJsonMediaType(request: Request): boolean {
   const mediaType = request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
@@ -181,8 +163,7 @@ export function createRecordDeliveryController({
         return;
       }
 
-      const apiKey = syncApiKey(request);
-      const principal = apiKey ? await syncsService.authenticate({ apiKey }) : null;
+      const principal = await authenticateSyncRequest({ request, syncs: syncsService });
       if (!principal) {
         return status(StatusMap.Unauthorized, { error: errorMessage.unauthorized });
       }

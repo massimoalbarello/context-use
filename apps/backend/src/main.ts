@@ -13,6 +13,7 @@ import { createLocalStorage } from '#lib/storage/client.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
 import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/delivery-contract.generated.ts';
+import { AssetImportsRepository } from '#repositories/assets/imports.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
@@ -27,6 +28,7 @@ import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordSyncsRepository } from '#repositories/syncs/repository.ts';
 import { AssetTransferCapabilities } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
+import { AssetImportsService } from '#services/assets/imports.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
@@ -59,6 +61,7 @@ if (authSecret.source.kind === 'environment') {
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
 let recordsDatabase: SQL | undefined;
+let assetImportsDatabase: SQL | undefined;
 let retrievalDatabase: SQL | undefined;
 
 try {
@@ -73,6 +76,11 @@ try {
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
     hypermedia: new HypermediaRepository(retrievalDatabase),
+  });
+  assetImportsDatabase = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+  const assetImportsService = new AssetImportsService({
+    imports: new AssetImportsRepository(assetImportsDatabase),
+    storage,
   });
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
@@ -131,6 +139,7 @@ try {
   });
 
   const app = createApp({
+    assetImportsService,
     auth,
     assetsService,
     assetTransferCapabilities,
@@ -148,7 +157,12 @@ try {
     recordsService,
     syncsService,
   }).onStop(async () => {
-    await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
+    await Promise.all([
+      database.close(),
+      recordsDatabase?.close(),
+      retrievalDatabase?.close(),
+      assetImportsDatabase?.close(),
+    ]);
   });
   const { server } = app.listen({
     port: env.PORT,
@@ -160,6 +174,11 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
+  await Promise.all([
+    database.close(),
+    recordsDatabase?.close(),
+    retrievalDatabase?.close(),
+    assetImportsDatabase?.close(),
+  ]);
   throw error;
 }
