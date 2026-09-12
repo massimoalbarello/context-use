@@ -22,6 +22,7 @@ import {
   isEmbeddableAsset,
   isVideoAsset,
 } from '../lib/asset-presentation';
+import { cn } from '../lib/class-names';
 import { useArchiveAsset } from '../lib/hooks/use-archive-asset';
 import { useAsset } from '../lib/hooks/use-assets';
 import { useUpdateAsset } from '../lib/hooks/use-update-asset';
@@ -168,6 +169,7 @@ function AssetRouteContent({ id }: { id: string }) {
     return null;
   }
   const hasInboundUsages = asset.usages.length > 0;
+  const isImage = isEmbeddableAsset(asset);
 
   return (
     <DetailShell>
@@ -261,7 +263,7 @@ function AssetRouteContent({ id }: { id: string }) {
         </p>
       )}
 
-      {isEmbeddableAsset(asset) ? (
+      {isImage ? (
         <AssetFaces asset={asset}>
           {({ preview, processAction }) => (
             <AssetPreview asset={asset} processAction={processAction}>
@@ -284,10 +286,14 @@ function AssetRouteContent({ id }: { id: string }) {
         </AssetPreview>
       )}
 
-      <div className="grid scroll-mt-24 gap-8 md:grid-cols-3" id="used-by" tabIndex={-1}>
+      <div
+        className={cn('grid scroll-mt-24 gap-8', isImage ? 'md:grid-cols-3' : 'md:grid-cols-2')}
+        id="used-by"
+        tabIndex={-1}
+      >
         <AssetUsageList asset={asset} presentation="embed" />
         <AssetUsageList asset={asset} presentation="attachment" />
-        <AssetEntityImageUsageList asset={asset} />
+        {isImage && <AssetEntityImageUsageList asset={asset} />}
       </div>
     </DetailShell>
   );
