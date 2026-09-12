@@ -103,9 +103,6 @@ export function FaceReview({
           ) : (
             <strong>{face.decision === 'dismissed' ? 'Not a face' : 'Unknown person'}</strong>
           )}
-          <p className="mt-1 text-muted-foreground text-sm">
-            {face.decision === 'automatic' ? 'Automatic matching' : 'Your decision is saved'}
-          </p>
         </div>
         <Button variant="ghost" onClick={onDone}>
           Done
