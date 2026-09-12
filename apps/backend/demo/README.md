@@ -1,7 +1,7 @@
 # Public Steve Jobs demo
 
 This is a separate, anonymous, read-only application built on the
-[Steve Jobs fixtures](../../../scripts/seeds/isolated-development/README.md). It lets visitors
+[Steve Jobs fixtures](../../../scripts/seeds/isolated-development). It lets visitors
 browse the iPod-to-iPhone story, entities, page revisions, source records, and licensed assets
 without connecting any personal information. Reconstructed first-person notes and invented
 conversations retain the fixture's explicit provenance labels. The demo calendar treats
