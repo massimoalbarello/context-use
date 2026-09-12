@@ -71,9 +71,10 @@ try {
     storage,
   });
   const graphRepository = new HypermediaGraphRepository(retrievalDatabase);
+  const graphService = new HypermediaGraphService({ graph: graphRepository });
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
-    hypermedia: graphRepository,
+    graph: graphService,
   });
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({
@@ -89,9 +90,6 @@ try {
     pages: pagesRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
-  const graphService = new HypermediaGraphService({
-    graph: graphRepository,
-  });
   const ownerRegistrationService = new OwnerRegistrationService(
     new OwnerRegistrationRepository(database),
   );

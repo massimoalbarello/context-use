@@ -8,14 +8,14 @@ import {
   MAX_HYPERMEDIA_SEARCH_LIMIT,
 } from '#models/hypermedia-retrieval/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
-import type { HypermediaGraphRepositoryContract } from '#repositories/hypermedia-graph/contract.ts';
 import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
+import type { HypermediaGraphServiceContract } from '#services/hypermedia-graph/service.ts';
 
 export class HypermediaRetrievalService {
   constructor(
     private readonly dependencies: {
       retrieval: HypermediaRetrievalRepositoryContract;
-      hypermedia: Pick<HypermediaGraphRepositoryContract, 'pages'>;
+      graph: Pick<HypermediaGraphServiceContract, 'pages'>;
     },
   ) {}
 
@@ -77,7 +77,7 @@ export class HypermediaRetrievalService {
       }
     }
     const { query: _query, ...pageInput } = input;
-    const pages = await this.dependencies.hypermedia.pages({
+    const pages = await this.dependencies.graph.pages({
       ...pageInput,
       retrievalMatches: {
         pageReadableIds,
