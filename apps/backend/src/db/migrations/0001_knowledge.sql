@@ -4,6 +4,7 @@ create table "entity" (
   "readable_id" text not null,
   "name" text not null,
   "description" text not null,
+  "entity_type" text check ("entity_type" in ('person', 'organization', 'location')),
   "image_asset_id" text,
   "created_at" text not null,
   "updated_at" text not null,
