@@ -1,104 +1,109 @@
-# Steve Jobs, 2000–2001
+# Steve Jobs — from iPod to iPhone, 2001–2007
 
-A connected historical demo replacing the former random Northstar fixtures. Steve Jobs is the
-workspace owner persona. Pages, historical revisions and entity descriptions use his first-person
-perspective: my collaborators, my commitments, and the work we are doing at Apple and Pixar.
-The two-year focus covers his permanent Apple CEO appointment, Mac OS X, the Cube, digital-media
-software, the first Apple stores, iPod and Monsters, Inc., including setbacks and revised plans.
+A connected historical workspace replacing the random seed. Steve is the owner persona, and pages,
+revisions and entity descriptions use his first-person perspective. The focus is **January 9, 2001
+through October 17, 2007**: iTunes, iPod, the music store, Windows, mini, shuffle, nano, Motorola ROKR,
+video, iPhone and the native SDK commitment. Retail, the Mac’s Intel transition, leadership changes
+and the Disney/Pixar relationship explain the work between product launches.
 
-The first-person prose is authored for this simulation, not quoted from Jobs or presented as a
-recovered diary. Historical actions and product facts retain their sources. Imported research
-records keep the source's perspective, and invented interactions remain explicitly labeled.
+The prose is authored for the simulation, not quoted from Jobs or presented as a recovered diary.
+Historical actions and product facts retain their sources. Research records keep the source’s
+perspective; invented meetings, messages and checklists are explicitly labeled. There are no
+retrieval evaluations, relevance judgments or answer sets yet.
 
 ## Run locally
 
-From the repository root, with dependencies installed and Chrome available to browser-harness:
+With dependencies installed and Chrome available to browser-harness:
 
 ```sh
 bun install --frozen-lockfile
 bun run dev:isolated:seeded
 ```
 
-The command registers a real passkey using the existing virtual authenticator and opens
-[the local workspace](http://localhost:5173/hypermedia). Start reading at
-[My work — 2000 to 2001](http://localhost:5173/pages/my-work-2000-to-2001).
+The command registers a real passkey and opens [Hypermedia](http://localhost:5173/hypermedia).
+Start at [My work from iPod to iPhone](http://localhost:5173/pages/my-work-from-ipod-to-iphone).
+The full corpus loads by default: **one profile, 29 other entities, 49 pages, 12 page updates,
+39 records and eight assets**. `--all` loads the same complete story.
 
-The seeded isolated app treats **31 December 2001** as today for timeline navigation and date
-pickers, so the story is immediately nearby. This frontend calendar override is enabled only by
-the seeded development launcher and is ignored in production builds. Authentication, ingestion
-and database timestamps still use the real clock. Ordinary development uses the current date.
+The seeded isolated app treats **17 October 2007** as today for map date navigation and date pickers.
+It uses the current map interface; there is no separate timeline view. The override is enabled only
+by the seeded development launcher and ignored in production builds. Authentication, ingestion,
+page creation and revision timestamps use the real clock. Ordinary development uses the current date.
 
-The complete story loads by default: **one profile, 23 other entities, 38 pages, eight page updates,
-29 records and six assets**. The existing `--all` option loads the same complete corpus; there is
-no separate set of filler resources. Stop another development server before starting this one.
-The data lives in a newly allocated temporary directory and is deleted when the isolated process
-stops. It does not overwrite an ordinary local database. Restart the command for a fresh copy.
+Stop another server on port 5173 before running this command. The isolated app uses a newly allocated
+temporary directory, deleted when the process stops. It does not overwrite an ordinary local database.
+Restart for a fresh seed.
 
-The default undated map contains seven connected personal notes: my collaborators, my work at
-Apple and Pixar, our digital-hub model, helping customers, our products, my working notes, and
-photos of me and our products. They provide entry points into the dated story. Events and chronological
-syntheses keep their historical intervals; the reference notes leave coverage unset because their
-purpose is orientation rather than an assertion that something happened or applied on a date.
+## Explore and follow changes
 
-## Follow the changes
+Eight undated notes populate the initial map: my collaborators, touch-interface work, the connection
+between hardware and software, partner boundaries, helping customers, working notes, photographs
+and commitments. They are relationship or reference lenses. Events and chronological syntheses keep
+coverage; the touch-team recollections do not establish a defensible start date, so their uncertainty
+is explained rather than assigned a fictional interval.
 
-| Page | Revision sequence |
+| Evolving page | Checkpoints |
 | --- | --- |
-| Moving the Mac to OS X | January 2000 preview → September beta → March 2001 shipping → September 10.1 |
-| My bet on the Cube | July 2000 launch → February 2001 CD-RW configuration → July suspension |
-| The Mac as our digital hub | January music library → October portable player |
-| Showing the whole experience in our stores | May 15 plan → first weekend results reported May 21 |
-| My two CEO roles | Permanent Apple appointment → Apple and Pixar chapter synthesis |
+| Taking our music experience beyond the Mac | First iPod → Windows hardware → varied player family → iPod touch |
+| Making our store part of the music experience | Mac songs → Windows → television and shorts → EMI’s DRM-free option |
+| Bringing our music work into phones | Motorola plan → ROKR → iPhone unveiling → launch arrangements → price, customers and SDK |
+| Carrying my Pixar work into Disney | Agreement pending → acquisition closed and board role |
+| Giving customers a place to try our products | Opening plan → first weekend with customers |
 
-Each event keeps its own page and coverage. The broader pages connect events through Steve’s work
-and collaborators, following the [MCP curation guide](../../../apps/backend/src/routes/mcp/pages/hypermedia-curation-guide.md).
-The overview reaches every page, entity, record and asset. All relationships use supported typed
-links, with targets created before their first reference.
+Each event has its own page. Broader pages link those accounts through Steve’s work and collaborators,
+following the [MCP curation guide](../../../apps/backend/src/routes/mcp/pages/hypermedia-curation-guide.md).
+The overview reaches every page, entity, record and asset through supported typed links. Targets
+exist before their first reference; revisions preserve the earlier checkpoints.
 
-`pages/index.json` is an ordered sequence of Markdown snapshots, including revisions. `asOf` orders
-the narrative checkpoints; `temporalCoverage` dates the subject. Retrospective research can establish
-an earlier event, so these are reconstructed states, not claims that an MCP client or Steve wrote a
-page on the indicated day. Database creation, revision and ingestion timestamps are the actual local
-seed time, never backdated. No retrieval evaluations, relevance labels or answer sets are included.
+`pages/index.json` orders Markdown snapshots. `asOf` identifies a reconstruction checkpoint, while
+`temporalCoverage` dates the subject. Later interviews can establish earlier work; these are not
+claims that Steve or an MCP client wrote a page on the checkpoint date. The corpus is pre-curated
+for an empty disposable workspace, rather than running an agent’s discovery workflow while seeding.
 
 ## Evidence and fiction
 
-There are 25 researched records with original paraphrases and source URLs, plus four explicitly
-synthetic records: beta triage, a retail rehearsal, an iPod demo handoff and a Pixar conversation.
-The synthetic provider is `synthetic-workspace`; its records, referring pages and checklist label
-the invented wording, dates and attendance. No fabricated record claims a public source URL.
+There are **34 researched records and five synthetic records**. The invented interactions cover
+Tony’s iPod demo handoff, Phil’s Windows rehearsal, a nano/ROKR debrief, Scott’s iPhone rehearsal and
+a retail message exchange with Ron. Their wording, dates, attendance and actions are fictional.
+Their provider is `synthetic-workspace`, their titles and referring pages are labeled, and they
+claim no public source URL. The two checklists use the same explicit fiction boundary.
 
-The record index retains provider, kind, participants, source publication date where established,
-and `attributes.subjectCoverage`. Midnight UTC represents a known publication *day*, not an observed
-publication time. Modern catalog pages and oral histories without verified publication dates omit
-source timestamps; interview dates and the historical subject remain separate. In particular:
+Most evidence comes from contemporary Apple and Disney announcements. CHM oral histories supply
+team recollections, the Disney conference call supplies an actual public conversation, TidBITS
+preserves Jobs’s SDK letter, and MacRumors reports and excerpts the early-buyer response.
+Record metadata separates publication dates from `attributes.subjectCoverage`; midnight UTC is
+only a transport convention for a known publication day. Unverified publication dates are omitted.
 
-- Summer 2000 was the initial OS X commercial-release expectation; March 24, 2001 was shipping.
-- Factory preinstallation in May 2001 still defaulted to booting Mac OS 9.1.
-- The Cube’s DVD launch model and later CD-RW configuration are distinct.
-- Store results cover both stores over May 19–20, reported May 21; 25 stores was a rollout target.
-- October 23 was the iPod announcement; November 10 was the announced availability date.
-- Fiscal Q1 2001 ended in December 2000; the October 2001 reported quarter ended before iPod.
-- Pixar’s current timeline only locates the Emeryville move within its 2000–2001 grouping.
+The story deliberately preserves distinctions that matter when retrieving an earlier state:
 
-Records enter through `/api/syncs` and `/api/records/batch`, after owner registration. The temporary
-sync key stays inside the browser and is revoked immediately after delivery; its records remain
-readable. The loader resolves record IDs from the authenticated record listing. Fixtures use
-`context-use://record/<fixture-id>` links; the loader substitutes the server-assigned readable ID
-before submitting each page. These native references appear in page References and record
-Referenced by views, using the support introduced in [#66](https://github.com/massimoalbarello/context-use/pull/66).
-Public source URLs remain inside each record.
+- The 2001 iTunes application predates the 2003 store; 2002 Windows iPods used Musicmatch.
+- Mini’s initial April international target differs from the revised July 24 plan.
+- Motorola’s first-half 2005 target differs from September’s ROKR release. The sources do not
+  establish that ROKR’s reception caused the iPhone project.
+- The Pixar agreement and closing are separate, as are Steve’s former CEO and new board roles.
+- January’s iPhone unveiling, June’s retail opening, and September’s price change are separate.
+- The millionth iPhone sold September 9; the announcement was published September 10.
+- June’s web-application offer differs from October’s native SDK promise for February 2008.
+  The seed ends at the promise, without claiming the SDK has shipped.
+- iTunes Plus begins with EMI; the whole catalog is not suddenly DRM-free.
+
+Records enter through `/api/syncs` and `/api/records/batch` after registration. The temporary sync key
+stays inside the browser and is revoked after delivery. The loader resolves assigned record IDs from
+authenticated output and substitutes fixture `context-use://record/<id>` links before submitting
+pages. References and backlinks use the native record support introduced in
+[#66](https://github.com/massimoalbarello/context-use/pull/66).
 
 ## Assets
 
-Three licensed photographs are bundled, assigned as entity images and linked from the reference
-page. They are later illustrations, not photographs of the seeded events: a June 2010 Jobs portrait,
-a May 2005 Cube photograph and an iPod cutout uploaded in 2006 with unconfirmed capture date.
-[Asset credits](assets/historical-asset-credits.txt) and [the manifest](assets/index.json) retain
-creators, source pages, licenses and date caveats. The other assets are a sourced quarterly-results
-CSV, an explicitly invented demo checklist and the credits file itself. The official Disney page
-linked from the film page provides its trailer and production videos. No media download is needed
-when running the seed.
+Four licensed photographs are bundled: the original iPod, iPhone displayed at Macworld, Steve
+presenting iPhone, and an identity portrait. The portrait is from 2010, outside the narrative;
+the iPod cutout’s capture date is unconfirmed. The two Macworld photographs depict 2007, despite
+later online uploads. [Credits](assets/historical-asset-credits.txt) and [metadata](assets/index.json)
+retain authors, licenses, sources and date caveats. No photo is represented as taken by Steve.
+
+The other assets are two fictional demo checklists, a sourced commitment ledger separating targets
+from results, and the credits file. The CHM source page provides the original interview video.
+All uploaded assets are bundled; running the seed requires no media downloads.
 
 ## Check fixtures
 
@@ -106,39 +111,79 @@ when running the seed.
 python3 scripts/seeds/isolated-development/test_fixtures.py
 ```
 
-These checks protect reference ordering, reachability, fixture completeness, fiction labels and
-bundled-media provenance. The actual seed also verifies server-assigned IDs, detected image types,
-record import completeness and revision increments. Exercise the isolated app for application-level
-validation after changing fixtures or the loader.
+These checks protect link ordering, graph reachability, fixture completeness, fiction labels and
+bundled image provenance. The loader also checks assigned IDs, detected image types, record import
+completeness and revision increments. Use the isolated app to validate the rendered graph and links.
 
 ## Research sources
 
-The records contain the claim-level source links. This index makes the research reviewable outside
-the running app. Sources were consulted on September 11, 2026; later retrospectives are labeled as
-such and are used only for the selected period.
+Consulted September 11–12, 2026. The records carry claim-level source URLs and date notes. Later
+recollections are labeled and used only for the selected work. The complete source index follows.
 
-- [Jobs drops the interim title](https://money.cnn.com/2000/01/05/deals/apple/) — 2000-01-05.
-- [Mac OS X preview and original schedule](https://www.apple.com/newsroom/2000/01/05Apple-Unveils-Mac-OS-X/) — 2000-01-05.
-- [Cube and iMovie 2 desktop announcement](https://www.apple.com/newsroom/2000/07/19Apple-Unveils-Entirely-New-Desktop-Line-Including-the-Revolutionary-Power-Mac-G4-Cube/) — 2000-07-19.
-- [Mac OS X public beta opens to users](https://www.apple.com/newsroom/2000/09/13Apple-Releases-Mac-OS-X-Public-Beta/) — 2000-09-13.
 - [iTunes turns the Mac into a music library](https://www.apple.com/newsroom/2001/01/09Apple-Introduces-iTunes-Worlds-Best-and-Easiest-To-Use-Jukebox-Software/) — 2001-01-09.
-- [Mac OS X receives a March shipping date](https://www.apple.com/newsroom/2001/01/09Apples-Mac-OS-X-to-Ship-on-March-24/) — 2001-01-09.
-- [Fiscal Q1 2001 loss and inventory reset](https://www.apple.com/newsroom/2001/01/17Apple-Reports-First-Quarter-Results/) — 2001-01-17.
-- [SuperDrive systems begin shipping](https://www.apple.com/newsroom/2001/02/19Apple-Ships-Industrys-First-SuperDrive/) — 2001-02-19.
-- [Cube gains CD-RW and iTunes](https://www.apple.com/newsroom/2001/02/22Apple-Introduces-New-Power-Mac-G4-Cube-With-CD-RW-iTunes/) — 2001-02-22.
-- [Fiscal Q2 2001 return to profit](https://www.apple.com/newsroom/2001/04/18Apple-Reports-Second-Quarter-Profit-of-43-Million/) — 2001-04-18.
+
 - [First physical stores and 25-store plan](https://www.apple.com/newsroom/2001/05/15Apple-to-Open-25-Retail-Stores-in-2001/) — 2001-05-15.
+
 - [First stores opening-weekend results](https://www.apple.com/newsroom/2001/05/21Apple-Retail-Stores-Welcome-Over-7700-People-in-First-Two-Days/) — 2001-05-21.
-- [Mac OS X preinstalled beside Mac OS 9](https://www.apple.com/newsroom/2001/05/21Apple-to-Pre-Install-Mac-OS-X-Ahead-of-Schedule/) — 2001-05-21.
-- [Cube production suspended indefinitely](https://www.apple.com/newsroom/2001/07/03Apple-Puts-Power-Mac-G4-Cube-on-Ice/) — 2001-07-03.
-- [Mac OS X 10.1 availability and improvements](https://www.apple.com/newsroom/2001/09/25First-Major-Upgrade-to-Mac-OS-X-Hits-Stores-This-Weekend/) — 2001-09-25.
-- [Mac OS X native application count](https://www.apple.com/newsroom/2001/09/25More-than-1-400-Third-Party-Applications-Now-Available-for-Mac-OS-X-v10-1/) — 2001-09-25.
-- [Fiscal Q4 closes before iPod announcement](https://www.apple.com/newsroom/2001/10/17Apple-Reports-Fourth-Quarter-Profit-of-66-Million/) — 2001-10-17.
+
 - [Original iPod announcement and planned availability](https://www.apple.com/newsroom/2001/10/23Apple-Presents-iPod/) — 2001-10-23.
-- [Pixar moves and releases its fourth feature](https://www.pixar.com/our-story) — undated retrospective/reference.
-- [Monsters Inc US release and creative credits](https://movies.disney.com/monsters-inc) — undated retrospective/reference.
-- [Monsters Inc character and world development](https://www.pixar.com/monsters-inc) — undated retrospective/reference.
+
 - [Rubinstein recalls the first iPod team](https://archive.computerhistory.org/resources/access/text/2020/02/102717908-05-01-acc.pdf) — undated retrospective/reference.
+
 - [Fadell on joining Apple in 2001](https://computerhistory.org/blog/computing-for-the-whole-world-a-conversation-with-ipod-iphone-inventor-tony-fadell/) — undated retrospective/reference.
-- [Tevanian software leadership retrospective](https://www.apple.com/newsroom/2003/07/08Avie-Tevanian-Named-Chief-Software-Technology-Officer-of-Apple/) — 2003-07-08.
-- [Ron Johnson recalls creating Apple retail](https://books.apple.com/gb/book/shop-different/id6753891179) — undated retrospective/reference.
+
+- [iPod expands to Windows](https://www.apple.com/newsroom/2002/07/17Apple-Unveils-New-iPods/) — 2002-07-17.
+
+- [Music Store opens on the Mac](https://www.apple.com/newsroom/2003/04/28Apple-Launches-the-iTunes-Music-Store/) — 2003-04-28.
+
+- [iTunes arrives on Windows](https://www.apple.com/newsroom/2003/10/16Apple-Launches-iTunes-for-Windows/) — 2003-10-16.
+
+- [iPod mini announcement and original schedule](https://www.apple.com/newsroom/2004/01/06Apple-Introduces-iPod-mini/) — 2004-01-06.
+
+- [Revised international iPod mini availability](https://www.apple.com/uk/newsroom/2004/07/07Apple-iPod-mini-International-Availability-Set-for-July-24/) — 2004-07-07.
+
+- [Motorola and Apple announce mobile iTunes partnership](https://www.apple.com/uk/newsroom/2004/07/26Motorola-and-Apple-Bring-iTunes-Music-Player-to-Motorolas-Next-Generation-Mobile-Phones/) — 2004-07-26.
+
+- [Flash storage and AutoFill in iPod shuffle](https://www.apple.com/newsroom/2005/01/11Apple-Introduces-iPod-shuffle/) — 2005-01-11.
+
+- [Mac Intel transition announced](https://www.apple.com/newsroom/2005/06/06Apple-to-Use-Intel-Microprocessors-Beginning-in-2006/) — 2005-06-06.
+
+- [iPod nano announcement](https://www.apple.com/newsroom/2005/09/07Apple-Introduces-iPod-nano/) — 2005-09-07.
+
+- [Motorola ROKR launches with iTunes](https://www.apple.com/newsroom/2005/09/07Apple-Motorola-Cingular-Launch-Worlds-First-Mobile-Phone-with-iTunes/) — 2005-09-07.
+
+- [Video comes to iPod hardware](https://www.apple.com/newsroom/2005/10/12Apple-Unveils-the-New-iPod/) — 2005-10-12.
+
+- [Disney television and Pixar shorts arrive in iTunes](https://www.apple.com/newsroom/2005/10/12Apple-Announces-iTunes-6-With-2-000-Music-Videos-Pixar-Short-Films-Hit-TV-Shows/) — 2005-10-12.
+
+- [Cook promotion and iPod succession plan](https://www.apple.com/newsroom/2005/10/14Tim-Cook-Named-COO-of-Apple/) — 2005-10-14.
+
+- [Disney agrees to acquire Pixar](https://thewaltdisneycompany.com/press-releases/disney-to-acquire-pixar/) — 2006-01-24.
+
+- [Jobs and Iger discuss Pixar’s alternatives](https://thewaltdisneycompany.com/app/uploads/ir/2006/events/pixar-2006-0124-transcript.pdf) — 2006-01-24.
+
+- [Disney completes Pixar acquisition](https://thewaltdisneycompany.com/press-releases/disney-completes-pixar-acquisition/) — 2006-05-05.
+
+- [Forstall and the original iPhone engineers look back](https://computerhistory.org/blog/creating-magic-a-conversation-with-original-iphone-engineers-software-team-lead-scott-forstall/) — 2017-06-22.
+
+- [iPhone announcement and US launch plan](https://www.apple.com/newsroom/2007/01/09Apple-Reinvents-the-Phone-with-iPhone/) — 2007-01-09.
+
+- [One hundred million iPods sold](https://www.apple.com/newsroom/2007/04/09100-Million-iPods-Sold/) — 2007-04-09.
+
+- [EMI catalog launches in iTunes Plus](https://www.apple.com/newsroom/2007/05/30Apple-Launches-iTunes-Plus/) — 2007-05-30.
+
+- [The initial third-party iPhone application offer](https://www.apple.com/newsroom/2007/06/11iPhone-to-Support-Third-Party-Web-2-0-Applications/) — 2007-06-11.
+
+- [iPhone specifications revised before sale](https://www.apple.com/newsroom/2007/06/18iPhone-Delivers-Up-to-Eight-Hours-of-Talk-Time/) — 2007-06-18.
+
+- [iPhone retail launch arrangements](https://www.apple.com/newsroom/2007/06/28iPhone-Premieres-This-Friday-Night-at-Apple-Retail-Stores/) — 2007-06-28.
+
+- [iPhone price reduction](https://www.apple.com/newsroom/2007/09/05Apple-Sets-iPhone-Price-at-399-for-this-Holiday-Season/) — 2007-09-05.
+
+- [iPod touch brings multi-touch and Wi-Fi](https://www.apple.com/newsroom/2007/09/05Apple-Unveils-iPod-touch/) — 2007-09-05.
+
+- [Jobs responds to early iPhone customers](https://www.macrumors.com/2007/09/06/steve-jobs-open-letter-to-iphone-owners/) — 2007-09-06.
+
+- [First million iPhones reported](https://www.apple.com/newsroom/2007/09/10Apple-Sells-One-Millionth-iPhone/) — 2007-09-10.
+
+- [Jobs commits to a native iPhone SDK](https://tidbits.com/2007/10/17/steve-jobss-iphone-sdk-letter/) — 2007-10-17.

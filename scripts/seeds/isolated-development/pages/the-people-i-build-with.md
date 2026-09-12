@@ -1,0 +1,5 @@
+# The people I build with
+
+[I](context-use://entity/steve-jobs) organize this work around the people who help me carry it through. [Jon](context-use://entity/jon-rubinstein), [Tony](context-use://entity/tony-fadell), [Jony](context-use://entity/jony-ive) and [Phil](context-use://entity/phil-schiller) connect through [our original iPod team](context-use://page/building-my-first-ipod-team). [Scott](context-use://entity/scott-forstall) connects through [our touch-interface work](context-use://page/building-a-phone-around-our-fingers).
+
+[Tim’s responsibilities and the iPod succession plan](context-use://page/recognizing-tim-and-planning-the-ipod-handoff) explain how my leadership team changes. [Ron](context-use://entity/ron-johnson) connects the product to [the store experience](context-use://page/giving-customers-a-place-to-try-our-products). My work with [Bob](context-use://entity/bob-iger), [Ed](context-use://entity/ed-catmull) and [John](context-use://entity/john-lasseter) belongs in [the Pixar-to-Disney chapter](context-use://page/carrying-my-pixar-work-into-disney).

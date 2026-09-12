@@ -1,0 +1,9 @@
+SYNTHETIC WORKING ARTIFACT — January 8, 2007
+Invented for this historical demo. Wording, attendance and actions are fictional.
+Not a recovered keynote runbook or a claim about actual demo safeguards.
+
+My rehearsal with Scott
+[ ] Begin with a song, then demonstrate a call.
+[ ] Move into the browser and make page zoom visible.
+[ ] Scott: reset the test state and walk the keyboard sequence.
+[ ] Leave time for people to see each interaction.

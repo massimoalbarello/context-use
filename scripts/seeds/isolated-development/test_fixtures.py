@@ -30,6 +30,9 @@ class HistoricalSeedTests(unittest.TestCase):
                 markdown = (ROOT / snapshot["path"]).read_text()
                 self.assertTrue(markdown.startswith("# "))
                 self.assertEqual(len(re.findall(r"^# ", markdown, re.M)), 1)
+                # The map opens at the owner; first-person prose alone cannot
+                # connect these pages to that resource neighborhood.
+                self.assertIn(("entity", "steve-jobs"), LINK.findall(markdown))
                 for kind, target in LINK.findall(markdown):
                     self.assertIn(target, existing[kind])
                 existing["page"].add(snapshot["readableId"])
@@ -39,7 +42,7 @@ class HistoricalSeedTests(unittest.TestCase):
 
     def test_final_graph_reaches_every_resource(self):
         latest = {s["readableId"]: s for s in read_json("pages/index.json")}
-        pending = ["my-work-2000-to-2001"]
+        pending = ["my-work-from-ipod-to-iphone"]
         seen = set()
         reached = {"entity": set(), "asset": set(), "record": set()}
         while pending:

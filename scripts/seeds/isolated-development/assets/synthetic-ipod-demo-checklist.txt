@@ -1,9 +1,9 @@
-SYNTHETIC DEMO DOCUMENT — invented, not an Apple internal artifact.
-Scenario date: October 24, 2001.
-1. Use a Mac with iTunes 2 and FireWire.
-2. Change a playlist, connect iPod, and demonstrate synchronization.
-3. Show the scroll wheel with one hand.
-4. Describe November 10 as the announced availability date.
-5. Do not promise Windows support or an online music store.
-Historical product facts: https://www.apple.com/newsroom/2001/10/23Apple-Presents-iPod/
-The checklist itself is original fictional seed material.
+SYNTHETIC WORKING ARTIFACT — October 22, 2001
+Invented for this historical demo. Not a recovered Apple document.
+
+My iPod demo with Tony
+[ ] Start with a small, recognizable album in the Mac library.
+[ ] Connect the player and show the transfer.
+[ ] Find the album using the wheel.
+[ ] Tony: reset the demo player and put a spare FireWire cable beside the Mac.
+No lyric text or audio files are included.

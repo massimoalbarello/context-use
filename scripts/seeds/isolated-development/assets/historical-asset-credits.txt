@@ -1,21 +1,29 @@
-Historical demo asset provenance
+Historical asset credits — Steve Jobs, iPod to iPhone
+Bundled images are public reference photographs; no authorship by Steve is implied.
 
 Steve Jobs portrait 2010
-Matthew Yohe; existing Commons crop, copied without alteration
 https://commons.wikimedia.org/wiki/File:Steve_Jobs_Headshot_2010-CROP.jpg
-CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
+Matthew Yohe; existing Commons crop, copied without alteration
+CC BY-SA 3.0 — https://creativecommons.org/licenses/by-sa/3.0/
 June 2010, outside the story period; identity illustration only.
 
-Power Mac G4 Cube photo
-Ulf Cronenberg (Uelef), unchanged
-https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg
-Public domain dedication: https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg
-May 27, 2005; later product photograph, not a launch-event photograph.
-
 Original iPod photo
-Aaron Logan (Lightmatter) photograph; background removal by Rjcflyer, unchanged Commons file
 https://commons.wikimedia.org/wiki/File:Ipod_1G.png
-CC BY 2.5: https://creativecommons.org/licenses/by/2.5/
+Aaron Logan (Lightmatter); background removal by Rjcflyer, unchanged Commons file
+CC BY 2.5 — https://creativecommons.org/licenses/by/2.5/
 Derivative uploaded October 22, 2006; original capture date not established. Product reference only.
 
-The CSV is an original transcription of selected reported financial facts, with source URLs per row. The demo checklist is original synthetic text. Research summaries are original paraphrases, not copies of articles. Media was downloaded on 2026-09-11; that is not a historical event date.
+Original iPhone at Macworld
+https://commons.wikimedia.org/wiki/File:Apple-iPhone-003.jpg
+Eliya; existing Commons crop, copied without alteration
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0/
+January 13, 2007 according to the source page; uploaded to Commons in 2011. Display photograph, not a June retail launch photograph.
+
+Steve presenting iPhone
+https://commons.wikimedia.org/wiki/File:Steve_Jobs_presents_iPhone.jpg
+Blake Patterson; unchanged Commons file
+CC BY 2.0 — https://creativecommons.org/licenses/by/2.0/
+January 9, 2007 according to the photographer metadata; later Flickr publication and 2009 Commons upload. Photograph of the Macworld unveiling.
+
+The two synthetic checklists are newly authored fiction, not recovered Apple documents.
+The commitment CSV is an original compilation of cited announcements. Dates distinguish publication, event and target.

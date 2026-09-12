@@ -183,7 +183,7 @@ def create_records():
         records.append({
             "eventId": str(uuid.uuid4()),
             "provider": record["provider"],
-            "sourceId": "steve-jobs-2000-2001",
+            "sourceId": "steve-jobs-ipod-iphone-2001-2007",
             "kind": record["kind"],
             "id": record["id"],
             "revision": 1,

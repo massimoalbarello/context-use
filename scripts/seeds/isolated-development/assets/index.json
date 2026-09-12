@@ -12,18 +12,6 @@
     "dateNote": "June 2010, outside the story period; identity illustration only."
   },
   {
-    "readableId": "power-mac-g4-cube-photo",
-    "name": "Power Mac G4 Cube photo",
-    "path": "assets/cube.jpg",
-    "expectedMediaType": "image/jpeg",
-    "entityReadableId": "power-mac-g4-cube",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg",
-    "credit": "Ulf Cronenberg (Uelef), unchanged",
-    "license": "Public domain dedication",
-    "licenseUrl": "https://commons.wikimedia.org/wiki/File:PowerMac_Cube.jpg",
-    "dateNote": "May 27, 2005; later product photograph, not a launch-event photograph."
-  },
-  {
     "readableId": "original-ipod-photo",
     "name": "Original iPod photo",
     "path": "assets/ipod.png",
@@ -36,18 +24,46 @@
     "dateNote": "Derivative uploaded October 22, 2006; original capture date not established. Product reference only."
   },
   {
-    "readableId": "apple-quarterly-results",
-    "name": "Apple quarterly results",
-    "path": "assets/apple-quarterly-results.csv"
+    "name": "Original iPhone at Macworld",
+    "path": "assets/iphone-macworld.jpg",
+    "expectedMediaType": "image/jpeg",
+    "entityReadableId": "iphone",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple-iPhone-003.jpg",
+    "credit": "Eliya; existing Commons crop, copied without alteration",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "dateNote": "January 13, 2007 according to the source page; uploaded to Commons in 2011. Display photograph, not a June retail launch photograph.",
+    "readableId": "original-iphone-at-macworld"
   },
   {
-    "readableId": "synthetic-ipod-demo-checklist",
+    "name": "Steve presenting iPhone",
+    "path": "assets/steve-presents-iphone.jpg",
+    "expectedMediaType": "image/jpeg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Steve_Jobs_presents_iPhone.jpg",
+    "credit": "Blake Patterson; unchanged Commons file",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "dateNote": "January 9, 2007 according to the photographer metadata; later Flickr publication and 2009 Commons upload. Photograph of the Macworld unveiling.",
+    "readableId": "steve-presenting-iphone"
+  },
+  {
     "name": "Synthetic iPod demo checklist",
-    "path": "assets/synthetic-ipod-demo-checklist.txt"
+    "path": "assets/synthetic-ipod-demo-checklist.txt",
+    "readableId": "synthetic-ipod-demo-checklist"
   },
   {
-    "readableId": "historical-asset-credits",
+    "name": "Synthetic iPhone rehearsal checklist",
+    "path": "assets/synthetic-iphone-rehearsal-checklist.txt",
+    "readableId": "synthetic-iphone-rehearsal-checklist"
+  },
+  {
+    "name": "My product commitment ledger",
+    "path": "assets/product-commitments.csv",
+    "readableId": "my-product-commitment-ledger"
+  },
+  {
     "name": "Historical asset credits",
-    "path": "assets/historical-asset-credits.txt"
+    "path": "assets/historical-asset-credits.txt",
+    "readableId": "historical-asset-credits"
   }
 ]
