@@ -29,18 +29,6 @@ export function createDemoFaces({
     detail,
     processSavedAsset: async () => {},
     preparePortrait: async () => {},
-    portrait: async (input) => {
-      const entity = await entities.find(input);
-      return entity
-        ? {
-            image: entity.image,
-            referenceFaceReadableId: null,
-            analysis: entity.image
-              ? await detail({ ownerId: input.ownerId, readableId: entity.image.readableId })
-              : null,
-          }
-        : null;
-    },
     images: async (input) =>
       (await entities.find({ ownerId: input.ownerId, readableId: input.entityReadableId }))
         ? { items: [], nextOffset: null }
@@ -51,7 +39,6 @@ export function createDemoFaces({
       threshold: LOCAL_FACE_MODEL.defaultThreshold,
     }),
     process: deny,
-    selectReference: deny,
     annotate: deny,
     saveThreshold: deny,
     retryBatch: deny,

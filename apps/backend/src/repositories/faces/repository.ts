@@ -238,68 +238,45 @@ export class FacesRepository implements FacesRepositoryContract {
       this.sql.begin(() => {
         const candidates = this.sql.FindPortraitReferenceCandidates`
           /* @notNull faceId */
-          select face."id" as "faceId" from "asset_face" face
+          select face."id" as "faceId", annotation."decision", annotation."entity_id" as "entityId" from "asset_face" face
           join "asset" asset on asset."id" = face."asset_id" and asset."owner_id" = face."owner_id" and asset."archived_at" is null
           join "entity" entity on entity."owner_id" = face."owner_id" and entity."image_asset_id" = face."asset_id"
           left join "face_annotation" annotation on annotation."face_id" = face."id" and annotation."owner_id" = face."owner_id"
           where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId}
             and entity."id" = ${input.entityId} and entity."entity_type" = 'person' and entity."archived_at" is null
             and face."current" = 1 and face."needs_review" = 0 and face."analysis_version" = ${input.analysisVersion}
-            and (annotation."face_id" is null or (annotation."decision" = 'person' and annotation."entity_id" = entity."id"))
             and not exists (
               select 1 from "entity_face_reference" reference
               join "asset_face" selected on selected."id" = reference."face_id" and selected."owner_id" = reference."owner_id"
               where reference."entity_id" = entity."id" and reference."owner_id" = entity."owner_id" and selected."asset_id" = face."asset_id"
             )
-          limit 2
         `;
-        if (candidates.length !== 1) {
+        const confirmed = candidates.filter(
+          (face) => face.decision === 'person' && face.entityId === input.entityId,
+        );
+        const selected =
+          confirmed.length === 1
+            ? confirmed[0]
+            : candidates.length === 1 && candidates[0]!.decision === null
+              ? candidates[0]
+              : null;
+        if (!selected) {
           return false;
         }
-        this.writeReference({ ...input, faceId: candidates[0]!.faceId });
+        this
+          .sql`delete from "face_match" where "owner_id" = ${input.ownerId} and "entity_id" = ${input.entityId}`;
+        this
+          .sql`delete from "entity_face_reference" where "owner_id" = ${input.ownerId} and "face_id" = ${selected.faceId} and "entity_id" <> ${input.entityId}`;
+        this
+          .sql`insert into "entity_face_reference" ("entity_id", "owner_id", "face_id") values (${input.entityId}, ${input.ownerId}, ${selected.faceId})
+          on conflict ("entity_id") do update set "face_id" = excluded."face_id"`;
+        this
+          .sql`insert into "face_annotation" ("face_id", "owner_id", "decision", "entity_id", "updated_at")
+          values (${selected.faceId}, ${input.ownerId}, 'person', ${input.entityId}, ${input.updatedAt})
+          on conflict ("face_id") do update set "decision" = 'person', "entity_id" = excluded."entity_id", "updated_at" = excluded."updated_at"`;
         return true;
       }),
     );
-  }
-
-  selectReference(input: Input<'selectReference'>) {
-    return this.run(() =>
-      this.sql.begin(() => {
-        const rows = this.sql.SelectPersonReferenceFace`
-        /* @notNull faceId */
-        select face."id" as "faceId" from "asset_face" face
-        join "entity" entity on entity."owner_id" = face."owner_id" and entity."image_asset_id" = face."asset_id"
-        where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId} and face."readable_id" = ${input.faceReadableId}
-          and face."current" = 1 and face."needs_review" = 0 and entity."id" = ${input.entityId}
-          and entity."entity_type" = 'person' and entity."archived_at" is null
-      `;
-        const face = rows[0];
-        if (!face) {
-          return false;
-        }
-        this.writeReference({ ...input, faceId: face.faceId });
-        return true;
-      }),
-    );
-  }
-
-  private writeReference(input: {
-    ownerId: string;
-    entityId: string;
-    faceId: string;
-    updatedAt: string;
-  }): void {
-    this
-      .sql`delete from "face_match" where "owner_id" = ${input.ownerId} and "entity_id" = ${input.entityId}`;
-    this
-      .sql`delete from "entity_face_reference" where "owner_id" = ${input.ownerId} and "face_id" = ${input.faceId} and "entity_id" <> ${input.entityId}`;
-    this
-      .sql`insert into "entity_face_reference" ("entity_id", "owner_id", "face_id") values (${input.entityId}, ${input.ownerId}, ${input.faceId})
-      on conflict ("entity_id") do update set "face_id" = excluded."face_id"`;
-    this
-      .sql`insert into "face_annotation" ("face_id", "owner_id", "decision", "entity_id", "updated_at")
-      values (${input.faceId}, ${input.ownerId}, 'person', ${input.entityId}, ${input.updatedAt})
-      on conflict ("face_id") do update set "decision" = 'person', "entity_id" = excluded."entity_id", "updated_at" = excluded."updated_at"`;
   }
 
   referenceFace(input: Input<'referenceFace'>) {

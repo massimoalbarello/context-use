@@ -1,5 +1,5 @@
 import type { StorageClient } from '#lib/storage/storage.ts';
-import { detectAssetMedia, isEmbeddableAssetMedia } from '#models/assets/media.ts';
+import { detectAssetMedia } from '#models/assets/media.ts';
 import {
   type Asset,
   MAX_ASSET_BYTES,
@@ -13,7 +13,6 @@ import {
 } from '#models/readable-ids/model.ts';
 import type { AssetsRepositoryContract } from '#repositories/assets/repository.ts';
 
-import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
 import type { AssetFacesServiceContract } from './faces.ts';
 
 export type AssetCreateResult =
@@ -27,22 +26,18 @@ function hash(bytes: Uint8Array): string {
 
 export class AssetsService {
   readonly faces: AssetFacesServiceContract;
-  private readonly entities: EntityRepositoryContract;
   private readonly assets: AssetsRepositoryContract;
   private readonly storage: StorageClient;
 
   constructor({
     assets,
     storage,
-    entities,
     faces,
   }: {
     assets: AssetsRepositoryContract;
-    entities: EntityRepositoryContract;
     faces: AssetFacesServiceContract;
     storage: StorageClient;
   }) {
-    this.entities = entities;
     this.faces = faces;
     this.assets = assets;
     this.storage = storage;
@@ -121,33 +116,6 @@ export class AssetsService {
     return { state: 'created', asset };
   }
 
-  async setEntityImage(input: { ownerId: string; readableId: string; assetReadableId: string }) {
-    const asset = await this.assets.find({
-      ownerId: input.ownerId,
-      readableId: input.assetReadableId,
-    });
-    if (!asset) {
-      return { state: 'not_found' } as const;
-    }
-    if (!isEmbeddableAssetMedia(asset.mediaType)) {
-      return { state: 'invalid_asset_type' } as const;
-    }
-    const result = await this.entities.setImage({
-      ownerId: input.ownerId,
-      readableId: input.readableId,
-      assetId: asset.id,
-      updatedAt: new Date().toISOString(),
-    });
-    if (result.state === 'updated') {
-      await this.faces.preparePortrait(input);
-    }
-    return result;
-  }
-
-  removeEntityImage(input: { ownerId: string; readableId: string }) {
-    return this.entities.removeImage({ ...input, updatedAt: new Date().toISOString() });
-  }
-
   list(input: { ownerId: string; limit: number; offset: number; kind?: 'entity_image' }) {
     return this.assets.list(input);
   }
@@ -190,13 +158,5 @@ export class AssetsService {
 
 export type AssetsServiceContract = Pick<
   AssetsService,
-  | 'create'
-  | 'list'
-  | 'detail'
-  | 'updateName'
-  | 'archive'
-  | 'content'
-  | 'faces'
-  | 'setEntityImage'
-  | 'removeEntityImage'
+  'create' | 'list' | 'detail' | 'updateName' | 'archive' | 'content' | 'faces'
 >;

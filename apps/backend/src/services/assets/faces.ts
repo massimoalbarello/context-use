@@ -225,41 +225,6 @@ export class AssetFacesService {
     }
   }
 
-  async portrait(input: AssetInput) {
-    const entity = await this.entities.find(input);
-    if (!entity) {
-      return null;
-    }
-    return {
-      image: entity.image,
-      referenceFaceReadableId: await this.repository.referenceFace({
-        ownerId: input.ownerId,
-        entityId: entity.id,
-      }),
-      analysis: entity.image
-        ? await this.detail({ ownerId: input.ownerId, readableId: entity.image.readableId })
-        : null,
-    };
-  }
-
-  async selectReference(input: AssetInput & { faceReadableId: string }): Promise<boolean> {
-    const entity = await this.entities.find(input);
-    if (!entity?.image || entity.entityType !== 'person') {
-      return false;
-    }
-    const selected = await this.repository.selectReference({
-      ownerId: input.ownerId,
-      entityId: entity.id,
-      assetId: entity.image.id,
-      faceReadableId: input.faceReadableId,
-      updatedAt: new Date().toISOString(),
-    });
-    if (selected) {
-      await this.rematch({ ownerId: input.ownerId });
-    }
-    return selected;
-  }
-
   async annotate(
     input: AssetInput & {
       faceReadableId: string;
@@ -290,6 +255,9 @@ export class AssetFacesService {
     });
     if (updated && input.decision === 'automatic') {
       await this.matchAsset({ ownerId: input.ownerId, assetId: asset.id });
+    }
+    if (updated && input.decision === 'person' && entity?.image?.id === asset.id) {
+      await this.preparePortrait({ ownerId: input.ownerId, readableId: entity.readableId });
     }
     return updated;
   }
@@ -441,8 +409,6 @@ export type AssetFacesServiceContract = Pick<
   | 'process'
   | 'processSavedAsset'
   | 'preparePortrait'
-  | 'portrait'
-  | 'selectReference'
   | 'annotate'
   | 'crop'
   | 'settings'

@@ -125,11 +125,11 @@ async function fixture() {
   const faces = new AssetFacesService(dependencies);
   const assets = new AssetsService({
     assets: assetsRepository,
-    entities: entitiesRepository,
     storage,
     faces,
   });
   const entities = new EntitiesService({
+    assets: assetsRepository,
     entities: entitiesRepository,
     pages: pagesRepository,
     onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
@@ -187,6 +187,8 @@ async function fixture() {
     folder,
     database,
     repository,
+    reference: (entity: Entity) =>
+      repository.referenceFace({ ownerId: OWNER, entityId: entity.id }),
     analyzer,
     faces,
     assets,
@@ -227,17 +229,17 @@ async function fixture() {
       throw new Error('Analysis did not settle');
     },
     async assignPortrait(input: { personReadableId: string; assetReadableId: string }) {
-      await assets.setEntityImage({
+      const result = await entities.setImage({
         ownerId: OWNER,
         readableId: input.personReadableId,
         assetReadableId: input.assetReadableId,
       });
+      if (result.state !== 'updated') {
+        throw new Error('Portrait assignment failed');
+      }
       const deadline = Date.now() + ANALYSIS_TEST_TIMEOUT_MS;
       while (Date.now() < deadline) {
-        if (
-          (await faces.portrait({ ownerId: OWNER, readableId: input.personReadableId }))
-            ?.referenceFaceReadableId
-        ) {
+        if (await repository.referenceFace({ ownerId: OWNER, entityId: result.entity.id })) {
           return;
         }
         await Bun.sleep(1);
@@ -353,10 +355,7 @@ test('a confirmed face can become the same person’s portrait and match earlier
       ?.readableId,
   ).toBe(person.readableId);
   await context.faces.process(input);
-  expect(
-    (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
-      .referenceFaceReadableId,
-  ).toBe(face.readableId);
+  expect(await context.reference(person)).toBe(face.readableId);
   expect((await context.faces.detail(input))!.faces[0]!.decision).toBe('person');
 });
 
@@ -374,23 +373,20 @@ test('changing an entity with an image to Person enrolls its portrait and matche
     throw new Error('Test entity creation failed');
   }
   const person = created.entity;
-  await context.assets.setEntityImage({
+  await context.entities.setImage({
     ownerId: OWNER,
     readableId: person.readableId,
     assetReadableId: portrait.readableId,
   });
-  expect(
-    (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
-      .referenceFaceReadableId,
-  ).toBeNull();
+  expect(await context.reference(person)).toBeNull();
   const response = await context.request({
     path: `/entities/${person.readableId}`,
     method: 'PATCH',
     body: { name: person.name, description: person.description, entityType: 'person' },
   });
   expect(response.status).toBe(StatusMap.OK);
-  const reference = await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId });
-  expect(reference!.referenceFaceReadableId).toBe(reference!.analysis!.faces[0]!.readableId);
+  const analysis = await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId });
+  expect(await context.reference(person)).toBe(analysis!.faces[0]!.readableId);
   expect(
     (await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId }))!.faces[0]!.entity
       ?.readableId,
@@ -539,7 +535,7 @@ test('an incompatible embedding space cannot match even with the same dimensions
   expect((await context.faces.detail(input))!.faces[0]!.entity?.readableId).toBe(person.readableId);
 });
 
-test('face reads, crops, corrections and reference choices enforce asset and person ownership', async () => {
+test('face reads, crops and corrections enforce asset and person ownership', async () => {
   await using context = await fixture();
   const person = await context.person();
   const photo = await context.upload('Private photo');
@@ -549,7 +545,6 @@ test('face reads, crops, corrections and reference choices enforce asset and per
     `/assets/${photo.readableId}/faces`,
     `/assets/${photo.readableId}/faces/${face.readableId}/crop`,
     `/entities/${person.readableId}/images`,
-    `/entities/${person.readableId}/faces`,
   ]) {
     expect((await context.request({ path: path, owner: OTHER_OWNER })).status).toBe(
       StatusMap['Not Found'],
@@ -565,16 +560,6 @@ test('face reads, crops, corrections and reference choices enforce asset and per
         method: 'PUT',
         owner: OTHER_OWNER,
         body: { decision: 'person', entityReadableId: person.readableId },
-      })
-    ).status,
-  ).toBe(StatusMap['Not Found']);
-  expect(
-    (
-      await context.request({
-        path: `/entities/${person.readableId}/faces/reference`,
-        method: 'PUT',
-        owner: OTHER_OWNER,
-        body: { faceReadableId: face.readableId },
       })
     ).status,
   ).toBe(StatusMap['Not Found']);
@@ -606,23 +591,25 @@ test('face reads, crops, corrections and reference choices enforce asset and per
   ).toBe('automatic');
 });
 
-test('multiple portrait faces require selection and correcting a reference retires its automatic links', async () => {
+test('reviewing a face selects it in a group portrait; leaving it unknown does not enroll a different face', async () => {
   await using context = await fixture();
   const person = await context.person();
   context.analyzer.next = [detectedFace(), { ...detectedFace([0, 1]), box: SECOND_BOX }];
   const portrait = await context.upload('Group portrait');
-  await context.assets.setEntityImage({
+  await context.entities.setImage({
     ownerId: OWNER,
     readableId: person.readableId,
     assetReadableId: portrait.readableId,
   });
-  const reference = await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId });
-  expect(reference?.referenceFaceReadableId).toBeNull();
-  const face = reference!.analysis!.faces[0]!;
-  await context.faces.selectReference({
+  expect(await context.reference(person)).toBeNull();
+  const face = (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!
+    .faces[0]!;
+  await context.faces.annotate({
     ownerId: OWNER,
-    readableId: person.readableId,
+    readableId: portrait.readableId,
     faceReadableId: face.readableId,
+    decision: 'person',
+    entityReadableId: person.readableId,
   });
   context.analyzer.next = [detectedFace()];
   const photo = await context.upload('Photo');
@@ -635,6 +622,9 @@ test('multiple portrait faces require selection and correcting a reference retir
     decision: 'unknown',
   });
   expect((await context.faces.detail(input))!.faces[0]!.entity).toBeNull();
+  context.analyzer.next = [detectedFace(), { ...detectedFace([0, 1]), box: SECOND_BOX }];
+  await context.faces.process({ ownerId: OWNER, readableId: portrait.readableId });
+  expect(await context.reference(person)).toBeNull();
 });
 
 test.each(['unknown', 'dismissed', 'person'] as const)(
@@ -660,10 +650,7 @@ test.each(['unknown', 'dismissed', 'person'] as const)(
     const reviewed = (await context.faces.detail(input))!.faces[0]!;
     expect(reviewed.decision).toBe(decision);
     expect(reviewed.entity?.readableId ?? null).toBe(otherPerson?.readableId ?? null);
-    expect(
-      (await context.faces.portrait({ ownerId: OWNER, readableId: person.readableId }))!
-        .referenceFaceReadableId,
-    ).toBeNull();
+    expect(await context.reference(person)).toBeNull();
   },
 );
 
@@ -736,27 +723,26 @@ test('choosing a different person for a reused portrait retires its previous ref
   });
   const face = (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!
     .faces[0]!;
-  await context.assets.removeEntityImage({ ownerId: OWNER, readableId: first.readableId });
-  await context.assets.setEntityImage({
+  await context.entities.removeImage({ ownerId: OWNER, readableId: first.readableId });
+  await context.entities.setImage({
     ownerId: OWNER,
     readableId: second.readableId,
     assetReadableId: portrait.readableId,
   });
-  await context.faces.selectReference({
+  await context.faces.annotate({
     ownerId: OWNER,
-    readableId: second.readableId,
+    readableId: portrait.readableId,
     faceReadableId: face.readableId,
+    decision: 'person',
+    entityReadableId: second.readableId,
   });
-  await context.assets.removeEntityImage({ ownerId: OWNER, readableId: second.readableId });
-  await context.assets.setEntityImage({
+  await context.entities.removeImage({ ownerId: OWNER, readableId: second.readableId });
+  await context.entities.setImage({
     ownerId: OWNER,
     readableId: first.readableId,
     assetReadableId: portrait.readableId,
   });
-  expect(
-    (await context.faces.portrait({ ownerId: OWNER, readableId: first.readableId }))!
-      .referenceFaceReadableId,
-  ).toBeNull();
+  expect(await context.reference(first)).toBeNull();
   expect(
     (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!.faces[0]!
       .entity?.readableId,

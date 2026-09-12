@@ -43,8 +43,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   };
   const assetsService: AssetsServiceContract = {
     faces: unusedAssetFacesService,
-    setEntityImage: unexpectedCall,
-    removeEntityImage: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,
@@ -53,6 +51,8 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     content: unexpectedCall,
   };
   const entitiesService: EntitiesServiceContract = {
+    setImage: unexpectedCall,
+    removeImage: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,

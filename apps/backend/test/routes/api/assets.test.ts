@@ -104,13 +104,13 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       auth: ownerAuth(),
       assetsService: new AssetsService({
         faces: unusedAssetFacesService,
-        entities: new EntitiesRepository(database),
         assets: assetsRepository,
         storage,
       }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
+        assets: assetsRepository,
         onPersonPortraitAvailable: unusedAssetFacesService.preparePortrait,
         entities: new EntitiesRepository(database),
         pages: pagesRepository,

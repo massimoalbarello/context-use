@@ -29,10 +29,10 @@ export function createDemoResources({ database, storage }: { database: SQL; stor
     assetsService: new AssetsService({
       assets,
       storage,
-      entities,
       faces,
     }),
     entitiesService: new EntitiesService({
+      assets,
       onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
       entities,
       pages,

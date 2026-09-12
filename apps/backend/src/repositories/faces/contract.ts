@@ -32,9 +32,6 @@ export interface FacesRepositoryContract {
   enrollPortrait(
     input: FaceAssetInput & { entityId: string; analysisVersion: string; updatedAt: string },
   ): Promise<boolean>;
-  selectReference(
-    input: FaceAssetInput & { entityId: string; faceReadableId: string; updatedAt: string },
-  ): Promise<boolean>;
   referenceFace(input: { ownerId: string; entityId: string }): Promise<string | null>;
   annotate(
     input: FaceAssetInput & {

@@ -16,7 +16,6 @@ import {
   ResourceInUseResponseSchema,
   resourceInUseResponse,
 } from '#routes/api/resource-archiving/model.ts';
-import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 
 const EntityDetailSchema = t.Object({
@@ -31,11 +30,9 @@ function entityDetailResponse(entity: EntityDetail) {
 export function createEntityReadableIdController({
   auth,
   entitiesService,
-  assetsService,
 }: {
   auth: Auth;
   entitiesService: EntitiesServiceContract;
-  assetsService: AssetsServiceContract;
 }) {
   return new Elysia()
     .use(createAuthPlugin({ auth }))
@@ -90,7 +87,7 @@ export function createEntityReadableIdController({
     .put(
       '/entities/:entityReadableId/image',
       async ({ body, params, user, status }) => {
-        const result = await assetsService.setEntityImage({
+        const result = await entitiesService.setImage({
           ownerId: user.id,
           readableId: params.entityReadableId,
           assetReadableId: body.assetReadableId,
@@ -125,7 +122,7 @@ export function createEntityReadableIdController({
     .delete(
       '/entities/:entityReadableId/image',
       async ({ params, user, status }) => {
-        const entity = await assetsService.removeEntityImage({
+        const entity = await entitiesService.removeImage({
           ownerId: user.id,
           readableId: params.entityReadableId,
         });

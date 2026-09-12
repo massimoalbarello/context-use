@@ -97,7 +97,7 @@ async function seedAssets(resources: Resources) {
       throw new Error(`Demo asset: ${asset.readableId}`);
     }
     if (asset.entityReadableId) {
-      const updated = await resources.assetsService.setEntityImage({
+      const updated = await resources.entitiesService.setImage({
         ownerId: DEMO_OWNER_ID,
         readableId: asset.entityReadableId,
         assetReadableId: asset.readableId,

@@ -265,11 +265,8 @@ export interface IListFaceReferencesResult {
 /** Result of query `FindPortraitReferenceCandidates`. */
 export interface IFindPortraitReferenceCandidatesResult {
     faceId: string;
-}
-
-/** Result of query `SelectPersonReferenceFace`. */
-export interface ISelectPersonReferenceFaceResult {
-    faceId: string;
+    decision: string | null;
+    entityId: string | null;
 }
 
 /** Result of query `ReadPersonReferenceFace`. */
@@ -839,7 +836,6 @@ export interface Queries {
     CheckFaceAnalysisAttempt: ICheckFaceAnalysisAttemptResult;
     ListFaceReferences: IListFaceReferencesResult;
     FindPortraitReferenceCandidates: IFindPortraitReferenceCandidatesResult;
-    SelectPersonReferenceFace: ISelectPersonReferenceFaceResult;
     ReadPersonReferenceFace: IReadPersonReferenceFaceResult;
     FindFaceAnnotationTarget: IFindFaceAnnotationTargetResult;
     ReadFaceThreshold: IReadFaceThresholdResult;

@@ -90,8 +90,6 @@ const principal: McpClientAuthorizationPrincipal = {
 
 const unusedAssetsService: AssetsServiceContract = {
   faces: unusedAssetFacesService,
-  setEntityImage: unexpectedCall,
-  removeEntityImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
@@ -105,6 +103,8 @@ const unusedEntitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -843,14 +843,11 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
     ...unusedEntitiesService,
     create: () => Promise.resolve({ state: 'created', entity }),
     update: () => Promise.resolve(entity),
-  };
-  const assetsService: AssetsServiceContract = {
-    ...unusedAssetsService,
-    setEntityImage: (input) => {
+    setImage: (input) => {
       assignedImages.push(input);
       return Promise.resolve({ state: 'updated', entity });
     },
-    removeEntityImage: (input) => {
+    removeImage: (input) => {
       removedImages.push(input);
       return Promise.resolve(entity);
     },
@@ -858,7 +855,6 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
 
   await withMcpClient({
     entitiesService,
-    assetsService,
     run: async (client) => {
       const created = await client.callTool({
         name: 'create_entity',
@@ -922,15 +918,11 @@ test('entity image assignment exposes recoverable MCP errors from the service ru
         updateCalls += 1;
         return Promise.resolve(entity);
       },
-    };
-    const assetsService: AssetsServiceContract = {
-      ...unusedAssetsService,
-      setEntityImage: () => Promise.resolve({ state }),
+      setImage: () => Promise.resolve({ state }),
     };
 
     await withMcpClient({
       entitiesService,
-      assetsService,
       run: async (client) => {
         const created = await client.callTool({
           name: 'create_entity',
@@ -1138,9 +1130,9 @@ test('MCP creates the self entity once through the knowledge profile invariant',
   let createCalls = 0;
   let imageCalls = 0;
   const selfEntity = { ...entity, entityType: 'person' as const, isSelf: true };
-  const assetsService: AssetsServiceContract = {
-    ...unusedAssetsService,
-    setEntityImage: (input) => {
+  const entitiesService: EntitiesServiceContract = {
+    ...unusedEntitiesService,
+    setImage: (input) => {
       imageCalls += 1;
       expect(input).toEqual({
         ownerId: principal.ownerId,
@@ -1169,7 +1161,7 @@ test('MCP creates the self entity once through the knowledge profile invariant',
   };
 
   await withMcpClient({
-    assetsService,
+    entitiesService,
     profilesService,
     run: async (client) => {
       const created = await client.callTool({

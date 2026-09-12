@@ -41,6 +41,8 @@ const entity: EntityDetail = {
 };
 
 const entitiesService: EntitiesServiceContract = {
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: async () => entity,
@@ -50,8 +52,6 @@ const entitiesService: EntitiesServiceContract = {
 
 const assetsService: AssetsServiceContract = {
   faces: unusedAssetFacesService,
-  setEntityImage: unexpectedCall,
-  removeEntityImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,

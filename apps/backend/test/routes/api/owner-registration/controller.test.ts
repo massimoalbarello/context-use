@@ -51,8 +51,6 @@ const frontendAssetsService: FrontendAssetsServiceContract = {
 };
 const assetsService: AssetsServiceContract = {
   faces: unusedAssetFacesService,
-  setEntityImage: unexpectedCall,
-  removeEntityImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
@@ -61,6 +59,8 @@ const assetsService: AssetsServiceContract = {
   content: unexpectedCall,
 };
 const entitiesService: EntitiesServiceContract = {
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,

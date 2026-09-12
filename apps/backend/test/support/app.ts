@@ -37,8 +37,6 @@ export const unusedRecordSyncsService: RecordSyncAuthenticationContract &
 export const unusedAssetFacesService: AssetFacesServiceContract = {
   detail: unexpectedCall,
   process: unexpectedCall,
-  portrait: unexpectedCall,
-  selectReference: unexpectedCall,
   annotate: unexpectedCall,
   crop: unexpectedCall,
   settings: unexpectedCall,

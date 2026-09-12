@@ -4,7 +4,6 @@ import { createAssetReadableIdController } from '#routes/api/assets/[assetReadab
 import { createAssetFacesController } from '#routes/api/assets/[assetReadableId]/faces/controller.ts';
 import { createAssetsController } from '#routes/api/assets/controller.ts';
 import { createEntityReadableIdController } from '#routes/api/entities/[entityReadableId]/controller.ts';
-import { createEntityFacesController } from '#routes/api/entities/[entityReadableId]/faces/controller.ts';
 import { createEntityImagesController } from '#routes/api/entities/[entityReadableId]/images/controller.ts';
 import { createEntitiesController } from '#routes/api/entities/controller.ts';
 import { createFaceRecognitionController } from '#routes/api/face-recognition/controller.ts';
@@ -27,7 +26,6 @@ const READ_API_ROUTES = new Set([
   '/api/profile',
   '/api/entities',
   '/api/entities/:entityReadableId',
-  '/api/entities/:entityReadableId/faces',
   '/api/entities/:entityReadableId/images',
   '/api/pages',
   '/api/pages/:pageReadableId',
@@ -77,7 +75,6 @@ export function createDemoApp({
     .use(createAssetFacesController(faceDependencies))
     .use(createEntitiesController(dependencies))
     .use(createEntityReadableIdController(dependencies))
-    .use(createEntityFacesController(faceDependencies))
     .use(createEntityImagesController(faceDependencies))
     .use(createFaceRecognitionController(faceDependencies))
     .use(createHypermediaController(dependencies))

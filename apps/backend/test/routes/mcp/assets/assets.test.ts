@@ -13,7 +13,6 @@ import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { type Asset, MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
-import { EntitiesRepository } from '#repositories/entities/repository.ts';
 import {
   AssetTransferCapabilities,
   MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
@@ -68,6 +67,8 @@ const principal: McpClientAuthorizationPrincipal = {
 };
 
 const unusedEntitiesService: EntitiesServiceContract = {
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
@@ -121,7 +122,6 @@ async function withAssetMcp({
   const storage = new LocalStorage(join(dataFolder, 'objects'));
   const assetsService = new AssetsService({
     faces: unusedAssetFacesService,
-    entities: new EntitiesRepository(database),
     assets: new AssetsRepository(database),
     storage,
   });
@@ -406,8 +406,6 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   let createCalls = 0;
   const assetsService: AssetsServiceContract = {
     faces: unusedAssetFacesService,
-    setEntityImage: unexpectedCall,
-    removeEntityImage: unexpectedCall,
     create: async (input) => {
       createCalls += 1;
       expect(input).toEqual(
@@ -573,8 +571,6 @@ test('asset updates return no echoed state and archive blockers expose only publ
   let archiveCalls = 0;
   const assetsService: AssetsServiceContract = {
     faces: unusedAssetFacesService,
-    setEntityImage: unexpectedCall,
-    removeEntityImage: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,
