@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { workspaceAccess } from '../../lib/workspace-access';
 import { Eyebrow } from '../layout/eyebrow';
 import { buttonVariants } from '../ui/button';
 
@@ -27,7 +28,7 @@ export function WorkspaceEmpty({
       <Eyebrow>{eyebrow}</Eyebrow>
       <h2 className="mt-2 font-semibold text-4xl tracking-tight">{title}</h2>
       <p className="mt-3 text-lg text-muted-foreground leading-relaxed">{description}</p>
-      {createTo && createLabel && (
+      {workspaceAccess.canWrite && createTo && createLabel && (
         <Link className={buttonVariants({ size: 'lg', className: 'mt-7' })} to={createTo}>
           {createLabel}
         </Link>

@@ -1,0 +1,56 @@
+name: demo
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-demo:
+    name: build:demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare
+      - name: Build standalone read-only demo
+        run: bun run demo:build
+      - name: Verify compiled demo isolation
+        run: bun run demo:check
+      - name: Upload demo binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: nibrun-demo-binary
+          path: apps/backend/demo/dist/context-use-demo
+          if-no-files-found: error
+
+  publish-demo:
+    name: publish:demo
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-demo
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: demo-release
+      cancel-in-progress: true
+    steps:
+      - name: Download demo binary
+        uses: actions/download-artifact@v8
+        with:
+          name: nibrun-demo-binary
+      - name: Publish rolling demo release
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view demo-latest >/dev/null 2>&1; then
+            gh release upload demo-latest context-use-demo --clobber
+            gh release edit demo-latest \
+              --notes "Public read-only Steve Jobs demo built from ${GITHUB_SHA}. This asset is replaced after successful demo builds on main."
+          else
+            gh release create demo-latest context-use-demo \
+              --title "Steve Jobs demo" \
+              --prerelease \
+              --notes "Public read-only Steve Jobs demo built from ${GITHUB_SHA}. This asset is replaced after successful demo builds on main."
+          fi

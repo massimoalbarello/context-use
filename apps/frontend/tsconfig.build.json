@@ -4,5 +4,5 @@
     "composite": true,
     "rootDir": "."
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "demo/vite.config.ts"]
 }

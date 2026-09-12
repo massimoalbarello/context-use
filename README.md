@@ -5,6 +5,13 @@
 
 [![Deploy on nibrun](https://nibrun.com/button.svg)](https://app.nibrun.com/deploy?name=context-use&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fnibrun-latest%2Fcontext-use&port=3000&minimal)
 
+[![Deploy the Steve Jobs demo](https://img.shields.io/badge/Steve_Jobs_demo-Deploy_on_nibrun-black)](https://app.nibrun.com/deploy?name=steve-jobs-demo&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fdemo-latest%2Fcontext-use-demo&port=3000&minimal)
+
+Explore a separate **public, read-only demo** of Steve Jobs' context from iPod to iPhone,
+with related people, projects, evolving pages, source records, and assets. Host it once and
+share its URL with visitors; they need no login or setup. [Run or host the demo](apps/backend/demo/README.md).
+The regular deployment above remains a private, authenticated instance.
+
 </div>
 
 ## Run it locally

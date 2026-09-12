@@ -30,7 +30,11 @@
     "check:all": "bun run --parallel check:types check:codestyle",
     "check:commit-message": "bun run --bun commitlint",
     "test": "bun run --bun turbo test",
-    "fix:codestyle": "bun run --bun biome check --write"
+    "fix:codestyle": "bun run --bun biome check --write",
+    "demo:build": "bun --filter @repo/frontend demo:build && bun --filter @repo/backend demo:build",
+    "demo:build:local": "BUILD_TARGET=host bun run demo:build",
+    "demo:start": "apps/backend/demo/dist/context-use-demo",
+    "demo:check": "bun run apps/backend/demo/check-binary.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
