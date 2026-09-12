@@ -9,6 +9,8 @@ ExternalProject_Add(opencv
     -DBUILD_SHARED_LIBS=OFF -DBUILD_LIST=core,imgproc,imgcodecs,dnn,objdetect
     -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_opencv_apps=OFF
     -DBUILD_JAVA=OFF -DBUILD_opencv_python3=OFF -DBUILD_opencv_gapi=OFF -DWITH_ADE=OFF
+    # Avoid exporting a host-dependent Eigen3::Eigen target to the separate analyzer build.
+    -DWITH_EIGEN=OFF
     -DWITH_IPP=OFF -DWITH_ITT=OFF -DWITH_OPENCL=OFF -DWITH_TBB=OFF -DWITH_OBSENSOR=OFF
     -DWITH_FFMPEG=OFF -DWITH_GSTREAMER=OFF -DWITH_GTK=OFF -DWITH_QT=OFF
     -DWITH_TIFF=OFF -DWITH_OPENEXR=OFF -DWITH_JASPER=OFF -DWITH_JPEG=ON -DWITH_PNG=ON
