@@ -7,7 +7,6 @@ import {
   facesQueryKey,
   retryNextImage,
   saveFaceThreshold,
-  selectFaceReference,
 } from '../../queries/faces';
 
 function useFaceMutation<Input, Output>(mutationFn: (input: Input) => Promise<Output>) {
@@ -28,9 +27,6 @@ export function useAnalyzeAsset() {
 }
 export function useAnnotateFace() {
   return useFaceMutation(annotateFace);
-}
-export function useSelectFaceReference() {
-  return useFaceMutation(selectFaceReference);
 }
 export function useSaveFaceThreshold() {
   return useFaceMutation(saveFaceThreshold);

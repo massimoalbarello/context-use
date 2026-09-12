@@ -52,20 +52,6 @@ export const faceSettingsQueryOptions = queryOptions({
     return data;
   },
 });
-export function personReferenceQueryOptions(readableId: string) {
-  return queryOptions({
-    queryKey: [...facesQueryKey, 'reference', readableId],
-    refetchInterval: (query) =>
-      query.state.data?.analysis?.state === 'processing' ? ANALYSIS_POLL_MS : false,
-    queryFn: async () => {
-      const { data, error } = await api.api.entities({ entityReadableId: readableId }).faces.get();
-      if (error) {
-        throw new Error(apiErrorMessage(error));
-      }
-      return data;
-    },
-  });
-}
 export function personImagesQueryOptions(readableId: string) {
   return infiniteQueryOptions({
     queryKey: [...facesQueryKey, 'images', readableId],
@@ -97,17 +83,6 @@ export async function annotateFace(input: AnnotationInput) {
     throw new Error(apiErrorMessage(error));
   }
   return data;
-}
-export async function selectFaceReference(input: {
-  entityReadableId: string;
-  faceReadableId: string;
-}) {
-  const { error } = await api.api
-    .entities({ entityReadableId: input.entityReadableId })
-    .faces.reference.put({ faceReadableId: input.faceReadableId });
-  if (error) {
-    throw new Error(apiErrorMessage(error));
-  }
 }
 export async function saveFaceThreshold(input: ThresholdInput) {
   const { data, error } = await settingsApi.settings.put(input);

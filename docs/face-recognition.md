@@ -1,14 +1,16 @@
 # Face recognition
 
 Image assets `depicts` person entities. Asset details expose each linked person and whether the
-assignment is automatic or confirmed; a person's **Appears in** gallery reads the same effective
-links. Cropped faces are derived files, not assets or separate people.
+assignment is automatic or confirmed. On person pages, **Appears in** shows compact image cards
+beside **Mentioned by**, using the same effective links. Cropped faces are derived files, not assets
+or separate people.
 
 ## Using it
 
-Assign a portrait to a person entity. A single detected face becomes its reference; a group portrait
-requires choosing the person's face. Selecting a reference checks existing images, including unknown
-faces. Unknown faces do not create entities, and automatic matches never become training references.
+Assign a portrait with one visible face to a person entity. It becomes the recognition reference
+automatically and checks existing images, including unknown faces. Group portraits do not enroll a
+reference automatically. Unknown faces do not create entities, and automatic matches never become
+training references.
 
 Uploads commit their original bytes and metadata before starting recognition. Recognition runs one
 image at a time without a queue. Images arriving while it is busy remain unprocessed. Retry an image
@@ -44,7 +46,7 @@ default instead of inheriting a potentially incompatible number.
   rejects stale attempts and matches computed against replaced embeddings. It owns a dedicated
   synchronous SQLite connection: publications never yield while holding a write lock, and contention
   with canonical writes is retried between complete transactions. The `asset_depicts_entity` view
-  defines effective links once for asset reads and person galleries.
+  defines effective links once for asset reads and person image lists.
 
 Originals remain in the existing asset store. Crops live under
 `DATA_FOLDER/face-crops/<owner>/<asset>/<crop>.jpg` and are served only through owner-authorized routes.

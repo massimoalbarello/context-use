@@ -5,7 +5,7 @@ import { EntityIdentityEditor } from '../components/entities/entity-identity-edi
 import { EntityImageEditor } from '../components/entities/entity-image-editor';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { EntityPageSections } from '../components/entities/entity-page-sections';
-import { PersonFaceReference, PersonImages } from '../components/faces/person-faces';
+import { PersonImages } from '../components/faces/person-faces';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
@@ -13,6 +13,7 @@ import { ResourceDetailHeading } from '../components/knowledge/resource-detail-h
 import { ResourceName } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { Badge } from '../components/ui/badge';
+import { cn } from '../lib/class-names';
 import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';
@@ -166,13 +167,12 @@ function EntityRouteContent({ id }: { id: string }) {
         </p>
       )}
 
-      {entity.entityType === 'person' && (
-        <>
-          <PersonFaceReference readableId={id} />
-          <PersonImages readableId={id} />
-        </>
-      )}
-      <EntityPageSections pages={entity.pages} />
+      <div
+        className={cn('grid items-start gap-8', entity.entityType === 'person' && 'md:grid-cols-2')}
+      >
+        <EntityPageSections pages={entity.pages} />
+        {entity.entityType === 'person' && <PersonImages readableId={id} />}
+      </div>
     </DetailShell>
   );
 }
