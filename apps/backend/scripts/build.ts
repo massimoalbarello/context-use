@@ -38,8 +38,6 @@ await cp(
   { recursive: true },
 );
 
-await cp('../../third-party/faces', `${faceEngineDirectory}/licenses`, { recursive: true });
-
 console.log('📄 Copying frontend assets...');
 await cp(FRONTEND_DIST_SRC, FRONTEND_DIST_DST, { recursive: true });
 

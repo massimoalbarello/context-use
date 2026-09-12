@@ -181,12 +181,6 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
     if (!embedded) {
       throw new FaceAnalysisError('The application does not contain its face analyzer.');
     }
-    for (const file of Bun.embeddedFiles as readonly BunFile[]) {
-      const name = file.name;
-      if (name?.startsWith(`${FACE_ENGINE_FOLDER}/licenses/`)) {
-        await Bun.write(join(this.directory, name.slice(FACE_ENGINE_FOLDER.length + 1)), file);
-      }
-    }
     const bytes = await embedded.bytes();
     const hash = new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
     const destination = join(this.directory, `analyzer-${hash}`);
