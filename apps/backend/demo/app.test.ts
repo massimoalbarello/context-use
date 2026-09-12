@@ -3,14 +3,24 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Elysia, type Static, StatusMap } from 'elysia';
-import { createSqliteDatabase, createSqliteReader } from '#db/client.ts';
+import {
+  createSqliteDatabase,
+  createSqliteReader,
+  createSynchronousSqliteReader,
+} from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { createAuth } from '#lib/auth/better-auth.ts';
 import { elysiaErrorHandler } from '#lib/errors.ts';
+import type { FaceAnalyzer } from '#lib/face-analysis/analyzer.ts';
+import { LOCAL_FACE_MODEL } from '#lib/face-analysis/models.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
+import { LocalStorage } from '#lib/storage/local-storage.ts';
+import type { AssetFaces } from '#models/faces/model.ts';
+import { KnowledgePagesRepository } from '#repositories/knowledge-pages/repository.ts';
 import { createPagesController } from '#routes/api/pages/controller.ts';
 import type { KnowledgePageListSchema, KnowledgePageSchema } from '#routes/api/pages/model.ts';
 import type { RecordListSchema } from '#routes/api/records/model.ts';
+import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { createDemoApp } from './app';
 import { DEMO_OWNER_ID } from './identity';
 import { readOnlyStorage } from './read-only-storage';
@@ -25,6 +35,36 @@ const EXPECTED_UNTYPED_ENTITIES = 12;
 const EXPECTED_RECORDS = 39;
 const EXPECTED_ASSETS = 27;
 const TEST_TIMEOUT_MS = 30_000;
+
+const unavailableAnalyzer: FaceAnalyzer = {
+  model: LOCAL_FACE_MODEL,
+  analyze: () => Promise.reject(new Error('Demo inference unavailable')),
+  close: async () => {},
+};
+
+async function fixtureAnalyzer(): Promise<FaceAnalyzer> {
+  const signatures = new Set<string>();
+  for (const name of ['steve-jobs-2010.jpg', 'steve-presents-iphone.jpg']) {
+    const file = Bun.file(
+      resolve(import.meta.dir, '../../../scripts/seeds/isolated-development/assets', name),
+    );
+    signatures.add(Bun.SHA256.hash(await file.arrayBuffer(), 'hex'));
+  }
+  return {
+    ...unavailableAnalyzer,
+    analyze: async ({ image }) =>
+      signatures.has(Bun.SHA256.hash(await image.arrayBuffer(), 'hex'))
+        ? [
+            {
+              box: [0, 0, 1, 1],
+              detectionScore: 1,
+              embedding: [1, ...Array<number>(LOCAL_FACE_MODEL.dimensions - 1).fill(0)],
+              crop: image,
+            },
+          ]
+        : [],
+  };
+}
 
 async function fingerprint(folder: string) {
   const hashes: Record<string, string> = {};
@@ -41,11 +81,19 @@ test(
   async () => {
     const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-demo-test-'));
     try {
-      await seedDemoSnapshot({ dataFolder });
+      await seedDemoSnapshot({ dataFolder, analyzer: await fixtureAnalyzer() });
       const database = createSqliteReader({ dataFolder });
+      const facesDatabase = createSynchronousSqliteReader({ dataFolder });
       try {
         const storage = readOnlyStorage(createLocalStorage({ dataFolder }));
-        const resources = createDemoResources({ database, storage });
+        const crops = readOnlyStorage(new LocalStorage(join(dataFolder, 'face-crops')));
+        const resources = createDemoResources({
+          database,
+          facesDatabase,
+          storage,
+          crops,
+          analyzer: unavailableAnalyzer,
+        });
         const before = await fingerprint(dataFolder);
         const fetchDemo = createDemoApp({
           resources,
@@ -103,16 +151,41 @@ test(
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')
         ).json()) as Static<typeof KnowledgePageSchema>;
-        expect(
-          await (await read('/api/assets/steve-presenting-iphone/faces')).json(),
-        ).toMatchObject({
-          state: 'not_processed',
-          faces: [],
+        const faces = (await (
+          await read('/api/assets/steve-presenting-iphone/faces')
+        ).json()) as AssetFaces;
+        expect(faces).toMatchObject({
+          state: 'ready',
+          outdated: false,
+          faces: [{ entity: { readableId: 'steve-jobs' }, decision: 'automatic' }],
         });
-        expect(await (await read('/api/entities/steve-jobs/images')).json()).toEqual({
-          items: [],
+        const crop = await read(
+          `/api/assets/steve-presenting-iphone/faces/${faces.faces[0]!.readableId}/crop`,
+        );
+        expect(crop.status).toBe(StatusMap.OK);
+        expect(crop.headers.get('content-type')).toContain('image/jpeg');
+        expect(await crop.arrayBuffer()).toEqual(
+          await Bun.file(
+            resolve(
+              import.meta.dir,
+              '../../../scripts/seeds/isolated-development/assets/steve-presents-iphone.jpg',
+            ),
+          ).arrayBuffer(),
+        );
+        expect(await (await read('/api/entities/steve-jobs/images')).json()).toMatchObject({
+          items: expect.arrayContaining([
+            expect.objectContaining({ readableId: 'steve-presenting-iphone' }),
+            expect.objectContaining({ readableId: 'steve-jobs-portrait-2010' }),
+          ]),
           nextOffset: null,
         });
+        expect(await (await read('/api/assets/apple-company-mark/faces')).json()).toMatchObject({
+          state: 'ready',
+          faces: [],
+        });
+        expect(
+          await (await read('/api/assets/synthetic-ipod-demo-checklist/faces')).json(),
+        ).toMatchObject({ state: 'unsupported', faces: [] });
         expect(page.revisions.length).toBeGreaterThan(1);
         const records = (await (await read('/api/records?limit=50')).json()) as Static<
           typeof RecordListSchema
@@ -196,6 +269,8 @@ test(
         // A missed HTTP restriction still cannot mutate either persistence boundary.
         await expect(storage.write('escape', new Blob(['changed']))).rejects.toThrow('read-only');
         await expect(storage.delete('escape')).rejects.toThrow('read-only');
+        await expect(crops.write('escape', new Blob(['changed']))).rejects.toThrow('read-only');
+        expect(() => facesDatabase.exec('DELETE FROM asset_face')).toThrow('readonly');
         await expect(
           resources.assetsService.faces.process({
             ownerId: DEMO_OWNER_ID,
@@ -210,6 +285,7 @@ test(
         const user = await database`SELECT name FROM auth_user WHERE id = ${DEMO_OWNER_ID}`;
         expect(user[0].name).toBe('Steve Jobs');
       } finally {
+        facesDatabase.close();
         await database.close();
       }
     } finally {
@@ -224,8 +300,8 @@ test('personal resource controllers require real authentication even with demo m
   const database = await createSqliteDatabase({ dataFolder });
   try {
     await runMigrations({ db: database });
-    const resources = createDemoResources({
-      database,
+    const pagesService = new KnowledgePagesService({
+      pages: new KnowledgePagesRepository(database),
       storage: createLocalStorage({ dataFolder }),
     });
     // The exact same controller with real personal authentication still rejects anonymity,
@@ -238,7 +314,7 @@ test('personal resource controllers require real authentication even with demo m
     });
     const personal = new Elysia({ prefix: '/api' })
       .onError(elysiaErrorHandler)
-      .use(createPagesController({ auth, pagesService: resources.pagesService }));
+      .use(createPagesController({ auth, pagesService }));
     for (const headers of [
       new Headers(),
       new Headers({
@@ -257,8 +333,19 @@ test('personal resource controllers require real authentication even with demo m
   }
 });
 
+test('demo snapshot build rejects failed image analysis', async () => {
+  const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-demo-failed-faces-'));
+  try {
+    await expect(seedDemoSnapshot({ dataFolder, analyzer: unavailableAnalyzer })).rejects.toThrow(
+      'Demo image steve-jobs-portrait-2010',
+    );
+  } finally {
+    await rm(dataFolder, { recursive: true, force: true });
+  }
+});
+
 test(
-  'the production backend import graph cannot reach the demo entry, identity, or fixtures',
+  'production excludes demo code and the public demo excludes inference and seeding',
   async () => {
     // A fresh bundler process exercises the same resolver as the production build,
     // independently of Bun test's module loader.
@@ -267,19 +354,29 @@ test(
         process.execPath,
         '-e',
         `
-      const result = await Bun.build({entrypoints: ['src/main.ts'], target: 'bun', metafile: true});
-      if (!result.success) throw new AggregateError(result.logs);
-      console.log(JSON.stringify(Object.keys(result.metafile.inputs)));
+      const graphs = {};
+      for (const entry of ['src/main.ts', 'demo/main.ts']) {
+        const result = await Bun.build({entrypoints: [entry], target: 'bun', metafile: true});
+        if (!result.success) throw new AggregateError(result.logs);
+        graphs[entry] = Object.keys(result.metafile.inputs);
+      }
+      console.log(JSON.stringify(graphs));
     `,
       ],
       { cwd: resolve(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe' },
     );
-    const inputs: string[] = JSON.parse(await new Response(build.stdout).text());
+    const graphs: Record<string, string[]> = JSON.parse(await new Response(build.stdout).text());
     expect(await build.exited).toBe(0);
+    const inputs = graphs['src/main.ts']!;
     expect(inputs.some((path) => path.endsWith('/lib/auth/better-auth.ts'))).toBe(true);
     expect(inputs.filter((path) => path.includes('/demo/') || path.includes('/seeds/'))).toEqual(
       [],
     );
+    expect(
+      graphs['demo/main.ts']!.filter(
+        (path) => /\/(local-analyzer|model-files|seed)\.ts$/.test(path) || path.includes('/seeds/'),
+      ),
+    ).toEqual([]);
   },
   TEST_TIMEOUT_MS,
 );

@@ -14,6 +14,10 @@ export function createSqliteReader({ dataFolder }: { dataFolder: string }): SQL 
   });
 }
 
+export function createSynchronousSqliteReader({ dataFolder }: { dataFolder: string }): Database {
+  return new Database(join(dataFolder, DATABASE_FILE_NAME), { readonly: true });
+}
+
 export async function createSqliteDatabase({ dataFolder }: { dataFolder: string }): Promise<SQL> {
   ensureDir(dataFolder);
   const database = new SQL({

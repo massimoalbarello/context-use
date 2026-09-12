@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { StatusMap } from 'elysia';
+import type { AssetFaces } from '#models/faces/model.ts';
 
 const START_TIMEOUT_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 5_000;
@@ -52,6 +53,35 @@ try {
   const picture = await request({ path: '/api/assets/steve-presenting-iphone/content' });
   assert.equal(picture.status, StatusMap.OK);
   assert.match(picture.headers.get('content-type') ?? '', /^image\//);
+  const faces = (await (
+    await request({ path: '/api/assets/steve-presenting-iphone/faces' })
+  ).json()) as AssetFaces;
+  assert.equal(faces.state, 'ready');
+  assert.equal(faces.outdated, false);
+  const steve = faces.faces.find((face) => face.entity?.readableId === 'steve-jobs');
+  assert.ok(steve, 'Seeded photo should recognize Steve Jobs from his portrait');
+  const crop = await request({
+    path: `/api/assets/steve-presenting-iphone/faces/${steve.readableId}/crop`,
+  });
+  assert.equal(crop.status, StatusMap.OK);
+  assert.match(crop.headers.get('content-type') ?? '', /^image\/jpeg/);
+  assert.ok((await crop.arrayBuffer()).byteLength > 0);
+  const images = (await (await request({ path: '/api/entities/steve-jobs/images' })).json()) as {
+    items: { readableId: string }[];
+  };
+  assert.ok(images.items.some((image) => image.readableId === 'steve-presenting-iphone'));
+  const extracted = await readdir(temporary);
+  assert.equal(extracted.length, 1);
+  const files = Array.from(
+    new Bun.Glob('**/*').scanSync({ cwd: join(temporary, extracted[0]!), onlyFiles: true }),
+  );
+  assert.ok(files.some((file) => file.startsWith('face-crops/')));
+  assert.ok(
+    files.every(
+      (file) => file === 'app.db' || file.startsWith('objects/') || file.startsWith('face-crops/'),
+    ),
+    'Snapshot must not include inference binaries or models',
+  );
   for (const path of [
     '/api/pages',
     '/api/profile',
@@ -87,7 +117,7 @@ try {
   assert.equal(await child.exited, 0);
   assert.deepEqual(await readdir(temporary), []);
   console.log(
-    'Compiled demo: anonymous browsing, write denial, personal-data isolation and cleanup passed.',
+    'Compiled demo: precomputed faces and crops, anonymous browsing, write denial, personal-data isolation and cleanup passed.',
   );
 } finally {
   if (child.exitCode === null) {

@@ -1,8 +1,10 @@
 import { join, resolve } from 'node:path';
 import canonicalize from 'canonicalize';
-import { createSqliteDatabase } from '#db/client.ts';
+import { createSqliteDatabase, createSynchronousSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
+import type { FaceAnalyzer } from '#lib/face-analysis/analyzer.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
+import { LocalStorage } from '#lib/storage/local-storage.ts';
 import type { EntityType } from '#models/entities/model.ts';
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import { RecordSyncsRepository } from '#repositories/syncs/repository.ts';
@@ -36,16 +38,28 @@ function fixture(path: string) {
 }
 
 /** Build-time only: the published binary contains the resulting snapshot, not this seeder. */
-export async function seedDemoSnapshot({ dataFolder }: { dataFolder: string }) {
+export async function seedDemoSnapshot({
+  dataFolder,
+  analyzer,
+}: {
+  dataFolder: string;
+  analyzer: FaceAnalyzer;
+}) {
   const database = await createSqliteDatabase({ dataFolder });
+  let facesDatabase: ReturnType<typeof createSynchronousSqliteDatabase> | undefined;
+  let resources: Resources | undefined;
   try {
     await runMigrations({ db: database });
+    facesDatabase = createSynchronousSqliteDatabase({ dataFolder });
     const now = new Date().toISOString();
     await database`INSERT INTO auth_user (id, name, email, emailVerified, createdAt, updatedAt)
       VALUES (${DEMO_OWNER_ID}, 'Steve Jobs', 'steve-jobs@example.invalid', 0, ${now}, ${now})`;
-    const resources = createDemoResources({
+    resources = createDemoResources({
       database,
+      facesDatabase,
       storage: createLocalStorage({ dataFolder }),
+      crops: new LocalStorage(join(dataFolder, 'face-crops')),
+      analyzer,
     });
     const profile: EntityFixture = await fixture('entities/steve-jobs.json').json();
     const createdProfile = await resources.profilesService.create({
@@ -71,10 +85,16 @@ export async function seedDemoSnapshot({ dataFolder }: { dataFolder: string }) {
     await seedAssets(resources);
     const recordAddresses = await seedRecords({ resources, database });
     await seedPages({ resources, recordAddresses });
+    await resources.facesService.close();
+    resources = undefined;
+    facesDatabase.close();
+    facesDatabase = undefined;
     // A self-contained database without journals is safe to embed and open read-only.
     await database.unsafe('PRAGMA wal_checkpoint(TRUNCATE)');
     await database.unsafe('PRAGMA journal_mode = DELETE');
   } finally {
+    await resources?.facesService.close();
+    facesDatabase?.close();
     await database.close();
   }
 }
@@ -105,6 +125,17 @@ async function seedAssets(resources: Resources) {
       if (updated.state !== 'updated') {
         throw new Error(`Demo entity image: ${asset.readableId}`);
       }
+    }
+  }
+
+  // Portraits are all assigned before analysis, so normal enrollment also rematches earlier photos.
+  for (const asset of assets) {
+    const result = await resources.facesService.process({
+      ownerId: DEMO_OWNER_ID,
+      readableId: asset.readableId,
+    });
+    if (result?.state !== 'ready' && result?.state !== 'unsupported') {
+      throw new Error(`Demo image ${asset.readableId}: ${result?.error ?? result?.state}`);
     }
   }
 }
