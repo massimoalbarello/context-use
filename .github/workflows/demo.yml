@@ -1,0 +1,19 @@
+name: demo
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-demo:
+    name: build:demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare
+      - name: Build standalone read-only demo
+        run: bun run demo:build
+      - name: Verify compiled demo isolation
+        run: bun run demo:check
