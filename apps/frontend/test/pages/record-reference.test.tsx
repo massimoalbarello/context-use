@@ -40,10 +40,12 @@ function ReferenceEditor() {
         id="markdown"
         name="markdown"
         value={markdown}
-        entities={[]}
-        pages={[]}
-        assets={[]}
-        records={[record]}
+        suggestions={[{ kind: 'record', record }]}
+        loading={false}
+        error={null}
+        totalMatches={1}
+        truncated={false}
+        onRetry={() => undefined}
         invalid={false}
         onBlur={() => undefined}
         onChange={setMarkdown}

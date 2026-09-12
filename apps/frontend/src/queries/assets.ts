@@ -64,24 +64,6 @@ export function assetsQueryOptions(query?: string) {
   });
 }
 
-export function assetSuggestionsQueryOptions(query: string) {
-  return queryOptions({
-    queryKey: [...assetSuggestionsQueryKey, query],
-    queryFn: async () => {
-      if (query.trim()) {
-        return (await assetSearchPage({ query, limit: SUGGESTION_LIMIT })).items;
-      }
-      const { data, error } = await api.api.assets.get({
-        query: { limit: SUGGESTION_LIMIT, offset: 0 },
-      });
-      if (error) {
-        throw new Error(apiErrorMessage(error));
-      }
-      return data.items;
-    },
-  });
-}
-
 export function imageAssetSuggestionsQueryOptions(query: string) {
   return queryOptions({
     queryKey: [...assetSuggestionsQueryKey, 'image', query],

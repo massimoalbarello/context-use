@@ -1,13 +1,10 @@
 import { expect, spyOn, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 import type { api } from '../../src/lib/api';
-import {
-  assetSuggestionsQueryOptions,
-  assetsQueryOptions,
-  imageAssetSuggestionsQueryOptions,
-} from '../../src/queries/assets';
-import { entitiesQueryOptions, entitySuggestionsQueryOptions } from '../../src/queries/entities';
-import { pageSuggestionsQueryOptions, pagesQueryOptions } from '../../src/queries/pages';
+import { assetsQueryOptions, imageAssetSuggestionsQueryOptions } from '../../src/queries/assets';
+import { entitiesQueryOptions } from '../../src/queries/entities';
+import { knowledgeSuggestionsQueryOptions } from '../../src/queries/knowledge-suggestions';
+import { pagesQueryOptions } from '../../src/queries/pages';
 
 type SearchResponse = NonNullable<
   Awaited<ReturnType<typeof api.api.hypermedia.search.get>>['data']
@@ -30,22 +27,18 @@ test('sidebar and picker keyword queries use the shared search endpoint with typ
     await client.fetchInfiniteQuery(entitiesQueryOptions({ query: 'running' }));
     await client.fetchInfiniteQuery(assetsQueryOptions('running'));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: 'running', interval: 'with' }));
-    await client.fetchQuery(entitySuggestionsQueryOptions('running'));
-    await client.fetchQuery(assetSuggestionsQueryOptions('running'));
-    await client.fetchQuery(pageSuggestionsQueryOptions('running'));
     await client.fetchQuery(imageAssetSuggestionsQueryOptions('running'));
+    await client.fetchQuery(knowledgeSuggestionsQueryOptions('running'));
 
     expect(requests.map((url) => url.pathname)).toEqual(
-      Array.from({ length: 7 }, () => '/api/hypermedia/search'),
+      Array.from({ length: 5 }, () => '/api/hypermedia/search'),
     );
     expect(requests.map((url) => Object.fromEntries(url.searchParams))).toEqual([
       { query: 'running', resourceTypes: 'entity' },
       { query: 'running', resourceTypes: 'asset' },
       { query: 'running', resourceTypes: 'knowledge_page', interval: 'with' },
-      { query: 'running', resourceTypes: 'entity', limit: '7' },
-      { query: 'running', resourceTypes: 'asset', limit: '7' },
-      { query: 'running', resourceTypes: 'knowledge_page', limit: '7' },
       { query: 'running', resourceTypes: 'asset', limit: '7', assetKind: 'entity_image' },
+      { query: 'running' },
     ]);
   } finally {
     client.clear();
@@ -74,15 +67,9 @@ test('blank keyword queries browse typed collections without invoking retrieval'
     await client.fetchInfiniteQuery(entitiesQueryOptions({ query: '  ' }));
     await client.fetchInfiniteQuery(assetsQueryOptions('  '));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: '  ' }));
-    await client.fetchQuery(entitySuggestionsQueryOptions('  '));
-    await client.fetchQuery(assetSuggestionsQueryOptions('  '));
-    await client.fetchQuery(pageSuggestionsQueryOptions('  '));
     await client.fetchQuery(imageAssetSuggestionsQueryOptions('  '));
 
     expect(requests.map((url) => url.pathname)).toEqual([
-      '/api/entities',
-      '/api/assets',
-      '/api/pages',
       '/api/entities',
       '/api/assets',
       '/api/pages',

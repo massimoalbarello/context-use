@@ -2,7 +2,6 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import {
   assetPreviewQueryOptions,
   assetQueryOptions,
-  assetSuggestionsQueryOptions,
   assetsQueryOptions,
   imageAssetSuggestionsQueryOptions,
 } from '../../queries/assets';
@@ -22,13 +21,6 @@ export function useAsset(readableId: string) {
 
 export function useAssetPreview(readableId: string) {
   return useQuery(assetPreviewQueryOptions(readableId));
-}
-
-export function useAssetSuggestions(query: string | null) {
-  return useQuery({
-    ...assetSuggestionsQueryOptions(query ?? ''),
-    enabled: query !== null,
-  });
 }
 
 export function useImageAssetSuggestions(query: string) {

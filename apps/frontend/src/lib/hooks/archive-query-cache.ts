@@ -15,7 +15,6 @@ import {
   entityPreviewQueryOptions,
   entityPreviewsQueryKey,
   entityQueryOptions,
-  entitySuggestionsQueryKey,
 } from '../../queries/entities';
 import { hypermediaQueryKey } from '../../queries/hypermedia';
 import {
@@ -23,7 +22,6 @@ import {
   pageDetailsQueryKey,
   pagePreviewQueryOptions,
   pageQueryOptions,
-  pageSuggestionsQueryKey,
   pagesListQueryKey,
 } from '../../queries/pages';
 import { recordDetailsQueryKey } from '../../queries/records';
@@ -72,7 +70,6 @@ export function settleArchivedEntityQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: entitiesListQueryKey });
-  void queryClient.invalidateQueries({ queryKey: entitySuggestionsQueryKey });
   void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
 }
 
@@ -96,7 +93,6 @@ export function settleArchivedPageQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: pagesListQueryKey });
-  void queryClient.invalidateQueries({ queryKey: pageSuggestionsQueryKey });
   void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
   void queryClient.invalidateQueries({
     queryKey: pageDetailsQueryKey,

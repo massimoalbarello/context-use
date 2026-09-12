@@ -1,9 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { cn } from '../../lib/class-names';
-import type { AssetSummary } from '../../queries/assets';
-import type { EntitySummary } from '../../queries/entities';
-import type { KnowledgePageSummary } from '../../queries/pages';
-import type { ExternalRecordSummary } from '../../queries/records';
+import type { KnowledgeSuggestion } from '../../queries/knowledge-suggestions';
 import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
@@ -18,12 +15,6 @@ import {
   type KnowledgeLinkTarget,
 } from './knowledge-link';
 import { KnowledgePageCardContent } from './knowledge-page-link';
-
-type KnowledgeSuggestion =
-  | { kind: 'entity'; entity: EntitySummary }
-  | { kind: 'page'; page: KnowledgePageSummary }
-  | { kind: 'asset'; asset: AssetSummary }
-  | { kind: 'record'; record: ExternalRecordSummary };
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
   if (suggestion.kind === 'entity') {
@@ -59,14 +50,44 @@ export function scrollPickerOptionIntoView(options: {
   }
 }
 
+function pickerStatus({
+  loading,
+  error,
+  count,
+  truncated,
+  totalMatches,
+}: {
+  loading: boolean;
+  error: Error | null;
+  count: number;
+  truncated: boolean;
+  totalMatches: number;
+}): string {
+  if (loading) {
+    return 'Searching all resources…';
+  }
+  if (error) {
+    return 'Couldn’t search resources. Try again.';
+  }
+  if (count === 0) {
+    return 'No matching resources. Try another search.';
+  }
+  if (truncated) {
+    return `Showing ${count} of ${totalMatches} matches. Keep typing to narrow your search.`;
+  }
+  return `${count} matching ${count === 1 ? 'resource' : 'resources'}.`;
+}
+
 export function KnowledgeLinkTextarea({
   id,
   name,
   value,
-  entities,
-  pages,
-  assets,
-  records,
+  suggestions: results,
+  loading,
+  error,
+  totalMatches,
+  truncated,
+  onRetry,
   invalid,
   onBlur,
   onChange,
@@ -75,10 +96,12 @@ export function KnowledgeLinkTextarea({
   id: string;
   name: string;
   value: string;
-  entities: EntitySummary[];
-  pages: KnowledgePageSummary[];
-  assets: AssetSummary[];
-  records: ExternalRecordSummary[];
+  suggestions: KnowledgeSuggestion[];
+  loading: boolean;
+  error: Error | null;
+  totalMatches: number;
+  truncated: boolean;
+  onRetry: () => void;
   invalid: boolean;
   onBlur: () => void;
   onChange: (value: string) => void;
@@ -89,15 +112,8 @@ export function KnowledgeLinkTextarea({
   const menuRef = useRef<HTMLDivElement>(null);
   const [link, setLink] = useState<ActiveKnowledgeLink | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const suggestions: KnowledgeSuggestion[] = link
-    ? [
-        ...entities.map((entity) => ({ kind: 'entity' as const, entity })),
-        ...pages.map((page) => ({ kind: 'page' as const, page })),
-        ...assets.map((asset) => ({ kind: 'asset' as const, asset })),
-        ...records.map((record) => ({ kind: 'record' as const, record })),
-      ]
-    : [];
-  const suggestionsOpen = suggestions.length > 0;
+  const suggestionsOpen = Boolean(link?.query.trim());
+  const suggestions = suggestionsOpen && !loading && !error ? results : [];
   const activeSuggestion = suggestions[activeIndex] ?? suggestions[0];
   const activeOptionId = activeSuggestion
     ? `${listId}-${suggestionId(activeSuggestion)}`
@@ -135,51 +151,69 @@ export function KnowledgeLinkTextarea({
   }
 
   return (
-    <div className="relative">
+    <fieldset
+      className="relative min-w-0"
+      aria-label="Knowledge editor"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setLink(null);
+          onQueryChange(null);
+        }
+      }}
+    >
       <Textarea
         ref={textareaRef}
         id={id}
         name={name}
         rows={12}
         value={value}
-        onBlur={() => {
-          onBlur();
-          setLink(null);
-          onQueryChange(null);
-        }}
+        onBlur={onBlur}
         onChange={(event) => {
-          const markdown = event.target.value;
+          const { value: markdown, selectionStart: cursor } = event.currentTarget;
           onChange(markdown);
-          updateLink({ markdown, cursor: event.target.selectionStart });
+          updateLink({ markdown, cursor });
         }}
         onFocus={(event) =>
-          updateLink({ markdown: value, cursor: event.currentTarget.selectionStart })
+          updateLink({
+            markdown: event.currentTarget.value,
+            cursor: event.currentTarget.selectionStart,
+          })
         }
         onSelect={(event) =>
-          updateLink({ markdown: value, cursor: event.currentTarget.selectionStart })
+          updateLink({
+            markdown: event.currentTarget.value,
+            cursor: event.currentTarget.selectionStart,
+          })
         }
         onKeyDown={(event) => {
           if (!suggestionsOpen) {
             return;
           }
-          if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            setActiveIndex((index) => (index + 1) % suggestions.length);
-          } else if (event.key === 'ArrowUp') {
-            event.preventDefault();
-            setActiveIndex((index) => (index - 1 + suggestions.length) % suggestions.length);
-          } else if (event.key === 'Escape') {
-            event.preventDefault();
-            setLink(null);
-            onQueryChange(null);
-          } else if (event.key === 'Enter' || event.key === 'Tab') {
-            event.preventDefault();
-            if (activeSuggestion) {
-              selectSuggestion(activeSuggestion);
+          switch (event.key) {
+            case 'ArrowDown':
+            case 'ArrowUp': {
+              event.preventDefault();
+              const count = Math.max(1, suggestions.length);
+              const direction = event.key === 'ArrowDown' ? 1 : -1;
+              setActiveIndex((index) => (index + direction + count) % count);
+              break;
             }
+            case 'Escape':
+              event.preventDefault();
+              setLink(null);
+              onQueryChange(null);
+              break;
+            case 'Enter':
+            case 'Tab':
+              if (activeSuggestion) {
+                event.preventDefault();
+                selectSuggestion(activeSuggestion);
+              }
+              break;
           }
         }}
         aria-autocomplete="list"
+        aria-label="Knowledge page content"
         aria-controls={suggestionsOpen ? listId : undefined}
         aria-expanded={suggestionsOpen}
         aria-activedescendant={activeOptionId}
@@ -190,47 +224,75 @@ export function KnowledgeLinkTextarea({
         className="block min-h-64 resize-y font-mono leading-relaxed md:min-h-72"
       />
       {suggestionsOpen && (
-        <div
-          ref={menuRef}
-          className="absolute bottom-3 left-3 z-10 grid max-h-72 w-[calc(100%-1.5rem)] max-w-xl gap-1 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg"
-          id={listId}
-          role="listbox"
-          aria-label="Knowledge"
-        >
-          {suggestions.map((suggestion) => {
-            const optionId = suggestionId(suggestion);
-            return (
+        <div className="absolute top-full left-0 z-10 mt-2 w-full max-w-xl rounded-lg border border-border bg-popover p-1 shadow-lg">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 text-muted-foreground text-xs">
+            <p role="status">
+              {pickerStatus({
+                loading,
+                error,
+                count: suggestions.length,
+                truncated,
+                totalMatches,
+              })}
+            </p>
+            {error && (
               <Button
-                variant="ghost"
-                className={cn(resourceCardVariants(), 'w-full justify-between text-sm')}
-                id={`${listId}-${optionId}`}
-                key={optionId}
                 type="button"
-                role="option"
-                aria-selected={optionId === (activeSuggestion && suggestionId(activeSuggestion))}
+                variant="ghost"
+                size="sm"
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => selectSuggestion(suggestion)}
+                onClick={() => {
+                  textareaRef.current?.focus();
+                  onRetry();
+                }}
               >
-                {suggestion.kind === 'entity' ? (
-                  <EntityCardContent entity={suggestion.entity} />
-                ) : suggestion.kind === 'page' ? (
-                  <KnowledgePageCardContent page={suggestion.page} />
-                ) : suggestion.kind === 'record' ? (
-                  <RecordCardContent record={suggestion.record} />
-                ) : (
-                  <AssetCardContent asset={suggestion.asset} />
-                )}
-                <Badge
-                  variant="outline"
-                  className="h-6 shrink-0 px-2 text-[0.65rem] uppercase tracking-wider"
-                >
-                  {SUGGESTION_LABELS[suggestion.kind]}
-                </Badge>
+                Try again
               </Button>
-            );
-          })}
+            )}
+          </div>
+          <div
+            ref={menuRef}
+            className="grid max-h-64 gap-1 overflow-y-auto"
+            id={listId}
+            role="listbox"
+            aria-label="Knowledge"
+            aria-busy={loading}
+          >
+            {suggestions.map((suggestion) => {
+              const optionId = suggestionId(suggestion);
+              return (
+                <Button
+                  variant="ghost"
+                  className={cn(resourceCardVariants(), 'w-full justify-between text-sm')}
+                  id={`${listId}-${optionId}`}
+                  key={optionId}
+                  type="button"
+                  role="option"
+                  aria-selected={optionId === (activeSuggestion && suggestionId(activeSuggestion))}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => selectSuggestion(suggestion)}
+                >
+                  {suggestion.kind === 'entity' ? (
+                    <EntityCardContent entity={suggestion.entity} />
+                  ) : suggestion.kind === 'page' ? (
+                    <KnowledgePageCardContent page={suggestion.page} />
+                  ) : suggestion.kind === 'record' ? (
+                    <RecordCardContent record={suggestion.record} />
+                  ) : (
+                    <AssetCardContent asset={suggestion.asset} />
+                  )}
+                  <Badge
+                    variant="outline"
+                    className="h-6 shrink-0 px-2 text-[0.65rem] uppercase tracking-wider"
+                  >
+                    {SUGGESTION_LABELS[suggestion.kind]}
+                  </Badge>
+                </Button>
+              );
+            })}
+          </div>
         </div>
       )}
-    </div>
+    </fieldset>
   );
 }

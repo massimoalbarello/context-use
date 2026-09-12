@@ -196,7 +196,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/services/**/*.ts"],
+      "includes": ["apps/backend/src/services/hypermedia-retrieval/service.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -211,6 +211,50 @@
                   {
                     "group": ["#services/**"],
                     "message": "A service capability must not coordinate another service capability. Depend on the required repository contracts directly."
+                  }
+                ],
+                "paths": {
+                  "bun": {
+                    "importNames": ["SQL"],
+                    "message": "Services must not hold SQL. Depend on a repository contract instead."
+                  },
+                  "#lib/env.ts": "Only main.ts may read production configuration.",
+                  "#lib/storage/client.ts": "Only main.ts may select and create the storage client."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "apps/backend/src/services/**/*.ts",
+        "!apps/backend/src/services/hypermedia-retrieval/service.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["#db/**", "#routes/**"],
+                    "message": "Services depend on repository contracts, never database or controller modules."
+                  },
+                  {
+                    "group": ["#services/**"],
+                    "message": "A service capability must not coordinate another service capability. Depend on the required repository contracts directly."
+                  },
+                  {
+                    "group": [
+                      "#repositories/hypermedia-retrieval/**",
+                      "**/hypermedia-retrieval/contract.ts",
+                      "**/hypermedia-retrieval/repository.ts",
+                      "**/hypermedia-retrieval/snippets.ts"
+                    ],
+                    "message": "Search must enter through HypermediaRetrievalService. Other services must not depend on its retrieval repository or search implementation."
                   }
                 ],
                 "paths": {

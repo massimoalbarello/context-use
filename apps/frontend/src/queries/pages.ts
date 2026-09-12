@@ -37,8 +37,6 @@ export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
 export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pagePreviewsQueryKey = [...pagesQueryKey, 'preview'] as const;
-export const pageSuggestionsQueryKey = [...pagesQueryKey, 'suggestions'] as const;
-const SUGGESTION_LIMIT = 7;
 
 async function pageSearchPage({
   query,
@@ -85,24 +83,6 @@ export function pagesQueryOptions({ dateRange, query, interval }: KnowledgePageL
       return data;
     },
     getNextPageParam: (page) => page.nextOffset ?? undefined,
-  });
-}
-
-export function pageSuggestionsQueryOptions(query: string) {
-  return queryOptions({
-    queryKey: [...pageSuggestionsQueryKey, query],
-    queryFn: async () => {
-      if (query.trim()) {
-        return (await pageSearchPage({ query, limit: SUGGESTION_LIMIT })).items;
-      }
-      const { data, error } = await api.api.pages.get({
-        query: { limit: SUGGESTION_LIMIT, offset: 0 },
-      });
-      if (error) {
-        throw new Error(apiErrorMessage(error));
-      }
-      return data.items;
-    },
   });
 }
 

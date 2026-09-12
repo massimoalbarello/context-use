@@ -29,9 +29,7 @@ export const entitiesQueryKey = ['entities'] as const;
 export const entitiesListQueryKey = [...entitiesQueryKey, 'list'] as const;
 export const entityDetailsQueryKey = [...entitiesQueryKey, 'detail'] as const;
 export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
-export const entitySuggestionsQueryKey = [...entitiesQueryKey, 'suggestions'] as const;
 const PREVIEW_RELATIONSHIP_LIMIT = 12;
-const SUGGESTION_LIMIT = 7;
 
 async function entitySearchPage({
   query,
@@ -77,24 +75,6 @@ export function entitiesQueryOptions({
       return data;
     },
     getNextPageParam: (page) => page.nextOffset ?? undefined,
-  });
-}
-
-export function entitySuggestionsQueryOptions(query: string) {
-  return queryOptions({
-    queryKey: [...entitySuggestionsQueryKey, query],
-    queryFn: async () => {
-      if (query.trim()) {
-        return (await entitySearchPage({ query, limit: SUGGESTION_LIMIT })).items;
-      }
-      const { data, error } = await api.api.entities.get({
-        query: { limit: SUGGESTION_LIMIT, offset: 0 },
-      });
-      if (error) {
-        throw new Error(apiErrorMessage(error));
-      }
-      return data.items;
-    },
   });
 }
 
