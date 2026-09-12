@@ -20,7 +20,7 @@ it requires no source checkout or sidecar files at runtime. Restarting restores 
 snapshot. It does not read `DATA_FOLDER`, personal databases, auth secrets, or integrations.
 Only `PORT` configures the demo listener.
 
-## Hosting on nibrun
+## Deploy the shared demo manually
 
 Build the Linux x64 executable, then create a dedicated demo app:
 
@@ -31,14 +31,12 @@ nib run apps/backend/demo/dist/context-use-demo --name steve-jobs-demo --port 30
 ```
 
 For subsequent deployments, use `--app <exact-demo-slug>` from `nib apps list` instead of
-`--name`. Share the returned HTTPS URL; visitors need no account. Never deploy this binary over
-a personal instance. The distinct app name also keeps it outside the personal deployment
-script's `context-use-` app selection.
+`--name`. Add the returned HTTPS URL to the root README as **View the Steve Jobs demo**.
+Visitors open that shared instance; they need no account, setup, or deployment. Never deploy this
+binary over a personal instance. The distinct app name also keeps it outside the personal
+deployment script's `context-use-` app selection.
 
-CI builds and boots the demo independently of the personal application. After merge to `main`,
-the separate rolling `demo-latest` release publishes `context-use-demo`. The personal
-`nibrun-latest` release and its build workflow remain unchanged. The README deploy button uses that
-demo artifact.
+CI builds and boots the demo to verify it, without publishing releases or deploying it.
 
 ## Isolation and enforcement
 
