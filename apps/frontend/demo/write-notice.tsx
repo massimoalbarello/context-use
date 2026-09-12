@@ -66,7 +66,7 @@ export function DemoWriteNotice({ events }: { events: EventTarget }) {
         }
       }}
     >
-      <AlertDialogContent finalFocus={() => notice?.returnFocus ?? false}>
+      <AlertDialogContent className="demo-surface" finalFocus={() => notice?.returnFocus ?? false}>
         <AlertDialogTitle>This is a read-only demo</AlertDialogTitle>
         <AlertDialogDescription>
           Changes are disabled in this shared demo. You can keep exploring Steve’s context and
