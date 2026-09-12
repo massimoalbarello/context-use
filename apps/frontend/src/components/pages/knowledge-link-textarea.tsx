@@ -53,26 +53,21 @@ export function scrollPickerOptionIntoView(options: {
 function pickerStatus({
   loading,
   error,
-  query,
   count,
   truncated,
   totalMatches,
 }: {
   loading: boolean;
   error: Error | null;
-  query: string;
   count: number;
   truncated: boolean;
-  totalMatches: number | null;
+  totalMatches: number;
 }): string {
   if (loading) {
     return 'Searching all resources…';
   }
   if (error) {
     return 'Couldn’t search resources. Try again.';
-  }
-  if (!query.trim()) {
-    return 'Suggested resources. Type to search all entities, pages, assets, and records.';
   }
   if (count === 0) {
     return 'No matching resources. Try another search.';
@@ -104,7 +99,7 @@ export function KnowledgeLinkTextarea({
   suggestions: KnowledgeSuggestion[];
   loading: boolean;
   error: Error | null;
-  totalMatches: number | null;
+  totalMatches: number;
   truncated: boolean;
   onRetry: () => void;
   invalid: boolean;
@@ -117,8 +112,8 @@ export function KnowledgeLinkTextarea({
   const menuRef = useRef<HTMLDivElement>(null);
   const [link, setLink] = useState<ActiveKnowledgeLink | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const suggestions = link && !loading && !error ? results : [];
-  const suggestionsOpen = link !== null;
+  const suggestionsOpen = Boolean(link?.query.trim());
+  const suggestions = suggestionsOpen && !loading && !error ? results : [];
   const activeSuggestion = suggestions[activeIndex] ?? suggestions[0];
   const activeOptionId = activeSuggestion
     ? `${listId}-${suggestionId(activeSuggestion)}`
@@ -235,7 +230,6 @@ export function KnowledgeLinkTextarea({
               {pickerStatus({
                 loading,
                 error,
-                query: link.query,
                 count: suggestions.length,
                 truncated,
                 totalMatches,

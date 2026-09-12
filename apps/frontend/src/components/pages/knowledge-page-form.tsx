@@ -61,10 +61,7 @@ export function KnowledgePageForm({
   onSubmit,
 }: KnowledgePageFormProps) {
   const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
-  const suggestions = useQuery({
-    ...knowledgeSuggestionsQueryOptions(knowledgeQuery ?? ''),
-    enabled: knowledgeQuery !== null,
-  });
+  const suggestions = useQuery(knowledgeSuggestionsQueryOptions(knowledgeQuery ?? ''));
   const form = useForm({
     defaultValues: {
       markdown: initialValues.markdown,
@@ -149,7 +146,7 @@ export function KnowledgePageForm({
                 suggestions={suggestions.data?.suggestions ?? []}
                 loading={suggestions.isPending}
                 error={suggestions.error}
-                totalMatches={suggestions.data?.totalMatches ?? null}
+                totalMatches={suggestions.data?.totalMatches ?? 0}
                 truncated={suggestions.data?.truncated ?? false}
                 onRetry={() => void suggestions.refetch()}
                 invalid={field.state.meta.errors.length > 0}
