@@ -1,21 +1,11 @@
 import { expect, test } from 'bun:test';
-import {
-  calendarMonthFromRange,
-  calendarMonthLabel,
-  calendarMonthRange,
-  mapMonthAfterScroll,
-} from '../../src/lib/calendar-month';
+import { calendarMonthLabel, mapMonthAfterScroll } from '../../src/lib/calendar-month';
 
 const NOW = new Date('2026-09-10T12:00:00.000Z');
 
-test('calendar months provide stable labels and inclusive ranges', () => {
+test('calendar months provide stable labels', () => {
   expect(calendarMonthLabel()).toBe('Undated');
   expect(calendarMonthLabel('2026-09')).toBe('September 2026');
-  expect(calendarMonthRange('2024-02')).toEqual({
-    from: '2024-02-01',
-    to: '2024-02-29',
-  });
-  expect(calendarMonthFromRange({ from: '2025-03-15', to: '2025-04-15' })).toBe('2025-03');
 });
 
 test('Map scrolling enters the present month then moves backward and returns to undated', () => {

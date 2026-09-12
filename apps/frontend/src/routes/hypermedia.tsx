@@ -19,13 +19,12 @@ import {
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
-import { type CalendarMonth, calendarMonth, currentCalendarMonth } from '../lib/calendar-month';
+import { type CalendarMonth, calendarMonth } from '../lib/calendar-month';
 import { entitiesQueryOptions } from '../queries/entities';
 import {
   type HypermediaPage,
   type HypermediaResource,
   type HypermediaResourceReference,
-  type HypermediaView,
   hypermediaPagesQueryOptions,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
@@ -37,7 +36,6 @@ const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
 const EMPTY_HYPERMEDIA_RESOURCES: HypermediaResource[] = [];
 export type HypermediaSearch = {
   q?: string;
-  view?: 'timeline';
   month?: CalendarMonth;
   kind?: HypermediaSelection['kind'];
   id?: string;
@@ -49,9 +47,6 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   const result: HypermediaSearch = {};
   if (typeof search.q === 'string' && search.q.trim()) {
     result.q = search.q.trim().slice(0, MAX_HYPERMEDIA_SEARCH_LENGTH);
-  }
-  if (search.view === 'timeline') {
-    result.view = 'timeline';
   }
   const selectedMonth = calendarMonth(search.month);
   if (selectedMonth) {
@@ -74,22 +69,6 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
   }
   result.focus = selectedHypermediaResourcesValue(selectedHypermediaResources(search.focus));
   return result;
-}
-
-export function hypermediaView(search: HypermediaSearch): HypermediaView {
-  return search.view === 'timeline' ? 'timeline' : 'map';
-}
-
-export function hypermediaActiveMonth({
-  search,
-  now = new Date(),
-}: {
-  search: HypermediaSearch;
-  now?: Date;
-}): CalendarMonth | undefined {
-  return (
-    search.month ?? (hypermediaView(search) === 'timeline' ? currentCalendarMonth(now) : undefined)
-  );
 }
 
 export function hypermediaSearchAfterEscape({
@@ -119,9 +98,6 @@ export const Route = createFileRoute('/hypermedia')({
   },
   validateSearch: hypermediaSearch,
   loaderDeps: ({ search }) => ({
-    query: search.q,
-    month: hypermediaActiveMonth({ search }),
-    resources: selectedHypermediaResources(search.focus),
     kinds: displayedHypermediaResourceKinds(search.show),
   }),
   loader: async ({ context, deps }) => {
@@ -139,16 +115,6 @@ export const Route = createFileRoute('/hypermedia')({
       deps.kinds.includes('entity')
         ? context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions())
         : Promise.resolve(),
-      context.queryClient.ensureInfiniteQueryData(
-        hypermediaPagesQueryOptions({
-          interval: deps.month ? 'with' : 'without',
-          resources: deps.resources,
-          visibleResources: [],
-          kinds: deps.kinds,
-          month: deps.month,
-          query: deps.query,
-        }),
-      ),
     ]);
   },
   component: HypermediaRoute,
@@ -157,9 +123,7 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', kind, id, focus, show } = search;
-  const view = hypermediaView(search);
-  const activeMonth = hypermediaActiveMonth({ search });
+  const { q = '', kind, id, focus, show, month } = search;
   const resourceKinds = displayedHypermediaResourceKinds(show);
   const navigate = Route.useNavigate();
   const [visibleResources, setVisibleResources] = useState<HypermediaResourceReference[]>([]);
@@ -168,11 +132,10 @@ function HypermediaRoute() {
   const selectedResources = selectedHypermediaResources(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      interval: activeMonth ? 'with' : 'without',
       resources: selectedResources,
       visibleResources,
       kinds: resourceKinds,
-      month: activeMonth,
+      month,
       query: q,
     }),
     enabled: Boolean(profile),
@@ -224,23 +187,9 @@ function HypermediaRoute() {
     <KnowledgeWorkspace>
       <HypermediaSidebar
         profile={profile}
-        view={view}
         resourceKinds={resourceKinds}
         query={q}
         selectedResources={selectedResources}
-        onViewChange={(nextView) => {
-          void navigate({
-            search: (previous) => ({
-              ...previous,
-              view: nextView === 'timeline' ? 'timeline' : undefined,
-              month:
-                nextView === 'timeline'
-                  ? (calendarMonth(previous.month) ?? currentCalendarMonth())
-                  : calendarMonth(previous.month),
-            }),
-            replace: true,
-          });
-        }}
         onResourceKindToggle={(kind) => {
           void navigate({
             search: (previous) => {
@@ -279,7 +228,6 @@ function HypermediaRoute() {
         <div className="relative size-full">
           <HypermediaExplorer
             key={resourceKinds.join(':')}
-            view={view}
             resourceKinds={resourceKinds}
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
@@ -290,14 +238,12 @@ function HypermediaRoute() {
               pageQuery.data?.pages[0]?.matchedResources ??
               (q.trim() ? EMPTY_HYPERMEDIA_RESOURCES : null)
             }
-            month={activeMonth}
-            temporalExtent={pageQuery.data?.pages[0]?.temporalExtent ?? null}
+            month={month}
             pagesLoading={pageQuery.isFetching}
             pagesTransitioning={pageQuery.isPlaceholderData}
             pagesError={pageQuery.error}
             hasNextPage={pageQuery.hasNextPage}
             pageReferencesTruncated={pageReferencesTruncated}
-            isFetchingNextPage={pageQuery.isFetchingNextPage}
             onSelect={selectKnowledge}
             onMonthChange={(nextMonth) => {
               void navigate({

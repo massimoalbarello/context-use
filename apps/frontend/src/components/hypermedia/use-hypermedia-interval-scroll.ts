@@ -48,12 +48,10 @@ function intervalWheelDelta({
 
 export function useHypermediaIntervalScroll({
   month,
-  allowPagesWithoutInterval = true,
   onMonthChange,
   onIntervalScrollingChange,
 }: {
   month?: CalendarMonth;
-  allowPagesWithoutInterval?: boolean;
   onMonthChange: (month?: CalendarMonth) => void;
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
@@ -86,13 +84,10 @@ export function useHypermediaIntervalScroll({
   }, [month]);
 
   function adjacentMonth(direction: IntervalDirection): CalendarMonth | undefined {
-    const nextMonth = mapMonthAfterScroll({
+    return mapMonthAfterScroll({
       month: displayedMonthRef.current,
       direction,
     });
-    return !allowPagesWithoutInterval && nextMonth === undefined
-      ? displayedMonthRef.current
-      : nextMonth;
   }
 
   function updateDisplayedMonth(direction: IntervalDirection): boolean {
@@ -107,7 +102,6 @@ export function useHypermediaIntervalScroll({
 
   function moveThroughMonths(nextProgress: number): number {
     if (
-      allowPagesWithoutInterval &&
       displayedMonthRef.current !== undefined &&
       nextProgress < 0 &&
       adjacentMonth('newer') === undefined

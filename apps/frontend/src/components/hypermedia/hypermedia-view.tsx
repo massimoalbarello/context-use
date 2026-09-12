@@ -1,5 +1,5 @@
 import { FileText } from 'lucide-react';
-import { type ComponentProps, type ReactNode, useCallback, useId, useMemo, useState } from 'react';
+import { type ComponentProps, type ReactNode, useId } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type {
@@ -16,12 +16,7 @@ import {
   HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayoutResource,
 } from './hypermedia-layout';
-import {
-  type HypermediaSelection,
-  hypermediaSelectionKey,
-  selectedHypermediaResourceKeys,
-} from './hypermedia-selection';
-import type { SettledHypermediaViewport } from './hypermedia-visibility';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 
 const PAGE_LABEL_Y_OFFSET = 4;
 const ACTIVE_CLOUD_FILL_OPACITY = 0.24;
@@ -45,8 +40,6 @@ function hypermediaResourceNodeEmphasis(active: boolean): {
   return active ? { sizeOffset: 5, strokeWidth: 5 } : { sizeOffset: 1, strokeWidth: 2 };
 }
 
-type HypermediaResourceNodeFallback = HypermediaResourceReference & { label: string };
-type HypermediaResourceNodeData = HypermediaLayoutResource | HypermediaResourceNodeFallback;
 type HypermediaResourceNodeIdentity = {
   kind: HypermediaResourceReference['kind'];
   label: string;
@@ -54,28 +47,24 @@ type HypermediaResourceNodeIdentity = {
 };
 
 function hypermediaResourceNodeIdentity(
-  resource: HypermediaResourceNodeData,
+  resource: HypermediaLayoutResource,
 ): HypermediaResourceNodeIdentity {
   if (resource.kind === 'entity') {
-    return 'entity' in resource
-      ? {
-          kind: resource.kind,
-          label: resource.entity.name,
-          imageUrl: resource.entity.image
-            ? assetContentUrl(resource.entity.image.readableId)
-            : undefined,
-        }
-      : { kind: resource.kind, label: resource.label };
+    return {
+      kind: resource.kind,
+      label: resource.entity.name,
+      imageUrl: resource.entity.image
+        ? assetContentUrl(resource.entity.image.readableId)
+        : undefined,
+    };
   }
-  return 'asset' in resource
-    ? {
-        kind: resource.kind,
-        label: resource.asset.name,
-        imageUrl: isEmbeddableAsset(resource.asset)
-          ? assetContentUrl(resource.asset.readableId)
-          : undefined,
-      }
-    : { kind: resource.kind, label: resource.label };
+  return {
+    kind: resource.kind,
+    label: resource.asset.name,
+    imageUrl: isEmbeddableAsset(resource.asset)
+      ? assetContentUrl(resource.asset.readableId)
+      : undefined,
+  };
 }
 
 function HypermediaResourceShape({
@@ -187,15 +176,6 @@ export type HypermediaPreview =
   | { kind: 'entity'; entity: HypermediaEntity }
   | { kind: 'asset'; asset: HypermediaAsset };
 
-export type HypermediaViewProps = {
-  resources: HypermediaLayoutResource[];
-  pages: HypermediaPage[];
-  selectedResources: HypermediaResourceReference[];
-  selectedKey?: string;
-  onSelect: (selection: HypermediaSelection) => void;
-  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
-};
-
 export function hypermediaPreviewKey(preview: HypermediaPreview): string {
   if (preview.kind === 'page') {
     return hypermediaSelectionKey({ kind: 'page', readableId: preview.page.readableId });
@@ -206,29 +186,12 @@ export function hypermediaPreviewKey(preview: HypermediaPreview): string {
   return hypermediaSelectionKey({ kind: 'asset', readableId: preview.asset.readableId });
 }
 
-export function useHypermediaViewState({
-  selectedResources,
-  selectedKey,
-}: Pick<HypermediaViewProps, 'selectedResources' | 'selectedKey'>) {
-  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const selectedResourceKeys = useMemo(
-    () => selectedHypermediaResourceKeys(selectedResources),
-    [selectedResources],
-  );
-  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
-  const clearPreview = useCallback((key: string) => {
-    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
-  }, []);
-
-  return { activeKey, clearPreview, preview, selectedResourceKeys, setPreview };
-}
-
-export function shortHypermediaLabel({
+function shortHypermediaLabel({
   value,
-  maximumCharacters = HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
+  maximumCharacters,
 }: {
   value: string;
-  maximumCharacters?: number;
+  maximumCharacters: number;
 }): string {
   return value.length > maximumCharacters
     ? `${value.slice(0, maximumCharacters - 1).trimEnd()}…`
@@ -236,16 +199,13 @@ export function shortHypermediaLabel({
 }
 
 export function HypermediaResourceNode({
-  point,
   resource,
   active,
-  labelWidth = HYPERMEDIA_RESOURCE_LABEL_WIDTH,
 }: {
-  point: { x: number; y: number };
-  resource: HypermediaResourceNodeData;
+  resource: HypermediaLayoutResource;
   active: boolean;
-  labelWidth?: number;
 }) {
+  const { point } = resource;
   const identity = hypermediaResourceNodeIdentity(resource);
   const displayLabel = shortHypermediaLabel({
     value: identity.label,
@@ -255,9 +215,9 @@ export function HypermediaResourceNode({
     <g>
       <HypermediaResourceMark identity={identity} point={point} active={active} />
       <foreignObject
-        x={point.x - labelWidth / 2}
+        x={point.x - HYPERMEDIA_RESOURCE_LABEL_WIDTH / 2}
         y={point.y + HYPERMEDIA_RESOURCE_NODE_RADIUS + 10}
-        width={labelWidth}
+        width={HYPERMEDIA_RESOURCE_LABEL_WIDTH}
         height={HYPERMEDIA_RESOURCE_LABEL_HEIGHT}
         className="pointer-events-none overflow-visible"
       >
@@ -269,7 +229,7 @@ export function HypermediaResourceNode({
   );
 }
 
-export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
+function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
   return (
     <div className="flex min-w-0 items-start gap-3 overflow-hidden">
       {preview.kind === 'page' ? (
@@ -286,11 +246,9 @@ export function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview 
 export function HypermediaHoverPreview({
   preview,
   selectedKey,
-  className,
 }: {
   preview: HypermediaPreview | null;
   selectedKey?: string;
-  className: string;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
   if (!preview || hypermediaPreviewKey(preview) === selectedKey) {
@@ -299,10 +257,9 @@ export function HypermediaHoverPreview({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
+        'pointer-events-none absolute top-4 z-40 w-[min(20rem,calc(100%-2rem))] overflow-hidden rounded-2xl border bg-card/95 p-4 shadow-lg backdrop-blur',
         sidebarCollapsed && 'left-18 w-[min(20rem,calc(100%-7rem))]',
         !sidebarCollapsed && 'left-4',
-        className,
       )}
       aria-live="polite"
     >
@@ -311,29 +268,20 @@ export function HypermediaHoverPreview({
   );
 }
 
-type HypermediaPageLinkProps = Omit<
-  ComponentProps<'a'>,
-  | 'children'
-  | 'href'
-  | 'onBlur'
-  | 'onClick'
-  | 'onFocus'
-  | 'onPointerEnter'
-  | 'onPointerLeave'
-  | 'onSelect'
-> & {
+type HypermediaPageLinkProps = Pick<ComponentProps<'a'>, 'aria-label' | 'tabIndex'> & {
+  'data-hypermedia-cloud'?: string;
+  'data-hypermedia-resource'?: boolean;
   page: HypermediaPage;
   children: ReactNode;
   onSelect: (selection: HypermediaSelection) => void;
-  onPreview?: (preview: HypermediaPreview) => void;
-  onPreviewEnd?: (key: string) => void;
+  onPreview: (preview: HypermediaPreview) => void;
+  onPreviewEnd: (key: string) => void;
   shouldSelect?: () => boolean;
 };
 
 export function HypermediaPageLink({
   page,
   children,
-  className,
   onSelect,
   onPreview,
   onPreviewEnd,
@@ -349,12 +297,11 @@ export function HypermediaPageLink({
       className={cn(
         'cursor-pointer outline-none',
         page.temporalCoverage !== null ? 'text-chart-1' : 'text-[oklch(0.81_0.1_145)]',
-        className,
       )}
-      onPointerEnter={() => onPreview?.({ kind: 'page', page })}
-      onPointerLeave={() => onPreviewEnd?.(key)}
-      onFocus={() => onPreview?.({ kind: 'page', page })}
-      onBlur={() => onPreviewEnd?.(key)}
+      onPointerEnter={() => onPreview({ kind: 'page', page })}
+      onPointerLeave={() => onPreviewEnd(key)}
+      onFocus={() => onPreview({ kind: 'page', page })}
+      onBlur={() => onPreviewEnd(key)}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -390,12 +337,10 @@ export function HypermediaPageLabel({
   page,
   point,
   active,
-  maximumCharacters = HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
 }: {
   page: HypermediaPage;
   point: { x: number; y: number };
   active: boolean;
-  maximumCharacters?: number;
 }) {
   return (
     <text
@@ -406,7 +351,10 @@ export function HypermediaPageLabel({
         active ? 'underline decoration-2 underline-offset-4' : ''
       }`}
     >
-      {shortHypermediaLabel({ value: page.title, maximumCharacters })}
+      {shortHypermediaLabel({
+        value: page.title,
+        maximumCharacters: HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
+      })}
     </text>
   );
 }

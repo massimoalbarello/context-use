@@ -10,6 +10,7 @@ import {
   MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH,
   MAX_HYPERMEDIA_SEARCH_LIMIT,
 } from '#models/hypermedia-retrieval/model.ts';
+import { temporalBoundsFrom } from '#models/knowledge-pages/temporal-coverage.ts';
 import type {
   DeliveredRecord,
   RecordContent,
@@ -302,6 +303,60 @@ test('retrieval never observes uncommitted metadata or postings, including rolle
     }
   }));
 
+test.each([
+  { time: undefined, expectedPages: ['undated'] },
+  { time: '1968', expectedPages: [] },
+  { time: '1969-12', expectedPages: ['before-epoch', 'ongoing'] },
+  { time: '1970-01', expectedPages: ['at-epoch', 'ongoing'] },
+  { time: '1970-02', expectedPages: ['after-epoch', 'ongoing'] },
+  { time: '1970/..', expectedPages: ['after-epoch', 'at-epoch', 'ongoing'] },
+])('map browsing and search apply time before pagination: %j', ({ time, expectedPages }) =>
+  withRetrievalTest(async ({ entities, pages, reader, retrieval }) => {
+    await createEntity({
+      entities,
+      readableId: 'topic',
+      name: 'Topic',
+      description: 'Needle research.',
+    });
+    for (const [title, temporalCoverage] of [
+      ['Undated', undefined],
+      ['Before epoch', '1969-12'],
+      ['At epoch', '1970-01'],
+      ['After epoch', '1970-02'],
+      ['Ongoing', '1969-12/..'],
+    ] as const) {
+      const result = await pages.create({
+        ownerId: OWNER_A,
+        actor: { kind: 'owner' },
+        markdown: `# ${title}\n\nNeedle research involving [Topic](context-use://entity/topic).`,
+        temporalCoverage,
+      });
+      expect(result.state).toBe('saved');
+    }
+    const hypermedia = new HypermediaRepository(reader);
+    const input = {
+      ownerId: OWNER_A,
+      resources: [{ kind: 'entity' as const, readableId: 'topic' }],
+      visibleResources: [],
+      kinds: ['entity' as const],
+      limit: 1,
+      temporalBounds: time ? temporalBoundsFrom(time) : undefined,
+    };
+    for (const load of [
+      (offset: number) => hypermedia.pages({ ...input, offset }),
+      (offset: number) => retrieval.searchPageView({ ...input, offset, query: 'needle' }),
+    ]) {
+      const readableIds: string[] = [];
+      for (let offset = 0; offset <= expectedPages.length; offset += 1) {
+        const result = await load(offset);
+        readableIds.push(...result.pages.map((page) => page.readableId));
+        expect(result.nextOffset).toBe(offset + 1 < expectedPages.length ? offset + 1 : null);
+      }
+      expect(readableIds.sort()).toEqual([...expectedPages]);
+    }
+  }),
+);
+
 test('excluded canvas resource kinds cannot crowd out eligible entity matches', () =>
   withRetrievalTest(async ({ entities, assets, pages, retrieval }) => {
     await createEntity({
@@ -321,7 +376,6 @@ test('excluded canvas resource kinds cannot crowd out eligible entity matches', 
       resources: [],
       visibleResources: [],
       kinds: ['entity' as const],
-      interval: 'without' as const,
       query: 'needle',
       limit: 10,
       offset: 0,

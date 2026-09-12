@@ -5,7 +5,6 @@ import type {
   HypermediaPage,
   HypermediaResource,
   HypermediaResourceNeighborhood,
-  HypermediaResourceReference,
 } from '../../queries/hypermedia';
 import { hypermediaResourceKey, hypermediaResourceReference } from '../../queries/hypermedia';
 import { hypermediaSelectionKey } from './hypermedia-selection';
@@ -13,21 +12,12 @@ import { hypermediaSelectionKey } from './hypermedia-selection';
 export type CanvasPoint = { x: number; y: number };
 export type CanvasBounds = CanvasPoint & { width: number; height: number };
 
-export type HypermediaLayoutResource =
-  | {
-      key: string;
-      kind: 'entity';
-      entity: Extract<HypermediaResource, { kind: 'entity' }>['entity'];
-      point: CanvasPoint;
-    }
-  | {
-      key: string;
-      kind: 'asset';
-      asset: Extract<HypermediaResource, { kind: 'asset' }>['asset'];
-      point: CanvasPoint;
-    };
+export type HypermediaLayoutResource = HypermediaResource & {
+  key: string;
+  point: CanvasPoint;
+};
 
-export type HypermediaPageLayout = {
+type HypermediaPageLayout = {
   page: HypermediaPage;
   point: CanvasPoint;
   cloudPath: string;
@@ -37,22 +27,8 @@ export type HypermediaPageLayout = {
 export type HypermediaLayout = {
   resources: HypermediaLayoutResource[];
   pages: HypermediaPageLayout[];
-  initialFocus: CanvasPoint;
   resourceBounds: CanvasBounds;
-  bounds: CanvasBounds;
 };
-
-export function hypermediaLayoutResourceReference(
-  resource: HypermediaLayoutResource,
-): HypermediaResourceReference {
-  return resource.kind === 'entity'
-    ? { kind: 'entity', readableId: resource.entity.readableId }
-    : { kind: 'asset', readableId: resource.asset.readableId };
-}
-
-export function hypermediaLayoutResourceLabel(resource: HypermediaLayoutResource): string {
-  return resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
-}
 
 const CANVAS_PADDING = 160;
 const INITIAL_VIEW_WIDTH = 900;
@@ -81,16 +57,6 @@ function stableHash(value: string): number {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
-}
-
-export function hypermediaPagePlacementRatio(readableId: string): number {
-  let hash = stableHash(readableId) ^ stableHash([...readableId].reverse().join(''));
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b);
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35);
-  hash ^= hash >>> 16;
-  return (hash >>> 0) / 0xffffffff;
 }
 
 function average(points: CanvasPoint[]): CanvasPoint {
@@ -156,9 +122,7 @@ function pageLabelArea(title: string, point: CanvasPoint): CanvasArea {
 
 function resourceAt(resource: HypermediaResource, point: CanvasPoint): HypermediaLayoutResource {
   const key = hypermediaResourceKey(hypermediaResourceReference(resource));
-  return resource.kind === 'entity'
-    ? { key, kind: 'entity', entity: resource.entity, point }
-    : { key, kind: 'asset', asset: resource.asset, point };
+  return { ...resource, key, point };
 }
 
 function samePositionedResource(
@@ -371,97 +335,39 @@ export function buildHypermediaLayout(
   pages: HypermediaPage[],
 ): HypermediaLayout {
   const laidOutPages = pageLayouts(resources, pages);
-  const allPoints = [
-    ...resources.map(({ point }) => point),
-    ...laidOutPages.map(({ point }) => point),
-  ];
-  if (allPoints.length === 0) {
-    const emptyBounds = {
-      x: -450,
-      y: -310,
-      width: INITIAL_VIEW_WIDTH,
-      height: INITIAL_VIEW_HEIGHT,
-    };
+  const boundedResourcePoints = (resources.length > 0 ? resources : laidOutPages).map(
+    ({ point }) => point,
+  );
+  if (boundedResourcePoints.length === 0) {
     return {
       resources,
       pages: laidOutPages,
-      initialFocus: { x: 0, y: 0 },
-      resourceBounds: emptyBounds,
-      bounds: emptyBounds,
+      resourceBounds: initialHypermediaViewBox(resources),
     };
   }
-  const resourcePoints = resources.map(({ point }) => point);
-  const boundedResourcePoints = resourcePoints.length > 0 ? resourcePoints : allPoints;
   const resourceMinX = Math.min(...boundedResourcePoints.map(({ x }) => x)) - CANVAS_PADDING;
   const resourceMaxX = Math.max(...boundedResourcePoints.map(({ x }) => x)) + CANVAS_PADDING;
   const resourceMinY = Math.min(...boundedResourcePoints.map(({ y }) => y)) - CANVAS_PADDING;
   const resourceMaxY = Math.max(...boundedResourcePoints.map(({ y }) => y)) + CANVAS_PADDING;
-  const minX = Math.min(...allPoints.map(({ x }) => x)) - CANVAS_PADDING;
-  const maxX = Math.max(...allPoints.map(({ x }) => x)) + CANVAS_PADDING;
-  const minY = Math.min(...allPoints.map(({ y }) => y)) - CANVAS_PADDING;
-  const maxY = Math.max(...allPoints.map(({ y }) => y)) + CANVAS_PADDING;
   return {
     resources,
     pages: laidOutPages,
-    initialFocus: resources[0]?.point ?? laidOutPages[0]!.point,
     resourceBounds: {
       x: resourceMinX,
       y: resourceMinY,
       width: resourceMaxX - resourceMinX,
       height: resourceMaxY - resourceMinY,
     },
-    bounds: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
   };
 }
 
-export function initialHypermediaViewBox(layout: HypermediaLayout): CanvasBounds {
+export function initialHypermediaViewBox(resources: HypermediaLayoutResource[]): CanvasBounds {
+  const focus = resources[0]?.point ?? { x: 0, y: 0 };
   return {
-    x: layout.initialFocus.x - INITIAL_VIEW_WIDTH / 2,
-    y: layout.initialFocus.y - INITIAL_VIEW_HEIGHT / 2,
+    x: focus.x - INITIAL_VIEW_WIDTH / 2,
+    y: focus.y - INITIAL_VIEW_HEIGHT / 2,
     width: INITIAL_VIEW_WIDTH,
     height: INITIAL_VIEW_HEIGHT,
-  };
-}
-
-export const HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO = 0.68;
-
-export function spotlightHypermediaViewBox(
-  layout: HypermediaLayout,
-  aspectRatio: number,
-  selectedKeys: string[],
-): CanvasBounds {
-  const selectedKeySet = new Set(selectedKeys);
-  const focusedPoints = [
-    ...layout.pages.map(({ point }) => point),
-    ...layout.resources.filter(({ key }) => selectedKeySet.has(key)).map(({ point }) => point),
-  ];
-  const bounds =
-    focusedPoints.length > 0
-      ? {
-          x: Math.min(...focusedPoints.map(({ x }) => x)) - CANVAS_PADDING,
-          y: Math.min(...focusedPoints.map(({ y }) => y)) - CANVAS_PADDING,
-          width:
-            Math.max(...focusedPoints.map(({ x }) => x)) -
-            Math.min(...focusedPoints.map(({ x }) => x)) +
-            CANVAS_PADDING * 2,
-          height:
-            Math.max(...focusedPoints.map(({ y }) => y)) -
-            Math.min(...focusedPoints.map(({ y }) => y)) +
-            CANVAS_PADDING * 2,
-        }
-      : layout.bounds;
-  const width = Math.max(
-    bounds.width / HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO,
-    bounds.height / aspectRatio,
-  );
-  const height = width * aspectRatio;
-  const centerX = bounds.x + bounds.width / 2;
-  const centerY = bounds.y + bounds.height / 2;
-  return {
-    x: centerX - (width * HYPERMEDIA_SPOTLIGHT_CONTENT_WIDTH_RATIO) / 2,
-    y: centerY - height / 2,
-    width,
-    height,
   };
 }
 

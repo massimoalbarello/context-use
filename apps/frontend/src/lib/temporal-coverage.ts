@@ -107,10 +107,6 @@ export function epochDayFromCalendarDate(value: string): number {
   return Math.floor(date.getTime() / MILLISECONDS_PER_DAY);
 }
 
-export function calendarDateFromEpochDay(value: number): string {
-  return new Date(value * MILLISECONDS_PER_DAY).toISOString().slice(0, 'YYYY-MM-DD'.length);
-}
-
 export function calendarDateRangeFromSearch({
   from,
   to,

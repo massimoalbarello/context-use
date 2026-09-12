@@ -1,12 +1,8 @@
 import type { AssetSummary } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
-import type {
-  KnowledgePageIntervalFilter,
-  KnowledgePageSummary,
-} from '#models/knowledge-pages/model.ts';
+import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 export type HypermediaResourceKind = 'entity' | 'asset';
-export type HypermediaPageInterval = KnowledgePageIntervalFilter;
 
 export type HypermediaResourceReference = {
   kind: HypermediaResourceKind;
@@ -43,14 +39,8 @@ export interface HypermediaPage extends KnowledgePageSummary {
   resources: HypermediaResourceReference[];
 }
 
-export type HypermediaTemporalExtent = {
-  start: number;
-  end: number;
-};
-
 export type HypermediaPages = {
   pages: HypermediaPage[];
   nextOffset: number | null;
   resourceReferencesTruncated: boolean;
-  temporalExtent: HypermediaTemporalExtent | null;
 };

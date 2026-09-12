@@ -2,7 +2,6 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type {
   HypermediaPage,
-  HypermediaPageInterval,
   HypermediaPages,
   HypermediaResource,
   HypermediaResourceContinuation,
@@ -16,12 +15,10 @@ import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.t
 import type {
   IListHypermediaPageResourcesResult,
   IListHypermediaPagesResult,
-  IReadHypermediaTemporalExtentResult,
   Queries,
 } from '#queries.gen.ts';
 
 const MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES = 120;
-const MILLISECONDS_PER_DAY = 86_400_000;
 
 type ResourceRow = {
   kind: HypermediaResourceKind;
@@ -136,7 +133,6 @@ export interface HypermediaRepositoryContract {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     retrievalMatches?: HypermediaRetrievalMatches;
@@ -343,7 +339,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resources,
     visibleResources,
     kinds,
-    interval,
     limit,
     offset,
     retrievalMatches,
@@ -353,7 +348,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     retrievalMatches?: HypermediaRetrievalMatches;
@@ -386,41 +380,29 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
     const rowLimit = limit + 1;
-    const now = new Date();
-    const currentDayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    const [pageRows, extentRows] = await Promise.all([
-      this.matchingPageRows({
-        ownerId,
-        selectedResourceKeys,
-        selectedResourceCount,
-        visibleResourceKeys,
-        visibleResourceCount,
-        interval,
-        retrievalPageReadableIds,
-        retrievalResourceKeys,
-        searchApplied,
-        filterStart,
-        filterEnd,
-        rowLimit,
-        offset,
-      }),
-      this.temporalExtentRows({ ownerId, currentDayStart }),
-    ]);
+    const pageRows = await this.matchingPageRows({
+      ownerId,
+      selectedResourceKeys,
+      selectedResourceCount,
+      visibleResourceKeys,
+      visibleResourceCount,
+      retrievalPageReadableIds,
+      retrievalResourceKeys,
+      searchApplied,
+      filterStart,
+      filterEnd,
+      rowLimit,
+      offset,
+    });
     const selectedPageRows = pageRows.slice(0, limit);
     const pages = selectedPageRows.map(
       (row): HypermediaPage => ({ ...pageSummaryFrom(row), resources: [] }),
     );
-    const extent = extentRows[0];
-    const temporalExtent =
-      !extent || extent.start === null || extent.end === null
-        ? null
-        : { start: Number(extent.start), end: Number(extent.end) };
     if (pages.length === 0) {
       return {
         pages,
         nextOffset: pageRows.length > limit ? offset + limit : null,
         resourceReferencesTruncated: false,
-        temporalExtent,
       };
     }
     const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
@@ -448,7 +430,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       pages,
       nextOffset: pageRows.length > limit ? offset + limit : null,
       resourceReferencesTruncated: referenceRows.length > returnedReferenceLimit,
-      temporalExtent,
     };
   }
 
@@ -458,7 +439,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedResourceCount,
     visibleResourceKeys,
     visibleResourceCount,
-    interval,
     retrievalPageReadableIds,
     retrievalResourceKeys,
     searchApplied,
@@ -472,7 +452,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedResourceCount: number;
     visibleResourceKeys: string;
     visibleResourceCount: number;
-    interval: HypermediaPageInterval;
     retrievalPageReadableIds: string;
     retrievalResourceKeys: string;
     searchApplied: number;
@@ -556,14 +535,10 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           and (${searchApplied} = 0
             or page."current_revision_id" in (select "revisionId" from retrieval_matched_revision))
           and (
-            (${interval} = 'without' and revision."temporal_coverage" is null)
-            or (${interval} = 'with' and revision."temporal_coverage" is not null)
-          )
-          and (
-            ${interval} = 'without'
-            or ${filterStart} is null
+            (${filterStart} is null and revision."temporal_coverage" is null)
             or (
-              (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
+              ${filterStart} is not null and revision."temporal_coverage" is not null
+              and (${filterEnd} is null or revision."temporal_start_ms" < ${filterEnd})
               and (revision."temporal_end_exclusive_ms" is null
                 or revision."temporal_end_exclusive_ms" > ${filterStart})
             )
@@ -574,46 +549,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         "updatedAt" desc, "readableId"
       limit ${rowLimit}
       offset ${offset}
-    `;
-  }
-
-  private temporalExtentRows({
-    ownerId,
-    currentDayStart,
-  }: {
-    ownerId: string;
-    currentDayStart: number;
-  }): Promise<IReadHypermediaTemporalExtentResult[]> {
-    return this.sql.ReadHypermediaTemporalExtent`
-      select min(revision."temporal_start_ms") as "start",
-        max(case
-          when revision."temporal_end_exclusive_ms" is null
-            then max(revision."temporal_start_ms", ${currentDayStart})
-          else revision."temporal_end_exclusive_ms" - ${MILLISECONDS_PER_DAY}
-        end) as "end"
-      from "knowledge_page" page
-      join "knowledge_page_revision" revision
-        on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
-      where page."owner_id" = ${ownerId} and page."archived_at" is null
-        and revision."temporal_coverage" is not null
-        and (
-          exists (
-            select 1 from "knowledge_page_entity_mention" mention
-            join "entity" entity
-              on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
-            where mention."owner_id" = page."owner_id"
-              and mention."source_revision_id" = page."current_revision_id"
-              and entity."archived_at" is null
-          )
-          or exists (
-            select 1 from "knowledge_page_asset_usage" usage
-            join "asset" asset
-              on asset."owner_id" = usage."owner_id" and asset."id" = usage."target_asset_id"
-            where usage."owner_id" = page."owner_id"
-              and usage."source_revision_id" = page."current_revision_id"
-              and asset."archived_at" is null
-          )
-        )
     `;
   }
 

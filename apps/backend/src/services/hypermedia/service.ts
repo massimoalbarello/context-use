@@ -1,5 +1,4 @@
 import type {
-  HypermediaPageInterval,
   HypermediaResourceContinuation,
   HypermediaResourceKind,
   HypermediaResourceReference,
@@ -33,7 +32,6 @@ export class HypermediaService {
     resources: HypermediaResourceReference[];
     visibleResources: HypermediaResourceReference[];
     kinds: HypermediaResourceKind[];
-    interval: HypermediaPageInterval;
     limit: number;
     offset: number;
     temporalBounds?: TemporalBounds;

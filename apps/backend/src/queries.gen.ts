@@ -302,12 +302,6 @@ export interface IListHypermediaPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `ReadHypermediaTemporalExtent`. */
-export interface IReadHypermediaTemporalExtentResult {
-    start: unknown | null;
-    end: unknown | null;
-}
-
 /** Result of query `ListHypermediaPageResources`. */
 export interface IListHypermediaPageResourcesResult {
     sourcePageReadableId: string;
@@ -732,7 +726,6 @@ export interface Queries {
     FindHypermediaResource: IFindHypermediaResourceResult;
     ListHypermediaResourceNeighbors: IListHypermediaResourceNeighborsResult;
     ListHypermediaPages: IListHypermediaPagesResult;
-    ReadHypermediaTemporalExtent: IReadHypermediaTemporalExtentResult;
     ListHypermediaPageResources: IListHypermediaPageResourcesResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;

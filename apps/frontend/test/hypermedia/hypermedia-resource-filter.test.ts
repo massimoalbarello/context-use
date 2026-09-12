@@ -9,7 +9,6 @@ import {
   filterHypermedia,
   toggleDisplayedHypermediaResourceKind,
 } from '../../src/components/hypermedia/hypermedia-resource-filter';
-import { buildTemporalHypermediaLayout } from '../../src/components/hypermedia/hypermedia-temporal-layout';
 import {
   type HypermediaPage,
   hypermediaPagesQueryOptions,
@@ -73,28 +72,19 @@ describe('Hypermedia resource type filter', () => {
     expect(toggleDisplayedHypermediaResourceKind({ kinds: assets, kind: 'asset' })).toBe(assets);
   });
 
-  test('removes hidden resource nodes and page connections from both views', () => {
+  test('removes hidden resource nodes and page connections from the map', () => {
     const filtered = filterHypermedia({
       resources,
       pages: [page],
       kinds: ['entity'],
     });
     const map = buildHypermediaLayout(filtered.resources, filtered.pages);
-    const timeline = buildTemporalHypermediaLayout({
-      ...filtered,
-      extent: {
-        start: Date.parse('2026-01-01T00:00:00.000Z'),
-        end: Date.parse('2026-12-31T00:00:00.000Z'),
-      },
-    });
 
     expect(map.resources.map(({ key }) => key)).toEqual(['entity:owner']);
     expect(map.pages[0]?.resourceKeys).toEqual(['entity:owner']);
-    expect(timeline.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(timeline.pages[0]?.resourceKeys).toEqual(['entity:owner']);
   });
 
-  test('preserves server-selected matches without re-matching display text in either view', () => {
+  test('preserves server-selected matches without re-matching display text in the map', () => {
     const filtered = filterHypermedia({
       resources,
       pages: [page],
@@ -102,18 +92,9 @@ describe('Hypermedia resource type filter', () => {
       matchingResourceKeys: new Set(['entity:owner']),
     });
     const map = buildHypermediaLayout(filtered.resources, filtered.pages);
-    const timeline = buildTemporalHypermediaLayout({
-      ...filtered,
-      extent: {
-        start: Date.parse('2026-01-01T00:00:00.000Z'),
-        end: Date.parse('2026-12-31T00:00:00.000Z'),
-      },
-    });
 
     expect(map.resources.map(({ key }) => key)).toEqual(['entity:owner']);
     expect(map.pages[0]?.resourceKeys).toEqual(['entity:owner']);
-    expect(timeline.resources.map(({ key }) => key)).toEqual(['entity:owner']);
-    expect(timeline.pages[0]?.resourceKeys).toEqual(['entity:owner']);
 
     const cleared = filterHypermedia({
       resources,
@@ -143,13 +124,11 @@ describe('Hypermedia resource type filter', () => {
       kinds: ['asset'],
     });
     const entityPages = hypermediaPagesQueryOptions({
-      interval: 'without',
       resources: [],
       visibleResources: [],
       kinds: ['entity'],
     });
     const allPages = hypermediaPagesQueryOptions({
-      interval: 'without',
       resources: [],
       visibleResources: [],
       kinds: ['entity', 'asset'],
@@ -161,7 +140,6 @@ describe('Hypermedia resource type filter', () => {
 
   test('retains the displayed page set while a changed interval loads', () => {
     const pages = hypermediaPagesQueryOptions({
-      interval: 'with',
       resources: [],
       visibleResources: [],
       kinds: ['entity'],

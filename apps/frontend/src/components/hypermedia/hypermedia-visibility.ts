@@ -1,14 +1,16 @@
 // biome-ignore-all lint/style/noMagicNumbers: Viewport thresholds are explicit interaction tuning values.
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and sort callbacks.
 
-import type { HypermediaResourceReference } from '../../queries/hypermedia';
+import {
+  type HypermediaResourceReference,
+  hypermediaResourceReference,
+} from '../../queries/hypermedia';
 import type {
   CanvasBounds,
   CanvasPoint,
   HypermediaLayout,
   HypermediaLayoutResource,
 } from './hypermedia-layout';
-import { hypermediaLayoutResourceReference } from './hypermedia-layout';
 import { hypermediaSelectionKey } from './hypermedia-selection';
 
 export type SettledHypermediaViewport = {
@@ -17,7 +19,7 @@ export type SettledHypermediaViewport = {
   boundaryAnchor?: HypermediaResourceReference;
 };
 
-export const MAX_FOCUSED_RESOURCES = 24;
+const MAX_FOCUSED_RESOURCES = 24;
 
 function viewportCenter(viewport: CanvasBounds): CanvasPoint {
   return { x: viewport.x + viewport.width / 2, y: viewport.y + viewport.height / 2 };
@@ -47,13 +49,10 @@ export function focusedResources({
         squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
         first.key.localeCompare(second.key),
     );
-  return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(hypermediaLayoutResourceReference);
+  return ordered.slice(0, MAX_FOCUSED_RESOURCES).map(hypermediaResourceReference);
 }
 
-export function viewportNearResourceBoundary(
-  viewport: CanvasBounds,
-  bounds: CanvasBounds,
-): boolean {
+function viewportNearResourceBoundary(viewport: CanvasBounds, bounds: CanvasBounds): boolean {
   const marginX = Math.min(viewport.width * 0.16, bounds.width * 0.2);
   const marginY = Math.min(viewport.height * 0.16, bounds.height * 0.2);
   return (
@@ -74,7 +73,7 @@ export function nearestBoundaryResource(
       squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
       first.key.localeCompare(second.key),
   )[0];
-  return nearest ? hypermediaLayoutResourceReference(nearest) : undefined;
+  return nearest ? hypermediaResourceReference(nearest) : undefined;
 }
 
 function pointNearViewport(point: CanvasPoint, viewport: CanvasBounds): boolean {

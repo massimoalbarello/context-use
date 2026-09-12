@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { apiErrorMessage } from '../lib/api-error';
+import type { CalendarMonth } from '../lib/calendar-month';
 
 export type HypermediaResourceNeighborhood = NonNullable<
   Awaited<ReturnType<(typeof api.api.hypermedia.resources)['get']>>['data']
@@ -16,14 +17,9 @@ export type HypermediaPages = NonNullable<
 export type HypermediaPage = HypermediaPages['pages'][number];
 export type HypermediaEntity = Extract<HypermediaResource, { kind: 'entity' }>['entity'];
 export type HypermediaAsset = Extract<HypermediaResource, { kind: 'asset' }>['asset'];
-type HypermediaPagesRequest = NonNullable<Parameters<(typeof api.api.hypermedia.pages)['get']>[0]>;
-export type HypermediaPageInterval = NonNullable<
-  NonNullable<HypermediaPagesRequest['query']>['interval']
->;
-export type HypermediaView = 'map' | 'timeline';
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
-export const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;
+const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;
 
 export function hypermediaResourceKey(resource: HypermediaResourceReference): string {
   return `${resource.kind}:${resource.readableId}`;
@@ -74,19 +70,17 @@ export function hypermediaResourceNeighborhoodQueryOptions({
   });
 }
 
-export type HypermediaPageQuery = {
-  interval: HypermediaPageInterval;
+type HypermediaPageQuery = {
   resources: HypermediaResourceReference[];
   visibleResources: HypermediaResourceReference[];
   kinds: HypermediaResourceKind[];
-  month?: string;
+  month?: CalendarMonth;
   query?: string;
 };
 
-export const HYPERMEDIA_PAGE_LIMIT = 32;
+const HYPERMEDIA_PAGE_LIMIT = 32;
 
 export function hypermediaPagesQueryOptions({
-  interval,
   resources,
   visibleResources,
   kinds,
@@ -102,7 +96,6 @@ export function hypermediaPagesQueryOptions({
       ...hypermediaQueryKey,
       'pages',
       {
-        interval,
         resources: resourceKeys,
         visibleResources: visibleResourceKeys,
         kinds: resourceKinds,
@@ -115,7 +108,6 @@ export function hypermediaPagesQueryOptions({
     queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
-          interval,
           resources: resourceKeys.length > 0 ? resourceKeys.join(',') : undefined,
           visible: visibleResourceKeys.length > 0 ? visibleResourceKeys.join(',') : undefined,
           kinds: resourceKinds.join(','),

@@ -13,20 +13,26 @@ import {
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
+import {
+  type HypermediaPage,
+  type HypermediaResourceReference,
+  hypermediaResourceReference,
+} from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
   buildHypermediaLayout,
   type CanvasBounds,
-  HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayout,
   type HypermediaLayoutResource,
-  hypermediaLayoutResourceLabel,
-  hypermediaLayoutResourceReference,
   initialHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+import {
+  type HypermediaSelection,
+  hypermediaSelectionKey,
+  selectedHypermediaResourceKeys,
+} from './hypermedia-selection';
 import {
   HypermediaHoverPreview,
   HypermediaPageCloud,
@@ -34,13 +40,13 @@ import {
   HypermediaPageLink,
   type HypermediaPreview,
   HypermediaResourceNode,
-  type HypermediaViewProps,
-  useHypermediaViewState,
+  hypermediaPreviewKey,
 } from './hypermedia-view';
 import {
   focusedResources,
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
+  type SettledHypermediaViewport,
   viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
 import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
@@ -64,8 +70,8 @@ function ResourceDot({
   onPreview: () => void;
   onPreviewEnd: () => void;
 }) {
-  const label = hypermediaLayoutResourceLabel(resource);
-  const reference = hypermediaLayoutResourceReference(resource);
+  const label = resource.kind === 'entity' ? resource.entity.name : resource.asset.name;
+  const reference = hypermediaResourceReference(resource);
   const href = `/${reference.kind === 'entity' ? 'entities' : 'assets'}/${encodeURIComponent(reference.readableId)}`;
 
   return (
@@ -84,7 +90,7 @@ function ResourceDot({
         onActivate();
       }}
     >
-      <HypermediaResourceNode point={resource.point} resource={resource} active={active} />
+      <HypermediaResourceNode resource={resource} active={active} />
     </a>
   );
 }
@@ -147,12 +153,7 @@ const HypermediaScene = memo(function HypermediaScene({
             onPreview={onPreview}
             onPreviewEnd={onPreviewEnd}
           >
-            <HypermediaPageLabel
-              page={item.page}
-              point={item.point}
-              active={active}
-              maximumCharacters={HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS}
-            />
+            <HypermediaPageLabel page={item.page} point={item.point} active={active} />
           </HypermediaPageLink>
         );
       })}
@@ -169,7 +170,7 @@ const HypermediaScene = memo(function HypermediaScene({
             active={activeKey === resource.key || selectedResourceKeys.has(resource.key)}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(resource.key)}
-            onActivate={() => onSelect(hypermediaLayoutResourceReference(resource))}
+            onActivate={() => onSelect(hypermediaResourceReference(resource))}
           />
         );
       })}
@@ -223,7 +224,13 @@ export function HypermediaCanvas({
   isInitialLoading,
   neighborhoodError,
   onRetryNeighborhood,
-}: HypermediaViewProps & {
+}: {
+  resources: HypermediaLayoutResource[];
+  pages: HypermediaPage[];
+  selectedResources: HypermediaResourceReference[];
+  selectedKey?: string;
+  onSelect: (selection: HypermediaSelection) => void;
+  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
   neighborhoodError: Error | null;
@@ -232,11 +239,16 @@ export function HypermediaCanvas({
   onMonthChange: (month?: CalendarMonth) => void;
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
-  const [viewBox, setViewBox] = useState<ViewBox>(() =>
-    initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
+  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(resources));
+  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
+  const selectedResourceKeys = useMemo(
+    () => selectedHypermediaResourceKeys(selectedResources),
+    [selectedResources],
   );
-  const { activeKey, clearPreview, preview, selectedResourceKeys, setPreview } =
-    useHypermediaViewState({ selectedResources, selectedKey });
+  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
+  const clearPreview = useCallback((key: string) => {
+    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
+  }, []);
   const spotlightActive = selectedResources.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);
@@ -272,15 +284,13 @@ export function HypermediaCanvas({
   }, []);
 
   const publishViewport = useCallback(
-    ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
+    (viewport: ViewBox) => {
       const focus = focusedResources({ resources: layout.resources, viewport, selectedKey });
-      const discoverMoreEntities =
-        includeBoundary &&
-        viewportNeedsResourceDiscovery({
-          resources: layout.resources,
-          viewport,
-          bounds: layout.resourceBounds,
-        });
+      const discoverMoreEntities = viewportNeedsResourceDiscovery({
+        resources: layout.resources,
+        viewport,
+        bounds: layout.resourceBounds,
+      });
       const boundaryAnchor = discoverMoreEntities
         ? nearestBoundaryResource(layout.resources, viewport)
         : undefined;
@@ -297,14 +307,11 @@ export function HypermediaCanvas({
   );
 
   const scheduleViewport = useCallback(
-    ({ viewport, includeBoundary }: { viewport: ViewBox; includeBoundary: boolean }) => {
+    (viewport: ViewBox) => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
       }
-      settleTimer.current = setTimeout(
-        () => publishViewport({ viewport, includeBoundary }),
-        VIEWPORT_SETTLE_MS,
-      );
+      settleTimer.current = setTimeout(() => publishViewport(viewport), VIEWPORT_SETTLE_MS);
     },
     [publishViewport],
   );
@@ -314,7 +321,7 @@ export function HypermediaCanvas({
       return;
     }
     const viewport = viewBoxRef.current;
-    publishViewport({ viewport, includeBoundary: true });
+    publishViewport(viewport);
     return () => {
       if (settleTimer.current) {
         clearTimeout(settleTimer.current);
@@ -339,7 +346,7 @@ export function HypermediaCanvas({
     }
     updateViewBox(nextViewBox);
     if (!spotlightActive) {
-      scheduleViewport({ viewport: nextViewBox, includeBoundary: true });
+      scheduleViewport(nextViewBox);
     }
   }
 
@@ -436,7 +443,7 @@ export function HypermediaCanvas({
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
       if (completedDrag.moved && !spotlightActive) {
-        scheduleViewport({ viewport: completedDrag.currentViewBox, includeBoundary: true });
+        scheduleViewport(completedDrag.currentViewBox);
       }
     }
   }
@@ -503,7 +510,7 @@ export function HypermediaCanvas({
         </div>
       )}
 
-      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} className="top-4" />
+      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} />
     </section>
   );
 }
