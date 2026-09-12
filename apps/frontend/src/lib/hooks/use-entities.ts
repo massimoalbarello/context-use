@@ -1,6 +1,6 @@
 import type { EntityTypeFilter } from '@repo/backend/entity';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { entitiesQueryOptions, entitySuggestionsQueryOptions } from '../../queries/entities';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { entitiesQueryOptions } from '../../queries/entities';
 
 export function useEntities({
   enabled = true,
@@ -18,11 +18,4 @@ export function useEntities({
     entities: result.data?.pages.flatMap((page) => page.items) ?? [],
     total: result.data?.pages[0]?.total ?? 0,
   };
-}
-
-export function useEntitySuggestions(query: string | null) {
-  return useQuery({
-    ...entitySuggestionsQueryOptions(query ?? ''),
-    enabled: query !== null,
-  });
 }

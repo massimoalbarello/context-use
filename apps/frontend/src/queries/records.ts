@@ -16,7 +16,6 @@ export type ExternalRecord = NonNullable<
 
 export const recordsQueryKey = ['records'] as const;
 export const recordsListQueryKey = [...recordsQueryKey, 'list'] as const;
-export const recordSuggestionsQueryKey = [...recordsQueryKey, 'suggestions'] as const;
 export const recordDetailsQueryKey = [...recordsQueryKey, 'detail'] as const;
 
 export function recordsQueryOptions(filters: RecordCollectionFilters = {}) {
@@ -59,23 +58,6 @@ export function recordsQueryOptions(filters: RecordCollectionFilters = {}) {
       return data;
     },
     getNextPageParam: (page) => page.nextOffset ?? undefined,
-  });
-}
-
-export function recordSuggestionsQueryOptions(query: string) {
-  return queryOptions({
-    queryKey: [...recordSuggestionsQueryKey, query],
-    queryFn: async () => {
-      if (query.trim()) {
-        const result = await searchHypermedia({ query, resourceTypes: 'record', limit: 7 });
-        return result.results.flatMap((hit) => (hit.resourceType === 'record' ? [hit.record] : []));
-      }
-      const { data, error } = await api.api.records.get({ query: { limit: 7, offset: 0 } });
-      if (error) {
-        throw new Error(apiErrorMessage(error));
-      }
-      return data.items;
-    },
   });
 }
 

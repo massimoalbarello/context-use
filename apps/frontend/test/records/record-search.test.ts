@@ -1,7 +1,7 @@
 import { expect, spyOn, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 import type { api } from '../../src/lib/api';
-import { recordSuggestionsQueryOptions, recordsQueryOptions } from '../../src/queries/records';
+import { recordsQueryOptions } from '../../src/queries/records';
 
 type SearchResponse = NonNullable<
   Awaited<ReturnType<typeof api.api.hypermedia.search.get>>['data']
@@ -94,18 +94,6 @@ test('records use the shared retrieval pipeline, preserve relevance order, and k
       offset: '0',
     });
     expect(browsing.pages[0]?.nextOffset).toBe(nextBrowseOffset);
-
-    const suggestions = await client.fetchQuery(recordSuggestionsQueryOptions('discussion'));
-    expect(suggestions.map(({ readableId }) => readableId)).toEqual(['second', 'first']);
-    expect(requests.at(-1)?.pathname).toBe('/api/hypermedia/search');
-    expect(Object.fromEntries(requests.at(-1)!.searchParams)).toEqual({
-      query: 'discussion',
-      resourceTypes: 'record',
-      limit: '7',
-    });
-    await client.fetchQuery(recordSuggestionsQueryOptions(''));
-    expect(requests.at(-1)?.pathname).toBe('/api/records');
-    expect(Object.fromEntries(requests.at(-1)!.searchParams)).toEqual({ limit: '7', offset: '0' });
   } finally {
     client.clear();
     fetch.mockRestore();

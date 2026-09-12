@@ -6,8 +6,11 @@ export type HypermediaSearchInput = NonNullable<
 >;
 
 /** Every lexical UI search uses the same application pipeline as MCP. */
-export async function searchHypermedia(query: HypermediaSearchInput) {
-  const { data, error } = await api.api.hypermedia.search.get({ query });
+export async function searchHypermedia({
+  signal,
+  ...query
+}: HypermediaSearchInput & { signal?: AbortSignal }) {
+  const { data, error } = await api.api.hypermedia.search.get({ query, fetch: { signal } });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

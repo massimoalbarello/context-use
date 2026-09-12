@@ -3,14 +3,12 @@ import {
   parseTemporalCoverage,
 } from '@repo/backend/temporal-coverage';
 import { useForm } from '@tanstack/react-form';
+import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
-import { useAssetSuggestions } from '../../lib/hooks/use-assets';
-import { useEntitySuggestions } from '../../lib/hooks/use-entities';
-import { usePageSuggestions } from '../../lib/hooks/use-pages';
-import { useRecordSuggestions } from '../../lib/hooks/use-records';
 import { temporalCoverageMutation } from '../../lib/temporal-coverage';
+import { knowledgeSuggestionsQueryOptions } from '../../queries/knowledge-suggestions';
 import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
@@ -63,10 +61,10 @@ export function KnowledgePageForm({
   onSubmit,
 }: KnowledgePageFormProps) {
   const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
-  const { data: entitySuggestions = [] } = useEntitySuggestions(knowledgeQuery);
-  const { data: pageSuggestions = [] } = usePageSuggestions(knowledgeQuery);
-  const { data: assetSuggestions = [] } = useAssetSuggestions(knowledgeQuery);
-  const { data: recordSuggestions = [] } = useRecordSuggestions(knowledgeQuery);
+  const suggestions = useQuery({
+    ...knowledgeSuggestionsQueryOptions(knowledgeQuery ?? ''),
+    enabled: knowledgeQuery !== null,
+  });
   const form = useForm({
     defaultValues: {
       markdown: initialValues.markdown,
@@ -148,10 +146,12 @@ export function KnowledgePageForm({
                 id={field.name}
                 name={field.name}
                 value={field.state.value}
-                entities={entitySuggestions}
-                pages={pageSuggestions}
-                assets={assetSuggestions}
-                records={recordSuggestions}
+                suggestions={suggestions.data?.suggestions ?? []}
+                loading={suggestions.isPending}
+                error={suggestions.error}
+                totalMatches={suggestions.data?.totalMatches ?? null}
+                truncated={suggestions.data?.truncated ?? false}
+                onRetry={() => void suggestions.refetch()}
                 invalid={field.state.meta.errors.length > 0}
                 onBlur={field.handleBlur}
                 onChange={field.handleChange}
