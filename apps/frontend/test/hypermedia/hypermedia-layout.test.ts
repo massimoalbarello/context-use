@@ -89,7 +89,7 @@ describe('entity-first hypermedia layout', () => {
     }
   });
 
-  test('places standalone search matches without waiting for graph discovery', () => {
+  test('places listed entities before their neighborhoods load', () => {
     const match = entity('diagram');
     const initial = buildStableEntities([], [match]);
     expect(initial.map(({ key }) => key)).toEqual(['entity:diagram']);

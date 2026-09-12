@@ -13,15 +13,11 @@ import { HypermediaFilters } from './hypermedia-filters';
 
 export function HypermediaSidebar({
   profile,
-  query,
   selectedEntities,
-  onQueryApply,
   onClearSelectedEntities,
 }: {
   profile: KnowledgeProfile;
-  query: string;
   selectedEntities: HypermediaEntityReference[];
-  onQueryApply: (query: string) => void;
   onClearSelectedEntities: () => void;
 }) {
   const { collapsed } = useKnowledgeWorkspace();
@@ -45,9 +41,7 @@ export function HypermediaSidebar({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-none px-4 py-6">
           <HypermediaFilters
-            query={query}
             selectedEntities={selectedEntities}
-            onQueryApply={onQueryApply}
             onClearSelectedEntities={onClearSelectedEntities}
           />
         </div>

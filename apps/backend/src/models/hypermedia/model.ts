@@ -3,11 +3,6 @@ import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 
 export type HypermediaEntityReference = Pick<Entity, 'readableId'>;
 
-export interface HypermediaRetrievalMatches {
-  pageReadableIds: string[];
-  entities: HypermediaEntityReference[];
-}
-
 export type HypermediaEntityContinuation = {
   sharedPageCount: number;
   readableId: string;

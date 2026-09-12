@@ -1,12 +1,10 @@
 import { t } from 'elysia';
-import type { Entity } from '#models/entities/model.ts';
 import type {
   HypermediaEntityContinuation,
   HypermediaEntityNeighborhood,
   HypermediaEntityReference,
   HypermediaPages,
 } from '#models/hypermedia/model.ts';
-import { MAX_KNOWLEDGE_PAGE_TITLE_LENGTH } from '#models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#models/knowledge-pages/temporal-coverage.ts';
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#models/readable-ids/model.ts';
 import { EntitySchema, entityResponse } from '#routes/api/entities/model.ts';
@@ -70,7 +68,6 @@ export const HypermediaPagesQuerySchema = t.Object({
     }),
   ),
   offset: PaginationQuerySchema.properties.offset,
-  query: t.Optional(t.String({ maxLength: MAX_KNOWLEDGE_PAGE_TITLE_LENGTH })),
   time: t.Optional(
     t.String({
       minLength: 1,
@@ -87,7 +84,6 @@ const HypermediaPageSchema = t.Object({
 
 export const HypermediaPagesSchema = t.Object({
   pages: t.Array(HypermediaPageSchema),
-  matchedEntities: t.Nullable(t.Array(EntitySchema)),
   nextOffset: t.Nullable(t.Integer({ minimum: 0 })),
   entityReferencesTruncated: t.Boolean(),
 });
@@ -184,9 +180,8 @@ export function hypermediaEntityNeighborhoodResponse(neighborhood: HypermediaEnt
   };
 }
 
-export function hypermediaPagesResponse(result: HypermediaPages & { matchedEntities?: Entity[] }) {
+export function hypermediaPagesResponse(result: HypermediaPages) {
   return {
-    matchedEntities: result.matchedEntities?.map(entityResponse) ?? null,
     pages: result.pages.map((page) => ({
       ...pageSummaryResponse(page),
       entities: page.entities,

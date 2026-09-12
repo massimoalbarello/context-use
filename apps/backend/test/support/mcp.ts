@@ -28,7 +28,6 @@ export const unusedMcpTransport: McpTransportContract = {
 };
 
 export const unusedHypermediaRetrievalService: HypermediaRetrievalServiceContract = {
-  searchPageView: unexpectedCall,
   search: unexpectedCall,
 };
 export const unusedMcpRecordsService: Pick<RecordResourcesServiceContract, 'findResource'> = {

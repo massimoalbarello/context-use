@@ -72,7 +72,6 @@ try {
   });
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
-    hypermedia: new HypermediaRepository(retrievalDatabase),
   });
   const assetsRepository = new AssetsRepository(database);
   const assetsService = new AssetsService({

@@ -6,7 +6,6 @@ import type {
   HypermediaEntityReference,
   HypermediaPage,
   HypermediaPages,
-  HypermediaRetrievalMatches,
 } from '#models/hypermedia/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
@@ -54,7 +53,6 @@ export interface HypermediaRepositoryContract {
     visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;
-    retrievalMatches?: HypermediaRetrievalMatches;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages>;
 }
@@ -179,7 +177,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     visibleEntities,
     limit,
     offset,
-    retrievalMatches,
     temporalBounds,
   }: {
     ownerId: string;
@@ -187,7 +184,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;
-    retrievalMatches?: HypermediaRetrievalMatches;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages> {
     const selectedEntityKeys = JSON.stringify(entities.map(({ readableId }) => readableId));
@@ -199,11 +195,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     const selectedEntityCount = entities.length;
     const visibleEntityCount = visibleEntities.length;
     const visibleScopedEntityCount = scopedEntities.size;
-    const retrievalPageReadableIds = JSON.stringify(retrievalMatches?.pageReadableIds ?? []);
-    const retrievalEntityKeys = JSON.stringify(
-      retrievalMatches?.entities.map(({ readableId }) => readableId) ?? [],
-    );
-    const searchApplied = retrievalMatches ? 1 : 0;
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
     const rowLimit = limit + 1;
@@ -213,9 +204,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       selectedEntityCount,
       visibleEntityKeys,
       visibleEntityCount,
-      retrievalPageReadableIds,
-      retrievalEntityKeys,
-      searchApplied,
       filterStart,
       filterEnd,
       rowLimit,
@@ -241,8 +229,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       entityKeys: scopedEntityKeys,
       selectedPageIds,
       referenceLimit,
-      retrievalEntityKeys,
-      searchApplied,
     });
     const pagesById = new Map(pages.map((page) => [page.readableId, page]));
     const returnedReferenceLimit = referenceLimit - 1;
@@ -264,9 +250,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedEntityCount,
     visibleEntityKeys,
     visibleEntityCount,
-    retrievalPageReadableIds,
-    retrievalEntityKeys,
-    searchApplied,
     filterStart,
     filterEnd,
     rowLimit,
@@ -277,9 +260,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     selectedEntityCount: number;
     visibleEntityKeys: string;
     visibleEntityCount: number;
-    retrievalPageReadableIds: string;
-    retrievalEntityKeys: string;
-    searchApplied: number;
     filterStart: number | null;
     filterEnd: number | null;
     rowLimit: number;
@@ -292,10 +272,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         select value as "key" from json_each(${selectedEntityKeys})
       ), visible_key as (
         select value as "key" from json_each(${visibleEntityKeys})
-      ), retrieval_page as (
-        select value as "readableId" from json_each(${retrievalPageReadableIds})
-      ), retrieval_entity as (
-        select value as "key" from json_each(${retrievalEntityKeys})
       ), active_entity_reference as (
         select mention."source_revision_id" as "revisionId",
           entity."readable_id" as "key"
@@ -313,18 +289,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           ${selectedEntityCount} = 0
           or count(distinct selected."key") = ${selectedEntityCount}
         ) and (${visibleEntityCount} = 0 or count(distinct visible."key") > 0)
-      ), retrieval_matched_revision as (
-        select page."current_revision_id" as "revisionId"
-        from "knowledge_page" page
-        where page."owner_id" = ${ownerId} and page."archived_at" is null
-          and page."readable_id" in (select "readableId" from retrieval_page)
-        union
-        select mention."source_revision_id" as "revisionId"
-        from "knowledge_page_entity_mention" mention
-        join "entity" entity
-          on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
-        where mention."owner_id" = ${ownerId} and entity."archived_at" is null
-          and entity."readable_id" in (select "key" from retrieval_entity)
       ), filtered_page as (
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
@@ -343,8 +307,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
           and page."current_revision_id" in (select "revisionId" from entity_matched_revision)
-          and (${searchApplied} = 0
-            or page."current_revision_id" in (select "revisionId" from retrieval_matched_revision))
           and (
             (${filterStart} is null and revision."temporal_coverage" is null)
             or (
@@ -368,22 +330,16 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     entityKeys,
     selectedPageIds,
     referenceLimit,
-    retrievalEntityKeys,
-    searchApplied,
   }: {
     ownerId: string;
     entityKeys: string;
     selectedPageIds: string;
     referenceLimit: number;
-    retrievalEntityKeys: string;
-    searchApplied: number;
   }): Promise<IListHypermediaPageEntitiesResult[]> {
     return this.sql.ListHypermediaPageEntities`
       /* @notNull sourcePageReadableId readableId */
       with selected_key as (
         select value as "key" from json_each(${entityKeys})
-      ), retrieval_entity as (
-        select value as "key" from json_each(${retrievalEntityKeys})
       ), selected_page as (
         select "id", "readable_id" as "readableId", "current_revision_id" as "revisionId"
         from "knowledge_page"
@@ -399,8 +355,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         join "entity" entity
           on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
         where entity."archived_at" is null
-          and (${searchApplied} = 0
-            or entity."readable_id" in (select "key" from retrieval_entity))
       )
       select "sourcePageReadableId", "readableId" from page_entity
       order by "readableId" in (select "key" from selected_key) desc,

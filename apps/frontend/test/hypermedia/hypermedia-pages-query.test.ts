@@ -7,7 +7,6 @@ test('scroll months select the API time and keep dated and undated results in se
   const requests: URL[] = [];
   const response: HypermediaPages = {
     pages: [],
-    matchedEntities: null,
     nextOffset: null,
     entityReferencesTruncated: false,
   };
