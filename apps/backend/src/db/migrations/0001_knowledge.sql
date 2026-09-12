@@ -8,6 +8,7 @@ create table "entity" (
   "image_asset_id" text,
   "created_at" text not null,
   "updated_at" text not null,
+  "archived_at" text check ("archived_at" is null or length(trim("archived_at")) > 0),
   primary key ("id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
@@ -137,6 +138,9 @@ create table "knowledge_page_reference" (
 );
 
 create index "entity_owner_updated_idx" on "entity" ("owner_id", "updated_at" desc);
+create index "entity_owner_type_active_name_idx"
+  on "entity" ("owner_id", "entity_type", "name" collate nocase, "readable_id")
+  where "archived_at" is null;
 create unique index "entity_owner_image_asset_idx"
   on "entity" ("owner_id", "image_asset_id") where "image_asset_id" is not null;
 create index "knowledge_page_owner_updated_idx" on "knowledge_page" ("owner_id", "updated_at" desc);
