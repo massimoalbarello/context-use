@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   removeHypermediaEntitySelection,
   selectedHypermediaEntities,
-  selectedHypermediaEntitiesLabel,
   selectedHypermediaEntitiesValue,
   toggleHypermediaEntitySelection,
 } from '../../src/components/hypermedia/hypermedia-selection';
@@ -32,9 +31,6 @@ describe('Hypermedia entity filters', () => {
     expect(selectedHypermediaEntitiesValue(withSecondEntity)).toBe(
       'entity:jun-park,entity:rollout-metrics',
     );
-    expect(selectedHypermediaEntitiesLabel(initial)).toBe('1 entity selected');
-    expect(selectedHypermediaEntitiesLabel([withSecondEntity[1]!])).toBe('1 entity selected');
-    expect(selectedHypermediaEntitiesLabel(withSecondEntity)).toBe('2 entities selected');
     expect(
       toggleHypermediaEntitySelection({
         entities: withSecondEntity,

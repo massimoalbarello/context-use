@@ -37,7 +37,6 @@ export function PageFilters({
         value={query}
         placeholder="Page title"
         maxLength={MAX_KNOWLEDGE_PAGE_TITLE_LENGTH}
-        autoFocus
         onApply={onQueryApply}
       />
       {interval !== 'without' && (

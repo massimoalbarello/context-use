@@ -49,4 +49,12 @@ test('the shared filter shortcut opens asset keyword search', async () => {
   const keyword = screen.getByRole('searchbox', { name: 'Keyword' });
   expect(keyword.getAttribute('placeholder')).toBe('Asset name');
   expect(document.activeElement).toBe(keyword);
+
+  await user.type(keyword, 'iPhone');
+  await user.tab();
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Apply' }));
+  await user.keyboard('{Meta>}k{/Meta}');
+  expect(document.activeElement).toBe(keyword);
+  expect((keyword as HTMLInputElement).selectionStart).toBe(0);
+  expect((keyword as HTMLInputElement).selectionEnd).toBe('iPhone'.length);
 });

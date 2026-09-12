@@ -53,10 +53,6 @@ export function selectedHypermediaEntitiesValue(
   return entities.length > 0 ? entities.map(hypermediaEntityKey).join(',') : undefined;
 }
 
-export function selectedHypermediaEntitiesLabel(entities: HypermediaEntityReference[]): string {
-  return `${entities.length} ${entities.length === 1 ? 'entity' : 'entities'} selected`;
-}
-
 export function toggleHypermediaEntitySelection({
   entities,
   selection,

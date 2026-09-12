@@ -98,7 +98,9 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
     const router = createRouter({
       routeTree,
       context: { queryClient: client },
-      history: createMemoryHistory({ initialEntries: ['/hypermedia?q=nonexistent-keyword'] }),
+      history: createMemoryHistory({
+        initialEntries: ['/hypermedia?q=nonexistent-keyword&focus=entity%3Aowner'],
+      }),
     });
     await router.load();
     render(
@@ -108,6 +110,7 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
     );
 
     expect(await screen.findByRole('link', { name: 'Browse resources' })).toBeTruthy();
+    expect(screen.getByText('1 entity selected')).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull();
     expect((await screen.findByRole('alert')).textContent).toContain('Couldn’t load pages.');
@@ -115,6 +118,9 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
     await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Clear selected entities' }));
+    expect(screen.queryByRole('button', { name: 'Clear selected entities' })).toBeNull();
+    expect(router.state.location.search).not.toHaveProperty('focus');
   } finally {
     cleanup();
     client.clear();

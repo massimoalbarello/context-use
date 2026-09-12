@@ -8,14 +8,12 @@ export function KeywordFilter({
   value,
   placeholder,
   maxLength,
-  autoFocus = false,
   onApply,
 }: {
   inputId: string;
   value: string;
   placeholder: string;
-  maxLength?: number;
-  autoFocus?: boolean;
+  maxLength: number;
   onApply: (value: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
@@ -66,7 +64,7 @@ export function KeywordFilter({
             aria-keyshortcuts="Meta+K"
             placeholder={placeholder}
             maxLength={maxLength}
-            autoFocus={autoFocus}
+            autoFocus
             value={draft}
             onChange={(event) => setDraft(event.currentTarget.value)}
           />
