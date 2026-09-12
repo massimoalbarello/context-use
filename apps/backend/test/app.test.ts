@@ -14,7 +14,7 @@ import type { HealthServiceContract } from '#services/health/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
-import { unusedHypermediaService } from './support/app.ts';
+import { unusedAssetFacesService, unusedHypermediaService } from './support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -42,6 +42,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     fallback: () => new Response('frontend'),
   };
   const assetsService: AssetsServiceContract = {
+    faces: unusedAssetFacesService,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,
@@ -50,12 +51,12 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     content: unexpectedCall,
   };
   const entitiesService: EntitiesServiceContract = {
+    setImage: unexpectedCall,
+    removeImage: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,
     update: unexpectedCall,
-    setImage: unexpectedCall,
-    removeImage: unexpectedCall,
     archive: unexpectedCall,
   };
   const pagesService: KnowledgePagesServiceContract = {

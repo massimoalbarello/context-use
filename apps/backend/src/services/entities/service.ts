@@ -9,23 +9,29 @@ import type { AssetsRepositoryContract } from '#repositories/assets/repository.t
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
 import type { KnowledgePagesRepositoryContract } from '#repositories/knowledge-pages/repository.ts';
 
+type PersonPortraitAvailable = (input: { ownerId: string; readableId: string }) => Promise<void>;
+
 export class EntitiesService {
   private readonly assets: Pick<AssetsRepositoryContract, 'find'>;
   private readonly entities: EntityRepositoryContract;
   private readonly pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
+  private readonly onPersonPortraitAvailable: PersonPortraitAvailable;
 
   constructor({
     assets,
     entities,
     pages,
+    onPersonPortraitAvailable,
   }: {
     assets: Pick<AssetsRepositoryContract, 'find'>;
     entities: EntityRepositoryContract;
     pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
+    onPersonPortraitAvailable: PersonPortraitAvailable;
   }) {
     this.assets = assets;
     this.entities = entities;
     this.pages = pages;
+    this.onPersonPortraitAvailable = onPersonPortraitAvailable;
   }
 
   create(input: {
@@ -82,14 +88,15 @@ export class EntitiesService {
     return { ...entity, pages };
   }
 
-  update(input: {
+  async update(input: {
     ownerId: string;
     readableId: string;
     name: string;
     description: string;
     entityType?: EntityType | null;
   }): Promise<Entity | null> {
-    return this.entities.update({
+    const previous = input.entityType === 'person' ? await this.entities.find(input) : null;
+    const entity = await this.entities.update({
       ownerId: input.ownerId,
       readableId: input.readableId,
       name: input.name.trim(),
@@ -97,37 +104,47 @@ export class EntitiesService {
       entityType: input.entityType,
       updatedAt: new Date().toISOString(),
     });
+    if (
+      input.entityType === 'person' &&
+      previous?.entityType !== 'person' &&
+      entity?.entityType === 'person' &&
+      entity.image
+    ) {
+      await this.onPersonPortraitAvailable({
+        ownerId: input.ownerId,
+        readableId: input.readableId,
+      });
+    }
+    return entity;
   }
 
-  async setImage(input: {
-    ownerId: string;
-    readableId: string;
-    assetReadableId: string;
-  }): Promise<
-    | { state: 'updated'; entity: Entity }
-    | { state: 'not_found' }
-    | { state: 'invalid_asset_type' }
-    | { state: 'image_in_use' }
-  > {
+  async setImage(input: { ownerId: string; readableId: string; assetReadableId: string }) {
     const asset = await this.assets.find({
       ownerId: input.ownerId,
       readableId: input.assetReadableId,
     });
     if (!asset) {
-      return { state: 'not_found' };
+      return { state: 'not_found' } as const;
     }
     if (!isEmbeddableAssetMedia(asset.mediaType)) {
-      return { state: 'invalid_asset_type' };
+      return { state: 'invalid_asset_type' } as const;
     }
-    return this.entities.setImage({
+    const result = await this.entities.setImage({
       ownerId: input.ownerId,
       readableId: input.readableId,
       assetId: asset.id,
       updatedAt: new Date().toISOString(),
     });
+    if (result.state === 'updated' && result.entity.entityType === 'person') {
+      await this.onPersonPortraitAvailable({
+        ownerId: input.ownerId,
+        readableId: input.readableId,
+      });
+    }
+    return result;
   }
 
-  removeImage(input: { ownerId: string; readableId: string }): Promise<Entity | null> {
+  removeImage(input: { ownerId: string; readableId: string }) {
     return this.entities.removeImage({ ...input, updatedAt: new Date().toISOString() });
   }
 

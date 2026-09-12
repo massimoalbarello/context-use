@@ -22,6 +22,7 @@ import { createContextUseMcpServer } from '#routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import { unusedAssetFacesService } from '../../../support/app.ts';
 import {
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
@@ -66,12 +67,12 @@ const principal: McpClientAuthorizationPrincipal = {
 };
 
 const unusedEntitiesService: EntitiesServiceContract = {
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
-  setImage: unexpectedCall,
-  removeImage: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -120,6 +121,7 @@ async function withAssetMcp({
   const database = await createSqliteDatabase({ dataFolder });
   const storage = new LocalStorage(join(dataFolder, 'objects'));
   const assetsService = new AssetsService({
+    faces: unusedAssetFacesService,
     assets: new AssetsRepository(database),
     storage,
   });
@@ -390,6 +392,7 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
 
 test('raw upload endpoints enforce required headers and byte limits before one AssetsService call', async () => {
   const createdAsset: Asset = {
+    depicts: [],
     id: 'internal-asset-id',
     readableId: 'bounded-upload',
     name: 'Bounded upload',
@@ -402,6 +405,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   };
   let createCalls = 0;
   const assetsService: AssetsServiceContract = {
+    faces: unusedAssetFacesService,
     create: async (input) => {
       createCalls += 1;
       expect(input).toEqual(
@@ -527,6 +531,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
 
 test('asset updates return no echoed state and archive blockers expose only public usage coordinates', async () => {
   const asset: Asset = {
+    depicts: [],
     id: 'internal-asset-id',
     readableId: 'quarterly-chart',
     name: 'Quarterly chart',
@@ -565,6 +570,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
   };
   let archiveCalls = 0;
   const assetsService: AssetsServiceContract = {
+    faces: unusedAssetFacesService,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,

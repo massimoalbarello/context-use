@@ -73,6 +73,17 @@ export interface IFindAssetArchiveTargetResult {
 export interface IRemoveAssetSearchDocumentResult {
 }
 
+/** Result of query `ListAssetDepictedPeople`. */
+export interface IListAssetDepictedPeopleResult {
+    id: string;
+    readableId: string;
+    name: string;
+    description: string;
+    entityType: string | null;
+    isSelf: number;
+    source: "detected" | "confirmed";
+}
+
 /** Result of query `ListActivePageAssetUsages`. */
 export interface IListActivePageAssetUsagesResult {
     id: string;
@@ -192,6 +203,102 @@ export interface IListActiveEntityMentioningPagesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** Result of query `ReadFaceObservations`. */
+export interface IReadFaceObservationsResult {
+    id: string;
+    readableId: string;
+    assetId: string;
+    box: string;
+    cropKey: string;
+    detectionScore: number;
+    analysisVersion: string;
+    current: number;
+    needsReview: number;
+    embeddingSpace: string;
+    embeddingRevision: string;
+    vector: Uint8Array;
+    protected: unknown;
+}
+
+/** Result of query `ReadFaceAnalysis`. */
+export interface IReadFaceAnalysisResult {
+    state: "processing" | "ready" | "failed";
+    error: string | null;
+    analysisVersion: string;
+}
+
+/** Result of query `ReadAssetFaceViews`. */
+export interface IReadAssetFaceViewsResult {
+    readableId: string;
+    box: string;
+    current: number;
+    needsReview: number;
+    decision: string | null;
+    entityId: string | null;
+    entityReadableId: string | null;
+    name: string | null;
+    description: string | null;
+    entityType: string | null;
+    selfEntityId: string | null;
+    similarity: number | null;
+}
+
+/** Result of query `CheckFaceAnalysisAttempt`. */
+export interface ICheckFaceAnalysisAttemptResult {
+    assetId: string;
+}
+
+/** Result of query `ListFaceReferences`. */
+export interface IListFaceReferencesResult {
+    entityId: string;
+    faceId: string;
+    assetId: string;
+    embeddingSpace: string;
+    embeddingRevision: string;
+    vector: Uint8Array;
+}
+
+/** Result of query `FindPortraitReferenceCandidates`. */
+export interface IFindPortraitReferenceCandidatesResult {
+    faceId: string;
+    decision: string | null;
+    entityId: string | null;
+}
+
+/** Result of query `ReadPersonReferenceFace`. */
+export interface IReadPersonReferenceFaceResult {
+    readableId: string;
+}
+
+/** Result of query `FindFaceAnnotationTarget`. */
+export interface IFindFaceAnnotationTargetResult {
+    id: string;
+}
+
+/** Result of query `ReadFaceThreshold`. */
+export interface IReadFaceThresholdResult {
+    threshold: number;
+}
+
+/** Result of query `FaceAssetBatch`. */
+export interface IFaceAssetBatchResult {
+    id: string;
+    readableId: string;
+    mediaType: string;
+}
+
+/** Result of query `ListPersonImages`. */
+export interface IListPersonImagesResult {
+    id: string;
+    readableId: string;
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -709,6 +816,7 @@ export interface Queries {
     UpdateAssetName: IUpdateAssetNameResult;
     FindAssetArchiveTarget: IFindAssetArchiveTargetResult;
     RemoveAssetSearchDocument: IRemoveAssetSearchDocumentResult;
+    ListAssetDepictedPeople: IListAssetDepictedPeopleResult;
     ListActivePageAssetUsages: IListActivePageAssetUsagesResult;
     ListActiveEntityImageAssetUsages: IListActiveEntityImageAssetUsagesResult;
     CreateEntity: ICreateEntityResult;
@@ -722,6 +830,17 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
+    ReadFaceObservations: IReadFaceObservationsResult;
+    ReadFaceAnalysis: IReadFaceAnalysisResult;
+    ReadAssetFaceViews: IReadAssetFaceViewsResult;
+    CheckFaceAnalysisAttempt: ICheckFaceAnalysisAttemptResult;
+    ListFaceReferences: IListFaceReferencesResult;
+    FindPortraitReferenceCandidates: IFindPortraitReferenceCandidatesResult;
+    ReadPersonReferenceFace: IReadPersonReferenceFaceResult;
+    FindFaceAnnotationTarget: IFindFaceAnnotationTargetResult;
+    ReadFaceThreshold: IReadFaceThresholdResult;
+    FaceAssetBatch: IFaceAssetBatchResult;
+    ListPersonImages: IListPersonImagesResult;
     PingDatabase: IPingDatabaseResult;
     SearchHypermedia: ISearchHypermediaResult;
     FindHypermediaEntity: IFindHypermediaEntityResult;

@@ -13,11 +13,30 @@ import {
   PUBLIC_FRONTEND_DIR_NAME_CONSTANT_NAME,
 } from './shared/constants';
 
+if (BACKEND_BUILD_TARGET && !BACKEND_BUILD_TARGET.startsWith('bun-linux-x64')) {
+  throw new Error('The bundled face analyzer supports Linux x64 or BUILD_TARGET=host.');
+}
+
+const nativeBuild = Bun.spawn(
+  ['bun', 'run', 'scripts/build-faces.ts', ...(BACKEND_BUILD_TARGET ? [] : ['--host'])],
+  { stdio: ['ignore', 'inherit', 'inherit'] },
+);
+if ((await nativeBuild.exited) !== 0) {
+  throw new Error('Native face analyzer build failed');
+}
+const faceEngineDirectory = `${BACKEND_DIST_DIR}/face-engine`;
+
 console.log('🧹 Cleaning dist dir...');
 await rm(BACKEND_DIST_DIR, { recursive: true, force: true });
 
 console.log('🧹 Cleaning public frontend dir...');
 await rm(FRONTEND_DIST_DST, { recursive: true, force: true });
+
+await cp(
+  `.cache/${BACKEND_BUILD_TARGET ? 'face-engine-linux' : 'face-engine-host'}`,
+  faceEngineDirectory,
+  { recursive: true },
+);
 
 console.log('📄 Copying frontend assets...');
 await cp(FRONTEND_DIST_SRC, FRONTEND_DIST_DST, { recursive: true });
@@ -27,9 +46,11 @@ const buildResult = await Bun.build({
   entrypoints: [BACKEND_ENTRYPOINT],
   compile: {
     outfile: BACKEND_BINARY_FILE,
+    // Leave room for native inference alongside the API and served UI on small instances.
+    execArgv: ['--smol'],
     // omitted entirely (not set to undefined) so Bun falls back to the host platform
     ...(BACKEND_BUILD_TARGET ? { target: BACKEND_BUILD_TARGET } : {}),
-    assets: [FRONTEND_DIST_DST, DB_MIGRATIONS_DIR],
+    assets: [FRONTEND_DIST_DST, DB_MIGRATIONS_DIR, faceEngineDirectory],
   },
   // Compiles the entrypoint to JSC bytecode so the binary skips parsing on every boot.
   // Bun 1.4 lifted this to ES modules; `format` has to be spelled out because `bytecode`

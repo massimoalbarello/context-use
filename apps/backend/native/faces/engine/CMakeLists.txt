@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.24)
+project(context_use_faces LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+find_package(OpenCV 4.10 REQUIRED COMPONENTS core imgproc imgcodecs dnn objdetect)
+add_executable(face-analyzer ../main.cpp)
+target_link_libraries(face-analyzer PRIVATE ${OpenCV_LIBS})
+target_compile_options(face-analyzer PRIVATE -Wall -Wextra -Werror)

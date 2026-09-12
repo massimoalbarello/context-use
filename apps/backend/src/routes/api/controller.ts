@@ -28,6 +28,9 @@ import type { McpClientAuthorizationsServiceContract } from '#services/mcp-clien
 import type { OwnerRegistrationServiceContract } from '#services/owner-registration/service.ts';
 import type { RecordResourcesServiceContract } from '#services/records/service.ts';
 import type { RecordSyncsServiceContract } from '#services/syncs/service.ts';
+import { createAssetFacesController } from './assets/[assetReadableId]/faces/controller.ts';
+import { createEntityImagesController } from './entities/[entityReadableId]/images/controller.ts';
+import { createFaceRecognitionController } from './face-recognition/controller.ts';
 
 // The `/api` prefix is applied here, so child controllers keep bare path strings.
 export function createApiController({
@@ -70,6 +73,9 @@ export function createApiController({
       }),
     )
     .use(createAssetsController({ auth, assetsService }))
+    .use(createAssetFacesController({ auth, faces: assetsService.faces }))
+    .use(createEntityImagesController({ auth, faces: assetsService.faces }))
+    .use(createFaceRecognitionController({ auth, faces: assetsService.faces }))
     .use(createAssetReadableIdController({ auth, assetsService }))
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
