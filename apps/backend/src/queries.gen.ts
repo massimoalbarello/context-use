@@ -117,6 +117,14 @@ export interface IListActiveEntityImageAssetUsagesResult {
     isSelf: number;
 }
 
+/** Result of query `ListActiveRecordAssetUsages`. */
+export interface IListActiveRecordAssetUsagesResult {
+    readableId: string;
+    title: string;
+    provider: string;
+    kind: string;
+}
+
 /** Result of query `CreateEntity`. */
 export interface ICreateEntityResult {
     id: string;
@@ -629,6 +637,31 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindUnavailableRecordAssets`. */
+export interface IFindUnavailableRecordAssetsResult {
+    value: unknown | null;
+}
+
+/** Result of query `RemoveRecordAssetReferences`. */
+export interface IRemoveRecordAssetReferencesResult {
+}
+
+/** Result of query `InsertRecordAssetReferences`. */
+export interface IInsertRecordAssetReferencesResult {
+}
+
+/** Result of query `ListRecordAssets`. */
+export interface IListRecordAssetsResult {
+    id: string;
+    readableId: string;
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
 /** Result of query `FindCurrentRecordRevision`. */
 export interface IFindCurrentRecordRevisionResult {
     revision: number;
@@ -745,6 +778,7 @@ export interface Queries {
     RemoveAssetSearchDocument: IRemoveAssetSearchDocumentResult;
     ListActivePageAssetUsages: IListActivePageAssetUsagesResult;
     ListActiveEntityImageAssetUsages: IListActiveEntityImageAssetUsagesResult;
+    ListActiveRecordAssetUsages: IListActiveRecordAssetUsagesResult;
     CreateEntity: ICreateEntityResult;
     ListEntities: IListEntitiesResult;
     CountEntities: ICountEntitiesResult;
@@ -791,6 +825,10 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindUnavailableRecordAssets: IFindUnavailableRecordAssetsResult;
+    RemoveRecordAssetReferences: IRemoveRecordAssetReferencesResult;
+    InsertRecordAssetReferences: IInsertRecordAssetReferencesResult;
+    ListRecordAssets: IListRecordAssetsResult;
     FindCurrentRecordRevision: IFindCurrentRecordRevisionResult;
     ApplyRecordRevision: IApplyRecordRevisionResult;
     RemoveRecordSearchDocument: IRemoveRecordSearchDocumentResult;

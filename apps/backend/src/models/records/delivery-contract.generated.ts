@@ -72,6 +72,12 @@ export interface RecordDeliveryEnvelope {
           attributes?: {
             [k: string]: unknown;
           };
+          /**
+           * Complete set of destination asset identifiers referenced by this record. Assets are uploaded independently before record delivery. Omission means no asset references.
+           *
+           * @maxItems 1000
+           */
+          assetIds?: string[];
         };
         committedAt: string;
       }
@@ -127,6 +133,12 @@ export interface RecordDeliveryEnvelope {
           attributes?: {
             [k: string]: unknown;
           };
+          /**
+           * Complete set of destination asset identifiers referenced by this record. Assets are uploaded independently before record delivery. Omission means no asset references.
+           *
+           * @maxItems 1000
+           */
+          assetIds?: string[];
         };
         committedAt: string;
       }

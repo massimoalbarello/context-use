@@ -1,5 +1,6 @@
 import type { EntityReference } from '#models/entities/model.ts';
 import type { KnowledgePageSummary } from '#models/knowledge-pages/model.ts';
+import type { RecordSummary } from '#models/records/model.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
@@ -31,7 +32,12 @@ export interface EntityImageAssetUsage {
   entity: EntityReference;
 }
 
-export type AssetUsage = KnowledgePageAssetUsage | EntityImageAssetUsage;
+export interface RecordAssetUsage {
+  kind: 'record';
+  record: Pick<RecordSummary, 'readableId' | 'title' | 'provider' | 'kind'>;
+}
+
+export type AssetUsage = KnowledgePageAssetUsage | EntityImageAssetUsage | RecordAssetUsage;
 
 export interface Asset extends AssetSummary {
   usages: AssetUsage[];

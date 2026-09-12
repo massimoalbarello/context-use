@@ -212,6 +212,11 @@ export function createRecordDeliveryController({
         if (result.state === 'inactive_sync') {
           return status(StatusMap.Unauthorized, { error: errorMessage.unauthorized });
         }
+        if (result.state === 'missing_assets') {
+          return status(StatusMap.Conflict, {
+            error: 'Record references missing or unavailable assets',
+          });
+        }
         if (result.state === 'conflict') {
           return status(StatusMap.Conflict, { error: errorMessage.conflict });
         }

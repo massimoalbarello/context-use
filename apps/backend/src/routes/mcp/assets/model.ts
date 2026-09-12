@@ -1,8 +1,12 @@
 import { z } from 'zod';
 import type { Asset, AssetSummary, AssetUsage } from '#models/assets/model.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
-import { assetAddress } from '#models/readable-ids/addresses.ts';
-import { AssetAddressSchema, McpReadableIdSchema } from '#routes/mcp/coordinates.ts';
+import { assetAddress, recordAddress } from '#models/readable-ids/addresses.ts';
+import {
+  AssetAddressSchema,
+  McpReadableIdSchema,
+  RecordAddressSchema,
+} from '#routes/mcp/coordinates.ts';
 import { McpEntityReferenceSchema, mcpEntityReference } from '#routes/mcp/entities/model.ts';
 import { McpKnowledgePageSummarySchema, mcpKnowledgePageSummary } from '#routes/mcp/pages/model.ts';
 
@@ -18,6 +22,16 @@ export const McpAssetSummarySchema = z.object({
 });
 
 const McpAssetUsageSchema = z.union([
+  z.object({
+    kind: z.literal('record'),
+    record: z.object({
+      address: RecordAddressSchema,
+      readableId: McpReadableIdSchema,
+      title: z.string(),
+      provider: z.string(),
+      kind: z.string(),
+    }),
+  }),
   z.object({
     kind: z.literal('page'),
     page: McpKnowledgePageSummarySchema,
@@ -55,6 +69,12 @@ export function mcpAssetSummary(asset: AssetSummary) {
 }
 
 export function mcpAssetUsage(usage: AssetUsage) {
+  if (usage.kind === 'record') {
+    return {
+      kind: usage.kind,
+      record: { ...usage.record, address: recordAddress(usage.record.readableId) },
+    };
+  }
   return usage.kind === 'page'
     ? {
         kind: usage.kind,

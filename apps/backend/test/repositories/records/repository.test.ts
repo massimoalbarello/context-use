@@ -11,7 +11,10 @@ import type {
   RecordContent,
   RecordDeliveryEnvelope,
 } from '#models/records/delivery-contract.generated.ts';
+import { AssetImportsRepository } from '#repositories/assets/imports.ts';
+import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { RecordsRepository } from '#repositories/records/repository.ts';
+import { AssetImportsService } from '#services/assets/imports.ts';
 import { RecordsService } from '#services/records/service.ts';
 import { withRecordTestDatabase } from './database.ts';
 
@@ -53,13 +56,18 @@ function activeRecord({
   recordId = 'record-1',
   revision = INITIAL_REVISION,
   body = 'initial Markdown body',
+  assetIds,
 }: {
   eventId: string;
   recordId?: string;
   revision?: number;
   body?: string;
+  assetIds?: string[];
 }): Exclude<DeliveredRecord, { operation: 'deleted' }> {
   const recordContent = content(body);
+  if (assetIds !== undefined) {
+    recordContent.assetIds = assetIds;
+  }
   return {
     eventId,
     provider: 'github',
@@ -789,6 +797,167 @@ test('concurrent conflicting revisions through separate repositories publish exa
       } finally {
         await otherDatabase.close();
       }
+    },
+  });
+});
+
+test('record references commit atomically, block archiving, and disappear on replacement or deletion', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await insertOwner({ database, ownerId: OWNER_ID });
+      await insertSync({ database });
+      const storage = createLocalStorage({ dataFolder });
+      const service = new RecordsService({ records: new RecordsRepository(database), storage });
+      const assets = new AssetsRepository(database);
+      const imports = new AssetImportsService({
+        imports: new AssetImportsRepository(database),
+        storage,
+      });
+      const uploaded = await imports.upload({
+        ownerId: OWNER_ID,
+        syncId: SYNC_ID,
+        key: 'file',
+        name: 'note.txt',
+        sha256: digest('hello'),
+        file: new Blob(['hello']),
+      });
+      if (uploaded.state !== 'ready') {
+        throw new Error('Expected an asset');
+      }
+      const assetId = uploaded.asset.assetId;
+      const accept = (records: DeliveredRecord[]) =>
+        service.accept({
+          ownerId: OWNER_ID,
+          syncId: SYNC_ID,
+          envelope: { version: 1, batchId: Bun.randomUUIDv7(), records },
+        });
+      const first = activeRecord({ eventId: Bun.randomUUIDv7(), assetIds: [assetId] });
+      expect(await accept([first])).toEqual({ state: 'accepted' });
+      const listed = await service.listResources({ ownerId: OWNER_ID, limit: 1, offset: 0 });
+      const recordId = listed.items[0]!.readableId;
+      expect(
+        (await service.findResource({ ownerId: OWNER_ID, readableId: recordId }))?.assets.map(
+          (asset) => asset.readableId,
+        ),
+      ).toEqual([assetId]);
+      expect(
+        await assets.archive({
+          ownerId: OWNER_ID,
+          readableId: assetId,
+          archivedAt: RECEIVED_AT.toISOString(),
+        }),
+      ).toMatchObject({
+        state: 'resource_in_use',
+        blockers: [{ kind: 'record', record: { readableId: recordId } }],
+      });
+
+      const replaced = activeRecord({
+        eventId: Bun.randomUUIDv7(),
+        revision: STALE_REVISION,
+        assetIds: [],
+      });
+      const invalid = activeRecord({
+        eventId: Bun.randomUUIDv7(),
+        recordId: 'record-2',
+        assetIds: ['missing'],
+      });
+      expect(await accept([replaced, invalid])).toEqual({ state: 'missing_assets' });
+      expect(await recordCount(database)).toBe(1);
+      expect(
+        (await service.findResource({ ownerId: OWNER_ID, readableId: recordId }))?.assets,
+      ).toHaveLength(1);
+
+      const second = activeRecord({
+        eventId: Bun.randomUUIDv7(),
+        recordId: 'record-2',
+        assetIds: [assetId],
+      });
+      expect(await accept([replaced, second])).toEqual({ state: 'accepted' });
+      expect(
+        (await service.findResource({ ownerId: OWNER_ID, readableId: recordId }))?.assets,
+      ).toEqual([]);
+      expect(
+        (await assets.detail({ ownerId: OWNER_ID, readableId: assetId }))?.usages,
+      ).toHaveLength(1);
+      expect(
+        await accept([
+          {
+            ...deletedRecord({ eventId: Bun.randomUUIDv7(), revision: STALE_REVISION }),
+            id: 'record-2',
+          },
+        ]),
+      ).toEqual({ state: 'accepted' });
+      expect(
+        await assets.archive({
+          ownerId: OWNER_ID,
+          readableId: assetId,
+          archivedAt: RECEIVED_AT.toISOString(),
+        }),
+      ).toEqual({ state: 'archived' });
+      // Obsolete revisions do not require assets that have since been removed and archived.
+      expect(await accept([first, replaced, second])).toEqual({ state: 'accepted' });
+      expect(
+        await accept([
+          {
+            ...replaced,
+            eventId: Bun.randomUUIDv7(),
+            content: { ...replaced.content, body: 'different' },
+          },
+        ]),
+      ).toEqual({ state: 'conflict' });
+    },
+  });
+});
+
+test('only final applied revisions claim assets and another owner cannot supply them', async () => {
+  await withRecordTestDatabase({
+    run: async ({ database, dataFolder }) => {
+      await insertOwner({ database, ownerId: OWNER_ID });
+      await insertSync({ database });
+      const storage = createLocalStorage({ dataFolder });
+      const service = new RecordsService({ records: new RecordsRepository(database), storage });
+      const accept = (records: DeliveredRecord[]) =>
+        service.accept({
+          ownerId: OWNER_ID,
+          syncId: SYNC_ID,
+          envelope: { version: 1, batchId: Bun.randomUUIDv7(), records },
+        });
+      const missing = activeRecord({ eventId: Bun.randomUUIDv7(), assetIds: ['missing'] });
+      const final = activeRecord({ eventId: Bun.randomUUIDv7(), revision: STALE_REVISION });
+      expect(await accept([missing, final])).toEqual({ state: 'accepted' });
+      expect(await database`select * from record_asset_reference`).toHaveLength(0);
+      await insertOwner({ database, ownerId: 'another-owner' });
+      await insertSync({
+        database,
+        ownerId: 'another-owner',
+        syncId: SECOND_SYNC_ID,
+        readableId: SECOND_SYNC_READABLE_ID,
+      });
+      const imports = new AssetImportsService({
+        imports: new AssetImportsRepository(database),
+        storage,
+      });
+      const other = await imports.upload({
+        ownerId: 'another-owner',
+        syncId: SECOND_SYNC_ID,
+        key: 'file',
+        name: 'file.txt',
+        sha256: digest('hello'),
+        file: new Blob(['hello']),
+      });
+      if (other.state !== 'ready') {
+        throw new Error('Expected an asset');
+      }
+      expect(
+        await accept([
+          activeRecord({
+            eventId: Bun.randomUUIDv7(),
+            revision: CURRENT_REVISION,
+            assetIds: [other.asset.assetId],
+          }),
+        ]),
+      ).toEqual({ state: 'missing_assets' });
+      expect(await accept([final])).toEqual({ state: 'accepted' });
     },
   });
 });

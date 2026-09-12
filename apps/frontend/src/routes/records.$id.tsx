@@ -77,7 +77,11 @@ function RecordRoute() {
         </TabsList>
         <TabsContent value="preview" className="pt-7">
           <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{record.title}</h1>
-          <ExternalRecordMarkdown markdown={record.markdown} label={record.title} />
+          <ExternalRecordMarkdown
+            assets={record.assets}
+            markdown={record.markdown}
+            label={record.title}
+          />
         </TabsContent>
         <TabsContent value="metadata" className="py-7">
           <RecordMetadata record={record} />

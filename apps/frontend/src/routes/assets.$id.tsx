@@ -12,6 +12,7 @@ import { ResourceList } from '../components/knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
+import { RecordLink } from '../components/records/record-link';
 import { Badge } from '../components/ui/badge';
 import { buttonVariants } from '../components/ui/button';
 import { FieldError } from '../components/ui/field';
@@ -95,6 +96,25 @@ function AssetEntityImageUsageList({ asset }: { asset: Asset }) {
       ) : (
         <p className="text-muted-foreground text-sm">None yet.</p>
       )}
+    </section>
+  );
+}
+
+function AssetRecordUsageList({ asset }: { asset: Asset }) {
+  const usages = asset.usages.filter((usage) => usage.kind === 'record');
+  if (usages.length === 0) {
+    return null;
+  }
+  return (
+    <section>
+      <h2 className="mb-4 font-semibold text-lg">Attached to records</h2>
+      <ResourceList>
+        {usages.map(({ record }) => (
+          <li key={record.readableId}>
+            <RecordLink record={record} />
+          </li>
+        ))}
+      </ResourceList>
     </section>
   );
 }
@@ -206,8 +226,8 @@ function AssetRouteContent({ id }: { id: string }) {
       {archiveAsset.error && <FieldError>{archiveAsset.error.message}</FieldError>}
       {archiveConflictVisible && (
         <p className="text-destructive text-sm" role="alert">
-          This asset can’t be archived until every embed, attachment, and entity image is removed or
-          replaced.{' '}
+          This asset can’t be archived until every page or record attachment, embed, and entity
+          image is removed or replaced.{' '}
           <a className="font-medium underline" href="#used-by">
             Review usages
           </a>
@@ -260,6 +280,7 @@ function AssetRouteContent({ id }: { id: string }) {
         <AssetUsageList asset={asset} presentation="embed" />
         <AssetUsageList asset={asset} presentation="attachment" />
         <AssetEntityImageUsageList asset={asset} />
+        <AssetRecordUsageList asset={asset} />
       </div>
     </DetailShell>
   );

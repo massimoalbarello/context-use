@@ -9,6 +9,7 @@ import {
   ReadableIdSchema,
 } from '#routes/api/model.ts';
 import { KnowledgePageSummarySchema, pageSummaryResponse } from '#routes/api/pages/model.ts';
+import { RecordSummarySchema } from '#routes/api/records/model.ts';
 
 export const KnowledgePageAssetUsageSchema = t.Object({
   kind: t.Literal('page'),
@@ -24,6 +25,10 @@ export const EntityImageAssetUsageSchema = t.Object({
 export const AssetUsageSchema = t.Union([
   KnowledgePageAssetUsageSchema,
   EntityImageAssetUsageSchema,
+  t.Object({
+    kind: t.Literal('record'),
+    record: t.Pick(RecordSummarySchema, ['readableId', 'title', 'provider', 'kind']),
+  }),
 ]);
 
 export const AssetResourceInUseResponseSchema = t.Object({
@@ -63,6 +68,9 @@ export const AssetContentQuerySchema = t.Object({
 });
 
 export function assetUsageResponse(usage: AssetUsage) {
+  if (usage.kind === 'record') {
+    return { kind: usage.kind, record: usage.record };
+  }
   return usage.kind === 'page'
     ? {
         kind: usage.kind,

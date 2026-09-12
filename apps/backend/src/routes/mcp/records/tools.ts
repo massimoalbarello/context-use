@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { McpClientAuthorizationPrincipal } from '#models/mcp-client-authorizations/model.ts';
 import { recordAddress, recordReadableId } from '#models/readable-ids/addresses.ts';
+import { McpAssetSummarySchema, mcpAssetSummary } from '#routes/mcp/assets/model.ts';
 import { McpReadableIdSchema, RecordAddressSchema } from '#routes/mcp/coordinates.ts';
 import { McpKnowledgePageSummarySchema, mcpKnowledgePageSummary } from '#routes/mcp/pages/model.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '#routes/mcp/tool-annotations.ts';
@@ -50,6 +51,7 @@ export function registerRecordTools({
         sync: z.object({ readableId: McpReadableIdSchema, name: z.string() }),
         markdown: z.string(),
         backlinks: z.array(McpKnowledgePageSummarySchema),
+        assets: z.array(McpAssetSummarySchema),
         metadata: RecordMetadataSchema,
       }),
       annotations: MCP_READ_TOOL_ANNOTATIONS,
@@ -69,6 +71,7 @@ export function registerRecordTools({
             sync: { readableId: record.sync.readableId, name: record.sync.name },
             markdown: record.markdown,
             backlinks: record.backlinks.map(mcpKnowledgePageSummary),
+            assets: record.assets.map(mcpAssetSummary),
             metadata: {
               provider: record.provider,
               sourceUrl: record.record.content.sourceUrl,

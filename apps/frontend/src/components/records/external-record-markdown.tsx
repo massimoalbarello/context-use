@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
+import type { AssetSummary } from '../../queries/assets';
+import { AssetLink } from '../assets/asset-link';
+import { AssetMedia } from '../assets/asset-media';
 
 export function externalRecordUrl(url: string): string {
   try {
@@ -27,18 +31,52 @@ function ExternalRecordLink({ href, children }: { href?: string; children: React
   );
 }
 
-export function ExternalRecordMarkdown({ markdown, label }: { markdown: string; label: string }) {
+export function ExternalRecordMarkdown({
+  markdown,
+  label,
+  assets = [],
+}: {
+  markdown: string;
+  label: string;
+  assets?: AssetSummary[];
+}) {
+  const linkedAssets = new Map(
+    assets.map((asset) => [`context-use://asset/${asset.readableId}`, asset]),
+  );
   return (
     <article className="py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
         skipHtml
-        urlTransform={externalRecordUrl}
+        urlTransform={(url) => (linkedAssets.has(url) ? url : externalRecordUrl(url))}
         components={{
-          a: ({ href, children }) => (
-            <ExternalRecordLink href={href}>{children}</ExternalRecordLink>
-          ),
-          img: ({ alt }) =>
-            alt ? <span className="text-muted-foreground text-sm">Image: {alt}</span> : null,
+          a: ({ href, children }) => {
+            const asset = href ? linkedAssets.get(href) : undefined;
+            return asset ? (
+              <AssetLink asset={asset} presentation="inline">
+                {children}
+              </AssetLink>
+            ) : (
+              <ExternalRecordLink href={href}>{children}</ExternalRecordLink>
+            );
+          },
+          img: ({ src, alt }) => {
+            const asset = src ? linkedAssets.get(src) : undefined;
+            if (asset && isEmbeddableAsset(asset)) {
+              return (
+                <AssetMedia
+                  asset={{ ...asset, name: alt ?? asset.name }}
+                  className="max-w-full rounded-lg"
+                />
+              );
+            }
+            return asset ? (
+              <AssetLink asset={asset} presentation="inline">
+                {alt ?? asset.name}
+              </AssetLink>
+            ) : alt ? (
+              <span className="text-muted-foreground text-sm">Image: {alt}</span>
+            ) : null;
+          },
           h1: ({ children, node }) =>
             node?.position?.start.line === 1 && children === label ? null : (
               <h2 className="mb-7 font-semibold text-2xl tracking-tight">{children}</h2>
