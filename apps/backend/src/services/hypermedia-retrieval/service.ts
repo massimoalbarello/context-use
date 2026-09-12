@@ -12,6 +12,7 @@ import {
 } from '#models/hypermedia-retrieval/model.ts';
 import type { TemporalBounds } from '#models/knowledge-pages/temporal-coverage.ts';
 import type { HypermediaRepositoryContract } from '#repositories/hypermedia/repository.ts';
+// biome-ignore lint/style/noRestrictedImports: this service is the sole application entrypoint to the retrieval repository.
 import type { HypermediaRetrievalRepositoryContract } from '#repositories/hypermedia-retrieval/contract.ts';
 
 export class HypermediaRetrievalService {

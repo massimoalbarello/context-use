@@ -211,6 +211,15 @@
                   {
                     "group": ["#services/**"],
                     "message": "A service capability must not coordinate another service capability. Depend on the required repository contracts directly."
+                  },
+                  {
+                    "group": [
+                      "#repositories/hypermedia-retrieval/**",
+                      "**/hypermedia-retrieval/contract.ts",
+                      "**/hypermedia-retrieval/repository.ts",
+                      "**/hypermedia-retrieval/snippets.ts"
+                    ],
+                    "message": "Search must enter through HypermediaRetrievalService. Other services must not depend on its retrieval repository or search implementation."
                   }
                 ],
                 "paths": {

@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query';
 import type { api } from '../../src/lib/api';
 import { assetsQueryOptions, imageAssetSuggestionsQueryOptions } from '../../src/queries/assets';
 import { entitiesQueryOptions } from '../../src/queries/entities';
+import { knowledgeSuggestionsQueryOptions } from '../../src/queries/knowledge-suggestions';
 import { pagesQueryOptions } from '../../src/queries/pages';
 
 type SearchResponse = NonNullable<
@@ -27,15 +28,17 @@ test('sidebar and picker keyword queries use the shared search endpoint with typ
     await client.fetchInfiniteQuery(assetsQueryOptions('running'));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: 'running', interval: 'with' }));
     await client.fetchQuery(imageAssetSuggestionsQueryOptions('running'));
+    await client.fetchQuery(knowledgeSuggestionsQueryOptions('running'));
 
     expect(requests.map((url) => url.pathname)).toEqual(
-      Array.from({ length: 4 }, () => '/api/hypermedia/search'),
+      Array.from({ length: 5 }, () => '/api/hypermedia/search'),
     );
     expect(requests.map((url) => Object.fromEntries(url.searchParams))).toEqual([
       { query: 'running', resourceTypes: 'entity' },
       { query: 'running', resourceTypes: 'asset' },
       { query: 'running', resourceTypes: 'knowledge_page', interval: 'with' },
       { query: 'running', resourceTypes: 'asset', limit: '7', assetKind: 'entity_image' },
+      { query: 'running' },
     ]);
   } finally {
     client.clear();
