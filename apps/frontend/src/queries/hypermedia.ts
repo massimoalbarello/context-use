@@ -20,7 +20,6 @@ type HypermediaPagesRequest = NonNullable<Parameters<(typeof api.api.hypermedia.
 export type HypermediaPageInterval = NonNullable<
   NonNullable<HypermediaPagesRequest['query']>['interval']
 >;
-export type HypermediaView = 'map' | 'timeline';
 
 export const hypermediaQueryKey = ['hypermedia'] as const;
 export const HYPERMEDIA_NEIGHBORHOOD_SIZE = 16;

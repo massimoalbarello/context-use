@@ -7,7 +7,6 @@ import {
   type HypermediaPage,
   type HypermediaPages,
   type HypermediaResourceReference,
-  type HypermediaView,
   hypermediaResourceKey,
   hypermediaResourceNeighborhoodQueryOptions,
   hypermediaResourceReference,
@@ -17,7 +16,6 @@ import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableResources } from './hypermedia-layout';
 import { filterHypermedia, type HypermediaResourceKind } from './hypermedia-resource-filter';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
-import { HypermediaTimelineCanvas } from './hypermedia-temporal-canvas';
 import type { SettledHypermediaViewport } from './hypermedia-visibility';
 
 type NeighborhoodRequest = {
@@ -64,7 +62,6 @@ function resourceSelection(
 }
 
 export function HypermediaExplorer({
-  view,
   resourceKinds,
   selfReadableId,
   selection,
@@ -73,20 +70,17 @@ export function HypermediaExplorer({
   pages,
   matchedResources,
   month,
-  temporalExtent,
   pagesLoading,
   pagesTransitioning,
   pagesError,
   hasNextPage,
   pageReferencesTruncated,
-  isFetchingNextPage,
   onSelect,
   onMonthChange,
   onVisibleResourcesChange,
   onRetryPages,
   onDiscoverMorePages,
 }: {
-  view: HypermediaView;
   resourceKinds: HypermediaResourceKind[];
   selfReadableId: string;
   selection?: HypermediaSelection;
@@ -95,13 +89,11 @@ export function HypermediaExplorer({
   pages: HypermediaPage[];
   matchedResources: HypermediaPages['matchedResources'];
   month?: CalendarMonth;
-  temporalExtent: HypermediaPages['temporalExtent'];
   pagesLoading: boolean;
   pagesTransitioning: boolean;
   pagesError: Error | null;
   hasNextPage: boolean;
   pageReferencesTruncated: boolean;
-  isFetchingNextPage: boolean;
   onSelect: (selection: HypermediaSelection) => void;
   onMonthChange: (month?: CalendarMonth) => void;
   onVisibleResourcesChange: (resources: HypermediaResourceReference[]) => void;
@@ -288,56 +280,36 @@ export function HypermediaExplorer({
     visualizedHypermedia.resources.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
     <div className="relative size-full min-h-[28rem]">
-      {view === 'map' ? (
-        <HypermediaCanvas
-          key={query.trim().toLocaleLowerCase()}
-          resources={visualizedHypermedia.resources}
-          pages={visualizedHypermedia.pages}
-          month={month}
-          selectedResources={visualizedSelectedResources}
-          selectedKey={selectedKey}
-          onSelect={handleSelect}
-          onViewportSettled={handleViewportSettled}
-          onMonthChange={onMonthChange}
-          onIntervalScrollingChange={setIntervalScrolling}
-          canExplore={canExplore}
-          isInitialLoading={
-            visualizedHypermedia.resources.length === 0 &&
-            ((resourceKinds.includes('entity') && entitiesPending) ||
-              neighborhoodQueries.some(({ isPending }) => isPending))
+      <HypermediaCanvas
+        key={query.trim().toLocaleLowerCase()}
+        resources={visualizedHypermedia.resources}
+        pages={visualizedHypermedia.pages}
+        month={month}
+        selectedResources={visualizedSelectedResources}
+        selectedKey={selectedKey}
+        onSelect={handleSelect}
+        onViewportSettled={handleViewportSettled}
+        onMonthChange={onMonthChange}
+        onIntervalScrollingChange={setIntervalScrolling}
+        canExplore={canExplore}
+        isInitialLoading={
+          visualizedHypermedia.resources.length === 0 &&
+          ((resourceKinds.includes('entity') && entitiesPending) ||
+            neighborhoodQueries.some(({ isPending }) => isPending))
+        }
+        neighborhoodError={neighborhoodError}
+        onRetryNeighborhood={() => {
+          if (resourceKinds.includes('entity') && entityError) {
+            void refetchEntities();
           }
-          neighborhoodError={neighborhoodError}
-          onRetryNeighborhood={() => {
-            if (resourceKinds.includes('entity') && entityError) {
-              void refetchEntities();
+          for (const result of neighborhoodQueries) {
+            if (result.error) {
+              void result.refetch();
             }
-            for (const result of neighborhoodQueries) {
-              if (result.error) {
-                void result.refetch();
-              }
-            }
-          }}
-        />
-      ) : (
-        <HypermediaTimelineCanvas
-          key={query.trim().toLocaleLowerCase()}
-          resources={visualizedHypermedia.resources}
-          pages={visualizedHypermedia.pages}
-          extent={temporalExtent}
-          month={month}
-          selectedResources={visualizedSelectedResources}
-          selectedKey={selectedKey}
-          onSelect={handleSelect}
-          onMonthChange={onMonthChange}
-          onIntervalScrollingChange={setIntervalScrolling}
-          onViewportSettled={handleViewportSettled}
-          hasNextPage={hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          onDiscoverMorePages={onDiscoverMorePages}
-        />
-      )}
+          }
+        }}
+      />
       <HypermediaPageStatus
-        view={view}
         pageCount={pages.length}
         loading={pagesLoading}
         suppressed={intervalScrolling || pagesTransitioning}
@@ -352,7 +324,6 @@ export function HypermediaExplorer({
 }
 
 export function HypermediaPageStatus({
-  view,
   pageCount,
   loading,
   suppressed,
@@ -362,7 +333,6 @@ export function HypermediaPageStatus({
   onRetry,
   onLoadMore,
 }: {
-  view: HypermediaView;
   pageCount: number;
   loading: boolean;
   suppressed: boolean;
@@ -372,8 +342,7 @@ export function HypermediaPageStatus({
   onRetry: () => void;
   onLoadMore: () => void;
 }) {
-  const canLoadMore = view === 'map' && hasNextPage;
-  if (!loading && !error && pageCount > 0 && !canLoadMore && !referencesTruncated) {
+  if (!loading && !error && pageCount > 0 && !hasNextPage && !referencesTruncated) {
     return null;
   }
   let message: string | undefined;
@@ -383,9 +352,9 @@ export function HypermediaPageStatus({
     message = 'Loading pages…';
   } else if (pageCount === 0) {
     message = 'No pages match this interval.';
-  } else if (canLoadMore && referencesTruncated) {
+  } else if (hasNextPage && referencesTruncated) {
     message = 'More pages are available, and some page connections are hidden.';
-  } else if (canLoadMore) {
+  } else if (hasNextPage) {
     message = 'More pages are available.';
   } else if (referencesTruncated) {
     message = 'Some page connections are hidden.';
@@ -406,7 +375,7 @@ export function HypermediaPageStatus({
           Try again
         </Button>
       )}
-      {!loading && !error && canLoadMore && (
+      {!loading && !error && hasNextPage && (
         <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={onLoadMore}>
           Load more pages
         </Button>

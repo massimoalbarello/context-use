@@ -1,35 +1,16 @@
 import { expect, test } from 'bun:test';
 import { displayedHypermediaResourceKinds } from '../../src/components/hypermedia/hypermedia-resource-filter';
-import {
-  hypermediaActiveMonth,
-  hypermediaSearch,
-  hypermediaSearchAfterEscape,
-  hypermediaView,
-} from '../../src/routes/hypermedia';
+import { hypermediaSearch, hypermediaSearchAfterEscape } from '../../src/routes/hypermedia';
 
-test('Hypermedia view and month are canonical URL state', () => {
-  const timelineSearch = hypermediaSearch({
-    view: 'timeline',
-    month: '2025-03',
-  });
-  expect(hypermediaView(timelineSearch)).toBe('timeline');
-  expect(hypermediaActiveMonth({ search: timelineSearch })).toBe('2025-03');
-  expect(timelineSearch).toMatchObject({
-    view: 'timeline',
-    month: '2025-03',
-  });
-
-  const defaultSearch = hypermediaSearch({ view: 'unknown' });
-  expect(hypermediaView(defaultSearch)).toBe('map');
-  expect(hypermediaActiveMonth({ search: defaultSearch })).toBeUndefined();
-  expect(defaultSearch.view).toBeUndefined();
-  expect(
-    hypermediaActiveMonth({
-      search: hypermediaSearch({ view: 'timeline' }),
-      now: new Date('2026-09-10T12:00:00.000Z'),
-    }),
-  ).toBe('2026-09');
+test('Hypermedia keeps its scroll month in URL state without a view selector', () => {
+  expect(hypermediaSearch({ month: '2025-03' }).month).toBe('2025-03');
+  expect(hypermediaSearch({}).month).toBeUndefined();
   expect(hypermediaSearch({ month: '2025-13' }).month).toBeUndefined();
+  expect(hypermediaSearch({ view: 'timeline', month: '2025-03' })).toEqual({
+    month: '2025-03',
+    focus: undefined,
+  });
+  expect(hypermediaSearch({ view: 'timeline' })).toEqual({ focus: undefined });
 });
 
 test('Hypermedia resource visibility is canonical URL state with entities as the default', () => {

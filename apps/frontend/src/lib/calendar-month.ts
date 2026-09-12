@@ -1,9 +1,4 @@
-import {
-  type CalendarDateRange,
-  calendarDateFromEpochDay,
-  epochDayFromCalendarDate,
-  temporalCoverageLabel,
-} from './temporal-coverage';
+import { temporalCoverageLabel } from './temporal-coverage';
 
 const CALENDAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const YEAR_DIGITS = 4;
@@ -47,26 +42,6 @@ export function shiftCalendarMonth({
   const date = dateFromCalendarMonth(value);
   date.setUTCMonth(date.getUTCMonth() + offset);
   return calendarMonthFromUtcDate(date);
-}
-
-export function calendarMonthRange(value: CalendarMonth): CalendarDateRange {
-  const first = dateFromCalendarMonth(value);
-  const after = new Date(first);
-  after.setUTCMonth(after.getUTCMonth() + 1);
-  after.setUTCDate(after.getUTCDate() - 1);
-  return {
-    from: first.toISOString().slice(0, 'YYYY-MM-DD'.length),
-    to: after.toISOString().slice(0, 'YYYY-MM-DD'.length),
-  };
-}
-
-export function calendarMonthFromRange(range: CalendarDateRange): CalendarMonth {
-  const first = epochDayFromCalendarDate(range.from);
-  const last = epochDayFromCalendarDate(range.to);
-  return calendarDateFromEpochDay(Math.floor((first + last) / 2)).slice(
-    0,
-    'YYYY-MM'.length,
-  ) as CalendarMonth;
 }
 
 export function calendarMonthLabel(value?: CalendarMonth): string {

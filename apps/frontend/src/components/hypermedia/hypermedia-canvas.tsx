@@ -13,6 +13,7 @@ import {
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { cn } from '../../lib/class-names';
+import type { HypermediaPage, HypermediaResourceReference } from '../../queries/hypermedia';
 import { Button } from '../ui/button';
 import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
@@ -26,7 +27,11 @@ import {
   initialHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+import {
+  type HypermediaSelection,
+  hypermediaSelectionKey,
+  selectedHypermediaResourceKeys,
+} from './hypermedia-selection';
 import {
   HypermediaHoverPreview,
   HypermediaPageCloud,
@@ -34,13 +39,13 @@ import {
   HypermediaPageLink,
   type HypermediaPreview,
   HypermediaResourceNode,
-  type HypermediaViewProps,
-  useHypermediaViewState,
+  hypermediaPreviewKey,
 } from './hypermedia-view';
 import {
   focusedResources,
   hypermediaLayoutInViewport,
   nearestBoundaryResource,
+  type SettledHypermediaViewport,
   viewportNeedsResourceDiscovery,
 } from './hypermedia-visibility';
 import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
@@ -223,7 +228,13 @@ export function HypermediaCanvas({
   isInitialLoading,
   neighborhoodError,
   onRetryNeighborhood,
-}: HypermediaViewProps & {
+}: {
+  resources: HypermediaLayoutResource[];
+  pages: HypermediaPage[];
+  selectedResources: HypermediaResourceReference[];
+  selectedKey?: string;
+  onSelect: (selection: HypermediaSelection) => void;
+  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
   neighborhoodError: Error | null;
@@ -235,8 +246,15 @@ export function HypermediaCanvas({
   const [viewBox, setViewBox] = useState<ViewBox>(() =>
     initialHypermediaViewBox(buildHypermediaLayout(resources, [])),
   );
-  const { activeKey, clearPreview, preview, selectedResourceKeys, setPreview } =
-    useHypermediaViewState({ selectedResources, selectedKey });
+  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
+  const selectedResourceKeys = useMemo(
+    () => selectedHypermediaResourceKeys(selectedResources),
+    [selectedResources],
+  );
+  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
+  const clearPreview = useCallback((key: string) => {
+    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
+  }, []);
   const spotlightActive = selectedResources.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(resources, pages), [pages, resources]);
   const viewBoxRef = useRef(viewBox);

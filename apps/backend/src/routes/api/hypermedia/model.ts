@@ -111,12 +111,6 @@ export const HypermediaPagesSchema = t.Object({
   matchedResources: t.Nullable(t.Array(HypermediaResourceSchema)),
   nextOffset: t.Nullable(t.Integer({ minimum: 0 })),
   resourceReferencesTruncated: t.Boolean(),
-  temporalExtent: t.Nullable(
-    t.Object({
-      start: t.Number(),
-      end: t.Number(),
-    }),
-  ),
 });
 
 export function parseHypermediaResourceReference(
@@ -254,6 +248,5 @@ export function hypermediaPagesResponse(
     })),
     nextOffset: result.nextOffset,
     resourceReferencesTruncated: result.resourceReferencesTruncated,
-    temporalExtent: result.temporalExtent,
   };
 }

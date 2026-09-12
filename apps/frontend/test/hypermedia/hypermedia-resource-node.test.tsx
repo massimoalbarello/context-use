@@ -2,7 +2,6 @@ import { afterEach, expect, mock, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
 import type { HypermediaLayoutResource } from '../../src/components/hypermedia/hypermedia-layout';
-import { HypermediaTimelineCanvas } from '../../src/components/hypermedia/hypermedia-temporal-canvas';
 import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
 import {
   type CalendarMonth,
@@ -94,29 +93,18 @@ const resources: HypermediaLayoutResource[] = [
   },
 ];
 
-type InteractiveRole = 'button' | 'link';
-
-function resourceMark({
-  role,
-  name,
-  kind,
-}: {
-  role: InteractiveRole;
-  name: string;
-  kind: 'entity' | 'asset';
-}): SVGGElement {
-  const accessibleName = role === 'link' ? `Open ${kind} ${name}` : name;
-  const interactive = screen.getByRole(role, { name: accessibleName });
+function resourceMark({ name, kind }: { name: string; kind: 'entity' | 'asset' }): SVGGElement {
+  const interactive = screen.getByRole('link', { name: `Open ${kind} ${name}` });
   const mark = interactive.querySelector<SVGGElement>(`[data-hypermedia-resource-kind="${kind}"]`);
   expect(mark).toBeTruthy();
   return mark!;
 }
 
-function expectResourceIdentities(role: InteractiveRole) {
-  const grace = resourceMark({ role, name: 'Grace Hopper', kind: 'entity' });
-  const ada = resourceMark({ role, name: 'Ada Lovelace', kind: 'entity' });
-  const diagram = resourceMark({ role, name: 'System diagram', kind: 'asset' });
-  const brief = resourceMark({ role, name: 'Project brief', kind: 'asset' });
+function expectResourceIdentities() {
+  const grace = resourceMark({ name: 'Grace Hopper', kind: 'entity' });
+  const ada = resourceMark({ name: 'Ada Lovelace', kind: 'entity' });
+  const diagram = resourceMark({ name: 'System diagram', kind: 'asset' });
+  const brief = resourceMark({ name: 'Project brief', kind: 'asset' });
 
   expect(grace.querySelector('circle')).toBeTruthy();
   expect(grace.querySelector('rect')).toBeNull();
@@ -182,7 +170,7 @@ test('Map distinguishes resource identities and retains partial progress between
     />,
   );
 
-  expectResourceIdentities('link');
+  expectResourceIdentities();
   const canvas = screen.getByLabelText('Interactive Hypermedia');
 
   expect(screen.getByText('Undated')).toBeTruthy();
@@ -308,31 +296,4 @@ test('Map consumes pinch zoom before the browser can zoom the dashboard', () => 
   expect(onMonthChange).not.toHaveBeenCalled();
   const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
   expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
-});
-
-test('Timeline uses the same entity and asset identities', () => {
-  render(
-    <KnowledgeWorkspace>
-      <div />
-      <HypermediaTimelineCanvas
-        resources={resources}
-        pages={[]}
-        extent={{
-          start: Date.parse('2025-01-01T00:00:00.000Z'),
-          end: Date.parse('2026-01-01T00:00:00.000Z'),
-        }}
-        month={currentCalendarMonth()}
-        selectedResources={[]}
-        onSelect={() => undefined}
-        onMonthChange={() => undefined}
-        onIntervalScrollingChange={() => undefined}
-        onViewportSettled={() => undefined}
-        hasNextPage={false}
-        isFetchingNextPage={false}
-        onDiscoverMorePages={() => undefined}
-      />
-    </KnowledgeWorkspace>,
-  );
-
-  expectResourceIdentities('button');
 });

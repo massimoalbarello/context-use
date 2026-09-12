@@ -43,14 +43,8 @@ export interface HypermediaPage extends KnowledgePageSummary {
   resources: HypermediaResourceReference[];
 }
 
-export type HypermediaTemporalExtent = {
-  start: number;
-  end: number;
-};
-
 export type HypermediaPages = {
   pages: HypermediaPage[];
   nextOffset: number | null;
   resourceReferencesTruncated: boolean;
-  temporalExtent: HypermediaTemporalExtent | null;
 };

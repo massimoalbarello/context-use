@@ -1,5 +1,5 @@
 import { FileText } from 'lucide-react';
-import { type ComponentProps, type ReactNode, useCallback, useId, useMemo, useState } from 'react';
+import { type ComponentProps, type ReactNode, useId } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
 import type {
@@ -16,12 +16,7 @@ import {
   HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
   type HypermediaLayoutResource,
 } from './hypermedia-layout';
-import {
-  type HypermediaSelection,
-  hypermediaSelectionKey,
-  selectedHypermediaResourceKeys,
-} from './hypermedia-selection';
-import type { SettledHypermediaViewport } from './hypermedia-visibility';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 
 const PAGE_LABEL_Y_OFFSET = 4;
 const ACTIVE_CLOUD_FILL_OPACITY = 0.24;
@@ -45,8 +40,6 @@ function hypermediaResourceNodeEmphasis(active: boolean): {
   return active ? { sizeOffset: 5, strokeWidth: 5 } : { sizeOffset: 1, strokeWidth: 2 };
 }
 
-type HypermediaResourceNodeFallback = HypermediaResourceReference & { label: string };
-type HypermediaResourceNodeData = HypermediaLayoutResource | HypermediaResourceNodeFallback;
 type HypermediaResourceNodeIdentity = {
   kind: HypermediaResourceReference['kind'];
   label: string;
@@ -54,28 +47,24 @@ type HypermediaResourceNodeIdentity = {
 };
 
 function hypermediaResourceNodeIdentity(
-  resource: HypermediaResourceNodeData,
+  resource: HypermediaLayoutResource,
 ): HypermediaResourceNodeIdentity {
   if (resource.kind === 'entity') {
-    return 'entity' in resource
-      ? {
-          kind: resource.kind,
-          label: resource.entity.name,
-          imageUrl: resource.entity.image
-            ? assetContentUrl(resource.entity.image.readableId)
-            : undefined,
-        }
-      : { kind: resource.kind, label: resource.label };
+    return {
+      kind: resource.kind,
+      label: resource.entity.name,
+      imageUrl: resource.entity.image
+        ? assetContentUrl(resource.entity.image.readableId)
+        : undefined,
+    };
   }
-  return 'asset' in resource
-    ? {
-        kind: resource.kind,
-        label: resource.asset.name,
-        imageUrl: isEmbeddableAsset(resource.asset)
-          ? assetContentUrl(resource.asset.readableId)
-          : undefined,
-      }
-    : { kind: resource.kind, label: resource.label };
+  return {
+    kind: resource.kind,
+    label: resource.asset.name,
+    imageUrl: isEmbeddableAsset(resource.asset)
+      ? assetContentUrl(resource.asset.readableId)
+      : undefined,
+  };
 }
 
 function HypermediaResourceShape({
@@ -187,15 +176,6 @@ export type HypermediaPreview =
   | { kind: 'entity'; entity: HypermediaEntity }
   | { kind: 'asset'; asset: HypermediaAsset };
 
-export type HypermediaViewProps = {
-  resources: HypermediaLayoutResource[];
-  pages: HypermediaPage[];
-  selectedResources: HypermediaResourceReference[];
-  selectedKey?: string;
-  onSelect: (selection: HypermediaSelection) => void;
-  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
-};
-
 export function hypermediaPreviewKey(preview: HypermediaPreview): string {
   if (preview.kind === 'page') {
     return hypermediaSelectionKey({ kind: 'page', readableId: preview.page.readableId });
@@ -204,23 +184,6 @@ export function hypermediaPreviewKey(preview: HypermediaPreview): string {
     return hypermediaSelectionKey({ kind: 'entity', readableId: preview.entity.readableId });
   }
   return hypermediaSelectionKey({ kind: 'asset', readableId: preview.asset.readableId });
-}
-
-export function useHypermediaViewState({
-  selectedResources,
-  selectedKey,
-}: Pick<HypermediaViewProps, 'selectedResources' | 'selectedKey'>) {
-  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const selectedResourceKeys = useMemo(
-    () => selectedHypermediaResourceKeys(selectedResources),
-    [selectedResources],
-  );
-  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
-  const clearPreview = useCallback((key: string) => {
-    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
-  }, []);
-
-  return { activeKey, clearPreview, preview, selectedResourceKeys, setPreview };
 }
 
 export function shortHypermediaLabel({
@@ -239,12 +202,10 @@ export function HypermediaResourceNode({
   point,
   resource,
   active,
-  labelWidth = HYPERMEDIA_RESOURCE_LABEL_WIDTH,
 }: {
   point: { x: number; y: number };
-  resource: HypermediaResourceNodeData;
+  resource: HypermediaLayoutResource;
   active: boolean;
-  labelWidth?: number;
 }) {
   const identity = hypermediaResourceNodeIdentity(resource);
   const displayLabel = shortHypermediaLabel({
@@ -255,9 +216,9 @@ export function HypermediaResourceNode({
     <g>
       <HypermediaResourceMark identity={identity} point={point} active={active} />
       <foreignObject
-        x={point.x - labelWidth / 2}
+        x={point.x - HYPERMEDIA_RESOURCE_LABEL_WIDTH / 2}
         y={point.y + HYPERMEDIA_RESOURCE_NODE_RADIUS + 10}
-        width={labelWidth}
+        width={HYPERMEDIA_RESOURCE_LABEL_WIDTH}
         height={HYPERMEDIA_RESOURCE_LABEL_HEIGHT}
         className="pointer-events-none overflow-visible"
       >

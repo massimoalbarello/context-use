@@ -1,26 +1,21 @@
 import { Check, X } from 'lucide-react';
-import type { HypermediaResourceReference, HypermediaView } from '../../queries/hypermedia';
+import type { HypermediaResourceReference } from '../../queries/hypermedia';
 import { KeywordFilter } from '../knowledge/keyword-filter';
 import { Button } from '../ui/button';
 import type { HypermediaResourceKind } from './hypermedia-resource-filter';
 import { selectedHypermediaResourcesLabel } from './hypermedia-selection';
-import { HypermediaViewFilter } from './hypermedia-view-filter';
 
 export function HypermediaFilters({
-  view,
   resourceKinds,
   query,
   selectedResources,
-  onViewChange,
   onResourceKindToggle,
   onQueryApply,
   onClearSelectedResources,
 }: {
-  view: HypermediaView;
   resourceKinds: HypermediaResourceKind[];
   query: string;
   selectedResources: HypermediaResourceReference[];
-  onViewChange: (view: HypermediaView) => void;
   onResourceKindToggle: (kind: HypermediaResourceKind) => void;
   onQueryApply: (query: string) => void;
   onClearSelectedResources: () => void;
@@ -31,7 +26,6 @@ export function HypermediaFilters({
         Explore hypermedia
       </h2>
       <div className="mt-2 grid gap-3">
-        <HypermediaViewFilter value={view} onValueChange={onViewChange} />
         <fieldset className="grid gap-2" aria-label="Hypermedia resource types">
           <legend className="font-medium text-xs">Visualize</legend>
           <div className="grid grid-cols-2 gap-2">

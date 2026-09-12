@@ -2,7 +2,6 @@ import { afterEach, expect, test } from 'bun:test';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { HypermediaFilters } from '../../src/components/hypermedia/hypermedia-filters';
 import {
   type HypermediaResourceKind,
@@ -15,11 +14,9 @@ function HypermediaResourceFilterFixture() {
   const [resourceKinds, setResourceKinds] = useState<HypermediaResourceKind[]>(['entity']);
   return (
     <HypermediaFilters
-      view="map"
       resourceKinds={resourceKinds}
       query=""
       selectedResources={[]}
-      onViewChange={() => undefined}
       onResourceKindToggle={(kind) => {
         setResourceKinds((current) =>
           toggleDisplayedHypermediaResourceKind({ kinds: current, kind }),
@@ -31,45 +28,31 @@ function HypermediaResourceFilterFixture() {
   );
 }
 
-test('Hypermedia keeps view, keyword, and resource filters in the shared sidebar', () => {
-  const html = renderToStaticMarkup(
+test('Hypermedia keeps keyword and resource filters without a view selector', () => {
+  render(
     <HypermediaFilters
-      view="timeline"
       resourceKinds={['entity']}
       query="launch"
       selectedResources={[
         { kind: 'entity', readableId: 'maya-chen' },
         { kind: 'asset', readableId: 'rollout-metrics' },
       ]}
-      onViewChange={() => undefined}
       onResourceKindToggle={() => undefined}
       onQueryApply={() => undefined}
       onClearSelectedResources={() => undefined}
     />,
   );
 
-  expect(html).toContain('View');
-  expect(html).toContain('Map');
-  expect(html).toContain('Timeline');
-  expect(html).not.toContain('Interval');
-  expect(html).not.toContain('Selected interval');
-  expect(html).toContain('Visualize');
-  expect(html).toContain('Entities');
-  expect(html).toContain('Assets');
-  expect(html).toContain('aria-label="Hypermedia resource types"');
-  expect(html).toContain('aria-pressed="true"');
-  expect(html).toContain('aria-pressed="false"');
-  expect(html.indexOf('Map')).toBeGreaterThan(html.indexOf('Explore hypermedia'));
-  expect(html.indexOf('Visualize')).toBeGreaterThan(html.indexOf('Timeline'));
-  expect(html).toContain('Keyword');
-  expect(html.indexOf('Keyword')).toBeGreaterThan(html.indexOf('Assets'));
-  expect(html).toContain('value="launch"');
-  expect(html).not.toContain('Time range');
-  expect(html).toContain('2 resources selected');
-  expect(html).toContain('Pages include every selection.');
-  expect(html).toContain('aria-label="Clear selected resources"');
-  expect(html.indexOf('2 resources selected')).toBeGreaterThan(html.indexOf('Keyword'));
-  expect(html).toContain('Apply');
+  expect(screen.queryByRole('tablist')).toBeNull();
+  expect(screen.getByRole('group', { name: 'Hypermedia resource types' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Entities' }).getAttribute('aria-pressed')).toBe(
+    'true',
+  );
+  expect(screen.getByRole('button', { name: 'Assets' }).getAttribute('aria-pressed')).toBe('false');
+  expect(screen.getByRole('searchbox', { name: 'Keyword' }).getAttribute('value')).toBe('launch');
+  expect(screen.getByText('2 resources selected')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Clear selected resources' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Apply' })).toBeTruthy();
 });
 
 test('Hypermedia resource type buttons select either type or both', async () => {

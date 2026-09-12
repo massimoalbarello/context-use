@@ -587,18 +587,10 @@ Every observation changes the next action.`,
       pages: Array<{ readableId: string }>;
       nextOffset: number | null;
       resourceReferencesTruncated: boolean;
-      temporalExtent: { start: number; end: number } | null;
     };
     expect(withoutInterval.pages.map(({ readableId }) => readableId)).toEqual(['alpha-principles']);
     expect(withoutInterval.nextOffset).toBeNull();
     expect(withoutInterval.resourceReferencesTruncated).toBe(false);
-    expect(withoutInterval.temporalExtent).toEqual({
-      start: temporalBoundsFrom('2024-11').start,
-      end: expect.any(Number),
-    });
-    expect(withoutInterval.temporalExtent?.end).toBeGreaterThanOrEqual(
-      temporalBoundsFrom('2025').start,
-    );
 
     const withIntervalResponse = await app.handle(
       jsonRequest({
