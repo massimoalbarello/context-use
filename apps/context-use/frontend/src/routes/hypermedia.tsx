@@ -15,8 +15,9 @@ import {
   type HypermediaEntityReference,
   type HypermediaPage,
   hypermediaEntityKey,
-  hypermediaEntityNeighborhoodQueryOptions,
+  hypermediaNeighborhoodsQueryOptions,
   hypermediaPagesQueryOptions,
+  mergeHypermediaPages,
 } from '../queries/hypermedia';
 
 const EMPTY_HYPERMEDIA_PAGES: HypermediaPage[] = [];
@@ -48,9 +49,7 @@ export const Route = createFileRoute('/hypermedia')({
       readableId: context.profile.selfEntity.readableId,
     };
     await Promise.all([
-      context.queryClient.ensureQueryData(
-        hypermediaEntityNeighborhoodQueryOptions({ anchor: self }),
-      ),
+      context.queryClient.ensureQueryData(hypermediaNeighborhoodsQueryOptions([{ anchor: self }])),
       context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions()),
     ]);
   },
@@ -75,8 +74,9 @@ function HypermediaContent() {
   if (!profile) {
     return null;
   }
-  const loadedPages =
-    pageQuery.data?.pages.flatMap(({ pages: pageItems }) => pageItems) ?? EMPTY_HYPERMEDIA_PAGES;
+  const loadedPages = pageQuery.data
+    ? mergeHypermediaPages(pageQuery.data.pages)
+    : EMPTY_HYPERMEDIA_PAGES;
   const pageReferencesTruncated =
     pageQuery.data?.pages.some(({ entityReferencesTruncated }) => entityReferencesTruncated) ??
     false;

@@ -20,7 +20,7 @@ import { createRecordSyncsController } from '#backend/routes/api/syncs/controlle
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
-import type { HypermediaServiceContract } from '#backend/services/hypermedia/service.ts';
+import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
@@ -38,7 +38,7 @@ export function createApiController({
   assetsService,
   entitiesService,
   healthService,
-  hypermediaService,
+  graphService,
   retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
@@ -52,7 +52,7 @@ export function createApiController({
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
-  hypermediaService: HypermediaServiceContract;
+  graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
@@ -80,7 +80,7 @@ export function createApiController({
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
-    .use(createHypermediaController({ auth, hypermediaService }))
+    .use(createHypermediaController({ auth, graphService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
     .use(createRecordsController({ auth, recordsService }))

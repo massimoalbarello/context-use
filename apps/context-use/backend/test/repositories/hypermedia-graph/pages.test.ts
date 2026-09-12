@@ -7,7 +7,7 @@ import { runMigrations } from '#backend/db/migrate.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
-import { HypermediaRepository } from '#backend/repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 
@@ -56,7 +56,7 @@ test.each([
       });
       expect(result.state).toBe('saved');
     }
-    const hypermedia = new HypermediaRepository(database);
+    const graph = new HypermediaGraphRepository(database);
     const input = {
       ownerId: OWNER_A,
       visibleEntities: [],
@@ -65,7 +65,7 @@ test.each([
     };
     const readableIds: string[] = [];
     for (let offset = 0; offset <= expectedPages.length; offset += 1) {
-      const result = await hypermedia.pages({ ...input, offset });
+      const result = await graph.pages({ ...input, offset });
       readableIds.push(...result.pages.map((page) => page.readableId));
       expect(result.nextOffset).toBe(offset + 1 < expectedPages.length ? offset + 1 : null);
     }

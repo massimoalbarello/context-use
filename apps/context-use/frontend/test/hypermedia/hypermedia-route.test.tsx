@@ -7,7 +7,7 @@ import type { Session } from '../../src/lib/auth';
 import { entitiesQueryOptions, entityPreviewQueryOptions } from '../../src/queries/entities';
 import {
   type HypermediaPages,
-  hypermediaEntityNeighborhoodQueryOptions,
+  hypermediaNeighborhoodsQueryOptions,
 } from '../../src/queries/hypermedia';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
 import { sessionQueryOptions } from '../../src/queries/session';
@@ -77,10 +77,11 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
     pageParams: [0],
   });
   for (const entity of [profile.selfEntity, colleague]) {
-    client.setQueryData(hypermediaEntityNeighborhoodQueryOptions({ anchor: entity }).queryKey, {
-      anchor: entity,
-      neighbors: [],
-      nextCursor: null,
+    client.setQueryData(hypermediaNeighborhoodsQueryOptions([{ anchor: entity }]).queryKey, {
+      entities: [entity],
+      neighborhoods: [{ anchor: { readableId: entity.readableId }, available: true, neighbors: [], nextCursor: null }],
+      relationships: [],
+      relationshipsTruncated: false,
     });
     client.setQueryData(entityPreviewQueryOptions(entity.readableId).queryKey, {
       ...entity,

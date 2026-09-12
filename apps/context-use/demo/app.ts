@@ -19,8 +19,8 @@ import type { FrontendAssetsServiceContract } from '#backend/services/frontend-a
 import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
-// This list deliberately names read operations, including safe GETs only. New controller
-// routes never become public automatically. Auth, MCP and delivery controllers aren't mounted.
+// This allowlist deliberately names read operations. New controller routes never become
+// public automatically. Auth, MCP and delivery controllers aren't mounted.
 const READ_API_ROUTES = new Set([
   '/api/health',
   '/api/profile',
@@ -40,13 +40,36 @@ const READ_API_ROUTES = new Set([
   '/api/records',
   '/api/records/filter-options',
   '/api/records/:recordReadableId',
-  '/api/hypermedia/entities',
   '/api/hypermedia/pages',
   '/api/hypermedia/search',
 ]);
+const GRAPH_READ_PATH = '/api/hypermedia/neighborhoods';
 const READ_API_PATHS = [...READ_API_ROUTES].map(
   (route) => new RegExp(`^${route.replace(/:[^/]+/g, '[a-z0-9][a-z0-9-]*')}$`),
 );
+
+function isReadRequest({ method, path }: { method: string; path: string }): boolean {
+  return method === 'GET' || method === 'HEAD' || (method === 'POST' && path === GRAPH_READ_PATH);
+}
+
+function publicReadResponse({
+  method,
+  path,
+  response,
+}: {
+  method: string;
+  path: string;
+  response: ReturnType<Response['clone']>;
+}): Response {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  if (path.startsWith('/api/')) {
+    response.headers.set('Cache-Control', 'no-store');
+  }
+  return new Response(method === 'HEAD' ? null : response.body, {
+    status: response.status,
+    headers: response.headers,
+  });
+}
 
 function isWorkspacePath(path: string): boolean {
   return (
@@ -99,7 +122,7 @@ export function createDemoApp({
   // Bun.serve receives only this function. No native/static route can skip this outer gate.
   return async function fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
+    if (!isReadRequest({ method: request.method, path })) {
       return Response.json(
         {
           code: 'DEMO_READ_ONLY',
@@ -109,7 +132,10 @@ export function createDemoApp({
       );
     }
     let response: ReturnType<Response['clone']>;
-    if (path === '/api/auth/get-session') {
+    if (request.method === 'POST') {
+      // This bounded POST only reads neighborhoods; retain its body and controller validation.
+      response = await api.handle(request);
+    } else if (path === '/api/auth/get-session') {
       response = Response.json(await auth.getSession({ headers: request.headers }));
     } else if (READ_API_PATHS.some((pattern) => pattern.test(path))) {
       // Elysia's shared resource controllers declare GET, so handle HEAD at this boundary.
@@ -124,13 +150,6 @@ export function createDemoApp({
         { status: 403 },
       );
     }
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    if (path.startsWith('/api/')) {
-      response.headers.set('Cache-Control', 'no-store');
-    }
-    return new Response(request.method === 'HEAD' ? null : response.body, {
-      status: response.status,
-      headers: response.headers,
-    });
+    return publicReadResponse({ method: request.method, path, response });
   };
 }

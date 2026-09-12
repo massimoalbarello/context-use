@@ -1,10 +1,14 @@
 import { t } from 'elysia';
 import type {
   HypermediaEntityContinuation,
-  HypermediaEntityNeighborhood,
   HypermediaEntityReference,
+  HypermediaNeighborhoods,
   HypermediaPages,
-} from '#backend/models/hypermedia/model.ts';
+} from '#backend/models/hypermedia-graph/model.ts';
+import {
+  MAX_HYPERMEDIA_GRAPH_ANCHORS,
+  MAX_HYPERMEDIA_NEIGHBOR_LIMIT,
+} from '#backend/models/hypermedia-graph/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#backend/models/readable-ids/model.ts';
 import { EntitySchema, entityResponse } from '#backend/routes/api/entities/model.ts';
@@ -15,7 +19,6 @@ import {
 } from '#backend/routes/api/pages/model.ts';
 
 export const DEFAULT_HYPERMEDIA_ENTITY_LIMIT = 16;
-export const MAX_HYPERMEDIA_ENTITY_LIMIT = 24;
 export const DEFAULT_HYPERMEDIA_PAGE_LIMIT = 32;
 export const MAX_HYPERMEDIA_PAGE_LIMIT = 32;
 export const MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES = 24;
@@ -27,27 +30,40 @@ const HypermediaEntityReferenceSchema = t.Object({
   readableId: ReadableIdSchema,
 });
 
-export const HypermediaEntityNeighborhoodQuerySchema = t.Object({
-  anchor: ReadableIdSchema,
-  limit: t.Optional(
-    t.Numeric({
-      minimum: 1,
-      maximum: MAX_HYPERMEDIA_ENTITY_LIMIT,
-      default: DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
+export const HypermediaNeighborhoodsQuerySchema = t.Object({
+  anchors: t.Array(
+    t.Object({
+      anchor: HypermediaEntityReferenceSchema,
+      cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_CURSOR_LENGTH })),
     }),
+    { minItems: 1, maxItems: MAX_HYPERMEDIA_GRAPH_ANCHORS },
   ),
-  cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_CURSOR_LENGTH })),
+  limit: t.Optional(t.Integer({ minimum: 1, maximum: MAX_HYPERMEDIA_NEIGHBOR_LIMIT })),
 });
 
-export const HypermediaEntityNeighborhoodSchema = t.Object({
-  anchor: EntitySchema,
-  neighbors: t.Array(
+export const HypermediaNeighborhoodsSchema = t.Object({
+  entities: t.Array(EntitySchema),
+  neighborhoods: t.Array(
     t.Object({
-      entity: EntitySchema,
+      anchor: HypermediaEntityReferenceSchema,
+      available: t.Boolean(),
+      neighbors: t.Array(
+        t.Object({
+          entity: HypermediaEntityReferenceSchema,
+          sharedPageCount: t.Integer({ minimum: 1 }),
+        }),
+      ),
+      nextCursor: t.Nullable(t.String()),
+    }),
+  ),
+  relationships: t.Array(
+    t.Object({
+      source: HypermediaEntityReferenceSchema,
+      target: HypermediaEntityReferenceSchema,
       sharedPageCount: t.Integer({ minimum: 1 }),
     }),
   ),
-  nextCursor: t.Nullable(t.String()),
+  relationshipsTruncated: t.Boolean(),
 });
 
 export const HypermediaPagesQuerySchema = t.Object({
@@ -166,14 +182,17 @@ export function decodeHypermediaEntityCursor(
   };
 }
 
-export function hypermediaEntityNeighborhoodResponse(neighborhood: HypermediaEntityNeighborhood) {
+export function hypermediaNeighborhoodsResponse(result: HypermediaNeighborhoods) {
   return {
-    anchor: entityResponse(neighborhood.anchor),
-    neighbors: neighborhood.neighbors.map(({ entity, sharedPageCount }) => ({
-      entity: entityResponse(entity),
-      sharedPageCount,
+    entities: result.entities.map(entityResponse),
+    neighborhoods: result.neighborhoods.map(({ anchor, available, neighbors, nextPage }) => ({
+      anchor,
+      available,
+      neighbors,
+      nextCursor: encodeHypermediaEntityCursor(nextPage),
     })),
-    nextCursor: encodeHypermediaEntityCursor(neighborhood.nextPage),
+    relationships: result.relationships,
+    relationshipsTruncated: result.relationshipsTruncated,
   };
 }
 

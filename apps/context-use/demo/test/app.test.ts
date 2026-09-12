@@ -144,7 +144,6 @@ test(
           '/api/face-recognition/settings',
           '/api/face-recognition/processing',
           '/api/records/filter-options',
-          '/api/hypermedia/entities?anchor=steve-jobs',
           '/api/hypermedia/pages',
           '/api/hypermedia/search?query=iPhone',
           '/hypermedia',
@@ -185,6 +184,49 @@ test(
             expect(page.entities).toContainEqual({ readableId: 'steve-jobs' });
             expect((await read(`/api/pages/${page.readableId}`)).status).toBe(StatusMap.OK);
           }
+        }
+        const graph = await fetchDemo(
+          new Request('http://demo.test/api/hypermedia/neighborhoods', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              anchors: [
+                { anchor: { readableId: 'steve-jobs' } },
+                { anchor: { readableId: 'iphone' } },
+              ],
+              limit: 2,
+            }),
+          }),
+        );
+        expect(graph.status).toBe(StatusMap.OK);
+        expect(graph.headers.get('cache-control')).toBe('no-store');
+        expect(graph.headers.has('set-cookie')).toBe(false);
+        expect(await graph.json()).toMatchObject({
+          entities: expect.arrayContaining([
+            expect.objectContaining({ readableId: 'steve-jobs' }),
+            expect.objectContaining({ readableId: 'iphone' }),
+          ]),
+          neighborhoods: [
+            { anchor: { readableId: 'steve-jobs' }, available: true, neighbors: expect.any(Array) },
+            { anchor: { readableId: 'iphone' }, available: true, neighbors: expect.any(Array) },
+          ],
+        });
+        const invalidGraph = await fetchDemo(
+          new Request('http://demo.test/api/hypermedia/neighborhoods', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ anchors: [] }),
+          }),
+        );
+        expect(invalidGraph.status).toBe(StatusMap['Bad Request']);
+        for (const method of ['GET', 'HEAD', 'PUT', 'PATCH', 'DELETE']) {
+          expect(
+            (
+              await fetchDemo(
+                new Request('http://demo.test/api/hypermedia/neighborhoods', { method }),
+              )
+            ).status,
+          ).toBe(StatusMap.Forbidden);
         }
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')

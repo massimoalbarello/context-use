@@ -10,20 +10,22 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { ENTITY_TYPES, type Entity } from '#backend/models/entities/model.ts';
+import { MAX_HYPERMEDIA_GRAPH_ANCHORS } from '#backend/models/hypermedia-graph/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#backend/models/readable-ids/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
-import { HypermediaRepository } from '#backend/repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
+import type { hypermediaNeighborhoodsResponse } from '#backend/routes/api/hypermedia/model.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
-import { HypermediaService } from '#backend/services/hypermedia/service.ts';
+import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
@@ -139,8 +141,8 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService({
-        hypermedia: new HypermediaRepository(database),
+      graphService: new HypermediaGraphService({
+        graph: new HypermediaGraphRepository(database),
       }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
@@ -550,41 +552,61 @@ Every observation changes the next action.`,
     );
     expect(invalidPageIntervalResponse.status).toBe(StatusMap['Bad Request']);
 
+    const anchors = [{ anchor: { readableId: 'test-owner' } }];
     const firstNeighborhoodResponse = await app.handle(
       jsonRequest({
-        method: 'GET',
-        path: '/hypermedia/entities?anchor=test-owner&limit=1',
+        method: 'POST',
+        path: '/hypermedia/neighborhoods',
+        body: { anchors, limit: 1 },
       }),
     );
     expect(firstNeighborhoodResponse.status).toBe(StatusMap.OK);
-    const firstNeighborhood = (await firstNeighborhoodResponse.json()) as {
-      anchor: { readableId: string };
-      neighbors: Array<{ entity: { readableId: string } }>;
-      nextCursor: string | null;
-    };
+    const firstNeighborhood = (await firstNeighborhoodResponse.json()) as ReturnType<
+      typeof hypermediaNeighborhoodsResponse
+    >;
     expectNoInternalResourceIds(firstNeighborhood);
-    expect(firstNeighborhood.anchor).toEqual(
-      expect.objectContaining({ readableId: 'test-owner', isSelf: true }),
+    expect(firstNeighborhood.entities).toEqual(
+      expect.arrayContaining([expect.objectContaining({ readableId: 'test-owner', isSelf: true })]),
     );
-    expect(firstNeighborhood.neighbors).toEqual([
-      expect.objectContaining({
-        entity: expect.objectContaining({ readableId: 'luca-bianchi' }),
-      }),
+    expect(firstNeighborhood.neighborhoods[0]!.neighbors).toEqual([
+      expect.objectContaining({ entity: { readableId: 'luca-bianchi' } }),
     ]);
-    expect(firstNeighborhood.nextCursor).toEqual(expect.any(String));
-
+    expect(firstNeighborhood.neighborhoods[0]!.nextCursor).toEqual(expect.any(String));
     const remainingNeighborhoodResponse = await app.handle(
       jsonRequest({
-        method: 'GET',
-        path: `/hypermedia/entities?anchor=test-owner&limit=1&cursor=${encodeURIComponent(firstNeighborhood.nextCursor!)}`,
+        method: 'POST',
+        path: '/hypermedia/neighborhoods',
+        body: {
+          anchors: [{ ...anchors[0], cursor: firstNeighborhood.neighborhoods[0]!.nextCursor }],
+          limit: 1,
+        },
       }),
     );
-    const remainingNeighborhood = (await remainingNeighborhoodResponse.json()) as {
-      neighbors: Array<{ entity: { readableId: string } }>;
-      nextCursor: string | null;
-    };
-    expect(remainingNeighborhood.neighbors[0]?.entity.readableId).toBe('temporal-subject');
-    expect(remainingNeighborhood.nextCursor).toBeNull();
+    const remainingNeighborhood = (await remainingNeighborhoodResponse.json()) as ReturnType<
+      typeof hypermediaNeighborhoodsResponse
+    >;
+    expect(remainingNeighborhood.neighborhoods[0]!.neighbors[0]!.entity.readableId).toBe(
+      'temporal-subject',
+    );
+    expect(remainingNeighborhood.neighborhoods[0]!.nextCursor).toBeNull();
+    for (const body of [
+      { anchors: [] },
+      {
+        anchors: [...Array(MAX_HYPERMEDIA_GRAPH_ANCHORS + 1).keys()].map((index) => ({
+          anchor: { readableId: `anchor-${index}` },
+        })),
+      },
+      { anchors: [...anchors, ...anchors] },
+      { anchors, limit: 0 },
+      { anchors, limit: 25 },
+      { anchors: [{ ...anchors[0], cursor: 'not-a-cursor' }] },
+      { anchors: [{ ...anchors[0], cursor: Buffer.from('null').toString('base64url') }] },
+    ]) {
+      expect(
+        (await app.handle(jsonRequest({ method: 'POST', path: '/hypermedia/neighborhoods', body })))
+          .status,
+      ).toBe(StatusMap['Bad Request']);
+    }
 
     const withoutIntervalResponse = await app.handle(
       jsonRequest({
