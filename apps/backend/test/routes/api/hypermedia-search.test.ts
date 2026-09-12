@@ -58,6 +58,7 @@ test('HTTP search maps pipeline results to compact typed previews without intern
           readableId: 'luca',
           name: 'Luca',
           description: 'Researches retrieval.',
+          entityType: 'person',
           isSelf: false,
           image: null,
           ...dates,
@@ -124,7 +125,7 @@ test('HTTP search maps pipeline results to compact typed previews without intern
       {
         resourceType: 'entity',
         address: 'context-use://entity/luca',
-        entity: { readableId: 'luca' },
+        entity: { readableId: 'luca', entityType: 'person' },
       },
       {
         resourceType: 'knowledge_page',
@@ -152,6 +153,7 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
         resourceTypes: ['knowledge_page', 'record'],
         limit: 7,
         filters: {
+          entity: { type: undefined },
           knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
           asset: { kind: 'entity_image' },
           record: {
@@ -205,6 +207,8 @@ test('HTTP search rejects unauthenticated or invalid queries before reaching the
   for (const query of [
     '',
     'query=%20',
+    'query=research&entityType=event',
+    'query=research&entityType=person,location',
     'query=research&limit=0',
     'query=research&limit=2.5',
     'query=research&limit=51',

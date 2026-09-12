@@ -13,6 +13,7 @@ import { parseKnowledgePageMarkdown } from '#models/knowledge-pages/markdown.ts'
 import type { DeliveredRecord } from '#models/records/delivery-contract.generated.ts';
 import { recordSearchText } from '#models/records/search.ts';
 import type { Queries } from '#queries.gen.ts';
+import { entityTypeFrom } from '#views/entities/entity-view.ts';
 import type { HypermediaRetrievalRepositoryContract } from './contract.ts';
 import { BODY_SNIPPET_COLUMN, type SnippetDocument, searchSnippets } from './snippets.ts';
 
@@ -66,6 +67,7 @@ function resultFrom({
         readableId: row.readableId,
         name: row.entityName,
         description: row.entityDescription,
+        entityType: entityTypeFrom(row.entityType),
         isSelf: Boolean(row.isSelf),
         image: imageFrom(row),
         createdAt: row.createdAt,
@@ -211,6 +213,8 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       return { results: [], totalMatches: 0, truncated: false };
     }
     const selectedTypes = JSON.stringify(resourceTypes);
+    const entitiesOnly = filters?.entity?.type !== undefined;
+    const entityType = filters?.entity?.type ?? 'all';
     const pageInterval = filters?.knowledgePage?.interval ?? null;
     const filterStart = filters?.knowledgePage?.temporalBounds?.start ?? null;
     const filterEnd = filters?.knowledgePage?.temporalBounds?.end ?? null;
@@ -270,6 +274,9 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         where "hypermedia_search_fts" match ${expression}
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
+          and (${entitiesOnly} = false or (document."resource_type" = 'entity'
+            and (${entityType} = 'all' or entity."entity_type" = ${entityType}
+              or (${entityType} = 'untyped' and entity."entity_type" is null))))
           and (${recordsOnly} = false or document."resource_type" = 'record')
           and (${provider} is null or record."provider" = ${provider})
           and (${recordKind} is null or record."kind" = ${recordKind})
@@ -328,6 +335,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
         entity."id" as "entityId", entity."name" as "entityName",
         entity."description" as "entityDescription",
+        entity."entity_type" as "entityType",
         coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",

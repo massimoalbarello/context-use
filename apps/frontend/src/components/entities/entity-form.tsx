@@ -1,4 +1,8 @@
-import { MAX_ENTITY_DESCRIPTION_LENGTH, MAX_ENTITY_NAME_LENGTH } from '@repo/backend/entity';
+import {
+  type EntityType,
+  MAX_ENTITY_DESCRIPTION_LENGTH,
+  MAX_ENTITY_NAME_LENGTH,
+} from '@repo/backend/entity';
 import { useForm } from '@tanstack/react-form';
 import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
@@ -6,11 +10,13 @@ import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
+import { EntityTypeField } from './entity-type-field';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
 export type EntityFormValues = {
   name: string;
   description: string;
+  entityType: EntityType | null;
 };
 
 type EntityFormSubmission = EntityFormValues & { allowDuplicate?: boolean };
@@ -20,12 +26,14 @@ export function EntityForm({
   pending,
   error,
   submitLabel,
+  entityTypeReadOnly = false,
   onSubmit,
 }: {
   initialValues: EntityFormValues;
   pending: boolean;
   error: Error | null;
   submitLabel: string;
+  entityTypeReadOnly?: boolean;
   onSubmit: (values: EntityFormSubmission) => void;
 }) {
   const form = useForm({
@@ -35,6 +43,7 @@ export function EntityForm({
       onSubmit({
         name: value.name.trim(),
         description: value.description.trim(),
+        entityType: value.entityType,
         allowDuplicate: value.allowDuplicate || undefined,
       });
     },
@@ -94,6 +103,16 @@ export function EntityForm({
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
+          )}
+        </form.Field>
+        <form.Field name="entityType">
+          {(field) => (
+            <EntityTypeField
+              value={field.state.value}
+              onChange={field.handleChange}
+              onBlur={field.handleBlur}
+              readOnly={entityTypeReadOnly}
+            />
           )}
         </form.Field>
       </FieldGroup>

@@ -14,25 +14,21 @@ const AUTH_MIGRATION = new URL(
   '../../../src/db/migrations/0000_better_auth_schema.sql',
   import.meta.url,
 );
-const ENTITY_ARCHIVE_MIGRATION = new URL(
-  '../../../src/db/migrations/0002_add_entity_archived_at.sql',
-  import.meta.url,
-);
-const PAGE_ARCHIVE_MIGRATION = new URL(
-  '../../../src/db/migrations/0003_add_knowledge_page_archived_at.sql',
-  import.meta.url,
-);
 const ARCHIVE_INVARIANT_MIGRATION = new URL(
-  '../../../src/db/migrations/0004_prevent_self_entity_archiving.sql',
+  '../../../src/db/migrations/0002_prevent_self_entity_archiving.sql',
   import.meta.url,
 );
-const ASSET_MIGRATION = new URL('../../../src/db/migrations/0005_add_assets.sql', import.meta.url);
+const ASSET_MIGRATION = new URL('../../../src/db/migrations/0003_add_assets.sql', import.meta.url);
 const OAUTH_MIGRATION = new URL(
-  '../../../src/db/migrations/0006_add_oauth_provider.sql',
+  '../../../src/db/migrations/0004_add_oauth_provider.sql',
   import.meta.url,
 );
 const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
-  '../../../src/db/migrations/0007_add_mcp_client_authorizations.sql',
+  '../../../src/db/migrations/0005_add_mcp_client_authorizations.sql',
+  import.meta.url,
+);
+const RECORD_MIGRATION = new URL(
+  '../../../src/db/migrations/0006_add_record_syncs_and_records.sql',
   import.meta.url,
 );
 const CONTENT_HASH_LENGTH = 64;
@@ -175,7 +171,7 @@ test('temporal coverage is revision-owned, nullable, and bounded', async () => {
   }
 });
 
-test('archive schema preserves existing resources and rejects archiving the self entity', async () => {
+test('entities start active and the self entity cannot be archived', async () => {
   const database = new Database(':memory:');
 
   try {
@@ -198,8 +194,6 @@ test('archive schema preserves existing resources and rejects archiving the self
       'self-id',
     ]);
 
-    database.exec(await Bun.file(ENTITY_ARCHIVE_MIGRATION).text());
-    database.exec(await Bun.file(PAGE_ARCHIVE_MIGRATION).text());
     database.exec(await Bun.file(ARCHIVE_INVARIANT_MIGRATION).text());
 
     expect(
@@ -226,6 +220,7 @@ test('entity image columns preserve ownership and exclusive assignment', async (
     database.exec(await Bun.file(ASSET_MIGRATION).text());
     database.exec(await Bun.file(OAUTH_MIGRATION).text());
     database.exec(await Bun.file(MCP_CLIENT_AUTHORIZATION_MIGRATION).text());
+    database.exec(await Bun.file(RECORD_MIGRATION).text());
     for (const ownerId of ['owner-a', 'owner-b']) {
       database.run(
         `insert into "auth_user"

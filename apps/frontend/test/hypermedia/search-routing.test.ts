@@ -27,7 +27,7 @@ test('sidebar and picker keyword queries use the shared search endpoint with typ
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   try {
-    await client.fetchInfiniteQuery(entitiesQueryOptions('running'));
+    await client.fetchInfiniteQuery(entitiesQueryOptions({ query: 'running' }));
     await client.fetchInfiniteQuery(assetsQueryOptions('running'));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: 'running', interval: 'with' }));
     await client.fetchQuery(entitySuggestionsQueryOptions('running'));
@@ -71,7 +71,7 @@ test('blank keyword queries browse typed collections without invoking retrieval'
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   try {
-    await client.fetchInfiniteQuery(entitiesQueryOptions('  '));
+    await client.fetchInfiniteQuery(entitiesQueryOptions({ query: '  ' }));
     await client.fetchInfiniteQuery(assetsQueryOptions('  '));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: '  ' }));
     await client.fetchQuery(entitySuggestionsQueryOptions('  '));
@@ -106,6 +106,7 @@ test('typed search callers preserve pipeline order and nonliteral matches withou
         readableId: name,
         name,
         description: 'A colleague.',
+        entityType: null,
         isSelf: false,
         image: null,
         createdAt: timestamp,
@@ -121,7 +122,9 @@ test('typed search callers preserve pipeline order and nonliteral matches withou
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   try {
-    const result = await client.fetchInfiniteQuery(entitiesQueryOptions('collaborators'));
+    const result = await client.fetchInfiniteQuery(
+      entitiesQueryOptions({ query: 'collaborators' }),
+    );
     expect(result.pages[0]?.items.map(({ readableId }) => readableId)).toEqual(['zoe', 'alice']);
     expect(result.pages[0]?.total).toBe(response.totalMatches);
     expect(result.pages[0]?.nextOffset).toBeNull();

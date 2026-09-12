@@ -4,6 +4,7 @@ import { type Page, pageFrom } from '#lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#models/assets/model.ts';
 import type { ArchiveResult } from '#models/resource-archiving/model.ts';
 import type { Queries } from '#queries.gen.ts';
+import { entityTypeFrom } from '#views/entities/entity-view.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface AssetsRepositoryContract {
@@ -295,7 +296,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @notNull id readableId name description */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", profile."self_entity_id" is not null as "isSelf"
+        entity."description", entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf"
       from "entity" entity
       left join "knowledge_profile" profile
         on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
@@ -312,7 +313,11 @@ export class AssetsRepository implements AssetsRepositoryContract {
       })),
       ...entityRows.map((entity) => ({
         kind: 'entity_image' as const,
-        entity: { ...entity, isSelf: Boolean(entity.isSelf) },
+        entity: {
+          ...entity,
+          entityType: entityTypeFrom(entity.entityType),
+          isSelf: Boolean(entity.isSelf),
+        },
       })),
     ];
   }

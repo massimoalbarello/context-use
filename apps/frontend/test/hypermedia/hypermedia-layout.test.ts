@@ -31,6 +31,7 @@ function entity(
       name: readableId,
       description: `${readableId} description`,
       isSelf,
+      entityType: null,
       image: null,
       createdAt,
       updatedAt: createdAt,

@@ -48,6 +48,7 @@ const entity: Entity = {
   readableId: 'luca-bianchi',
   name: 'Luca Bianchi',
   description: 'Researcher and collaborator',
+  entityType: null,
   isSelf: false,
   image: null,
   createdAt: NOW,
@@ -345,6 +346,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
         resourceTypes: ['entity', 'knowledge_page'],
         limit: 2,
         filters: {
+          entity: { type: undefined },
           knowledgePage: { interval: undefined, temporalBounds: undefined },
           asset: { kind: undefined },
           record: undefined,
@@ -385,6 +387,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
             readableId: 'luca-bianchi',
             name: 'Luca Bianchi',
             description: 'Researcher and collaborator',
+            entityType: null,
             matchExcerpt: null,
           },
           {
@@ -416,6 +419,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
           resourceTypes: ['knowledge_page', 'asset', 'record'],
           limit: 7,
           filters: {
+            entity: { type: undefined },
             knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
             asset: { kind: 'entity_image' },
             record: { provider: 'granola', kind: 'meeting', participantName: 'Luca' },
@@ -578,6 +582,7 @@ test('record search previews have exact owner-scoped read paths without imported
         expect(input.ownerId).toBe(principal.ownerId);
         expect(input.resourceTypes).toEqual(['record']);
         expect(input.filters).toEqual({
+          entity: { type: undefined },
           knowledgePage: { interval: undefined, temporalBounds: undefined },
           asset: { kind: undefined },
           record: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
@@ -1122,7 +1127,7 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
 test('MCP creates the self entity once through the knowledge profile invariant', async () => {
   let createCalls = 0;
   let imageCalls = 0;
-  const selfEntity = { ...entity, isSelf: true };
+  const selfEntity = { ...entity, entityType: 'person' as const, isSelf: true };
   const entitiesService: EntitiesServiceContract = {
     ...unusedEntitiesService,
     setImage: (input) => {
@@ -1351,4 +1356,107 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
     await database.close();
     await rm(dataFolder, { recursive: true, force: true });
   }
+});
+
+test('MCP exposes optional entity assignments and entity-only filters from the closed vocabulary', async () => {
+  await withMcpClient({
+    entitiesService: {
+      ...unusedEntitiesService,
+      create: (input) => {
+        expect(input).toMatchObject({ ownerId: principal.ownerId, entityType: 'organization' });
+        return Promise.resolve({
+          state: 'created' as const,
+          entity: { ...entity, entityType: 'organization' as const },
+        });
+      },
+      update: (input) => {
+        expect(input.ownerId).toBe(principal.ownerId);
+        expect(input.entityType).toBeNull();
+        return Promise.resolve({ ...entity, entityType: null });
+      },
+      list: (input) => {
+        expect(input).toMatchObject({ ownerId: principal.ownerId, entityType: 'person' });
+        return Promise.resolve({
+          items: [{ ...entity, entityType: 'person' as const }],
+          total: 1,
+          nextOffset: null,
+        });
+      },
+    },
+    retrievalService: {
+      search: (input) => {
+        expect(input.filters?.entity).toEqual({ type: 'untyped' });
+        return Promise.resolve({
+          results: [
+            {
+              resourceType: 'entity' as const,
+              entity: { ...entity, entityType: null },
+              matchExcerpt: null,
+            },
+          ],
+          totalMatches: 1,
+          truncated: false,
+        });
+      },
+    },
+    run: async (client) => {
+      expect(
+        (
+          await client.callTool({
+            name: 'create_entity',
+            arguments: {
+              name: 'Restaurant',
+              description: 'A restaurant business',
+              entityType: 'organization',
+            },
+          })
+        ).isError,
+      ).not.toBe(true);
+      expect(
+        (
+          await client.callTool({
+            name: 'update_entity',
+            arguments: {
+              address: 'context-use://entity/luca-bianchi',
+              name: entity.name,
+              description: entity.description,
+              entityType: null,
+            },
+          })
+        ).isError,
+      ).not.toBe(true);
+      const list = await client.callTool({
+        name: 'list_entities',
+        arguments: { entityType: 'person' },
+      });
+      expect(list.structuredContent).toMatchObject({ items: [{ entityType: 'person' }] });
+      const search = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: { query: 'Luca', entityType: 'untyped' },
+      });
+      expect(search.structuredContent).toMatchObject({ results: [{ entityType: null }] });
+      for (const entityType of ['event', 'company', 'all', 'untyped', ['person', 'location']]) {
+        expect(
+          (
+            await client.callTool({
+              name: 'create_entity',
+              arguments: { name: 'Invalid', description: 'Invalid', entityType },
+            })
+          ).isError,
+        ).toBe(true);
+      }
+      expect(
+        (await client.callTool({ name: 'list_entities', arguments: { entityType: 'event' } }))
+          .isError,
+      ).toBe(true);
+      expect(
+        (
+          await client.callTool({
+            name: 'search_hypermedia',
+            arguments: { query: 'Luca', entityType: 'event' },
+          })
+        ).isError,
+      ).toBe(true);
+    },
+  });
 });

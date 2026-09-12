@@ -4,9 +4,11 @@ create table "entity" (
   "readable_id" text not null,
   "name" text not null,
   "description" text not null,
+  "entity_type" text check ("entity_type" in ('person', 'organization', 'location')),
   "image_asset_id" text,
   "created_at" text not null,
   "updated_at" text not null,
+  "archived_at" text check ("archived_at" is null or length(trim("archived_at")) > 0),
   primary key ("id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
@@ -38,6 +40,7 @@ create table "knowledge_page" (
   "current_revision_id" text not null,
   "created_at" text not null,
   "updated_at" text not null,
+  "archived_at" text check ("archived_at" is null or length(trim("archived_at")) > 0),
   primary key ("id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
@@ -135,7 +138,21 @@ create table "knowledge_page_reference" (
     references "knowledge_page" ("id", "owner_id") on delete cascade
 );
 
+create table "knowledge_page_record_reference" (
+  "owner_id" text not null,
+  "source_revision_id" text not null,
+  "target_record_readable_id" text not null,
+  primary key ("source_revision_id", "target_record_readable_id"),
+  foreign key ("source_revision_id", "owner_id")
+    references "knowledge_page_revision" ("id", "owner_id") on delete cascade,
+  foreign key ("owner_id", "target_record_readable_id")
+    references "record" ("owner_id", "readable_id") on delete cascade
+);
+
 create index "entity_owner_updated_idx" on "entity" ("owner_id", "updated_at" desc);
+create index "entity_owner_type_active_name_idx"
+  on "entity" ("owner_id", "entity_type", "name" collate nocase, "readable_id")
+  where "archived_at" is null;
 create unique index "entity_owner_image_asset_idx"
   on "entity" ("owner_id", "image_asset_id") where "image_asset_id" is not null;
 create index "knowledge_page_owner_updated_idx" on "knowledge_page" ("owner_id", "updated_at" desc);
@@ -143,3 +160,5 @@ create index "knowledge_page_mention_target_idx"
   on "knowledge_page_entity_mention" ("owner_id", "target_entity_id");
 create index "knowledge_page_reference_target_idx"
   on "knowledge_page_reference" ("owner_id", "target_page_id");
+create index "knowledge_page_record_reference_target_idx"
+  on "knowledge_page_record_reference" ("owner_id", "target_record_readable_id");

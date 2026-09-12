@@ -1,3 +1,4 @@
+import type { EntityTypeFilter } from '@repo/backend/entity';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
@@ -34,12 +35,14 @@ const SUGGESTION_LIMIT = 7;
 
 async function entitySearchPage({
   query,
+  entityType,
   limit,
 }: {
   query: string;
+  entityType?: EntityTypeFilter;
   limit?: number;
 }): Promise<EntityPage> {
-  const result = await searchHypermedia({ query, resourceTypes: 'entity', limit });
+  const result = await searchHypermedia({ query, entityType, resourceTypes: 'entity', limit });
   return {
     items: result.results.flatMap((hit) => (hit.resourceType === 'entity' ? [hit.entity] : [])),
     total: result.totalMatches,
@@ -47,17 +50,26 @@ async function entitySearchPage({
   };
 }
 
-export function entitiesQueryOptions(query?: string) {
+export function entitiesQueryOptions({
+  query,
+  entityType,
+}: {
+  query?: string;
+  entityType?: EntityTypeFilter;
+} = {}) {
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
-    queryKey: [...entitiesListQueryKey, { query: normalizedQuery ?? null }],
+    queryKey: [
+      ...entitiesListQueryKey,
+      { query: normalizedQuery ?? null, entityType: entityType ?? 'all' },
+    ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (normalizedQuery) {
-        return entitySearchPage({ query: normalizedQuery });
+        return entitySearchPage({ query: normalizedQuery, entityType });
       }
       const { data, error } = await api.api.entities.get({
-        query: { offset: pageParam },
+        query: { offset: pageParam, entityType },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

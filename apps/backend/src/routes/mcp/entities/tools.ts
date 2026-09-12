@@ -14,7 +14,12 @@ import {
   entityReadableId,
 } from '#models/readable-ids/addresses.ts';
 import { AssetAddressSchema, EntityAddressSchema } from '#routes/mcp/coordinates.ts';
-import { McpEntitySchema, mcpEntity } from '#routes/mcp/entities/model.ts';
+import {
+  McpEntitySchema,
+  McpEntityTypeFilterSchema,
+  McpEntityTypeSchema,
+  mcpEntity,
+} from '#routes/mcp/entities/model.ts';
 import {
   McpKnowledgePageSummarySchema,
   mcpArchiveBlockers,
@@ -39,6 +44,7 @@ const ENTITY_IMAGE_MEDIA_TYPES = EMBEDDABLE_ASSET_MEDIA_TYPES.join(', ');
 const ENTITY_IMAGE_UPDATE_DESCRIPTION = `For imageAssetAddress, omit it to preserve the current image; send null to clear it; or provide a value referencing an existing asset with a supported media type (${ENTITY_IMAGE_MEDIA_TYPES}) to replace it.`;
 
 const CreateEntityInputSchema = z.object({
+  entityType: McpEntityTypeSchema.optional(),
   name: z
     .string()
     .min(1)
@@ -67,6 +73,9 @@ const CreateEntityInputSchema = z.object({
 const EntityAddressInputSchema = z.object({ address: EntityAddressSchema });
 
 const UpdateEntityInputSchema = EntityAddressInputSchema.extend({
+  entityType: McpEntityTypeSchema.optional().describe(
+    `Omit to preserve the existing type; send null to clear it. ${McpEntityTypeSchema.description}`,
+  ),
   name: CreateEntityInputSchema.shape.name,
   description: CreateEntityInputSchema.shape.description,
   imageAssetAddress: AssetAddressSchema.nullable()
@@ -145,7 +154,7 @@ export function registerEntityTools({
     {
       title: 'Create entity',
       description:
-        'Create one entity identity, optionally assigning an existing image asset. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
+        'Create one entity identity, optionally assigning an existing image asset. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once and is always typed as Person. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
       inputSchema: CreateEntityInputSchema,
       outputSchema: CreateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
@@ -203,11 +212,11 @@ export function registerEntityTools({
       title: 'List entities',
       description:
         'List active entities without searching. Pass nextCursor unchanged to continue the list.',
-      inputSchema: McpListInputSchema,
+      inputSchema: McpListInputSchema.extend({ entityType: McpEntityTypeFilterSchema.optional() }),
       outputSchema: EntityListOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
-    async ({ cursor, limit = DEFAULT_MCP_LIST_LIMIT }) => {
+    async ({ cursor, entityType, limit = DEFAULT_MCP_LIST_LIMIT }) => {
       const decoded = decodeMcpCursor({ cursor, list: 'entities' });
       if (decoded.state === 'invalid') {
         return mcpToolError({
@@ -219,6 +228,7 @@ export function registerEntityTools({
         ownerId: principal.ownerId,
         limit,
         offset: decoded.offset,
+        entityType,
       });
       return mcpToolSuccess({
         items: page.items.map(mcpEntity),
@@ -252,12 +262,12 @@ export function registerEntityTools({
     'update_entity',
     {
       title: 'Update entity',
-      description: `Update the name, description, and optionally the image of one active entity at its exact address. ${ENTITY_IMAGE_UPDATE_DESCRIPTION}`,
+      description: `Update the name, description, optional entity type, and optionally the image of one active entity at its exact address. ${ENTITY_IMAGE_UPDATE_DESCRIPTION}`,
       inputSchema: UpdateEntityInputSchema,
       outputSchema: UpdateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, name, description, imageAssetAddress }) => {
+    async ({ address, name, description, entityType, imageAssetAddress }) => {
       const readableId = entityReadableId(address);
       if (imageAssetAddress === null) {
         const entity = await entitiesService.removeImage({
@@ -282,6 +292,7 @@ export function registerEntityTools({
         readableId,
         name,
         description,
+        entityType,
       });
       return entity
         ? mcpToolSuccess({})

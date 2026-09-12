@@ -63,6 +63,7 @@ export function createHypermediaSearchController({
           resourceTypes: query.resourceTypes?.split(',') as HypermediaResourceType[] | undefined,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_SEARCH_LIMIT,
           filters: {
+            entity: { type: query.entityType },
             knowledgePage: { interval: query.interval, temporalBounds },
             asset: { kind: query.assetKind },
             record: hasRecordFilter

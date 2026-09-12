@@ -1,7 +1,9 @@
+import { ENTITY_TYPE_LABELS } from '@repo/backend/entity';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import { cn } from '../../lib/class-names';
+import type { EntitySearch } from '../../lib/entity-filters';
 import type { EntitySummary } from '../../queries/entities';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -10,13 +12,28 @@ import { Badge } from '../ui/badge';
 type EntityName = Pick<EntitySummary, 'readableId' | 'name'> & {
   image?: EntitySummary['image'];
 };
-type EntityIdentity = Pick<EntitySummary, 'readableId' | 'name' | 'description' | 'isSelf'> & {
+type EntityIdentity = Pick<
+  EntitySummary,
+  'readableId' | 'name' | 'description' | 'entityType' | 'isSelf'
+> & {
   image?: EntitySummary['image'];
 };
 
 type EntityLinkProps =
-  | { entity: EntityName; presentation: 'inline'; active?: never; children?: ReactNode }
-  | { entity: EntityIdentity; presentation: 'card'; active?: boolean; children?: never };
+  | {
+      search?: EntitySearch;
+      entity: EntityName;
+      presentation: 'inline';
+      active?: never;
+      children?: ReactNode;
+    }
+  | {
+      search?: EntitySearch;
+      entity: EntityIdentity;
+      presentation: 'card';
+      active?: boolean;
+      children?: never;
+    };
 
 export function entityInitial(name: string): string {
   return name.trim().charAt(0).toLocaleUpperCase() || '?';
@@ -52,6 +69,11 @@ export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
           <strong className="min-w-0 truncate font-semibold text-sm">{entity.name}</strong>
           {entity.isSelf && <Badge variant="secondary">You</Badge>}
         </span>
+        {entity.entityType && (
+          <small className="text-muted-foreground text-xs">
+            {ENTITY_TYPE_LABELS[entity.entityType]}
+          </small>
+        )}
         <small className="truncate text-muted-foreground text-xs leading-relaxed">
           {entity.description}
         </small>
@@ -60,13 +82,14 @@ export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
   );
 }
 
-export function EntityLink({ entity, presentation, active, children }: EntityLinkProps) {
+export function EntityLink({ entity, presentation, active, children, search }: EntityLinkProps) {
   if (presentation === 'inline') {
     return (
       <Link
         className="relative mx-0.5 inline-block rounded-full bg-muted py-0.5 pr-2 pl-[2.0625rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
         to="/entities/$id"
         params={{ id: entity.readableId }}
+        search={search}
       >
         <EntityAvatar
           entity={entity}
@@ -83,6 +106,7 @@ export function EntityLink({ entity, presentation, active, children }: EntityLin
       className={cn(resourceCardVariants(), 'transition')}
       to="/entities/$id"
       params={{ id: entity.readableId }}
+      search={search}
       data-route-selected={active ? 'true' : undefined}
       aria-current={active ? 'page' : undefined}
     >

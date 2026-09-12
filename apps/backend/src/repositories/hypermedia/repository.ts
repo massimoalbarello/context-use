@@ -17,6 +17,7 @@ import type {
   IListHypermediaPagesResult,
   Queries,
 } from '#queries.gen.ts';
+import { entityTypeFrom } from '#views/entities/entity-view.ts';
 
 const MAX_HYPERMEDIA_PAGE_RESOURCE_REFERENCES = 120;
 
@@ -26,6 +27,7 @@ type ResourceRow = {
   readableId: string;
   name: string;
   description: string | null;
+  entityType: string | null;
   isSelf: number;
   imageId: string | null;
   imageReadableId: string | null;
@@ -71,6 +73,7 @@ function resourceFrom(row: ResourceRow): HypermediaResource {
       readableId: row.readableId,
       name: row.name,
       description: row.description,
+      entityType: entityTypeFrom(row.entityType),
       isSelf: Boolean(row.isSelf),
       image:
         row.imageId &&
@@ -187,7 +190,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
           requested_resource."readableId",
           case when requested_resource."kind" = 'entity' then entity."name" else asset."name" end
             as "name",
-          entity."description", coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
+          entity."description", entity."entity_type" as "entityType", coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
           image."id" as "imageId", image."readable_id" as "imageReadableId",
           image."name" as "imageName", image."media_type" as "imageMediaType",
           image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
@@ -278,7 +281,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
         )
         select candidate."kind", candidate."resourceId" as "id", candidate."readableId",
           case when candidate."kind" = 'entity' then entity."name" else asset."name" end as "name",
-          entity."description", coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
+          entity."description", entity."entity_type" as "entityType", coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
           image."id" as "imageId", image."readable_id" as "imageReadableId",
           image."name" as "imageName", image."media_type" as "imageMediaType",
           image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",

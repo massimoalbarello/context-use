@@ -31,6 +31,7 @@ const entity: EntityDetail = {
   readableId: 'luca-bianchi',
   name: 'Luca Bianchi',
   description: 'Researcher and collaborator',
+  entityType: null,
   isSelf: false,
   image: null,
   pages: [],

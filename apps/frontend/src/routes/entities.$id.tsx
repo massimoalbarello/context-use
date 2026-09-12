@@ -1,3 +1,4 @@
+import { ENTITY_TYPE_LABELS } from '@repo/backend/entity';
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
@@ -64,6 +65,7 @@ function EntityRouteContent({ id }: { id: string }) {
           <EntityIdentityEditor
             name={entity.name}
             description={entity.description}
+            entityType={entity.entityType}
             isSelf={entity.isSelf}
             image={entity.image}
             imageEditorOpen={imageEditing}
@@ -132,7 +134,8 @@ function EntityRouteContent({ id }: { id: string }) {
               </ResourceDetailActions>
             }
           >
-            Entity {entity.isSelf && <Badge variant="secondary">You</Badge>}
+            {entity.entityType ? ENTITY_TYPE_LABELS[entity.entityType] : 'Entity'}{' '}
+            {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
           <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
             <EntityAvatar entity={entity} className="size-24 text-3xl" />
