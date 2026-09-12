@@ -1,10 +1,34 @@
 import { ErrorComponent, type ErrorComponentProps, Link } from '@tanstack/react-router';
 import { buttonVariants } from '../src/components/ui/button';
-import { Route } from '../src/routes/__root';
+import { DEMO_WRITE_DENIED_EVENT, DemoWriteNotice, demoFetch } from './write-notice';
 
+// Install before either API client initializes, including the account client.
+const writeNotices = new EventTarget();
+const browser: Window = window;
+const fetch = browser.fetch.bind(browser);
+browser.fetch = (...args) => {
+  const returnFocus = document.activeElement;
+  return demoFetch({
+    fetch,
+    onWriteDenied: () =>
+      writeNotices.dispatchEvent(new CustomEvent(DEMO_WRITE_DENIED_EVENT, { detail: returnFocus })),
+  })(...args);
+};
+
+const { Route } = await import('../src/routes/__root');
 // Account screens load protected APIs. Explain their denial without changing those screens.
-Route.update({ errorComponent: DemoRouteError });
+const Workspace = Route.options.component!;
+Route.update({ component: DemoWorkspace, errorComponent: DemoRouteError });
 await import('../src/main');
+
+function DemoWorkspace() {
+  return (
+    <>
+      <Workspace />
+      <DemoWriteNotice events={writeNotices} />
+    </>
+  );
+}
 
 function DemoRouteError(props: ErrorComponentProps) {
   if (!props.error.message.startsWith('This public demo is read-only.')) {

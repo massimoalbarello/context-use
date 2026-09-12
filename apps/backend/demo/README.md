@@ -52,8 +52,9 @@ CI builds and boots the demo to verify it, without publishing releases or deploy
   Auth, MCP, sync, ingestion, and transfer controllers are not mounted. The session metadata
   endpoint returns a public display identity and creates no cookies or login sessions.
 - The frontend's explicit demo Vite configuration adds a persistent read-only notice and replaces
-  the calendar module. The shared UI is unchanged: visitors can open editors, but saves receive
-  a read-only error from the server. Account and MCP actions are unavailable in the demo.
+  the calendar module. The shared UI is unchanged: visitors can open editors, but rejected writes
+  show a centered notice that requires OK. Drafts stay intact, and other errors keep their normal
+  presentation. Account and MCP actions are unavailable in the demo.
 
 `bun --filter @repo/backend test demo` verifies anonymous reads, denied writes and management
 routes, unchanged database/file fingerprints, read-only persistence, and normal authentication.

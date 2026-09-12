@@ -147,6 +147,7 @@ test(
             );
             expect(response.status, `${method} ${path}`).toBe(StatusMap.Forbidden);
             expect(await response.json()).toMatchObject({
+              code: 'DEMO_READ_ONLY',
               message: expect.stringContaining('read-only'),
             });
           }

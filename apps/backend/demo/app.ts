@@ -88,7 +88,10 @@ export function createDemoApp({
     const path = new URL(request.url).pathname;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return Response.json(
-        { message: 'This public demo is read-only. Changes and account actions cannot be saved.' },
+        {
+          code: 'DEMO_READ_ONLY',
+          message: 'This public demo is read-only. Changes and account actions cannot be saved.',
+        },
         { status: 403 },
       );
     }
