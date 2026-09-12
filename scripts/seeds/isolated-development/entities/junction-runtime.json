@@ -1,5 +1,0 @@
-{
-  "readableId": "junction-runtime",
-  "name": "Junction Runtime",
-  "description": "The browser runtime used to exercise incremental graph discovery."
-}

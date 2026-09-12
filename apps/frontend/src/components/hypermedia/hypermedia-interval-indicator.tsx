@@ -5,6 +5,7 @@ import {
   currentCalendarMonth,
   mapMonthAfterScroll,
 } from '../../lib/calendar-month';
+import { calendarNow } from '../../lib/calendar-now';
 
 const MONTH_POSITION_DISTANCE = 6;
 const PRESENT_POSITION = 130;
@@ -77,7 +78,7 @@ export function HypermediaIntervalIndicator({
   month?: CalendarMonth;
   scrollProgress?: number;
 }) {
-  const now = new Date();
+  const now = calendarNow();
   const present = currentCalendarMonth(now);
   const label = calendarMonthLabel(month);
   const position = scrollPosition({ month, scrollProgress, now });

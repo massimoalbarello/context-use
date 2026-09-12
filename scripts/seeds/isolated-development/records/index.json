@@ -1,0 +1,1335 @@
+[
+  {
+    "id": "itunes-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iTunes turns the Mac into a music library",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/01/09Apple-Introduces-iTunes-Worlds-Best-and-Easiest-To-Use-Jukebox-Software/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-01-09",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-01-09T00:00:00Z"
+    },
+    "path": "records/itunes-launch.md"
+  },
+  {
+    "id": "stores-plan",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "First physical stores and 25-store plan",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/05/15Apple-to-Open-25-Retail-Stores-in-2001/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-05-15",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-05-15T00:00:00Z"
+    },
+    "path": "records/stores-plan.md"
+  },
+  {
+    "id": "stores-weekend",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "First stores opening-weekend results",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/05/21Apple-Retail-Stores-Welcome-Over-7700-People-in-First-Two-Days/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-05-19/2001-05-20",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-05-21T00:00:00Z"
+    },
+    "path": "records/stores-weekend.md"
+  },
+  {
+    "id": "ipod-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Original iPod announcement and planned availability",
+      "sourceUrl": "https://www.apple.com/newsroom/2001/10/23Apple-Presents-iPod/",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001-10-23",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2001-10-23T00:00:00Z"
+    },
+    "path": "records/ipod-launch.md"
+  },
+  {
+    "id": "rubinstein-history",
+    "provider": "computer-history-museum",
+    "kind": "oral-history-summary",
+    "content": {
+      "title": "Rubinstein recalls the first iPod team",
+      "sourceUrl": "https://archive.computerhistory.org/resources/access/text/2020/02/102717908-05-01-acc.pdf",
+      "participants": [
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "jon-rubinstein"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Jonathan Ive",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "jonathan-ive"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001",
+        "datePrecision": "unknown"
+      }
+    },
+    "path": "records/rubinstein-history.md"
+  },
+  {
+    "id": "fadell-history",
+    "provider": "computer-history-museum",
+    "kind": "interview-summary",
+    "content": {
+      "title": "Fadell on joining Apple in 2001",
+      "sourceUrl": "https://computerhistory.org/blog/computing-for-the-whole-world-a-conversation-with-ipod-iphone-inventor-tony-fadell/",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ],
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2001",
+        "datePrecision": "unknown",
+        "interviewDate": "2017-05-10"
+      }
+    },
+    "path": "records/fadell-history.md"
+  },
+  {
+    "id": "ipod-windows",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPod expands to Windows",
+      "sourceUrl": "https://www.apple.com/newsroom/2002/07/17Apple-Unveils-New-iPods/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2002-07-17",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2002-07-17T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/ipod-windows.md"
+  },
+  {
+    "id": "store-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Music Store opens on the Mac",
+      "sourceUrl": "https://www.apple.com/newsroom/2003/04/28Apple-Launches-the-iTunes-Music-Store/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2003-04-28",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2003-04-28T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/store-launch.md"
+  },
+  {
+    "id": "itunes-windows",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iTunes arrives on Windows",
+      "sourceUrl": "https://www.apple.com/newsroom/2003/10/16Apple-Launches-iTunes-for-Windows/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2003-10-16",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2003-10-16T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/itunes-windows.md"
+  },
+  {
+    "id": "mini-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPod mini announcement and original schedule",
+      "sourceUrl": "https://www.apple.com/newsroom/2004/01/06Apple-Introduces-iPod-mini/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2004-01-06",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2004-01-06T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/mini-launch.md"
+  },
+  {
+    "id": "mini-international",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Revised international iPod mini availability",
+      "sourceUrl": "https://www.apple.com/uk/newsroom/2004/07/07Apple-iPod-mini-International-Availability-Set-for-July-24/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2004-07-07",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2004-07-07T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/mini-international.md"
+  },
+  {
+    "id": "motorola-plan",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Motorola and Apple announce mobile iTunes partnership",
+      "sourceUrl": "https://www.apple.com/uk/newsroom/2004/07/26Motorola-and-Apple-Bring-iTunes-Music-Player-to-Motorolas-Next-Generation-Mobile-Phones/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2004-07-26",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2004-07-26T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/motorola-plan.md"
+  },
+  {
+    "id": "shuffle-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Flash storage and AutoFill in iPod shuffle",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/01/11Apple-Introduces-iPod-shuffle/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-01-11",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-01-11T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/shuffle-launch.md"
+  },
+  {
+    "id": "intel-plan",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Mac Intel transition announced",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/06/06Apple-to-Use-Intel-Microprocessors-Beginning-in-2006/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-06-06",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-06-06T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/intel-plan.md"
+  },
+  {
+    "id": "nano-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPod nano announcement",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/09/07Apple-Introduces-iPod-nano/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-09-07",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-09-07T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/nano-launch.md"
+  },
+  {
+    "id": "rokr-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Motorola ROKR launches with iTunes",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/09/07Apple-Motorola-Cingular-Launch-Worlds-First-Mobile-Phone-with-iTunes/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-09-07",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-09-07T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/rokr-launch.md"
+  },
+  {
+    "id": "video-ipod",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Video comes to iPod hardware",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/10/12Apple-Unveils-the-New-iPod/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-10-12",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-10-12T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/video-ipod.md"
+  },
+  {
+    "id": "itunes-video",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Disney television and Pixar shorts arrive in iTunes",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/10/12Apple-Announces-iTunes-6-With-2-000-Music-Videos-Pixar-Short-Films-Hit-TV-Shows/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-10-12",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-10-12T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "bob-iger"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/itunes-video.md"
+  },
+  {
+    "id": "leadership",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Cook promotion and iPod succession plan",
+      "sourceUrl": "https://www.apple.com/newsroom/2005/10/14Tim-Cook-Named-COO-of-Apple/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2005-10-14",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2005-10-14T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tim-cook"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "jon-rubinstein"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/leadership.md"
+  },
+  {
+    "id": "pixar-announcement",
+    "provider": "disney-investor-relations",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Disney agrees to acquire Pixar",
+      "sourceUrl": "https://thewaltdisneycompany.com/press-releases/disney-to-acquire-pixar/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2006-01-24",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2006-01-24T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "bob-iger"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ed-catmull"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "John Lasseter",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "john-lasseter"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/pixar-announcement.md"
+  },
+  {
+    "id": "pixar-call",
+    "provider": "disney-investor-relations",
+    "kind": "conference-call-summary",
+    "content": {
+      "title": "Jobs and Iger discuss Pixar’s alternatives",
+      "sourceUrl": "https://thewaltdisneycompany.com/app/uploads/ir/2006/events/pixar-2006-0124-transcript.pdf",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2006-01-24",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2006-01-24T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "bob-iger"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/pixar-call.md"
+  },
+  {
+    "id": "pixar-close",
+    "provider": "disney-investor-relations",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Disney completes Pixar acquisition",
+      "sourceUrl": "https://thewaltdisneycompany.com/press-releases/disney-completes-pixar-acquisition/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2006-05-05",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2006-05-05T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "bob-iger"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ed-catmull"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "John Lasseter",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "john-lasseter"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/pixar-close.md"
+  },
+  {
+    "id": "forstall-history",
+    "provider": "computer-history-museum",
+    "kind": "oral-history-summary",
+    "content": {
+      "title": "Forstall and the original iPhone engineers look back",
+      "sourceUrl": "https://computerhistory.org/blog/creating-magic-a-conversation-with-original-iphone-engineers-software-team-lead-scott-forstall/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "before 2007-01-09; precise dates not established",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2017-06-22T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "scott-forstall"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/forstall-history.md"
+  },
+  {
+    "id": "iphone-unveiling",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPhone announcement and US launch plan",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/01/09Apple-Reinvents-the-Phone-with-iPhone/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-01-09",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-01-09T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-unveiling.md"
+  },
+  {
+    "id": "ipod-100m",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "One hundred million iPods sold",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/04/09100-Million-iPods-Sold/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-04-09",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-04-09T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/ipod-100m.md"
+  },
+  {
+    "id": "itunes-plus",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "EMI catalog launches in iTunes Plus",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/05/30Apple-Launches-iTunes-Plus/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-05-30",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-05-30T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/itunes-plus.md"
+  },
+  {
+    "id": "web-apps",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "The initial third-party iPhone application offer",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/06/11iPhone-to-Support-Third-Party-Web-2-0-Applications/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-06-11",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-06-11T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/web-apps.md"
+  },
+  {
+    "id": "iphone-glass",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPhone specifications revised before sale",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/06/18iPhone-Delivers-Up-to-Eight-Hours-of-Talk-Time/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-06-18",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-06-18T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-glass.md"
+  },
+  {
+    "id": "iphone-retail",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPhone retail launch arrangements",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/06/28iPhone-Premieres-This-Friday-Night-at-Apple-Retail-Stores/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-06-28",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-06-28T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ron-johnson"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-retail.md"
+  },
+  {
+    "id": "iphone-price",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPhone price reduction",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/09/05Apple-Sets-iPhone-Price-at-399-for-this-Holiday-Season/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-09-05",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-09-05T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-price.md"
+  },
+  {
+    "id": "touch-launch",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iPod touch brings multi-touch and Wi-Fi",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/09/05Apple-Unveils-iPod-touch/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-09-05",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-09-05T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/touch-launch.md"
+  },
+  {
+    "id": "iphone-credit",
+    "provider": "macrumors",
+    "kind": "contemporary-report-summary",
+    "content": {
+      "title": "Jobs responds to early iPhone customers",
+      "sourceUrl": "https://www.macrumors.com/2007/09/06/steve-jobs-open-letter-to-iphone-owners/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-09-06",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-09-06T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-credit.md"
+  },
+  {
+    "id": "iphone-million",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "First million iPhones reported",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/09/10Apple-Sells-One-Millionth-iPhone/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-09-09",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-09-10T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-million.md"
+  },
+  {
+    "id": "native-sdk",
+    "provider": "jobs-public-letter",
+    "kind": "reproduced-letter-summary",
+    "content": {
+      "title": "Jobs commits to a native iPhone SDK",
+      "sourceUrl": "https://tidbits.com/2007/10/17/steve-jobss-iphone-sdk-letter/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-10-17",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-10-17T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/native-sdk.md"
+  },
+  {
+    "id": "demo-handoff",
+    "provider": "synthetic-workspace",
+    "kind": "meeting",
+    "content": {
+      "title": "[Synthetic] Steve and Tony prepare the iPod demo",
+      "sourceCreatedAt": "2001-10-22T00:00:00Z",
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2001-10-22",
+        "datePrecision": "invented day",
+        "timestampNote": "Wording, date and attendance invented for the demo."
+      },
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ]
+    },
+    "path": "records/demo-handoff.md"
+  },
+  {
+    "id": "windows-handoff",
+    "provider": "synthetic-workspace",
+    "kind": "meeting",
+    "content": {
+      "title": "[Synthetic] Steve and Phil rehearse the Windows story",
+      "sourceCreatedAt": "2003-10-15T00:00:00Z",
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2003-10-15",
+        "datePrecision": "invented day",
+        "timestampNote": "Wording, date and attendance invented for the demo."
+      },
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "phil-schiller"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ]
+    },
+    "path": "records/windows-handoff.md"
+  },
+  {
+    "id": "rokr-debrief",
+    "provider": "synthetic-workspace",
+    "kind": "conversation",
+    "content": {
+      "title": "[Synthetic] Steve and Tony compare two music experiences",
+      "sourceCreatedAt": "2005-09-08T00:00:00Z",
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2005-09-08",
+        "datePrecision": "invented day",
+        "timestampNote": "Wording, date and attendance invented for the demo."
+      },
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "tony-fadell"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ]
+    },
+    "path": "records/rokr-debrief.md"
+  },
+  {
+    "id": "iphone-rehearsal",
+    "provider": "synthetic-workspace",
+    "kind": "meeting",
+    "content": {
+      "title": "[Synthetic] Steve and Scott walk the iPhone demo",
+      "sourceCreatedAt": "2007-01-08T00:00:00Z",
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2007-01-08",
+        "datePrecision": "invented day",
+        "timestampNote": "Wording, date and attendance invented for the demo."
+      },
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "scott-forstall"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ]
+    },
+    "path": "records/iphone-rehearsal.md"
+  },
+  {
+    "id": "retail-handoff",
+    "provider": "synthetic-workspace",
+    "kind": "message",
+    "content": {
+      "title": "[Synthetic] Steve asks Ron about the first customer hour",
+      "sourceCreatedAt": "2007-06-27T00:00:00Z",
+      "attributes": {
+        "evidence": "synthetic",
+        "subjectCoverage": "2007-06-27",
+        "datePrecision": "invented day",
+        "timestampNote": "Wording, date and attendance invented for the demo."
+      },
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "ron-johnson"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ]
+    },
+    "path": "records/retail-handoff.md"
+  }
+]

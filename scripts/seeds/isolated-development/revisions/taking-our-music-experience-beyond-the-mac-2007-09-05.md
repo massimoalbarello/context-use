@@ -1,0 +1,5 @@
+# Taking our music experience beyond the Mac
+
+[I](context-use://entity/steve-jobs) can follow our portable-music work from [the first iPod](context-use://page/putting-the-first-ipod-in-my-pocket) and [Windows support](context-use://page/opening-ipod-to-windows-customers) through [mini](context-use://page/making-ipod-smaller-with-mini), its [changed international schedule](context-use://page/revising-our-international-mini-schedule), [shuffle](context-use://page/choosing-a-simpler-player-with-shuffle), [nano](context-use://page/putting-a-display-into-the-smaller-nano) and [video](context-use://page/giving-our-ipod-a-video-screen). The family reached [100 million sales](context-use://page/reaching-one-hundred-million-ipods).
+
+Now [iPod touch](context-use://page/bringing-the-phones-interface-back-to-ipod) brings the phone interface back to the player. I keep [the founding team](context-use://page/building-my-first-ipod-team) and [the first demo scene](context-use://page/walking-the-first-ipod-demo-with-tony) connected to that progression.

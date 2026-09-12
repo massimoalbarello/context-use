@@ -2,6 +2,7 @@ import { CalendarRange, ChevronDown } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { enGB } from 'react-day-picker/locale';
+import { calendarNow } from '../../lib/calendar-now';
 import { cn } from '../../lib/class-names';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import { Button } from '../ui/button';
@@ -106,6 +107,7 @@ export function DateRangeFilter({
           <Calendar
             mode="range"
             locale={enGB}
+            today={calendarNow()}
             selected={selected}
             defaultMonth={selected?.from}
             onSelect={setSelected}

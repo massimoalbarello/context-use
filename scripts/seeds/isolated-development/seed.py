@@ -1,13 +1,16 @@
+import hashlib
 import json
 import os
+import re
 import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
 APP_URL = os.environ["CONTEXT_USE_APP_URL"]
 EXPECTED_ORIGIN = f"{urlparse(APP_URL).scheme}://{urlparse(APP_URL).netloc}"
 FIXTURE_FOLDER = Path(os.environ["CONTEXT_USE_SEED_FOLDER"])
-SEED_ALL_RESOURCES = os.environ.get("CONTEXT_USE_SEED_ALL") == "true"
 UI_TIMEOUT_SECONDS = 30
 
 
@@ -19,55 +22,16 @@ def read_seed_text(relative_path):
     return (FIXTURE_FOLDER / relative_path).read_text()
 
 
-PROFILE = read_seed_json("entities/alex-morgan.json")
-DEFAULT_ENTITY_READABLE_IDS = {
-    "compass",
-    "jun-park",
-    "maya-chen",
-    "northstar",
-    "orbit-labs",
-    "priya-shah",
-    "theo-brooks",
-}
-PAGE_INDEX = read_seed_json("pages/index.json")
-PAGE_METADATA = {page["readableId"]: page for page in PAGE_INDEX}
-PAGE_ORDER = {
-    page["readableId"]: index for index, page in enumerate(PAGE_INDEX)
-}
+PROFILE = read_seed_json("entities/steve-jobs.json")
+PAGE_SNAPSHOTS = read_seed_json("pages/index.json")
 ENTITIES = [
     json.loads(path.read_text())
     for path in sorted((FIXTURE_FOLDER / "entities").glob("*.json"))
-    if path != FIXTURE_FOLDER / "entities" / "alex-morgan.json"
-    and (SEED_ALL_RESOURCES or path.stem in DEFAULT_ENTITY_READABLE_IDS)
+    if path.stem != PROFILE["readableId"]
 ]
-PAGES = [
-    {
-        **PAGE_METADATA.get(path.stem, {"readableId": path.stem}),
-        "markdown": path.read_text(),
-    }
-    for path in sorted(
-        (FIXTURE_FOLDER / "pages").glob("*.md"),
-        key=lambda path: (PAGE_ORDER.get(path.stem, len(PAGE_ORDER)), path.as_posix()),
-    )
-    if SEED_ALL_RESOURCES or path.stem in PAGE_METADATA
-]
-PROFILE_IMAGE_ASSET = {
-    "readableId": "sample-profile-portrait",
-    "name": "Sample profile portrait",
-    "path": "assets/profile.jpeg",
-    "expectedMediaType": "image/jpeg",
-}
-RESEARCH_HIGHLIGHTS_ASSET = {
-    "readableId": "research-interview-highlights",
-    "name": "Research interview highlights",
-    "path": "assets/research-interview-highlights.txt",
-}
-ROLLOUT_METRICS_ASSET = {
-    "readableId": "rollout-metrics",
-    "name": "Rollout metrics",
-    "path": "assets/rollout-metrics.csv",
-}
-ASSETS = [PROFILE_IMAGE_ASSET, RESEARCH_HIGHLIGHTS_ASSET, ROLLOUT_METRICS_ASSET]
+ASSETS = read_seed_json("assets/index.json")
+RECORDS = read_seed_json("records/index.json")
+SYNC = read_seed_json("syncs/steve-jobs-research.json")
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -85,18 +49,24 @@ def checked_api_response(method, path, result):
         raise RuntimeError(
             f"{method} {path} failed with {response['status']}: {response['body']}"
         )
-    return json.loads(response["body"])
+    return json.loads(response["body"]) if response["body"] else None
 
 
-def api_request(method, path, body):
+def api_request(method, path, body=None, *, api_key=None, headers=None):
+    request_headers = {"content-type": "application/json", **(headers or {})}
+    if api_key is not None:
+        request_headers["authorization"] = f"Bearer {api_key}"
+    body_option = (
+        f"body: JSON.stringify({json.dumps(body)})," if body is not None else ""
+    )
     result = js(
         f"""
         (async () => {{
           const response = await fetch({json.dumps(path)}, {{
             method: {json.dumps(method)},
-            credentials: 'same-origin',
-            headers: {{ 'content-type': 'application/json' }},
-            body: JSON.stringify({json.dumps(body)}),
+            credentials: {json.dumps('omit' if api_key is not None else 'same-origin')},
+            headers: {json.dumps(request_headers)},
+            {body_option}
           }});
           return JSON.stringify({{
             ok: response.ok,
@@ -164,21 +134,25 @@ def create_profile(profile):
     created = api_request("POST", "/api/profile", profile)
     if created["selfEntity"]["readableId"] != profile["readableId"]:
         raise RuntimeError("Created profile did not match the fixture")
+    if created["selfEntity"]["entityType"] != "person":
+        raise RuntimeError("Created profile did not have the self entity type")
 
 
 def create_entity(entity):
     created = api_request("POST", "/api/entities", entity)
     if created["readableId"] != entity["readableId"]:
         raise RuntimeError("Created entity did not match the fixture")
+    if created["entityType"] != entity.get("entityType"):
+        raise RuntimeError("Created entity type did not match the fixture")
 
 
-def assign_owner_entity_image(profile, asset):
+def assign_entity_image(asset):
     updated = api_request(
         "PUT",
-        f"/api/entities/{profile['readableId']}/image",
+        f"/api/entities/{asset['entityReadableId']}/image",
         {"assetReadableId": asset["readableId"]},
     )
-    if not updated["isSelf"] or updated["readableId"] != profile["readableId"]:
+    if updated["readableId"] != asset["entityReadableId"]:
         raise RuntimeError("Assigned image to an unexpected entity")
     if not updated["image"] or updated["image"]["readableId"] != asset["readableId"]:
         raise RuntimeError("Assigned entity image did not match the fixture")
@@ -190,17 +164,87 @@ def create_page(page):
         raise RuntimeError("Created page did not match the fixture")
 
 
-def update_page(readable_id, expected_revision_number, markdown):
+def update_page(readable_id, expected_revision_number, markdown, temporal_coverage):
     updated = api_request(
         "PUT",
         f"/api/pages/{readable_id}",
         {
             "expectedRevisionNumber": expected_revision_number,
             "markdown": markdown,
+            "temporalCoverage": temporal_coverage,
         },
     )
     if updated["revisionNumber"] != expected_revision_number + 1:
         raise RuntimeError("Updated page did not create the expected revision")
+
+
+def create_records(api_key):
+    committed_at = datetime.now(timezone.utc).isoformat()
+    records = []
+    for record in RECORDS:
+        content = {**record["content"], "body": read_seed_text(record["path"])}
+        # The fixtures contain only strings, integer-free metadata, objects and arrays;
+        # sorted compact UTF-8 JSON is canonical for this deliberately narrow content.
+        canonical = json.dumps(
+            content, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+        )
+        records.append({
+            "eventId": str(uuid.uuid4()),
+            "provider": record["provider"],
+            "sourceId": "steve-jobs-ipod-iphone-2001-2007",
+            "kind": record["kind"],
+            "id": record["id"],
+            "revision": 1,
+            "operation": "added",
+            "contentHash": hashlib.sha256(canonical.encode()).hexdigest(),
+            "committedAt": committed_at,
+            "content": content,
+        })
+    envelope = {"version": 1, "batchId": str(uuid.uuid4()), "records": records}
+    api_request(
+        "POST",
+        "/api/records/batch",
+        envelope,
+        api_key=api_key,
+        headers={"idempotency-key": envelope["batchId"]},
+    )
+    # Record addresses are allocated by the server and include the sync identity.
+    # Resolve from authenticated output rather than duplicating its ID algorithm.
+    addresses = {}
+    offset = 0
+    while True:
+        page = api_request("GET", f"/api/records?limit=50&offset={offset}")
+        for record in page["items"]:
+            addresses[record["recordId"]] = record["readableId"]
+        if page["nextOffset"] is None:
+            break
+        offset = page["nextOffset"]
+    if set(addresses) != {record["id"] for record in RECORDS}:
+        raise RuntimeError("Imported records did not match the fixture")
+    return addresses
+
+
+def seed_pages(record_addresses):
+    revisions = {}
+    for snapshot in PAGE_SNAPSHOTS:
+        readable_id = snapshot["readableId"]
+        markdown = re.sub(
+            r"context-use://record/([a-z0-9-]+)",
+            lambda match: f"context-use://record/{record_addresses[match[1]]}",
+            read_seed_text(snapshot["path"]),
+        )
+        if readable_id in revisions:
+            update_page(
+                readable_id, revisions[readable_id], markdown, snapshot["temporalCoverage"]
+            )
+        else:
+            create_page({
+                "readableId": readable_id,
+                "markdown": markdown,
+                "temporalCoverage": snapshot["temporalCoverage"],
+            })
+        revisions[readable_id] = revisions.get(readable_id, 0) + 1
+    return len(revisions)
 
 
 def seed_isolated_data():
@@ -251,14 +295,14 @@ def seed_isolated_data():
         create_entity(entity)
     for asset in ASSETS:
         create_asset(asset)
-    assign_owner_entity_image(PROFILE, PROFILE_IMAGE_ASSET)
-    for page in PAGES:
-        create_page(page)
-    update_page(
-        "project-brief",
-        1,
-        read_seed_text("revisions/project-brief.md"),
-    )
+        if asset.get("entityReadableId"):
+            assign_entity_image(asset)
+    sync = api_request("POST", "/api/syncs", SYNC)
+    try:
+        record_addresses = create_records(sync["apiKey"])
+    finally:
+        api_request("PUT", f"/api/syncs/{sync['sync']['readableId']}/revoke")
+    page_count = seed_pages(record_addresses)
 
     # Use a document navigation so the new app instance reads the seeded profile instead of
     # retaining the setup route's pre-seed query cache.
@@ -269,7 +313,8 @@ def seed_isolated_data():
         "Seeded profile did not open the workspace",
     )
     print(
-        f"Seeded 1 profile, {len(ENTITIES)} entities, {len(PAGES)} linked pages, "
+        f"Seeded Steve Jobs: 1 profile, {len(ENTITIES)} entities, {page_count} linked pages, "
+        f"{len(PAGE_SNAPSHOTS) - page_count} page updates, {len(RECORDS)} records, "
         f"and {len(ASSETS)} assets"
     )
 

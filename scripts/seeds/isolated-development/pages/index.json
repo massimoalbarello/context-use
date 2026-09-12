@@ -1,111 +1,368 @@
 [
-  { "readableId": "project-brief", "temporalCoverage": "2026-08/.." },
-  { "readableId": "ui-review-checklist" },
   {
-    "readableId": "weekly-review",
-    "temporalCoverage": "2026-08-24/2026-08-30"
+    "readableId": "bringing-music-into-the-mac",
+    "path": "pages/bringing-music-into-the-mac.md",
+    "asOf": "2001-01-09",
+    "temporalCoverage": "2001-01-09"
   },
   {
-    "readableId": "northstar-launch-retrospective",
-    "temporalCoverage": "2025-11~"
+    "readableId": "giving-customers-a-place-to-try-our-products",
+    "path": "pages/giving-customers-a-place-to-try-our-products.md",
+    "asOf": "2001-05-15",
+    "temporalCoverage": "2001-05-15"
   },
   {
-    "readableId": "customer-research-synthesis",
-    "temporalCoverage": "2026-06/2026-07"
+    "readableId": "welcoming-our-first-store-customers",
+    "path": "pages/welcoming-our-first-store-customers.md",
+    "asOf": "2001-05-21",
+    "temporalCoverage": "2001-05-19/2001-05-20"
   },
   {
-    "readableId": "technical-hypermedia-notes",
-    "temporalCoverage": "2026-08/.."
+    "readableId": "giving-customers-a-place-to-try-our-products",
+    "path": "revisions/giving-customers-a-place-to-try-our-products-2001-05-21.md",
+    "asOf": "2001-05-21",
+    "temporalCoverage": "2001-05-15/2001-05-20"
   },
   {
-    "readableId": "launch-readiness-plan",
-    "temporalCoverage": "2026-09/2026-10"
-  },
-  { "readableId": "decision-log", "temporalCoverage": "2026-08/.." },
-  {
-    "readableId": "pilot-feedback",
-    "temporalCoverage": "2026-08-18/2026-08-22"
-  },
-  { "readableId": "design-critique-notes", "temporalCoverage": "2026-08-28" },
-  { "readableId": "agent-collaboration-workflow" },
-  {
-    "readableId": "next-quarter-priorities",
-    "temporalCoverage": "2026-10/2026-12"
+    "readableId": "building-my-first-ipod-team",
+    "path": "pages/building-my-first-ipod-team.md",
+    "asOf": "2001-10-21",
+    "temporalCoverage": "2001"
   },
   {
-    "readableId": "research-recruitment-plan",
-    "temporalCoverage": "2026-04/2026-05"
-  },
-  { "readableId": "navigation-study-protocol", "temporalCoverage": "2026-05" },
-  { "readableId": "interview-theme-analysis", "temporalCoverage": "2026-06" },
-  { "readableId": "pilot-hypermedia-journey", "temporalCoverage": "2026-07" },
-  {
-    "readableId": "terminology-testing-notes",
-    "temporalCoverage": "2026-07-14/2026-07-18"
+    "readableId": "walking-the-first-ipod-demo-with-tony",
+    "path": "pages/walking-the-first-ipod-demo-with-tony.md",
+    "asOf": "2001-10-22",
+    "temporalCoverage": "2001-10-22"
   },
   {
-    "readableId": "discoverability-benchmark",
-    "temporalCoverage": "2026-07/2026-08"
-  },
-  { "readableId": "research-archive-guide" },
-  {
-    "readableId": "hypermedia-interaction-principles",
-    "temporalCoverage": "2026-07/.."
+    "readableId": "putting-the-first-ipod-in-my-pocket",
+    "path": "pages/putting-the-first-ipod-in-my-pocket.md",
+    "asOf": "2001-10-23",
+    "temporalCoverage": "2001-10-23"
   },
   {
-    "readableId": "hover-preview-specification",
-    "temporalCoverage": "2026-08-03/2026-08-07"
+    "readableId": "taking-our-music-experience-beyond-the-mac",
+    "path": "pages/taking-our-music-experience-beyond-the-mac.md",
+    "asOf": "2001-10-23",
+    "temporalCoverage": "2001-01-09/2001-10-23"
   },
   {
-    "readableId": "dense-neighborhood-states",
-    "temporalCoverage": "2026-08-10/2026-08-14"
+    "readableId": "opening-ipod-to-windows-customers",
+    "path": "pages/opening-ipod-to-windows-customers.md",
+    "asOf": "2002-07-17",
+    "temporalCoverage": "2002-07-17"
   },
   {
-    "readableId": "accessibility-audit",
-    "temporalCoverage": "2026-08-17/2026-08-21"
+    "readableId": "taking-our-music-experience-beyond-the-mac",
+    "path": "revisions/taking-our-music-experience-beyond-the-mac-2002-07-17.md",
+    "asOf": "2002-07-17",
+    "temporalCoverage": "2001-01-09/2002-07-17"
   },
   {
-    "readableId": "mobile-navigation-review",
-    "temporalCoverage": "2026-08-21"
-  },
-  { "readableId": "resource-card-patterns" },
-  { "readableId": "visual-language-notes", "temporalCoverage": "2026-08" },
-  {
-    "readableId": "hypermedia-query-budget",
-    "temporalCoverage": "2026-08/.."
+    "readableId": "selling-songs-one-at-a-time",
+    "path": "pages/selling-songs-one-at-a-time.md",
+    "asOf": "2003-04-28",
+    "temporalCoverage": "2003-04-28"
   },
   {
-    "readableId": "pagination-stability-report",
-    "temporalCoverage": "2026-08-20/2026-08-27"
+    "readableId": "making-our-store-part-of-the-music-experience",
+    "path": "pages/making-our-store-part-of-the-music-experience.md",
+    "asOf": "2003-04-28",
+    "temporalCoverage": "2003-04-28"
   },
   {
-    "readableId": "layout-performance-benchmark",
-    "temporalCoverage": "2026-08-25"
+    "readableId": "rehearsing-our-windows-message-with-phil",
+    "path": "pages/rehearsing-our-windows-message-with-phil.md",
+    "asOf": "2003-10-15",
+    "temporalCoverage": "2003-10-15"
   },
   {
-    "readableId": "collision-avoidance-notes",
-    "temporalCoverage": "2026-08-26"
-  },
-  { "readableId": "preview-cache-strategy", "temporalCoverage": "2026-08/.." },
-  {
-    "readableId": "hypermedia-observability-plan",
-    "temporalCoverage": "2026-09/.."
-  },
-  { "readableId": "release-readiness-runbook", "temporalCoverage": "2026-09" },
-  {
-    "readableId": "pilot-onboarding-plan",
-    "temporalCoverage": "2026-05/2026-06"
-  },
-  { "readableId": "stakeholder-sync-notes", "temporalCoverage": "2026-07-30" },
-  {
-    "readableId": "launch-risk-register",
-    "temporalCoverage": "2026-08/2026-10"
+    "readableId": "bringing-our-own-itunes-to-windows",
+    "path": "pages/bringing-our-own-itunes-to-windows.md",
+    "asOf": "2003-10-16",
+    "temporalCoverage": "2003-10-16"
   },
   {
-    "readableId": "rollout-support-playbook",
-    "temporalCoverage": "2026-09/2026-11"
+    "readableId": "making-our-store-part-of-the-music-experience",
+    "path": "revisions/making-our-store-part-of-the-music-experience-2003-10-16.md",
+    "asOf": "2003-10-16",
+    "temporalCoverage": "2003-04-28/2003-10-16"
   },
-  { "readableId": "adoption-review", "temporalCoverage": "2026-10" },
-  { "readableId": "knowledge-governance-model" },
-  { "readableId": "content-lifecycle-policy", "temporalCoverage": "2026-09/.." }
+  {
+    "readableId": "making-ipod-smaller-with-mini",
+    "path": "pages/making-ipod-smaller-with-mini.md",
+    "asOf": "2004-01-06",
+    "temporalCoverage": "2004-01-06"
+  },
+  {
+    "readableId": "revising-our-international-mini-schedule",
+    "path": "pages/revising-our-international-mini-schedule.md",
+    "asOf": "2004-07-07",
+    "temporalCoverage": "2004-07-07"
+  },
+  {
+    "readableId": "taking-itunes-onto-motorola-phones",
+    "path": "pages/taking-itunes-onto-motorola-phones.md",
+    "asOf": "2004-07-26",
+    "temporalCoverage": "2004-07-26"
+  },
+  {
+    "readableId": "bringing-our-music-work-into-phones",
+    "path": "pages/bringing-our-music-work-into-phones.md",
+    "asOf": "2004-07-26",
+    "temporalCoverage": "2004-07-26"
+  },
+  {
+    "readableId": "choosing-a-simpler-player-with-shuffle",
+    "path": "pages/choosing-a-simpler-player-with-shuffle.md",
+    "asOf": "2005-01-11",
+    "temporalCoverage": "2005-01-11"
+  },
+  {
+    "readableId": "changing-the-processor-underneath-our-mac",
+    "path": "pages/changing-the-processor-underneath-our-mac.md",
+    "asOf": "2005-06-06",
+    "temporalCoverage": "2005-06-06"
+  },
+  {
+    "readableId": "putting-a-display-into-the-smaller-nano",
+    "path": "pages/putting-a-display-into-the-smaller-nano.md",
+    "asOf": "2005-09-07",
+    "temporalCoverage": "2005-09-07"
+  },
+  {
+    "readableId": "shipping-itunes-on-the-rokr",
+    "path": "pages/shipping-itunes-on-the-rokr.md",
+    "asOf": "2005-09-07",
+    "temporalCoverage": "2005-09-07"
+  },
+  {
+    "readableId": "bringing-our-music-work-into-phones",
+    "path": "revisions/bringing-our-music-work-into-phones-2005-09-07.md",
+    "asOf": "2005-09-07",
+    "temporalCoverage": "2004-07-26/2005-09-07"
+  },
+  {
+    "readableId": "comparing-nano-and-rokr-with-tony",
+    "path": "pages/comparing-nano-and-rokr-with-tony.md",
+    "asOf": "2005-09-08",
+    "temporalCoverage": "2005-09-08"
+  },
+  {
+    "readableId": "giving-our-ipod-a-video-screen",
+    "path": "pages/giving-our-ipod-a-video-screen.md",
+    "asOf": "2005-10-12",
+    "temporalCoverage": "2005-10-12"
+  },
+  {
+    "readableId": "working-with-bob-to-put-television-in-itunes",
+    "path": "pages/working-with-bob-to-put-television-in-itunes.md",
+    "asOf": "2005-10-12",
+    "temporalCoverage": "2005-10-12"
+  },
+  {
+    "readableId": "making-our-store-part-of-the-music-experience",
+    "path": "revisions/making-our-store-part-of-the-music-experience-2005-10-12.md",
+    "asOf": "2005-10-12",
+    "temporalCoverage": "2003-04-28/2005-10-12"
+  },
+  {
+    "readableId": "taking-our-music-experience-beyond-the-mac",
+    "path": "revisions/taking-our-music-experience-beyond-the-mac-2005-10-12.md",
+    "asOf": "2005-10-12",
+    "temporalCoverage": "2001-01-09/2005-10-12"
+  },
+  {
+    "readableId": "recognizing-tim-and-planning-the-ipod-handoff",
+    "path": "pages/recognizing-tim-and-planning-the-ipod-handoff.md",
+    "asOf": "2005-10-14",
+    "temporalCoverage": "2005-10-14"
+  },
+  {
+    "readableId": "choosing-disney-for-pixars-next-chapter",
+    "path": "pages/choosing-disney-for-pixars-next-chapter.md",
+    "asOf": "2006-01-24",
+    "temporalCoverage": "2006-01-24"
+  },
+  {
+    "readableId": "carrying-my-pixar-work-into-disney",
+    "path": "pages/carrying-my-pixar-work-into-disney.md",
+    "asOf": "2006-01-24",
+    "temporalCoverage": "2006-01-24"
+  },
+  {
+    "readableId": "joining-disneys-board-when-the-deal-closes",
+    "path": "pages/joining-disneys-board-when-the-deal-closes.md",
+    "asOf": "2006-05-05",
+    "temporalCoverage": "2006-05-05"
+  },
+  {
+    "readableId": "carrying-my-pixar-work-into-disney",
+    "path": "revisions/carrying-my-pixar-work-into-disney-2006-05-05.md",
+    "asOf": "2006-05-05",
+    "temporalCoverage": "2006-01-24/2006-05-05"
+  },
+  {
+    "readableId": "building-a-phone-around-our-fingers",
+    "path": "pages/building-a-phone-around-our-fingers.md",
+    "asOf": "2007-01-07",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "walking-the-iphone-demonstration-with-scott",
+    "path": "pages/walking-the-iphone-demonstration-with-scott.md",
+    "asOf": "2007-01-08",
+    "temporalCoverage": "2007-01-08"
+  },
+  {
+    "readableId": "introducing-the-phone-we-built",
+    "path": "pages/introducing-the-phone-we-built.md",
+    "asOf": "2007-01-09",
+    "temporalCoverage": "2007-01-09"
+  },
+  {
+    "readableId": "bringing-our-music-work-into-phones",
+    "path": "revisions/bringing-our-music-work-into-phones-2007-01-09.md",
+    "asOf": "2007-01-09",
+    "temporalCoverage": "2004-07-26/2007-01-09"
+  },
+  {
+    "readableId": "reaching-one-hundred-million-ipods",
+    "path": "pages/reaching-one-hundred-million-ipods.md",
+    "asOf": "2007-04-09",
+    "temporalCoverage": "2007-04-09"
+  },
+  {
+    "readableId": "opening-emi-purchases-beyond-drm",
+    "path": "pages/opening-emi-purchases-beyond-drm.md",
+    "asOf": "2007-05-30",
+    "temporalCoverage": "2007-05-30"
+  },
+  {
+    "readableId": "making-our-store-part-of-the-music-experience",
+    "path": "revisions/making-our-store-part-of-the-music-experience-2007-05-30.md",
+    "asOf": "2007-05-30",
+    "temporalCoverage": "2003-04-28/2007-05-30"
+  },
+  {
+    "readableId": "asking-developers-to-build-for-the-web",
+    "path": "pages/asking-developers-to-build-for-the-web.md",
+    "asOf": "2007-06-11",
+    "temporalCoverage": "2007-06-11"
+  },
+  {
+    "readableId": "improving-iphone-before-customers-get-it",
+    "path": "pages/improving-iphone-before-customers-get-it.md",
+    "asOf": "2007-06-18",
+    "temporalCoverage": "2007-06-18"
+  },
+  {
+    "readableId": "preparing-the-first-customer-hour-with-ron",
+    "path": "pages/preparing-the-first-customer-hour-with-ron.md",
+    "asOf": "2007-06-27",
+    "temporalCoverage": "2007-06-27"
+  },
+  {
+    "readableId": "opening-our-doors-for-iphone",
+    "path": "pages/opening-our-doors-for-iphone.md",
+    "asOf": "2007-06-28",
+    "temporalCoverage": "2007-06-29"
+  },
+  {
+    "readableId": "bringing-our-music-work-into-phones",
+    "path": "revisions/bringing-our-music-work-into-phones-2007-06-28.md",
+    "asOf": "2007-06-28",
+    "temporalCoverage": "2004-07-26/2007-06-29"
+  },
+  {
+    "readableId": "bringing-the-phones-interface-back-to-ipod",
+    "path": "pages/bringing-the-phones-interface-back-to-ipod.md",
+    "asOf": "2007-09-05",
+    "temporalCoverage": "2007-09-05"
+  },
+  {
+    "readableId": "taking-our-music-experience-beyond-the-mac",
+    "path": "revisions/taking-our-music-experience-beyond-the-mac-2007-09-05.md",
+    "asOf": "2007-09-05",
+    "temporalCoverage": "2001-01-09/2007-09-05"
+  },
+  {
+    "readableId": "lowering-the-price-of-our-iphone",
+    "path": "pages/lowering-the-price-of-our-iphone.md",
+    "asOf": "2007-09-05",
+    "temporalCoverage": "2007-09-05"
+  },
+  {
+    "readableId": "responding-to-our-early-iphone-customers",
+    "path": "pages/responding-to-our-early-iphone-customers.md",
+    "asOf": "2007-09-06",
+    "temporalCoverage": "2007-09-06"
+  },
+  {
+    "readableId": "passing-our-first-million-iphone-sales",
+    "path": "pages/passing-our-first-million-iphone-sales.md",
+    "asOf": "2007-09-10",
+    "temporalCoverage": "2007-09-09"
+  },
+  {
+    "readableId": "committing-to-native-applications-for-iphone",
+    "path": "pages/committing-to-native-applications-for-iphone.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": "2007-10-17"
+  },
+  {
+    "readableId": "bringing-our-music-work-into-phones",
+    "path": "revisions/bringing-our-music-work-into-phones-2007-10-17.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": "2004-07-26/2007-10-17"
+  },
+  {
+    "readableId": "the-people-i-build-with",
+    "path": "pages/the-people-i-build-with.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "how-i-connect-hardware-and-software",
+    "path": "pages/how-i-connect-hardware-and-software.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "the-boundaries-i-work-across",
+    "path": "pages/the-boundaries-i-work-across.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "helping-people-use-what-we-make",
+    "path": "pages/helping-people-use-what-we-make.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "my-working-notes-and-rehearsals",
+    "path": "pages/my-working-notes-and-rehearsals.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "pictures-of-me-and-our-pocket-devices",
+    "path": "pages/pictures-of-me-and-our-pocket-devices.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "keeping-track-of-what-i-have-promised",
+    "path": "pages/keeping-track-of-what-i-have-promised.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": null
+  },
+  {
+    "readableId": "my-work-from-ipod-to-iphone",
+    "path": "pages/my-work-from-ipod-to-iphone.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": "2001-01-09/2007-10-17"
+  }
 ]
