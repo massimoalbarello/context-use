@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { workspaceAccess } from '../../lib/workspace-access';
 import { Button } from '../ui/button';
 
 type ResourceName = 'entity' | 'page' | 'asset' | 'client';
@@ -19,9 +18,6 @@ type ResourceDetailActionsProps = { resource: ResourceName } & (
 );
 
 export function ResourceDetailActions(props: ResourceDetailActionsProps) {
-  if (!workspaceAccess.canWrite) {
-    return null;
-  }
   if (props.mode === 'edit') {
     return (
       <>

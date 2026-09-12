@@ -3,7 +3,6 @@ import { Map as MapIcon, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/class-names';
 import { type KnowledgeCollection, MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
-import { workspaceAccess } from '../../lib/workspace-access';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { buttonVariants } from '../ui/button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
@@ -68,10 +67,10 @@ export function KnowledgeSidebar({
             collection={collection}
             ownerEntityReadableId={profile.selfEntity.readableId}
           />
-          {(actions || (workspaceAccess.canWrite && createTo && createLabel)) && (
+          {(actions || (createTo && createLabel)) && (
             <div className="flex shrink-0 items-center gap-1">
               {actions}
-              {workspaceAccess.canWrite && createTo && createLabel && (
+              {createTo && createLabel && (
                 <Link
                   className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
                   to={createTo}

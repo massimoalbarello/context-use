@@ -41,6 +41,7 @@ try {
   assert.equal(page.status, StatusMap.OK);
   const html = await page.text();
   assert.match(html, /<html/);
+  assert.match(html, /Read-only demo/);
   const entry = html.match(/<script[^>]+src="([^"]+)"/);
   assert.ok(entry);
   assert.equal((await request({ path: entry[1]! })).status, StatusMap.OK);
@@ -60,20 +61,25 @@ try {
     '/',
   ]) {
     const response = await request({ path, method: 'POST', body: '{}' });
-    assert.ok(
-      response.status === StatusMap.Forbidden || response.status === StatusMap['Payload Too Large'],
-      `Write accepted: ${path}`,
-    );
+    assert.equal(response.status, StatusMap.Forbidden, `Write accepted: ${path}`);
+    assert.match(await response.text(), /read-only/);
   }
   for (const path of [
     '/api/auth/sign-out',
     '/api/auth/passkey/generate-register-options',
     '/api/syncs',
     '/mcp/asset-transfers/token',
-    '/pages/new',
-    '/settings',
   ]) {
     assert.equal((await request({ path })).status, StatusMap.Forbidden, path);
+  }
+  for (const path of [
+    '/pages/new',
+    '/entities/new',
+    '/assets/new',
+    '/settings',
+    '/settings/syncs',
+  ]) {
+    assert.match(await (await request({ path })).text(), /Read-only demo/);
   }
   assert.equal(await Bun.file(join(personal, 'app.db')).text(), sentinel);
   assert.deepEqual(await readdir(personal), ['app.db']);

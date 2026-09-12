@@ -31,7 +31,6 @@ try {
   const server = Bun.serve({
     hostname: '0.0.0.0',
     port: process.env.PORT ?? '3000',
-    maxRequestBodySize: 0,
     fetch: createDemoApp({
       resources: createDemoResources({ database, storage }),
       frontendAssetsService: new FrontendAssetsService(new FrontendAssetsRepository()),

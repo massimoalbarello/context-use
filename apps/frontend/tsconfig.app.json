@@ -6,5 +6,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "react", "react-dom"]
   },
-  "include": ["src", "test", "demo/workspace-access.ts", "demo/calendar-now.ts"]
+  "include": ["src", "test", "demo/main.tsx", "demo/calendar-now.ts"]
 }

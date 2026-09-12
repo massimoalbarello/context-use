@@ -32,7 +32,7 @@ const READ_API_ROUTES = new Set([
   '/api/records',
   '/api/records/filter-options',
   '/api/records/:recordReadableId',
-  '/api/hypermedia/resources',
+  '/api/hypermedia/entities',
   '/api/hypermedia/pages',
   '/api/hypermedia/search',
 ]);
@@ -44,7 +44,9 @@ function isWorkspacePath(path: string): boolean {
   return (
     path === '/' ||
     path === '/hypermedia' ||
-    /^\/(?:entities|pages|assets|records)(?:\/(?!new$)[a-z0-9][a-z0-9-]*)?$/.test(path)
+    path === '/settings' ||
+    path === '/settings/syncs' ||
+    /^\/(?:entities|pages|assets|records)(?:\/[a-z0-9][a-z0-9-]*)?$/.test(path)
   );
 }
 
@@ -85,7 +87,10 @@ export function createDemoApp({
   return async function fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (request.method !== 'GET' && request.method !== 'HEAD') {
-      return Response.json({ error: 'This public demo is read-only.' }, { status: 403 });
+      return Response.json(
+        { message: 'This public demo is read-only. Changes and account actions cannot be saved.' },
+        { status: 403 },
+      );
     }
     let response: ReturnType<Response['clone']>;
     if (path === '/api/auth/get-session') {
@@ -99,7 +104,7 @@ export function createDemoApp({
       response = frontendAssetsService.fallback(path) ?? new Response(null, { status: 404 });
     } else {
       response = Response.json(
-        { error: 'This route is unavailable in the public demo.' },
+        { message: 'This public demo is read-only. This action is unavailable.' },
         { status: 403 },
       );
     }

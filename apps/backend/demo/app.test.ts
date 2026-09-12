@@ -80,10 +80,15 @@ test(
           '/api/assets/steve-presenting-iphone',
           '/api/assets/steve-presenting-iphone/content',
           '/api/records/filter-options',
-          '/api/hypermedia/resources?anchor=entity:steve-jobs&kinds=entity',
-          '/api/hypermedia/pages?kinds=entity',
+          '/api/hypermedia/entities?anchor=steve-jobs',
+          '/api/hypermedia/pages',
           '/api/hypermedia/search?query=iPhone',
           '/hypermedia',
+          '/pages/new',
+          '/entities/new',
+          '/assets/new',
+          '/settings',
+          '/settings/syncs',
           '/test.js',
         ]) {
           const response = await read(path);
@@ -141,6 +146,9 @@ test(
               }),
             );
             expect(response.status, `${method} ${path}`).toBe(StatusMap.Forbidden);
+            expect(await response.json()).toMatchObject({
+              message: expect.stringContaining('read-only'),
+            });
           }
         }
         for (const path of [
@@ -160,13 +168,9 @@ test(
           '/api/pages/a%2farchive',
           '/api//pages',
           '/api/pages/',
-          '/settings',
           '/setup',
           '/login',
           '/mcp/authorize',
-          '/pages/new',
-          '/entities/new',
-          '/assets/new',
         ]) {
           expect((await read(path)).status, path).toBe(StatusMap.Forbidden);
         }

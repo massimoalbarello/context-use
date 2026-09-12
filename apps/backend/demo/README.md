@@ -53,9 +53,9 @@ demo artifact.
   and static/browsing paths. Every other method or route is rejected before controller dispatch.
   Auth, MCP, sync, ingestion, and transfer controllers are not mounted. The session metadata
   endpoint returns a public display identity and creates no cookies or login sessions.
-- The frontend's explicit demo Vite configuration replaces the presentation policy and calendar
-  module. The default frontend policy retains personal editing and account controls. UI hiding
-  is not the security boundary; direct write requests also fail.
+- The frontend's explicit demo Vite configuration adds a persistent read-only notice and replaces
+  the calendar module. The shared UI is unchanged: visitors can open editors, but saves receive
+  a read-only error from the server. Account and MCP actions are unavailable in the demo.
 
 `bun --filter @repo/backend test demo` verifies anonymous reads, denied writes and management
 routes, unchanged database/file fingerprints, read-only persistence, and normal authentication.

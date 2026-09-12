@@ -5,15 +5,11 @@ import { Eyebrow } from '../components/layout/eyebrow';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
-import { workspaceAccess } from '../lib/workspace-access';
 import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ context, location }) => {
-    if (!workspaceAccess.allowsPath(location.pathname)) {
-      throw redirect({ to: MAIN_KNOWLEDGE_PATH });
-    }
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions);
     const profile = session ? await context.queryClient.ensureQueryData(profileQueryOptions) : null;
     const setupPath = location.pathname === '/setup';
