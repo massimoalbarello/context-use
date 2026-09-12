@@ -60,9 +60,9 @@ export function AssetFaces({ asset }: { asset: Pick<AssetSummary, 'name' | 'read
           ))}
         </div>
       </div>
-      <section className="grid gap-4" aria-label="People in this image">
+      <section className="grid gap-4" aria-label="Detected faces">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-semibold text-lg">People in this image</h2>
+          <h2 className="font-semibold text-lg">Detected faces</h2>
           {result?.state !== 'unsupported' && (
             <Button
               variant="outline"
@@ -71,10 +71,8 @@ export function AssetFaces({ asset }: { asset: Pick<AssetSummary, 'name' | 'read
               onClick={() => analyze.mutate(asset.readableId)}
             >
               {analyze.isPending || result?.state === 'processing'
-                ? 'Analyzing…'
-                : result?.state === 'ready'
-                  ? 'Find faces again'
-                  : 'Analyze image'}
+                ? 'Processing…'
+                : 'Process image'}
             </Button>
           )}
         </div>
@@ -222,17 +220,17 @@ function FacesStatus({
       )}
       {result?.outdated && (
         <p className="text-muted-foreground text-sm">
-          A newer face model is available. Analyze this image again to update automatic matches.
+          A newer face model is available. Process this image again to update automatic matches.
         </p>
       )}
       {result?.state === 'processing' && (
         <p role="status" className="text-muted-foreground text-sm">
-          Analyzing faces…
+          Processing image…
         </p>
       )}
       {result?.state === 'not_processed' && (
         <p className="text-muted-foreground text-sm">
-          This image is saved and has not been analyzed yet.
+          This image is saved and has not been processed yet.
         </p>
       )}
       {result?.state === 'unsupported' && (
