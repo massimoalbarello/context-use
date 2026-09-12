@@ -346,6 +346,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
         resourceTypes: ['entity', 'knowledge_page'],
         limit: 2,
         filters: {
+          entity: { type: undefined },
           knowledgePage: { interval: undefined, temporalBounds: undefined },
           asset: { kind: undefined },
           record: undefined,
@@ -418,6 +419,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
           resourceTypes: ['knowledge_page', 'asset', 'record'],
           limit: 7,
           filters: {
+            entity: { type: undefined },
             knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
             asset: { kind: 'entity_image' },
             record: { provider: 'granola', kind: 'meeting', participantName: 'Luca' },
@@ -580,6 +582,7 @@ test('record search previews have exact owner-scoped read paths without imported
         expect(input.ownerId).toBe(principal.ownerId);
         expect(input.resourceTypes).toEqual(['record']);
         expect(input.filters).toEqual({
+          entity: { type: undefined },
           knowledgePage: { interval: undefined, temporalBounds: undefined },
           asset: { kind: undefined },
           record: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
@@ -1382,7 +1385,7 @@ test('MCP exposes optional entity assignments and entity-only filters from the c
     },
     retrievalService: {
       search: (input) => {
-        expect(input.filters?.entityType).toBe('untyped');
+        expect(input.filters?.entity).toEqual({ type: 'untyped' });
         return Promise.resolve({
           results: [
             {

@@ -1345,7 +1345,7 @@ test('entity types filter candidates before ranking, counts, and pagination whil
       ownerId: OWNER_A,
       query: 'needle',
       limit: 1,
-      filters: { entityType: 'person' },
+      filters: { entity: { type: 'person' } },
     });
     expect(results).toMatchObject({
       totalMatches: 2,
@@ -1376,7 +1376,7 @@ test('entity types filter candidates before ranking, counts, and pagination whil
         ownerId: OWNER_A,
         query: 'needle',
         limit: 50,
-        filters: { entityType: entityType },
+        filters: { entity: { type: entityType } },
       });
       const expectedActiveEntities = 5;
       expect(listed.total).toBe(entityType === 'all' ? expectedActiveEntities : 1);
@@ -1418,13 +1418,13 @@ test('entity type updates preserve omissions, clear null, and immediately affect
       ownerId: OWNER_A,
       query: 'needle',
       limit: 1,
-      filters: { entityType: 'person' },
+      filters: { entity: { type: 'person' } },
     });
     const untyped = await retrieval.search({
       ownerId: OWNER_A,
       query: 'needle',
       limit: 1,
-      filters: { entityType: 'untyped' },
+      filters: { entity: { type: 'untyped' } },
     });
     expect(people.totalMatches).toBe(0);
     expect(untyped).toMatchObject({
@@ -1468,7 +1468,7 @@ test('self entities are created as people and cannot leave the people filter thr
         ownerId: OWNER_A,
         query: 'needle',
         limit: 1,
-        filters: { entityType },
+        filters: { entity: { type: entityType } },
       });
       expect(listed.total).toBe(entityType === 'person' ? 1 : 0);
       expect(searched.totalMatches).toBe(listed.total);

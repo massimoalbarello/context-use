@@ -153,7 +153,7 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
         resourceTypes: ['knowledge_page', 'record'],
         limit: 7,
         filters: {
-          entityType: undefined,
+          entity: { type: undefined },
           knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
           asset: { kind: 'entity_image' },
           record: {

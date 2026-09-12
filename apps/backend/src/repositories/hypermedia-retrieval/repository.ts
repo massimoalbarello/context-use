@@ -213,8 +213,8 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       return { results: [], totalMatches: 0, truncated: false };
     }
     const selectedTypes = JSON.stringify(resourceTypes);
-    const entitiesOnly = filters?.entityType !== undefined;
-    const entityType = filters?.entityType ?? 'all';
+    const entitiesOnly = filters?.entity?.type !== undefined;
+    const entityType = filters?.entity?.type ?? 'all';
     const pageInterval = filters?.knowledgePage?.interval ?? null;
     const filterStart = filters?.knowledgePage?.temporalBounds?.start ?? null;
     const filterEnd = filters?.knowledgePage?.temporalBounds?.end ?? null;

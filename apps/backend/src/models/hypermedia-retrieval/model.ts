@@ -44,8 +44,8 @@ export interface HypermediaRetrievalResults {
 }
 
 export interface HypermediaRetrievalFilters {
-  /** When present, restrict retrieval to entities with the selected type. */
-  entityType?: EntityTypeFilter;
+  /** When type is present, restrict retrieval to entities with the selected type. */
+  entity?: { type?: EntityTypeFilter };
   knowledgePage?: {
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;

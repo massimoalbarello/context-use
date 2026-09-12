@@ -59,7 +59,7 @@ export function registerHypermediaRetrievalTools({
         resourceTypes,
         limit,
         filters: {
-          entityType,
+          entity: { type: entityType },
           knowledgePage: { interval, temporalBounds },
           asset: { kind: assetKind },
           record: recordFilter,
