@@ -22,19 +22,19 @@ Only `PORT` configures the demo listener.
 
 ## Deploy the shared demo manually
 
-Build the Linux x64 executable, then create a dedicated demo app:
+Sign in to nibrun once, then build and deploy the shared demo:
 
 ```sh
-bun run demo:build
 nib login
-nib run apps/backend/demo/dist/context-use-demo --name steve-jobs-demo --port 3000
+bun run demo:deploy:nibrun
 ```
 
-For subsequent deployments, use `--app <exact-demo-slug>` from `nib apps list` instead of
-`--name`. Add the returned HTTPS URL to the root README as **View the Steve Jobs demo**.
-Visitors open that shared instance; they need no account, setup, or deployment. Never deploy this
-binary over a personal instance. The distinct app name also keeps it outside the personal
-deployment script's `context-use-` app selection.
+The command builds the Linux x64 binary, creates a `steve-jobs-demo` app on its first run, and
+updates that same app on later runs. It stops if multiple demo apps match and never selects
+the personal deployment script's `context-use-` apps.
+
+Add the returned HTTPS URL to the root README as **View the Steve Jobs demo**. Visitors open
+that shared instance; they need no account, setup, or deployment.
 
 CI builds and boots the demo to verify it, without publishing releases or deploying it.
 

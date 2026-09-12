@@ -34,7 +34,8 @@
     "demo:build": "bun --filter @repo/frontend demo:build && bun --filter @repo/backend demo:build",
     "demo:build:local": "BUILD_TARGET=host bun run demo:build",
     "demo:start": "apps/backend/demo/dist/context-use-demo",
-    "demo:check": "bun run apps/backend/demo/check-binary.ts"
+    "demo:check": "bun run apps/backend/demo/check-binary.ts",
+    "demo:deploy:nibrun": "bun run apps/backend/demo/deploy.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
