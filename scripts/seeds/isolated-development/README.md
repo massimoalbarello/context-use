@@ -102,12 +102,14 @@ links before submitting pages. References and backlinks use the native record su
 
 The 23 bundled images give **22 of the 30 entities** an image: all 11 people, seven devices and four
 companies. Alongside Steve presenting iPhone, they include collaborator portraits, the original
-mini, nano, shuffle, touch and ROKR E1, Apple and Intel marks, and Disney and Pixar campus photographs.
+mini, nano, shuffle, touch and ROKR E1, Apple, Intel, Disney and Pixar marks.
 
-Later portraits and campus photographs are identity references, not evidence of events within the
-story. Each image's [credit](assets/historical-asset-credits.txt) and [metadata](assets/index.json)
-identify its source, creator, license and date caveats. New images use small Commons thumbnails;
-the two company marks use Commons PNG renderings. No photo is represented as taken by Steve.
+Later portraits, the 2009 iPhone photo and the 2014 iPod touch rendering are identity or hardware
+references, not evidence of events within the story. Each image's
+[credit](assets/historical-asset-credits.txt) and [metadata](assets/index.json) identify its source,
+creator, license and date caveats. Entity images are bundled at 512 × 512: portraits focus on faces,
+while logos and devices have room around them so circular avatars keep their subjects visible. The credits identify every crop,
+rotation and padded rendering. No photo is represented as taken by Steve.
 
 The other assets are two fictional demo checklists, a sourced commitment ledger separating targets
 from results, and the credits file. The CHM source page provides the original interview video.

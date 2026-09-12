@@ -6,7 +6,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "steve-jobs",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Steve_Jobs_Headshot_2010-CROP.jpg",
-    "credit": "Matthew Yohe; existing Commons crop, copied without alteration",
+    "credit": "Matthew Yohe; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY-SA 3.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
     "dateNote": "June 2010, outside the story period; identity illustration only."
@@ -18,22 +18,22 @@
     "expectedMediaType": "image/png",
     "entityReadableId": "ipod",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ipod_1G.png",
-    "credit": "Aaron Logan (Lightmatter); background removal by Rjcflyer, unchanged Commons file",
+    "credit": "Aaron Logan (Lightmatter); background removal by Rjcflyer; resized and centered with white padding on a 512 × 512 canvas to keep the device inside circular avatars",
     "license": "CC BY 2.5",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.5/",
     "dateNote": "Derivative uploaded October 22, 2006; original capture date not established. Product reference only."
   },
   {
-    "name": "Original iPhone at Macworld",
-    "path": "assets/iphone-macworld.jpg",
+    "name": "Original iPhone photo 2009",
+    "path": "assets/iphone.jpg",
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "iphone",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple-iPhone-003.jpg",
-    "credit": "Eliya; existing Commons crop, copied without alteration",
-    "license": "CC BY 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
-    "dateNote": "January 13, 2007 according to the source page; uploaded to Commons in 2011. Display photograph, not a June retail launch photograph.",
-    "readableId": "original-iphone-at-macworld"
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:IPhone_First_Generation_(cropped).jpg",
+    "credit": "Carl Berkeley; Commons crop by KOKUYO; resized and centered with white padding on a 512 × 512 canvas to keep the device inside circular avatars",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+    "dateNote": "1 July 2009, outside the story period. Depicts the original iPhone hardware; product reference only, not a photograph of the unveiling or retail launch.",
+    "readableId": "original-iphone-photo-2009"
   },
   {
     "name": "Steve presenting iPhone",
@@ -73,7 +73,7 @@
     "expectedMediaType": "image/png",
     "entityReadableId": "apple",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_logo_black.svg",
-    "credit": "Original:  Rob Janoff; Wikimedia Commons PNG rendering of the Commons SVG, composition unchanged",
+    "credit": "Original:  Rob Janoff; SVG rendered to PNG, resized and centered with white padding on a 512 × 512 canvas to keep the full mark inside circular avatars",
     "license": "Public domain",
     "licenseUrl": "https://commons.wikimedia.org/wiki/File:Apple_logo_black.svg#Licensing",
     "dateNote": "Monochrome Apple mark used as a company identifier; no event or capture date is implied."
@@ -85,22 +85,22 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "bob-iger",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:BobIgerJun10_(cropped).jpg",
-    "credit": "hyku; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "hyku; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY-SA 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
     "dateNote": "10 June 2010 at the World of Color premiere, outside the story period; identity reference only."
   },
   {
-    "readableId": "disney-studio-water-tower-2014",
-    "name": "Disney studio water tower 2014",
-    "path": "assets/disney.jpg",
-    "expectedMediaType": "image/jpeg",
+    "readableId": "disney-company-mark",
+    "name": "Disney company mark",
+    "path": "assets/disney.png",
+    "expectedMediaType": "image/png",
     "entityReadableId": "disney",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Disneystudiowatertower.JPG",
-    "credit": "Coolcaesar; Wikimedia Commons thumbnail, composition unchanged",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "dateNote": "8 November 2014 at the Walt Disney Studios in Burbank, outside the story period; company reference only."
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Disney_wordmark.svg",
+    "credit": "Disney Enterprises, Inc.; SVG rendered to PNG, resized and centered with white padding on a 512 × 512 canvas to keep the full mark inside circular avatars",
+    "license": "Public domain",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/File:Disney_wordmark.svg#Licensing",
+    "dateNote": "Disney wordmark first used in 1956 according to the source description. The vector file was uploaded in 2012; company identifier, not an event photograph."
   },
   {
     "readableId": "ed-catmull-portrait-2015",
@@ -109,7 +109,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "ed-catmull",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ed_Catmull_at_Web_Summit_2015_(cropped).jpg",
-    "credit": "Web Summit; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Web Summit; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
     "dateNote": "4 November 2015 at Web Summit, outside the story period; identity reference only."
@@ -121,7 +121,7 @@
     "expectedMediaType": "image/png",
     "entityReadableId": "intel",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Intel_logo_(2006-2020).svg",
-    "credit": "Intel; SVG uploaded by VD64992; Wikimedia Commons PNG rendering of the Commons SVG, composition unchanged",
+    "credit": "Intel; SVG uploaded by VD64992; SVG rendered to PNG, resized and centered with white padding on a 512 × 512 canvas to keep the full mark inside circular avatars",
     "license": "Public domain",
     "licenseUrl": "https://commons.wikimedia.org/wiki/File:Intel_logo_(2006-2020).svg#Licensing",
     "dateNote": "The 2006–2020 Intel wordmark; the Commons vector file is dated 2 March 2012. Company identifier, not an event photograph."
@@ -133,7 +133,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "ipod-mini",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Green_ipodmini_1stgen.jpg",
-    "credit": "JayKeaton (attribution inferred by Commons from the uploader’s copyright claim); Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "JayKeaton (attribution inferred by Commons from the uploader’s copyright claim); resized and centered with white padding on a 512 × 512 canvas to keep the device inside circular avatars",
     "license": "Public domain",
     "licenseUrl": "https://commons.wikimedia.org/wiki/File:Green_ipodmini_1stgen.jpg#Licensing",
     "dateNote": "The uploader describes a photograph taken in 2006; 7 September 2007 is the upload date. Depicts the first-generation model."
@@ -145,7 +145,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "ipod-nano",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:IPod_nano_alongside_pack_of_gum_-_Flickr_-_dan_taylor.jpg",
-    "credit": "Dan Taylor-Watt from London, UK; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Dan Taylor-Watt from London, UK; cropped to the nano, rotated upright, resized and centered with white padding on a 512 × 512 canvas",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
     "dateNote": "15 September 2005. The first-generation nano is shown beside a packet of gum for scale."
@@ -157,22 +157,22 @@
     "expectedMediaType": "image/png",
     "entityReadableId": "ipod-shuffle",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:IPod_shuffle_1G.png",
-    "credit": "Kyro; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Kyro; cropped to the front view, resized and centered with white padding on a 512 × 512 canvas",
     "license": "CC BY 3.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
     "dateNote": "Source dated 16 March 2009, outside the story period; reference image of the first-generation device, not an event photograph."
   },
   {
-    "readableId": "first-generation-ipod-touch-photo",
-    "name": "First generation iPod touch photo",
-    "path": "assets/ipod-touch.jpg",
-    "expectedMediaType": "image/jpeg",
+    "readableId": "first-generation-ipod-touch-rendering",
+    "name": "First generation iPod touch rendering",
+    "path": "assets/ipod-touch.png",
+    "expectedMediaType": "image/png",
     "entityReadableId": "ipod-touch",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Apple_iPod_touch_and_plastic_stand-2007-10-06.jpg",
-    "credit": "https://www.flickr.com/people/sigwyg20/; Wikimedia Commons thumbnail, composition unchanged",
-    "license": "CC BY 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-    "dateNote": "6 October 2007. The first-generation iPod touch is photographed on its plastic stand."
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:IPod_touch_1st_generation.png",
+    "credit": "Guess Who (English Wikipedia); resized and centered with white padding on a 512 × 512 canvas to keep the device inside circular avatars",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "dateNote": "2014 rendering of the first-generation iPod touch, outside the story period. Hardware shape reference only; not a photograph or evidence of a 2007 event."
   },
   {
     "readableId": "john-lasseter-portrait-2002",
@@ -181,7 +181,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "john-lasseter",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:John_Lasseter_2002.jpg",
-    "credit": "Eric Charbonneau; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Eric Charbonneau; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY-SA 3.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
     "dateNote": "19 August 2002 according to the source metadata; a public reference portrait, not a meeting with Steve."
@@ -193,7 +193,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "jon-rubinstein",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jon_Rubinstein_(2011).jpg",
-    "credit": "'GlobalX'; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "'GlobalX'; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
     "dateNote": "9 February 2011 while presenting for HP, outside the story period; identity reference only, not an Apple event."
@@ -205,7 +205,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "jony-ive",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jonathan_Ive_2006.jpeg",
-    "credit": "Michael Johnston; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Michael Johnston; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY-SA 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
     "dateNote": "10 January 2006, after the Macworld keynote; a public photograph by Michael Johnston, not Steve."
@@ -217,7 +217,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "motorola-rokr",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Motorola_Rokr_E1_-_3.jpg",
-    "credit": "Diego Salatino; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Diego Salatino; cropped around the handset, resized and centered with white padding on a 512 × 512 canvas",
     "license": "CC BY-SA 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
     "dateNote": "3 August 2006 according to the source metadata. Depicts the ROKR E1 used with iTunes, not a later ROKR model."
@@ -228,23 +228,23 @@
     "path": "assets/phil-schiller.jpg",
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "phil-schiller",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Phil_Schiller_at_AWDC_2012.jpg",
-    "credit": "Mike Deerkoski; Wikimedia Commons thumbnail, composition unchanged",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Phil_Schiller_2012.png",
+    "credit": "Ben Miller; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-    "dateNote": "14 June 2012 at the WWDC Bash, outside the story period; identity reference only."
+    "dateNote": "11 June 2012 during the WWDC keynote, outside the story period; identity reference only."
   },
   {
-    "readableId": "pixar-campus-photo-2016",
-    "name": "Pixar campus photo 2016",
-    "path": "assets/pixar.jpg",
-    "expectedMediaType": "image/jpeg",
+    "readableId": "pixar-company-mark",
+    "name": "Pixar company mark",
+    "path": "assets/pixar.png",
+    "expectedMediaType": "image/png",
     "entityReadableId": "pixar",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Steve_Jobs_building_at_Pixar.gk.jpg",
-    "credit": "Grendelkhan; Wikimedia Commons thumbnail, composition unchanged",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "dateNote": "20 July 2016, outside the story period. Campus reference only; the building’s later Steve Jobs name does not date an event in this story."
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pixar_logo.svg",
+    "credit": "Pete Docter (vectorization by Delas); SVG cropped to the Pixar wordmark, rendered to PNG and centered with white padding on a 512 × 512 canvas",
+    "license": "Public domain",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/File:Pixar_logo.svg#Licensing",
+    "dateNote": "Pixar logo used since Toy Story in 1995 according to the source description. Company identifier, not an event photograph."
   },
   {
     "readableId": "ron-johnson-portrait-2015",
@@ -253,7 +253,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "ron-johnson",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ron_Johnson_TCD_2015.jpg",
-    "credit": "TechCrunch; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "TechCrunch; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
     "dateNote": "23 September 2015 while speaking for Enjoy at TechCrunch Disrupt, outside the story period; identity reference only."
@@ -265,7 +265,7 @@
     "expectedMediaType": "image/png",
     "entityReadableId": "scott-forstall",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Scott_Forstall2.png",
-    "credit": "Nskrill; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Nskrill; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "Public domain",
     "licenseUrl": "https://commons.wikimedia.org/wiki/File:Scott_Forstall2.png#Licensing",
     "dateNote": "6 March 2008 at the iPhone Software Roadmap event, after the story ends; identity reference only."
@@ -277,7 +277,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "tim-cook",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tim_Cook_2009.jpg",
-    "credit": "Kindly granted by Valery Marchive (LeMagIT); Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "Kindly granted by Valery Marchive (LeMagIT); cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY-SA 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
     "dateNote": "6 January 2009, after the Macworld keynote, outside the story period; identity reference only."
@@ -289,7 +289,7 @@
     "expectedMediaType": "image/jpeg",
     "entityReadableId": "tony-fadell",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tony_Fadell.jpg",
-    "credit": "OFFICIAL LEWEB PHOTOS; photographer credit Kmeron / Vincent Philbert in the source metadata; Wikimedia Commons thumbnail, composition unchanged",
+    "credit": "OFFICIAL LEWEB PHOTOS; photographer credit Kmeron / Vincent Philbert in the source metadata; cropped around the face and resized to 512 × 512 for circular avatars",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
     "dateNote": "4 December 2012, outside the story period; identity reference only."
