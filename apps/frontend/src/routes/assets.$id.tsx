@@ -1,6 +1,6 @@
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { ExternalLink, File } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { formatAssetSize } from '../components/assets/asset-link';
 import { AssetMedia } from '../components/assets/asset-media';
 import { EntityLink } from '../components/entities/entity-link';
@@ -100,6 +100,53 @@ function AssetEntityImageUsageList({ asset }: { asset: Asset }) {
   );
 }
 
+function AssetPreview({
+  asset,
+  children,
+  processAction,
+}: {
+  asset: Asset;
+  children: ReactNode;
+  processAction?: ReactNode;
+}) {
+  const contentUrl = assetContentUrl(asset.readableId);
+  const downloadUrl = assetDownloadUrl(asset.readableId);
+  return (
+    <section className="grid gap-5 rounded-xl bg-muted p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+      {children}
+      <div className="grid gap-4 md:min-w-56">
+        <dl className="grid gap-2 text-sm">
+          <div>
+            <dt className="text-muted-foreground">Type</dt>
+            <dd>{asset.mediaType}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Size</dt>
+            <dd>{formatAssetSize(asset.sizeBytes)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Address</dt>
+            <dd className="font-mono text-xs">{asset.readableId}</dd>
+          </div>
+        </dl>
+        {processAction}
+        <a className={buttonVariants({ variant: 'outline' })} href={downloadUrl} download>
+          Download
+        </a>
+        <a
+          className={buttonVariants({ variant: 'link' })}
+          href={contentUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ExternalLink aria-hidden="true" />
+          Open asset page
+        </a>
+      </div>
+    </section>
+  );
+}
+
 function AssetRoute() {
   const { id } = Route.useParams();
   return <AssetRouteContent key={id} id={id} />;
@@ -121,8 +168,6 @@ function AssetRouteContent({ id }: { id: string }) {
     return null;
   }
   const hasInboundUsages = asset.usages.length > 0;
-  const contentUrl = assetContentUrl(asset.readableId);
-  const downloadUrl = assetDownloadUrl(asset.readableId);
 
   return (
     <DetailShell>
@@ -216,48 +261,28 @@ function AssetRouteContent({ id }: { id: string }) {
         </p>
       )}
 
-      <section className="grid gap-5 rounded-xl bg-muted p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-        {isEmbeddableAsset(asset) ? (
-          <AssetFaces asset={asset} />
-        ) : isVideoAsset(asset) ? (
-          <AssetMedia
-            asset={asset}
-            className="max-h-[28rem] w-full rounded-lg bg-background object-contain"
-          />
-        ) : (
-          <div className="flex min-h-48 items-center justify-center rounded-lg bg-background text-muted-foreground">
-            <File className="size-14 stroke-[1.2]" aria-hidden="true" />
-          </div>
-        )}
-        <div className="grid gap-4 md:min-w-56">
-          <dl className="grid gap-2 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Type</dt>
-              <dd>{asset.mediaType}</dd>
+      {isEmbeddableAsset(asset) ? (
+        <AssetFaces asset={asset}>
+          {({ preview, processAction }) => (
+            <AssetPreview asset={asset} processAction={processAction}>
+              {preview}
+            </AssetPreview>
+          )}
+        </AssetFaces>
+      ) : (
+        <AssetPreview asset={asset}>
+          {isVideoAsset(asset) ? (
+            <AssetMedia
+              asset={asset}
+              className="max-h-[28rem] w-full rounded-lg bg-background object-contain"
+            />
+          ) : (
+            <div className="flex min-h-48 items-center justify-center rounded-lg bg-background text-muted-foreground">
+              <File className="size-14 stroke-[1.2]" aria-hidden="true" />
             </div>
-            <div>
-              <dt className="text-muted-foreground">Size</dt>
-              <dd>{formatAssetSize(asset.sizeBytes)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Address</dt>
-              <dd className="font-mono text-xs">{asset.readableId}</dd>
-            </div>
-          </dl>
-          <a className={buttonVariants({ variant: 'outline' })} href={downloadUrl} download>
-            Download
-          </a>
-          <a
-            className={buttonVariants({ variant: 'link' })}
-            href={contentUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <ExternalLink aria-hidden="true" />
-            Open asset page
-          </a>
-        </div>
-      </section>
+          )}
+        </AssetPreview>
+      )}
 
       <div className="grid scroll-mt-24 gap-8 md:grid-cols-3" id="used-by" tabIndex={-1}>
         <AssetUsageList asset={asset} presentation="embed" />

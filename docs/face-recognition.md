@@ -18,9 +18,11 @@ from its detail page, or use **Settings → Face recognition → Process images*
 unprocessed, interrupted, and older-model images. Stopping the scan stops after its current request;
 there is no scheduled work to resume after an app restart.
 
-Face review supports confirming, changing the person, leaving unidentified, dismissing a false
-detection, and returning to automatic matching. Confirmed regions survive re-analysis. If a detector
-cannot safely associate a new region with an existing correction, the old decision stays visible for
+On image details, **Process image** sits above **Download**. Click a face box to review it; unmatched
+boxes show **Unknown**. Review supports confirming, changing the person, leaving unidentified,
+dismissing a false detection, and returning to automatic matching. **Show dismissed faces** restores
+their boxes for review. Confirmed regions survive re-analysis. If a detector cannot safely associate
+a new region with an existing correction, the old decision stays visible for
 review rather than transferring to another face. Changing a reference's identity retires that
 reference. Retrying the image cannot undo that correction.
 
