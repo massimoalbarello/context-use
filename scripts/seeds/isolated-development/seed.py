@@ -31,6 +31,7 @@ ENTITIES = [
 ]
 ASSETS = read_seed_json("assets/index.json")
 RECORDS = read_seed_json("records/index.json")
+SYNC = read_seed_json("syncs/steve-jobs-research.json")
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -51,7 +52,10 @@ def checked_api_response(method, path, result):
     return json.loads(response["body"]) if response["body"] else None
 
 
-def api_request(method, path, body=None):
+def api_request(method, path, body=None, *, api_key=None, headers=None):
+    request_headers = {"content-type": "application/json", **(headers or {})}
+    if api_key is not None:
+        request_headers["authorization"] = f"Bearer {api_key}"
     body_option = (
         f"body: JSON.stringify({json.dumps(body)})," if body is not None else ""
     )
@@ -60,8 +64,8 @@ def api_request(method, path, body=None):
         (async () => {{
           const response = await fetch({json.dumps(path)}, {{
             method: {json.dumps(method)},
-            credentials: 'same-origin',
-            headers: {{ 'content-type': 'application/json' }},
+            credentials: {json.dumps('omit' if api_key is not None else 'same-origin')},
+            headers: {json.dumps(request_headers)},
             {body_option}
           }});
           return JSON.stringify({{
@@ -170,7 +174,7 @@ def update_page(readable_id, expected_revision_number, markdown, temporal_covera
         raise RuntimeError("Updated page did not create the expected revision")
 
 
-def create_records():
+def create_records(api_key):
     committed_at = datetime.now(timezone.utc).isoformat()
     records = []
     for record in RECORDS:
@@ -193,39 +197,13 @@ def create_records():
             "content": content,
         })
     envelope = {"version": 1, "batchId": str(uuid.uuid4()), "records": records}
-    # Issue, use and revoke the disposable sync key inside the browser. Never return
-    # the credential through the harness or persist it in a fixture/log.
-    result = js(f"""
-        (async () => {{
-          const created = await fetch('/api/syncs', {{
-            method: 'POST', credentials: 'same-origin',
-            headers: {{ 'content-type': 'application/json' }},
-            body: JSON.stringify({{ name: 'Steve Jobs historical research' }}),
-          }});
-          if (!created.ok) throw new Error('Could not create isolated research sync');
-          const sync = await created.json();
-          try {{
-            const response = await fetch('/api/records/batch', {{
-              method: 'POST',
-              headers: {{
-                'content-type': 'application/json',
-                authorization: `Bearer ${{sync.apiKey}}`,
-                'idempotency-key': {json.dumps(envelope['batchId'])},
-              }},
-              body: JSON.stringify({json.dumps(envelope)}),
-            }});
-            return JSON.stringify({{
-              ok: response.ok, status: response.status, body: await response.text(),
-            }});
-          }} finally {{
-            const revoked = await fetch(`/api/syncs/${{sync.sync.readableId}}/revoke`, {{
-              method: 'PUT', credentials: 'same-origin',
-            }});
-            if (!revoked.ok) throw new Error('Could not revoke isolated research sync');
-          }}
-        }})()
-    """)
-    checked_api_response("POST", "/api/records/batch", result)
+    api_request(
+        "POST",
+        "/api/records/batch",
+        envelope,
+        api_key=api_key,
+        headers={"idempotency-key": envelope["batchId"]},
+    )
     # Record addresses are allocated by the server and include the sync identity.
     # Resolve from authenticated output rather than duplicating its ID algorithm.
     addresses = {}
@@ -315,7 +293,11 @@ def seed_isolated_data():
         create_asset(asset)
         if asset.get("entityReadableId"):
             assign_entity_image(asset)
-    record_addresses = create_records()
+    sync = api_request("POST", "/api/syncs", SYNC)
+    try:
+        record_addresses = create_records(sync["apiKey"])
+    finally:
+        api_request("PUT", f"/api/syncs/{sync['sync']['readableId']}/revoke")
     page_count = seed_pages(record_addresses)
 
     # Use a document navigation so the new app instance reads the seeded profile instead of

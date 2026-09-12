@@ -87,10 +87,11 @@ The story deliberately preserves distinctions that matter when retrieving an ear
   The seed ends at the promise, without claiming the SDK has shipped.
 - iTunes Plus begins with EMI; the whole catalog is not suddenly DRM-free.
 
-Records enter through `/api/syncs` and `/api/records/batch` after registration. The temporary sync key
-stays inside the browser and is revoked after delivery. The loader resolves assigned record IDs from
-authenticated output and substitutes fixture `context-use://record/<id>` links before submitting
-pages. References and backlinks use the native record support introduced in
+After registration, the loader creates `/api/syncs` from `syncs/steve-jobs-research.json` using the
+owner's session. It delivers records to `/api/records/batch` through the shared request helper using
+the temporary sync API key, without session cookies, then revokes the key. The loader resolves
+assigned record IDs from authenticated output and substitutes fixture `context-use://record/<id>`
+links before submitting pages. References and backlinks use the native record support introduced in
 [#66](https://github.com/massimoalbarello/context-use/pull/66).
 
 ## Assets
@@ -104,16 +105,6 @@ retain authors, licenses, sources and date caveats. No photo is represented as t
 The other assets are two fictional demo checklists, a sourced commitment ledger separating targets
 from results, and the credits file. The CHM source page provides the original interview video.
 All uploaded assets are bundled; running the seed requires no media downloads.
-
-## Check fixtures
-
-```sh
-python3 scripts/seeds/isolated-development/test_fixtures.py
-```
-
-These checks protect link ordering, graph reachability, fixture completeness, fiction labels and
-bundled image provenance. The loader also checks assigned IDs, detected image types, record import
-completeness and revision increments. Use the isolated app to validate the rendered graph and links.
 
 ## Research sources
 
