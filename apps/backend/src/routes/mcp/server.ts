@@ -39,7 +39,7 @@ export function createContextUseMcpServer({
     { supportedProtocolVersions: [...MCP_SUPPORTED_LEGACY_PROTOCOL_VERSIONS] },
   );
   registerAssetTools({ server, principal, assetsService, transferCapabilities });
-  registerEntityTools({ server, principal, entitiesService, profilesService });
+  registerEntityTools({ server, principal, entitiesService, profilesService, assetsService });
   registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
   registerRecordTools({ server, principal, recordsService });

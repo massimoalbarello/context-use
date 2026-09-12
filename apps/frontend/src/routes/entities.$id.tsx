@@ -5,6 +5,7 @@ import { EntityIdentityEditor } from '../components/entities/entity-identity-edi
 import { EntityImageEditor } from '../components/entities/entity-image-editor';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { EntityPageSections } from '../components/entities/entity-page-sections';
+import { PersonFaceReference, PersonImages } from '../components/faces/person-faces';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
@@ -165,6 +166,12 @@ function EntityRouteContent({ id }: { id: string }) {
         </p>
       )}
 
+      {entity.entityType === 'person' && (
+        <>
+          <PersonFaceReference readableId={id} />
+          <PersonImages readableId={id} />
+        </>
+      )}
       <EntityPageSections pages={entity.pages} />
     </DetailShell>
   );

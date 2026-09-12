@@ -27,7 +27,8 @@
     "check:queries": "bun run generate:queries --check",
     "check:types": "bun run check:queries && bun run check:delivery-contract && bun run --bun tsc -b",
     "test": "bun test --pass-with-no-tests",
-    "demo:build": "bun run demo/build.ts"
+    "demo:build": "bun run demo/build.ts",
+    "build:faces:local": "bun run scripts/build-faces.ts --host"
   },
   "dependencies": {
     "@better-auth/cimd": "^1.7.2",

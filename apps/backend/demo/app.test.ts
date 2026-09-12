@@ -75,10 +75,14 @@ test(
           '/api/profile',
           '/api/health',
           '/api/entities/steve-jobs',
+          '/api/entities/steve-jobs/faces',
+          '/api/entities/steve-jobs/images',
           '/api/pages/my-work-from-ipod-to-iphone',
           '/api/pages/my-work-from-ipod-to-iphone/preview',
           '/api/assets/steve-presenting-iphone',
           '/api/assets/steve-presenting-iphone/content',
+          '/api/assets/steve-presenting-iphone/faces',
+          '/api/face-recognition/settings',
           '/api/records/filter-options',
           '/api/hypermedia/entities?anchor=steve-jobs',
           '/api/hypermedia/pages',
@@ -89,6 +93,7 @@ test(
           '/assets/new',
           '/settings',
           '/settings/syncs',
+          '/settings/faces',
           '/test.js',
         ]) {
           const response = await read(path);
@@ -99,6 +104,16 @@ test(
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')
         ).json()) as Static<typeof KnowledgePageSchema>;
+        expect(
+          await (await read('/api/assets/steve-presenting-iphone/faces')).json(),
+        ).toMatchObject({
+          state: 'not_processed',
+          faces: [],
+        });
+        expect(await (await read('/api/entities/steve-jobs/images')).json()).toEqual({
+          items: [],
+          nextOffset: null,
+        });
         expect(page.revisions.length).toBeGreaterThan(1);
         const records = (await (await read('/api/records?limit=50')).json()) as Static<
           typeof RecordListSchema
@@ -119,10 +134,15 @@ test(
           '/api/entities',
           '/api/entities/steve-jobs',
           '/api/entities/steve-jobs/image',
+          '/api/entities/steve-jobs/faces/reference',
           '/api/entities/steve-jobs/archive',
           '/api/assets',
           '/api/assets/steve-presenting-iphone',
           '/api/assets/steve-presenting-iphone/archive',
+          '/api/assets/steve-presenting-iphone/faces/analyze',
+          '/api/assets/steve-presenting-iphone/faces/face-test/annotation',
+          '/api/face-recognition/settings',
+          '/api/face-recognition/retry',
           '/api/profile',
           '/api/records/batch',
           '/api/syncs',
@@ -178,6 +198,12 @@ test(
         // A missed HTTP restriction still cannot mutate either persistence boundary.
         await expect(storage.write('escape', new Blob(['changed']))).rejects.toThrow('read-only');
         await expect(storage.delete('escape')).rejects.toThrow('read-only');
+        await expect(
+          resources.assetsService.faces.process({
+            ownerId: DEMO_OWNER_ID,
+            readableId: 'steve-presenting-iphone',
+          }),
+        ).rejects.toThrow('read-only');
         await expect(
           (async () => await database.unsafe("UPDATE auth_user SET name = 'Changed'"))(),
         ).rejects.toThrow();

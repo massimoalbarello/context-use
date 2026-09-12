@@ -37,6 +37,7 @@ import {
   MCP_WRITE_TOOL_ANNOTATIONS,
 } from '#routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#routes/mcp/tool-result.ts';
+import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 
@@ -142,11 +143,13 @@ export function registerEntityTools({
   server,
   principal,
   entitiesService,
+  assetsService,
   profilesService,
 }: {
   server: McpServer;
   principal: McpClientAuthorizationPrincipal;
   entitiesService: EntitiesServiceContract;
+  assetsService: AssetsServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
 }): void {
   server.registerTool(
@@ -193,7 +196,7 @@ export function registerEntityTools({
 
       const address = entityAddress(readableId);
       if (imageAssetAddress) {
-        const imageResult = await entitiesService.setImage({
+        const imageResult = await assetsService.setEntityImage({
           ownerId: principal.ownerId,
           readableId,
           assetReadableId: assetReadableId(imageAssetAddress),
@@ -270,7 +273,7 @@ export function registerEntityTools({
     async ({ address, name, description, entityType, imageAssetAddress }) => {
       const readableId = entityReadableId(address);
       if (imageAssetAddress === null) {
-        const entity = await entitiesService.removeImage({
+        const entity = await assetsService.removeEntityImage({
           ownerId: principal.ownerId,
           readableId,
         });
@@ -278,7 +281,7 @@ export function registerEntityTools({
           return mcpToolError({ code: 'not_found', message: 'Entity not found.' });
         }
       } else if (imageAssetAddress !== undefined) {
-        const result = await entitiesService.setImage({
+        const result = await assetsService.setEntityImage({
           ownerId: principal.ownerId,
           readableId,
           assetReadableId: assetReadableId(imageAssetAddress),

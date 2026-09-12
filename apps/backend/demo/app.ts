@@ -1,9 +1,13 @@
 import { Elysia } from 'elysia';
 import { elysiaErrorHandler } from '#lib/errors.ts';
 import { createAssetReadableIdController } from '#routes/api/assets/[assetReadableId]/controller.ts';
+import { createAssetFacesController } from '#routes/api/assets/[assetReadableId]/faces/controller.ts';
 import { createAssetsController } from '#routes/api/assets/controller.ts';
 import { createEntityReadableIdController } from '#routes/api/entities/[entityReadableId]/controller.ts';
+import { createEntityFacesController } from '#routes/api/entities/[entityReadableId]/faces/controller.ts';
+import { createEntityImagesController } from '#routes/api/entities/[entityReadableId]/images/controller.ts';
 import { createEntitiesController } from '#routes/api/entities/controller.ts';
+import { createFaceRecognitionController } from '#routes/api/face-recognition/controller.ts';
 import { createHealthController } from '#routes/api/health/controller.ts';
 import { createHypermediaController } from '#routes/api/hypermedia/controller.ts';
 import { createHypermediaSearchController } from '#routes/api/hypermedia/search/controller.ts';
@@ -23,12 +27,17 @@ const READ_API_ROUTES = new Set([
   '/api/profile',
   '/api/entities',
   '/api/entities/:entityReadableId',
+  '/api/entities/:entityReadableId/faces',
+  '/api/entities/:entityReadableId/images',
   '/api/pages',
   '/api/pages/:pageReadableId',
   '/api/pages/:pageReadableId/preview',
   '/api/assets',
   '/api/assets/:assetReadableId',
   '/api/assets/:assetReadableId/content',
+  '/api/assets/:assetReadableId/faces',
+  '/api/assets/:assetReadableId/faces/:faceReadableId/crop',
+  '/api/face-recognition/settings',
   '/api/records',
   '/api/records/filter-options',
   '/api/records/:recordReadableId',
@@ -46,6 +55,7 @@ function isWorkspacePath(path: string): boolean {
     path === '/hypermedia' ||
     path === '/settings' ||
     path === '/settings/syncs' ||
+    path === '/settings/faces' ||
     /^\/(?:entities|pages|assets|records)(?:\/[a-z0-9][a-z0-9-]*)?$/.test(path)
   );
 }
@@ -59,12 +69,17 @@ export function createDemoApp({
 }) {
   const auth = createDemoIdentity();
   const dependencies = { ...resources, auth };
+  const faceDependencies = { auth, faces: resources.assetsService.faces };
   const api = new Elysia({ prefix: '/api' })
     .onError(elysiaErrorHandler)
     .use(createAssetsController(dependencies))
     .use(createAssetReadableIdController(dependencies))
+    .use(createAssetFacesController(faceDependencies))
     .use(createEntitiesController(dependencies))
     .use(createEntityReadableIdController(dependencies))
+    .use(createEntityFacesController(faceDependencies))
+    .use(createEntityImagesController(faceDependencies))
+    .use(createFaceRecognitionController(faceDependencies))
     .use(createHypermediaController(dependencies))
     .use(createHypermediaSearchController(dependencies))
     .use(createPagesController(dependencies))

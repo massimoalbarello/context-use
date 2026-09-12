@@ -13,8 +13,13 @@
 ```sh
 bun install
 cp apps/backend/.env.example apps/backend/.env
+bun --filter @repo/backend build:faces:local
 bun run dev
 ```
+
+The native face analyzer build requires CMake 3.24+ and a C++ toolchain. See
+[face recognition](docs/face-recognition.md) for processing, corrections, model boundaries and build details.
+
 Open [http://localhost:5173](http://localhost:5173). The first person to register a passkey becomes
 the owner of the instance. Context Use generates its auth secret inside the configured `data/`
 directory; set `BETTER_AUTH_SECRET` only when you need to supply your own.

@@ -1,20 +1,29 @@
+import type { Database } from 'bun:sqlite';
+import { join } from 'node:path';
 import type { SQL } from 'bun';
 import { createApp } from '#app.ts';
-import { createSqliteDatabase, createSqliteReader } from '#db/client.ts';
+import {
+  createSqliteDatabase,
+  createSqliteReader,
+  createSynchronousSqliteDatabase,
+} from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import { loadAuthSecret } from '#lib/auth/auth-secret.ts';
 import { createAuth, mcpServerUrl } from '#lib/auth/better-auth.ts';
 import { fetchClientMetadataResource } from '#lib/auth/client-metadata-resource.ts';
 import { loadEnv } from '#lib/env.ts';
+import { LocalFaceAnalyzer } from '#lib/face-analysis/local-analyzer.ts';
 import { createLogger } from '#lib/logger.ts';
 import { createMcpTransport } from '#lib/mcp/transport.ts';
 import { BACKEND_ENVIRONMENT } from '#lib/runtime-config.ts';
 import { createLocalStorage } from '#lib/storage/client.ts';
+import { LocalStorage } from '#lib/storage/local-storage.ts';
 import { MAX_ASSET_BYTES } from '#models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#models/knowledge-pages/model.ts';
 import { MAX_RECORD_DELIVERY_BYTES } from '#models/records/delivery-contract.generated.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
+import { FacesRepository } from '#repositories/faces/repository.ts';
 import { FrontendAssetsRepository } from '#repositories/frontend-assets/repository.ts';
 import { HealthRepository } from '#repositories/health/repository.ts';
 import { HypermediaRepository } from '#repositories/hypermedia/repository.ts';
@@ -27,6 +36,7 @@ import { RecordsRepository } from '#repositories/records/repository.ts';
 import { RecordSyncsRepository } from '#repositories/syncs/repository.ts';
 import { AssetTransferCapabilities } from '#routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#routes/mcp/server.ts';
+import { AssetFacesService } from '#services/assets/faces.ts';
 import { AssetsService } from '#services/assets/service.ts';
 import { EntitiesService } from '#services/entities/service.ts';
 import { FrontendAssetsService } from '#services/frontend-assets/service.ts';
@@ -60,6 +70,8 @@ if (authSecret.source.kind === 'environment') {
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
 let recordsDatabase: SQL | undefined;
 let retrievalDatabase: SQL | undefined;
+let facesDatabase: Database | undefined;
+const faceAnalyzer = new LocalFaceAnalyzer({ dataFolder: env.DATA_FOLDER });
 
 try {
   await runMigrations({ db: database });
@@ -75,7 +87,19 @@ try {
     hypermedia: new HypermediaRepository(retrievalDatabase),
   });
   const assetsRepository = new AssetsRepository(database);
+  facesDatabase = createSynchronousSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+  const entitiesRepository = new EntitiesRepository(database);
+  const facesService = new AssetFacesService({
+    repository: new FacesRepository(facesDatabase),
+    assets: assetsRepository,
+    entities: entitiesRepository,
+    storage,
+    crops: new LocalStorage(join(env.DATA_FOLDER, 'face-crops')),
+    analyzer: faceAnalyzer,
+  });
   const assetsService = new AssetsService({
+    entities: entitiesRepository,
+    faces: facesService,
     assets: assetsRepository,
     storage,
   });
@@ -83,8 +107,7 @@ try {
   const frontendAssetsService = new FrontendAssetsService(new FrontendAssetsRepository());
   const pagesRepository = new KnowledgePagesRepository(database);
   const entitiesService = new EntitiesService({
-    assets: assetsRepository,
-    entities: new EntitiesRepository(database),
+    entities: entitiesRepository,
     pages: pagesRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
@@ -148,7 +171,13 @@ try {
     recordsService,
     syncsService,
   }).onStop(async () => {
-    await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
+    await facesService.close();
+    await Promise.all([
+      database.close(),
+      recordsDatabase?.close(),
+      retrievalDatabase?.close(),
+      facesDatabase?.close(),
+    ]);
   });
   const { server } = app.listen({
     port: env.PORT,
@@ -160,6 +189,12 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
 } catch (error) {
-  await Promise.all([database.close(), recordsDatabase?.close(), retrievalDatabase?.close()]);
+  await faceAnalyzer.close();
+  await Promise.all([
+    database.close(),
+    recordsDatabase?.close(),
+    retrievalDatabase?.close(),
+    facesDatabase?.close(),
+  ]);
   throw error;
 }

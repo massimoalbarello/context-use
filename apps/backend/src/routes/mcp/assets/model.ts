@@ -31,6 +31,9 @@ const McpAssetUsageSchema = z.union([
 
 export const McpAssetSchema = McpAssetSummarySchema.extend({
   usages: z.array(McpAssetUsageSchema),
+  depicts: z.array(
+    z.object({ entity: McpEntityReferenceSchema, source: z.enum(['automatic', 'confirmed']) }),
+  ),
 });
 
 export const McpAssetTransferRequestSchema = z.object({
@@ -68,5 +71,9 @@ export function mcpAsset(asset: Asset) {
   return {
     ...mcpAssetSummary(asset),
     usages: asset.usages.map(mcpAssetUsage),
+    depicts: asset.depicts.map(({ entity, source }) => ({
+      entity: mcpEntityReference(entity),
+      source,
+    })),
   };
 }

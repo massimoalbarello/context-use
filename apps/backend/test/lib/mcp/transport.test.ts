@@ -10,6 +10,7 @@ import {
 import type { AssetsServiceContract } from '#services/assets/service.ts';
 import type { EntitiesServiceContract } from '#services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/service.ts';
+import { unusedAssetFacesService } from '../../support/app.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
@@ -44,12 +45,13 @@ const entitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: async () => entity,
   update: unexpectedCall,
-  setImage: unexpectedCall,
-  removeImage: unexpectedCall,
   archive: unexpectedCall,
 };
 
 const assetsService: AssetsServiceContract = {
+  faces: unusedAssetFacesService,
+  setEntityImage: unexpectedCall,
+  removeEntityImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,

@@ -1,0 +1,17 @@
+Face recognition third-party notices
+
+The native analyzer links OpenCV 4.10.0 and its enabled third-party modules.
+The unmodified license and copyright texts in this directory come from:
+https://github.com/opencv/opencv/tree/4.10.0
+
+YuNet and SFace model files come from OpenCV Zoo revision
+47534e27c9851bb1128ccc0102f1145e27f23f98:
+https://github.com/opencv/opencv_zoo/tree/47534e27c9851bb1128ccc0102f1145e27f23f98/models
+
+Linux builds statically link the Alpine toolchain runtime: musl and GCC runtime libraries.
+Their notices include the GCC Runtime Library Exception and accompanying GPL text.
+https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT?h=v1.2.5
+https://github.com/gcc-mirror/gcc/tree/releases/gcc-14.2.0
+
+These notices cover the inference integration's bundled components and downloaded model files.
+They do not replace the licenses of the surrounding Context Use application or Bun runtime.

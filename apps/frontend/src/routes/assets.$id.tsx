@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { formatAssetSize } from '../components/assets/asset-link';
 import { AssetMedia } from '../components/assets/asset-media';
 import { EntityLink } from '../components/entities/entity-link';
+import { AssetFaces } from '../components/faces/asset-faces';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
@@ -215,8 +216,10 @@ function AssetRouteContent({ id }: { id: string }) {
         </p>
       )}
 
-      <section className="grid gap-5 rounded-xl bg-muted p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-        {isEmbeddableAsset(asset) || isVideoAsset(asset) ? (
+      <section className="grid gap-5 rounded-xl bg-muted p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+        {isEmbeddableAsset(asset) ? (
+          <AssetFaces asset={asset} />
+        ) : isVideoAsset(asset) ? (
           <AssetMedia
             asset={asset}
             className="max-h-[28rem] w-full rounded-lg bg-background object-contain"

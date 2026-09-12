@@ -152,7 +152,7 @@ export function registerAssetTools({
     {
       title: 'Read asset',
       description:
-        'Read metadata and usages for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them.',
+        'Read metadata, usages, and people this image depicts (automatic or confirmed) for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them.',
       inputSchema: ReadAssetInputSchema,
       outputSchema: ReadAssetOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,

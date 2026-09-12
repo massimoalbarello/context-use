@@ -16,17 +16,23 @@ import { HypermediaRetrievalService } from '#services/hypermedia-retrieval/servi
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { RecordsService } from '#services/records/service.ts';
+import { createDemoFaces } from './faces';
 
 /** Demo composition only. Seeding is sequential; serving uses a read-only connection. */
 export function createDemoResources({ database, storage }: { database: SQL; storage: Storage }) {
   const assets = new AssetsRepository(database);
+  const entities = new EntitiesRepository(database);
   const pages = new KnowledgePagesRepository(database);
   const hypermedia = new HypermediaRepository(database);
   return {
-    assetsService: new AssetsService({ assets, storage }),
-    entitiesService: new EntitiesService({
+    assetsService: new AssetsService({
       assets,
-      entities: new EntitiesRepository(database),
+      storage,
+      entities,
+      faces: createDemoFaces({ assets, entities }),
+    }),
+    entitiesService: new EntitiesService({
+      entities,
       pages,
     }),
     healthService: new HealthService(new HealthRepository(database)),
