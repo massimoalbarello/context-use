@@ -10,12 +10,7 @@ export function LandingPage() {
         <AnimatedContextUseLogo className="aspect-auto size-full" />
       </main>
       <header className="flex items-center justify-between gap-4 px-5 py-5 sm:px-8 sm:py-6">
-        <a
-          href="/"
-          className="inline-flex rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ContextUseBrand />
-        </a>
+        <ContextUseBrand />
         <LandingNavigation />
       </header>
     </div>

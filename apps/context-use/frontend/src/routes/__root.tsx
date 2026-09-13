@@ -48,9 +48,7 @@ function RouteComponent() {
     >
       {showPublicHeader && (
         <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-sidebar/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0">
-          <Link to="/" className="inline-flex" activeOptions={{ exact: true }}>
-            <ContextUseBrand className="text-lg" />
-          </Link>
+          <ContextUseBrand className="text-lg" />
           <div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-muted-foreground text-sm">
             <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>
               Login
