@@ -1,68 +1,15 @@
-import { Button, buttonVariants } from '@repo/ui/button';
-import { cn } from '@repo/ui/class-names';
+import { Button } from '@repo/ui/button';
 import { useState } from 'react';
 import { MAX_ASSET_BYTES, MAX_ASSET_MEBIBYTES } from '#backend/models/assets/model.ts';
 import { DuplicateResourceNameError } from '../../lib/api-error';
-import { useImageAssetSuggestions } from '../../lib/hooks/use-assets';
 import { useCreateAsset } from '../../lib/hooks/use-create-asset';
 import { useRemoveEntityImage, useSetEntityImage } from '../../lib/hooks/use-entity-image';
 import type { EntityDetail } from '../../queries/entities';
-import { AssetCardContent } from '../assets/asset-link';
-import { ResourceList, resourceCardVariants } from '../knowledge/resource-list';
-import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
-import { Input } from '../ui/input';
+import { FieldError } from '../ui/field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { createEntityImageAsset } from './entity-image-asset';
+import { EntityImagePicker, EntityImageUploadField } from './entity-image-inputs';
 import { EntityAvatar } from './entity-link';
-
-const IMAGE_ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
-
-function EntityImagePicker({
-  selectedImageReadableId,
-  pending,
-  onSelect,
-}: {
-  selectedImageReadableId?: string;
-  pending: boolean;
-  onSelect: (assetReadableId: string) => void;
-}) {
-  const [query, setQuery] = useState('');
-  const suggestions = useImageAssetSuggestions(query);
-
-  return (
-    <div className="grid gap-3 pt-4">
-      <Input
-        value={query}
-        placeholder="Search image assets"
-        aria-label="Search image assets"
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      {suggestions.isPending ? (
-        <p className="text-muted-foreground text-sm">Loading image assets…</p>
-      ) : suggestions.error ? (
-        <FieldError>{suggestions.error.message}</FieldError>
-      ) : suggestions.data && suggestions.data.length > 0 ? (
-        <ResourceList className="gap-2">
-          {suggestions.data.map((asset) => (
-            <li key={asset.readableId}>
-              <button
-                className={cn(resourceCardVariants(), 'w-full text-left transition')}
-                type="button"
-                disabled={pending}
-                aria-pressed={selectedImageReadableId === asset.readableId}
-                onClick={() => onSelect(asset.readableId)}
-              >
-                <AssetCardContent asset={asset} />
-              </button>
-            </li>
-          ))}
-        </ResourceList>
-      ) : (
-        <p className="text-muted-foreground text-sm">No available image assets found.</p>
-      )}
-    </div>
-  );
-}
 
 export function EntityImageEditor({
   entity,
@@ -139,42 +86,19 @@ export function EntityImageEditor({
           <EntityImagePicker
             selectedImageReadableId={entity.image?.readableId}
             pending={pending}
-            onSelect={assign}
+            onSelect={(asset) => assign(asset.readableId)}
           />
         </TabsContent>
         <TabsContent value="upload" className="pt-4">
-          <Field>
-            <FieldLabel htmlFor="entity-image-file">File</FieldLabel>
-            <div className="flex flex-wrap items-center gap-3">
-              <input
-                className="peer sr-only"
-                id="entity-image-file"
-                type="file"
-                accept={IMAGE_ACCEPT}
-                disabled={pending}
-                onChange={(event) => {
-                  setFile(event.target.files?.[0] ?? null);
-                  setValidationError(null);
-                  createAsset.reset();
-                }}
-              />
-              <label
-                className={buttonVariants({
-                  variant: 'outline',
-                  size: 'lg',
-                  className:
-                    'cursor-pointer peer-focus-visible:border-ring peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50',
-                })}
-                htmlFor="entity-image-file"
-              >
-                Choose file
-              </label>
-              <span className="min-w-0 truncate text-muted-foreground text-sm">
-                {file?.name ?? 'No file chosen'}
-              </span>
-            </div>
-            <FieldDescription>Up to {MAX_ASSET_MEBIBYTES} MB.</FieldDescription>
-          </Field>
+          <EntityImageUploadField
+            file={file}
+            pending={pending}
+            onChange={(file) => {
+              setFile(file);
+              setValidationError(null);
+              createAsset.reset();
+            }}
+          />
         </TabsContent>
       </Tabs>
 
