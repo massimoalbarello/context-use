@@ -1,6 +1,6 @@
+import { cn } from '@repo/ui/class-names';
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { cn } from '../../lib/class-names';
 
 export function externalRecordUrl(url: string): string {
   try {

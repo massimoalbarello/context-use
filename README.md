@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="apps/frontend/src/assets/context-use.svg" alt="Context Use logo" width="128" height="128" />
+  <img src="packages/ui/src/assets/context-use.svg" alt="Context Use logo" width="128" height="128" />
   <h1>Context Use</h1>
   <p><em>Personal hypermedia for human-agent collaboration.</em></p>
 

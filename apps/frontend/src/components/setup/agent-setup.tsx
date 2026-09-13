@@ -1,6 +1,6 @@
+import { Button } from '@repo/ui/button';
 import { Check, Copy } from 'lucide-react';
 import { useId, useState } from 'react';
-import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';

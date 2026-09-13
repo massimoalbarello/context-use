@@ -1,5 +1,5 @@
+import { cn } from '@repo/ui/class-names';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 
 export function DetailShell({ className, ...props }: ComponentProps<'div'>) {

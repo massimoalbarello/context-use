@@ -1,6 +1,6 @@
+import { buttonVariants } from '@repo/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Eyebrow } from '../layout/eyebrow';
-import { buttonVariants } from '../ui/button';
 
 type WorkspaceEmptyAction =
   | {

@@ -1,7 +1,7 @@
+import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
+import { ContextUseLogo } from '@repo/ui/context-use-logo';
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
-import { AnimatedContextUseLogo } from '../components/brand/animated-context-use-logo';
-import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { internalAppPath } from '../lib/internal-app-path';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';

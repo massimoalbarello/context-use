@@ -4,6 +4,7 @@ import {
   type EntityTypeFilter,
   MAX_ENTITY_NAME_LENGTH,
 } from '@repo/backend/entity';
+import { Button } from '@repo/ui/button';
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
 import { EntityList } from '../components/entities/entity-list';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
@@ -11,7 +12,6 @@ import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
-import { Button } from '../components/ui/button';
 import {
   Select,
   SelectContent,

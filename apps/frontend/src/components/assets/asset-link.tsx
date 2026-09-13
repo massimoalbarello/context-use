@@ -1,8 +1,8 @@
+import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { File, Image as ImageIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
-import { cn } from '../../lib/class-names';
 import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
 

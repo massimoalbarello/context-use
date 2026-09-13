@@ -1,7 +1,7 @@
+import { cn } from '@repo/ui/class-names';
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { assetContentUrl } from '../../lib/asset-presentation';
-import { cn } from '../../lib/class-names';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
 import { EntityAvatar, EntityLink } from '../entities/entity-link';

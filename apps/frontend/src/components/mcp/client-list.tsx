@@ -1,3 +1,4 @@
+import { Button } from '@repo/ui/button';
 import { Archive } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useArchiveMcpClient, useRenameMcpClient } from '../../lib/hooks/use-mcp-clients';
@@ -13,7 +14,6 @@ import {
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { ClientNameForm } from './client-name-form';
 

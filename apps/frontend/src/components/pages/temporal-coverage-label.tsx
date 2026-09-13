@@ -1,5 +1,5 @@
+import { cn } from '@repo/ui/class-names';
 import { CalendarRange } from 'lucide-react';
-import { cn } from '../../lib/class-names';
 import {
   type TransportedTemporalCoverage,
   temporalCoverageExpression,

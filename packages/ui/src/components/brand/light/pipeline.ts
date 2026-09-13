@@ -1,3 +1,4 @@
+/// <reference types="@vgpu/wgsl/wgsl-types" />
 import { effect, frame, type Gpu, type Surface, sampler, storage, target } from 'vgpu';
 import { type Point, packShapes, type Shape } from './logo';
 import blurShader from './shaders/blur.wgsl';

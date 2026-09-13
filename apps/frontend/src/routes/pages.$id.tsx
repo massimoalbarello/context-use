@@ -1,3 +1,4 @@
+import { Button } from '@repo/ui/button';
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { AssetLink } from '../components/assets/asset-link';
@@ -15,7 +16,6 @@ import { KnowledgePageRevisions } from '../components/pages/knowledge-page-revis
 import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-label';
 import { RecordLink } from '../components/records/record-link';
 import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useArchivePage } from '../lib/hooks/use-archive-page';
 import { usePage } from '../lib/hooks/use-page';

@@ -1,5 +1,5 @@
+import { cn } from '@repo/ui/class-names';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names';
 
 export function WorkspaceSplitLayout({ className, ...props }: ComponentProps<'main'>) {
   return (

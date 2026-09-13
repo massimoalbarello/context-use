@@ -1,12 +1,12 @@
 import type { RecordFilterOptions, RecordSortField } from '@repo/backend/record';
 import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '@repo/backend/retrieval';
+import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
 import { type RecordSearch, recordsAreFiltered } from '../../lib/record-filters';
 import { calendarDateRangeFromSearch } from '../../lib/temporal-coverage';
 import { DateRangeFilter } from '../knowledge/date-range-filter';
 import { KeywordFilter } from '../knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
-import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const sortLabels: Record<RecordSortField, string> = {

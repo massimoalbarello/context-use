@@ -1,7 +1,7 @@
+import { Button } from '@repo/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ListFilter } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useState } from 'react';
-import { Button } from '../ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 export function KnowledgeFilterPopover({
   title,

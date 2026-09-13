@@ -1,7 +1,8 @@
+import { Button, buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { cn } from '../../lib/class-names';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
 import type { KnowledgePageSummary } from '../../queries/pages';
@@ -10,7 +11,6 @@ import { resourceCardVariants } from '../knowledge/resource-list';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
-import { Button, buttonVariants } from '../ui/button';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 
 function focusPreviewPanel(panel: HTMLElement | null) {

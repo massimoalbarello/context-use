@@ -1,5 +1,5 @@
+import { cn } from '@repo/ui/class-names';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names';
 import { Input } from '../ui/input';
 
 export function ResourceName({ className, ...props }: ComponentProps<'h1'>) {

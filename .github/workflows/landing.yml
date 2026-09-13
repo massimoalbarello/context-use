@@ -1,0 +1,19 @@
+name: landing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-landing:
+    name: build:landing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/prepare
+      - name: Build standalone landing page
+        run: bun run landing:build
+      - name: Verify compiled landing isolation
+        run: bun run landing:check

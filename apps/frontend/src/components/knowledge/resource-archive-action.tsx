@@ -1,3 +1,4 @@
+import { Button } from '@repo/ui/button';
 import { Archive } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -9,7 +10,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
-import { Button } from '../ui/button';
 
 export function ResourceArchiveAction({
   blocked,

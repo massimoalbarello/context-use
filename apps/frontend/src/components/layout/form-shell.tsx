@@ -1,5 +1,5 @@
+import { ContextUseLogo } from '@repo/ui/context-use-logo';
 import type { ReactNode } from 'react';
-import { ContextUseLogo } from '../brand/context-use-logo';
 import { Eyebrow } from './eyebrow';
 
 export function FormShell({

@@ -1,5 +1,5 @@
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
-import { cn } from '../../lib/class-names';
+import { cn } from '@repo/ui/class-names';
 
 export function Dialog(props: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root {...props} />;

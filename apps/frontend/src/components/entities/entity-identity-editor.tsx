@@ -3,6 +3,7 @@ import {
   MAX_ENTITY_DESCRIPTION_LENGTH,
   MAX_ENTITY_NAME_LENGTH,
 } from '@repo/backend/entity';
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { Pencil } from 'lucide-react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
@@ -11,7 +12,6 @@ import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceNameInput } from '../knowledge/resource-name';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Textarea } from '../ui/textarea';
 import { EntityAvatar } from './entity-link';

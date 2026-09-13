@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "^2",
+    "@repo/pack-utils": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/mdast": "^4.0.0",
     "json-schema-to-typescript": "^16.0.0",

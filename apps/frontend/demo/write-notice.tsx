@@ -1,3 +1,4 @@
+import { Button } from '@repo/ui/button';
 import { useEffect, useState } from 'react';
 import {
   AlertDialog,
@@ -7,7 +8,6 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
 } from '../src/components/ui/alert-dialog';
-import { Button } from '../src/components/ui/button';
 
 const FORBIDDEN = 403;
 export const DEMO_WRITE_DENIED_EVENT = 'demo-write-denied';

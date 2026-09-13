@@ -1,6 +1,6 @@
+import { Button } from '@repo/ui/button';
 import { Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
 export function KeywordFilter({

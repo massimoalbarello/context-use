@@ -6,7 +6,7 @@
       "outputs": ["dist/**"]
     },
     "@repo/frontend#build": {
-      "dependsOn": [],
+      "dependsOn": ["@repo/ui#build"],
       "outputs": ["dist/**"]
     },
     "@repo/backend#build": {
@@ -38,6 +38,10 @@
         "VITE_ISOLATED_CALENDAR_NOW"
       ],
       "persistent": true
+    },
+    "@repo/landing#build": {
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/**"]
     }
   }
 }

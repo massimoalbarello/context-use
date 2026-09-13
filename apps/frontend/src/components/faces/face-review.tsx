@@ -1,9 +1,9 @@
+import { Button } from '@repo/ui/button';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { entitiesQueryOptions } from '../../queries/entities';
 import { type AnnotationInput, type Face, faceCropUrl } from '../../queries/faces';
 import { EntityLink } from '../entities/entity-link';
-import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 
 function PersonChoices({

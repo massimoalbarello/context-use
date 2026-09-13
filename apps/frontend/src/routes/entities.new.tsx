@@ -1,10 +1,10 @@
 import { SELF_ENTITY_TYPE } from '@repo/backend/entity';
+import { buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { EntityForm, type EntityFormValues } from '../components/entities/entity-form';
 import { DetailShell } from '../components/knowledge/detail-shell';
-import { buttonVariants } from '../components/ui/button';
-import { cn } from '../lib/class-names';
 import { useCreateEntity } from '../lib/hooks/use-create-entity';
 import { useCreateProfile } from '../lib/hooks/use-create-profile';
 import { internalAppPath } from '../lib/internal-app-path';

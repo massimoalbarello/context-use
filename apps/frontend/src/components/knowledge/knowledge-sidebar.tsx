@@ -1,10 +1,10 @@
+import { buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { Map as MapIcon, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { cn } from '../../lib/class-names';
 import { type KnowledgeCollection, MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
-import { buttonVariants } from '../ui/button';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation';
 import { KnowledgeSidebarFooter, KnowledgeSidebarHeader } from './knowledge-sidebar-chrome';

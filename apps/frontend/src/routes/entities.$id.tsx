@@ -1,4 +1,5 @@
 import { ENTITY_TYPE_LABELS } from '@repo/backend/entity';
+import { cn } from '@repo/ui/class-names';
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { useState } from 'react';
 import { EntityIdentityEditor } from '../components/entities/entity-identity-editor';
@@ -13,7 +14,6 @@ import { ResourceDetailHeading } from '../components/knowledge/resource-detail-h
 import { ResourceName } from '../components/knowledge/resource-name';
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { Badge } from '../components/ui/badge';
-import { cn } from '../lib/class-names';
 import { useArchiveEntity } from '../lib/hooks/use-archive-entity';
 import { useEntity } from '../lib/hooks/use-entity';
 import { useUpdateEntity } from '../lib/hooks/use-update-entity';

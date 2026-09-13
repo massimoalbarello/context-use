@@ -1,5 +1,5 @@
+import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
-import { Button } from '../ui/button';
 
 type ResourceName = 'entity' | 'page' | 'asset' | 'client';
 

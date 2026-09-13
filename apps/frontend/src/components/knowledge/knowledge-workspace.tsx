@@ -1,5 +1,5 @@
+import { cn } from '@repo/ui/class-names';
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { cn } from '../../lib/class-names';
 import { WorkspaceSplitLayout } from '../layout/workspace-split-layout';
 
 type KnowledgeWorkspaceContextValue = {

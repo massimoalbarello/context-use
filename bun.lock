@@ -38,6 +38,7 @@
       },
       "devDependencies": {
         "@modelcontextprotocol/client": "^2",
+        "@repo/pack-utils": "workspace:*",
         "@repo/typescript-config": "workspace:*",
         "@types/mdast": "^4.0.0",
         "json-schema-to-typescript": "^16.0.0",
@@ -56,21 +57,18 @@
         "@elysiajs/eden": "^1.4.9",
         "@fontsource-variable/dm-sans": "^5.3.0",
         "@fontsource-variable/geist-mono": "^5.3.0",
-        "@primer/octicons-react": "^19.35.0",
+        "@repo/ui": "workspace:*",
         "@tanstack/react-form": "^1.33.5",
         "@tanstack/react-query": "^5.102.8",
         "@tanstack/react-router": "^1.170.32",
         "better-auth": "catalog:",
         "class-variance-authority": "^0.7.1",
-        "clsx": "^2.1.1",
         "lucide-react": "^1.37.0",
         "react": "^19.2.8",
         "react-day-picker": "^10.0.1",
         "react-dom": "^19.2.8",
         "react-markdown": "^10.1.0",
-        "tailwind-merge": "^3.6.0",
         "tailwindcss": "^4.3.3",
-        "vgpu": "0.4.1",
       },
       "devDependencies": {
         "@happy-dom/global-registrator": "^20.14.0",
@@ -80,6 +78,29 @@
         "@tanstack/router-plugin": "^1.168.35",
         "@testing-library/react": "^16.3.3",
         "@testing-library/user-event": "^14.6.7",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.5",
+        "@vgpu/wgsl": "0.4.1",
+        "@vitejs/plugin-react": "^6.1.1",
+        "typescript": "catalog:",
+        "vite": "^8.2.2",
+      },
+    },
+    "apps/landing": {
+      "name": "@repo/landing",
+      "dependencies": {
+        "@fontsource-variable/dm-sans": "^5.3.0",
+        "@primer/octicons-react": "^19.35.0",
+        "@repo/ui": "workspace:*",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "tailwindcss": "^4.3.3",
+      },
+      "devDependencies": {
+        "@repo/pack-utils": "workspace:*",
+        "@repo/typescript-config": "workspace:*",
+        "@tailwindcss/vite": "^4.3.3",
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.5",
         "@vgpu/wgsl": "0.4.1",
@@ -105,6 +126,29 @@
     },
     "packages/typescript-config": {
       "name": "@repo/typescript-config",
+    },
+    "packages/ui": {
+      "name": "@repo/ui",
+      "dependencies": {
+        "@base-ui/react": "^1.7.0",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "tailwind-merge": "^3.6.0",
+        "vgpu": "0.4.1",
+      },
+      "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.5",
+        "@vgpu/wgsl": "0.4.1",
+        "typescript": "catalog:",
+        "vite": "^8.2.2",
+      },
+      "peerDependencies": {
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "tailwindcss": "^4.3.3",
+      },
     },
   },
   "catalog": {
@@ -325,11 +369,15 @@
 
     "@repo/frontend": ["@repo/frontend@workspace:apps/frontend"],
 
+    "@repo/landing": ["@repo/landing@workspace:apps/landing"],
+
     "@repo/my-package": ["@repo/my-package@workspace:packages/my-package"],
 
     "@repo/pack-utils": ["@repo/pack-utils@workspace:packages/pack-utils"],
 
     "@repo/typescript-config": ["@repo/typescript-config@workspace:packages/typescript-config"],
+
+    "@repo/ui": ["@repo/ui@workspace:packages/ui"],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.6", "", { "os": "android", "cpu": "arm" }, "sha512-b+jTcARdTiFLI6jB4a5XjTm0RWd6KcRfQj/I2356fxUZemiho9zQLxo0RtCuMDAyKcLo6cEltkgbQp6d1+sjjQ=="],
 

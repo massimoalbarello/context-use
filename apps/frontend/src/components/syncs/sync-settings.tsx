@@ -1,4 +1,5 @@
 import { MAX_SYNC_NAME_LENGTH } from '@repo/backend/sync';
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Plus, RefreshCwOff } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -14,7 +15,6 @@ import {
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Field, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';

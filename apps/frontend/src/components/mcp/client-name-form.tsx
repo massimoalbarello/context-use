@@ -1,8 +1,8 @@
 import { MAX_MCP_CLIENT_NAME_LENGTH } from '@repo/backend/mcp-client-authorization';
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { type ReactNode, useId } from 'react';
 import { submitThenChangeValidation } from '../../lib/form-validation';
-import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 

@@ -1,8 +1,8 @@
+import { Button } from '@repo/ui/button';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { personImagesQueryOptions } from '../../queries/faces';
 import { AssetLink } from '../assets/asset-link';
 import { ResourceList } from '../knowledge/resource-list';
-import { Button } from '../ui/button';
 import { FieldError } from '../ui/field';
 
 export function PersonImages({ readableId }: { readableId: string }) {

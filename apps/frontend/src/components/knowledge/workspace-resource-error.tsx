@@ -1,6 +1,6 @@
+import { Button, buttonVariants } from '@repo/ui/button';
 import { Link } from '@tanstack/react-router';
 import { Eyebrow } from '../layout/eyebrow';
-import { Button, buttonVariants } from '../ui/button';
 
 type KnowledgeResource = 'entity' | 'page' | 'asset' | 'record';
 

@@ -1,14 +1,14 @@
 import { MAX_ASSET_BYTES, MAX_ASSET_MEBIBYTES } from '@repo/backend/asset';
+import { Button, buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
-import { cn } from '../../lib/class-names';
 import { useImageAssetSuggestions } from '../../lib/hooks/use-assets';
 import { useCreateAsset } from '../../lib/hooks/use-create-asset';
 import { useRemoveEntityImage, useSetEntityImage } from '../../lib/hooks/use-entity-image';
 import type { EntityDetail } from '../../queries/entities';
 import { AssetCardContent } from '../assets/asset-link';
 import { ResourceList, resourceCardVariants } from '../knowledge/resource-list';
-import { Button, buttonVariants } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';

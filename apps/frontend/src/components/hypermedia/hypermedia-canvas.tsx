@@ -1,5 +1,8 @@
 // biome-ignore-all lint/complexity/useMaxParams: Canvas geometry uses coordinate pairs and pointer anchors.
 // biome-ignore-all lint/style/noMagicNumbers: SVG drawing and zoom constants intentionally define the visual geometry.
+
+import { Button } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { Move } from 'lucide-react';
 import {
   memo,
@@ -12,13 +15,11 @@ import {
   useState,
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
-import { cn } from '../../lib/class-names';
 import {
   type HypermediaEntityReference,
   type HypermediaPage,
   hypermediaEntityReference,
 } from '../../queries/hypermedia';
-import { Button } from '../ui/button';
 import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
   buildHypermediaLayout,

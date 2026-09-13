@@ -2,6 +2,7 @@ import {
   MAX_TEMPORAL_COVERAGE_LENGTH,
   parseTemporalCoverage,
 } from '@repo/backend/temporal-coverage';
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
@@ -9,7 +10,6 @@ import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import { temporalCoverageMutation } from '../../lib/temporal-coverage';
 import { knowledgeSuggestionsQueryOptions } from '../../queries/knowledge-suggestions';
-import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';

@@ -1,11 +1,11 @@
+import { Button } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
-import { cn } from '../../lib/class-names';
 import { useAnalyzeAsset, useAnnotateFace } from '../../lib/hooks/use-faces';
 import type { AssetSummary } from '../../queries/assets';
 import { type AssetFaces as AssetFacesData, assetFacesQueryOptions } from '../../queries/faces';
-import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
 import { FieldError } from '../ui/field';
 import { FaceReview } from './face-review';

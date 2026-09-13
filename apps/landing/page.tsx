@@ -1,5 +1,5 @@
-import { AnimatedContextUseLogo } from '../src/components/brand/animated-context-use-logo';
-import { ContextUseLogo } from '../src/components/brand/context-use-logo';
+import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
+import { ContextUseLogo } from '@repo/ui/context-use-logo';
 import { LandingNavigation } from './navigation';
 
 export function LandingPage() {

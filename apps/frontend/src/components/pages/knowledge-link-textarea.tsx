@@ -1,12 +1,12 @@
+import { Button } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { useEffect, useId, useRef, useState } from 'react';
-import { cn } from '../../lib/class-names';
 import type { KnowledgeSuggestion } from '../../queries/knowledge-suggestions';
 import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { RecordCardContent } from '../records/record-link';
 import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import {
   type ActiveKnowledgeLink,

@@ -15,11 +15,11 @@ function stylesheetPaths(directory: string): string[] {
 }
 
 test('custom CSS stays confined to the canonical theme', () => {
-  const theme = readFileSync(join(SOURCE_ROOT, 'styles/minimal-neutral.css'), 'utf8');
+  const theme = readFileSync(Bun.resolveSync('@repo/ui/theme.css', SOURCE_ROOT), 'utf8');
 
-  expect(stylesheetPaths(SOURCE_ROOT).sort()).toEqual(['styles.css', 'styles/minimal-neutral.css']);
+  expect(stylesheetPaths(SOURCE_ROOT).sort()).toEqual(['styles.css']);
   expect(readFileSync(join(SOURCE_ROOT, 'styles.css'), 'utf8')).toBe(
-    '@import "tailwindcss";\n@import "./styles/minimal-neutral.css";\n',
+    '@import "tailwindcss";\n@import "@repo/ui/theme.css";\n@source "../../../packages/ui/src";\n',
   );
   expect(theme.startsWith('/*\n * Canonical tweakcn Minimal Neutral theme:')).toBe(true);
   expect(

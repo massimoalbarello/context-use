@@ -1,6 +1,6 @@
+import { cn } from '@repo/ui/class-names';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { type ComponentProps, type ReactNode, useMemo } from 'react';
-import { cn } from '../../lib/class-names';
 import { Label } from './label';
 
 function FieldGroup({ className, ...props }: ComponentProps<'div'>) {

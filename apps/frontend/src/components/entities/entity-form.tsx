@@ -3,10 +3,10 @@ import {
   MAX_ENTITY_DESCRIPTION_LENGTH,
   MAX_ENTITY_NAME_LENGTH,
 } from '@repo/backend/entity';
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
-import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';

@@ -1,0 +1,10 @@
+@import "tailwindcss" source(none);
+@import "@repo/ui/theme.css";
+@source "./*.tsx";
+@source "../../packages/ui/src";
+
+:root {
+  color-scheme: dark;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}

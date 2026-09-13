@@ -1,5 +1,5 @@
+import { Button } from '@repo/ui/button';
 import { useEffect, useRef } from 'react';
-import { Button } from '../ui/button';
 
 export function InfiniteScrollTrigger({
   hasNextPage,

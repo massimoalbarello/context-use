@@ -1,8 +1,8 @@
+import { Button } from '@repo/ui/button';
 import { useMutation } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { FormShell } from '../components/layout/form-shell';
 import { ClientNameForm } from '../components/mcp/client-name-form';
-import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { authClient } from '../lib/auth';
 import { approveMcpClient, mcpAuthorizationClientQueryOptions } from '../queries/mcp-clients';

@@ -1,3 +1,4 @@
+import { Button } from '@repo/ui/button';
 import { useQueries } from '@tanstack/react-query';
 import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -9,7 +10,6 @@ import {
   hypermediaEntityKey,
   hypermediaEntityNeighborhoodQueryOptions,
 } from '../../queries/hypermedia';
-import { Button } from '../ui/button';
 import { HypermediaCanvas } from './hypermedia-canvas';
 import { buildStableEntities } from './hypermedia-layout';
 import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';

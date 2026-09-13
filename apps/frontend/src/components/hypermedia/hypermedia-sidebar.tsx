@@ -1,6 +1,7 @@
+import { Button, buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { Library, X } from 'lucide-react';
-import { cn } from '../../lib/class-names';
 import type { HypermediaEntityReference } from '../../queries/hypermedia';
 import type { KnowledgeProfile } from '../../queries/profile';
 import {
@@ -8,7 +9,6 @@ import {
   KnowledgeSidebarHeader,
 } from '../knowledge/knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
-import { Button, buttonVariants } from '../ui/button';
 
 export function HypermediaSidebar({
   profile,

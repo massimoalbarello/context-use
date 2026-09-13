@@ -1,7 +1,7 @@
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { FaceSettings, ThresholdInput } from '../../queries/faces';
-import { Button } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { Slider } from '../ui/slider';

@@ -1,8 +1,8 @@
+import { Button } from '@repo/ui/button';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { FaceSettingsForm } from '../components/faces/face-settings';
-import { Button } from '../components/ui/button';
 import { FieldError } from '../components/ui/field';
 import { useRetryNextImage, useSaveFaceThreshold } from '../lib/hooks/use-faces';
 import { faceSettingsQueryOptions } from '../queries/faces';

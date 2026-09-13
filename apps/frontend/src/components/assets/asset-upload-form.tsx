@@ -1,7 +1,7 @@
 import { MAX_ASSET_BYTES, MAX_ASSET_MEBIBYTES, MAX_ASSET_NAME_LENGTH } from '@repo/backend/asset';
+import { Button, buttonVariants } from '@repo/ui/button';
 import { useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
-import { Button, buttonVariants } from '../ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 

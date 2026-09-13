@@ -1,12 +1,12 @@
+import { Button, buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
+import { ContextUseLogo } from '@repo/ui/context-use-logo';
 import { Link } from '@tanstack/react-router';
 import { Menu, Settings } from 'lucide-react';
-import { cn } from '../../lib/class-names';
 import { MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
-import { ContextUseLogo } from '../brand/context-use-logo';
 import { EntityAvatar } from '../entities/entity-link';
-import { Button, buttonVariants } from '../ui/button';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 
 export function KnowledgeSidebarHeader() {

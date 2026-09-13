@@ -1,5 +1,5 @@
+import { Button } from '@repo/ui/button';
 import { useSignOut } from '../../lib/hooks/use-sign-out';
-import { Button } from '../ui/button';
 
 export function SignOutButton() {
   const { mutate, isPending } = useSignOut();

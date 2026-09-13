@@ -1,6 +1,6 @@
 import { Input as InputPrimitive } from '@base-ui/react/input';
+import { cn } from '@repo/ui/class-names';
 import type { ComponentProps } from 'react';
-import { cn } from '../../lib/class-names';
 
 function Input({ className, type, ...props }: ComponentProps<'input'>) {
   return (

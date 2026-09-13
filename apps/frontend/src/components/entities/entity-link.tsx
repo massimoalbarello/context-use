@@ -1,8 +1,8 @@
 import { ENTITY_TYPE_LABELS } from '@repo/backend/entity';
+import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
-import { cn } from '../../lib/class-names';
 import type { EntitySearch } from '../../lib/entity-filters';
 import type { EntitySummary } from '../../queries/entities';
 import { resourceCardVariants } from '../knowledge/resource-list';

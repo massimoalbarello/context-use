@@ -1,7 +1,7 @@
 import { MarkGithubIcon } from '@primer/octicons-react';
+import { Button, buttonVariants } from '@repo/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
-import { Button, buttonVariants } from '../src/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '../src/components/ui/popover';
 
 const GITHUB_URL = 'https://github.com/massimoalbarello/context-use';
 const DEMO_URL = 'https://steve-jobs-demo-fye81b.nibrun.app/hypermedia';

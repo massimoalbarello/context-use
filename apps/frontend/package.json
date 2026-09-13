@@ -7,9 +7,7 @@
     "build": "bun --bun vite build",
     "check:types": "bun run --bun tsc -b",
     "test": "bun test",
-    "demo:build": "bun run --bun vite build --config demo/vite.config.ts",
-    "landing:dev": "bun --bun vite --config landing/vite.config.ts",
-    "landing:build": "bun --bun vite build --config landing/vite.config.ts && bun run landing/build.ts"
+    "demo:build": "bun run --bun vite build --config demo/vite.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -18,21 +16,18 @@
     "@elysiajs/eden": "^1.4.9",
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
-    "@primer/octicons-react": "^19.35.0",
+    "@repo/ui": "workspace:*",
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-router": "^1.170.32",
     "better-auth": "catalog:",
     "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "lucide-react": "^1.37.0",
     "react": "^19.2.8",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
-    "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.3",
-    "vgpu": "0.4.1"
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.0",

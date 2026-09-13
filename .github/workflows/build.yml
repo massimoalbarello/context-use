@@ -19,11 +19,6 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Build and check landing binary
-        run: |
-          bun run landing:build
-          bun run landing:check
-
       - name: Prepare nibrun binary
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: cp apps/backend/dist/app context-use

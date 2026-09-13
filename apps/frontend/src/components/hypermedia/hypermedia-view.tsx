@@ -1,6 +1,6 @@
+import { cn } from '@repo/ui/class-names';
 import { type ComponentProps, type ReactNode, useId } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
-import { cn } from '../../lib/class-names';
 import type { HypermediaEntity, HypermediaPage } from '../../queries/hypermedia';
 import { EntityCardContent, entityInitial } from '../entities/entity-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';

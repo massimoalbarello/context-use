@@ -1,3 +1,5 @@
+import { buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { createFileRoute, type ErrorComponentProps } from '@tanstack/react-router';
 import { ExternalLink, File } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
@@ -14,7 +16,6 @@ import { ResourceName, ResourceNameInput } from '../components/knowledge/resourc
 import { WorkspaceResourceError } from '../components/knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../components/pages/knowledge-page-link';
 import { Badge } from '../components/ui/badge';
-import { buttonVariants } from '../components/ui/button';
 import { FieldError } from '../components/ui/field';
 import {
   assetContentUrl,
@@ -22,7 +23,6 @@ import {
   isEmbeddableAsset,
   isVideoAsset,
 } from '../lib/asset-presentation';
-import { cn } from '../lib/class-names';
 import { useArchiveAsset } from '../lib/hooks/use-archive-asset';
 import { useAsset } from '../lib/hooks/use-assets';
 import { useUpdateAsset } from '../lib/hooks/use-update-asset';

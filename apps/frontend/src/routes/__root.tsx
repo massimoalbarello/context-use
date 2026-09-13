@@ -1,3 +1,6 @@
+import { buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
+import { ContextUseLogo } from '@repo/ui/context-use-logo';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   createRootRouteWithContext,
@@ -6,10 +9,7 @@ import {
   redirect,
   useRouterState,
 } from '@tanstack/react-router';
-import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { Eyebrow } from '../components/layout/eyebrow';
-import { buttonVariants } from '../components/ui/button';
-import { cn } from '../lib/class-names';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { profileQueryOptions } from '../queries/profile';
 import { sessionQueryOptions } from '../queries/session';

@@ -1,8 +1,8 @@
+import { buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { ArrowLeft, Bot, RefreshCw, ScanFace } from 'lucide-react';
 import { WorkspaceSplitLayout } from '../components/layout/workspace-split-layout';
-import { buttonVariants } from '../components/ui/button';
-import { cn } from '../lib/class-names';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 
 export const Route = createFileRoute('/settings')({

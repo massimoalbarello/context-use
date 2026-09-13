@@ -1,7 +1,7 @@
+import { buttonVariants } from '@repo/ui/button';
+import { ContextUseLogo } from '@repo/ui/context-use-logo';
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
-import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { AgentSetup } from '../components/setup/agent-setup';
-import { buttonVariants } from '../components/ui/button';
 import { internalAppPath } from '../lib/internal-app-path';
 import { mcpClientsQueryOptions } from '../queries/mcp-clients';
 
