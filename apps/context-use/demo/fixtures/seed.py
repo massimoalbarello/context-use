@@ -264,44 +264,6 @@ def seed_isolated_data():
     if f"{current_origin.scheme}://{current_origin.netloc}" != EXPECTED_ORIGIN:
         raise RuntimeError(f"The active browser tab is not the isolated app at {APP_URL}")
 
-    goto_url(APP_URL)
-    wait_for_load()
-    wait_until(
-        lambda: js("!!document.querySelector('button[type=submit]:not([disabled])')"),
-        "Owner registration action did not become available",
-    )
-    activate_tab(current_tab())
-    cdp("Page.bringToFront")
-    time.sleep(1)
-    button_center = json.loads(
-        js(
-            """
-            (() => {
-              const button = document.querySelector('button[type=submit]:not([disabled])');
-              if (!button) return 'null';
-              const bounds = button.getBoundingClientRect();
-              return JSON.stringify({
-                x: bounds.left + bounds.width / 2,
-                y: bounds.top + bounds.height / 2,
-              });
-            })()
-            """
-        )
-    )
-    if button_center is None:
-        raise RuntimeError("Owner registration action disappeared before it could be activated")
-    cdp(
-        "Input.dispatchMouseEvent",
-        type="mouseMoved",
-        x=button_center["x"],
-        y=button_center["y"],
-    )
-    click_at_xy(button_center["x"], button_center["y"])
-    wait_until(
-        lambda: urlparse(page_info()["url"]).path == "/setup",
-        "Owner passkey registration did not complete",
-    )
-
     create_profile(PROFILE)
     for entity in ENTITIES:
         create_entity(entity)

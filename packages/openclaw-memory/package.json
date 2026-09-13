@@ -1,0 +1,46 @@
+{
+  "name": "@context-use/openclaw-memory",
+  "version": "0.1.0",
+  "description": "Context Use as OpenClaw's sole durable personal memory",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "context-use-openclaw": "./pkg/dist/setup.js"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "check:types": "bun run --bun tsc",
+    "test": "bun test test",
+    "test:e2e": "bun run build && bun run scripts/e2e.ts"
+  },
+  "peerDependencies": {
+    "openclaw": "2026.9.4"
+  },
+  "devDependencies": {
+    "@repo/browser-testing": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/proper-lockfile": "^4.1.4",
+    "openclaw": "2026.9.4",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2",
+    "proper-lockfile": "^4.1.2",
+    "typebox": "^1",
+    "zod": "^4.4.3"
+  },
+  "private": true,
+  "engines": {
+    "node": "^24.16.0 || >=26.1.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  }
+}
