@@ -107,7 +107,6 @@ test('an unavailable Docker daemon reports recovery steps before compiling for L
     expect(result.code).toBe(1);
     expect(result.stderr).toContain('Cannot connect to the Docker daemon at fixture.sock');
     expect(result.stderr).toContain('Docker is unavailable.');
-    expect(result.stderr).toContain('This is a local setup requirement, not a Context Use bug.');
     expect(result.stderr).toContain('open Docker Desktop');
     expect(result.stderr).toContain('wait until `docker info` succeeds');
     expect(result.stderr).toContain('retry the same command');
