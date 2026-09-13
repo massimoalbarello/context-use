@@ -11,7 +11,6 @@ import type {
   HypermediaLayout,
   HypermediaLayoutEntity,
 } from './hypermedia-layout';
-import { hypermediaSelectionKey } from './hypermedia-selection';
 
 export type SettledHypermediaViewport = {
   focus: HypermediaEntityReference[];
@@ -109,23 +108,20 @@ export function viewportNeedsEntityDiscovery({
 export function hypermediaLayoutInViewport({
   layout,
   viewport,
-  selectedKey,
 }: {
   layout: HypermediaLayout;
   viewport: CanvasBounds;
-  selectedKey?: string;
 }): HypermediaLayout {
   const visibleEntityKeys = new Set(
     layout.entities
-      .filter((entity) => entity.key === selectedKey || pointNearViewport(entity.point, viewport))
+      .filter((entity) => pointNearViewport(entity.point, viewport))
       .map(({ key }) => key),
   );
   return {
     ...layout,
     entities: layout.entities.filter(({ key }) => visibleEntityKeys.has(key)),
     pages: layout.pages.filter(
-      ({ page, point, entityKeys }) =>
-        hypermediaSelectionKey({ kind: 'page', readableId: page.readableId }) === selectedKey ||
+      ({ point, entityKeys }) =>
         entityKeys.some((key) => visibleEntityKeys.has(key)) ||
         (entityKeys.length === 0 && pointNearViewport(point, viewport)),
     ),

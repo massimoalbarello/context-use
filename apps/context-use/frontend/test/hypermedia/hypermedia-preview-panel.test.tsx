@@ -35,7 +35,6 @@ async function renderPreview(selection: HypermediaSelection): Promise<string> {
         <HypermediaPreviewPanel
           selection={selection}
           onClose={() => undefined}
-          onEscape={() => undefined}
           onSelect={() => undefined}
         />
       </QueryClientProvider>
@@ -50,7 +49,7 @@ async function renderPreview(selection: HypermediaSelection): Promise<string> {
   return renderToStaticMarkup(<RouterProvider router={router} />);
 }
 
-async function renderInteractivePreview(onEscape: () => void) {
+async function renderInteractivePreview(onClose: () => void) {
   const initialSelection = { kind: 'page' as const, readableId: 'project-brief' };
   const nextSelection = { kind: 'page' as const, readableId: 'delivery-brief' };
   const queryClient = new QueryClient({
@@ -81,12 +80,7 @@ async function renderInteractivePreview(onEscape: () => void) {
         <button type="button" onClick={() => setSelection(nextSelection)}>
           Select another page
         </button>
-        <HypermediaPreviewPanel
-          selection={selection}
-          onClose={() => undefined}
-          onEscape={onEscape}
-          onSelect={setSelection}
-        />
+        <HypermediaPreviewPanel selection={selection} onClose={onClose} onSelect={setSelection} />
       </>
     );
   }
@@ -131,9 +125,9 @@ test('page preview content keeps entity navigation inside the Hypermedia overlay
 
 test('each selected preview receives focus and handles Escape locally', async () => {
   const user = userEvent.setup();
-  let escapeCount = 0;
+  let closeCount = 0;
   await renderInteractivePreview(() => {
-    escapeCount += 1;
+    closeCount += 1;
   });
 
   expect(document.activeElement).toBe(
@@ -149,5 +143,5 @@ test('each selected preview receives focus and handles Escape locally', async ()
 
   await user.keyboard('{Escape}');
 
-  expect(escapeCount).toBe(1);
+  expect(closeCount).toBe(1);
 });

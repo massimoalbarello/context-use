@@ -255,8 +255,8 @@ export function HypermediaCanvas({
     cloudReadableId?: string;
   } | null>(null);
   const visibleLayout = useMemo(
-    () => hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
-    [layout, selectedKey, viewBox],
+    () => hypermediaLayoutInViewport({ layout, viewport: viewBox }),
+    [layout, viewBox],
   );
   const updateViewBox = useCallback((nextViewBox: ViewBox) => {
     viewBoxRef.current = nextViewBox;

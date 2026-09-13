@@ -67,12 +67,8 @@ export function HypermediaExplorer({
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
-  const self = useMemo<HypermediaEntityReference>(
-    () => ({ readableId: selfReadableId }),
-    [selfReadableId],
-  );
   const [neighborhoodRequests, setNeighborhoodRequests] = useState<NeighborhoodRequest[]>(() => [
-    { anchor: self },
+    { anchor: { readableId: selfReadableId } },
   ]);
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map((request) =>

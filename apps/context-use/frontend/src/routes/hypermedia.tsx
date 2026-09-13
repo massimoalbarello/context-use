@@ -156,7 +156,6 @@ function HypermediaRoute() {
             <HypermediaPreviewPanel
               selection={selection}
               onSelect={selectKnowledge}
-              onEscape={closePreview}
               onClose={closePreview}
             />
           )}
