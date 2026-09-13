@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startBinary } from '@repo/pack-utils/binary-check';
+import { startBinary } from '@repo/build-tools/binary-check';
 
 const OK = 200;
 const NOT_FOUND = 404;

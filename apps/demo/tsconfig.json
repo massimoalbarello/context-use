@@ -1,9 +1,0 @@
-{
-  "extends": "@repo/typescript-config/base.json",
-  "compilerOptions": {
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    "types": ["bun", "vite/client", "react", "react-dom"]
-  },
-  "include": ["*.ts", "*.tsx", "frontend", "test"]
-}

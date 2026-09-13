@@ -5,16 +5,45 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "@repo/backend#build:faces": {
+    "build:instance": {
+      "dependsOn": ["^build", "build:client", "build:faces"],
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/context-use", "dist/instance/face-engine/**"]
+    },
+    "build:demo": {
+      "dependsOn": ["^build", "build:demo:client", "build:faces:host"],
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/context-use-demo"]
+    },
+    "build:client": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/instance/public/**"]
+    },
+    "build:demo:client": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/demo/public/**"]
+    },
+    "build:faces": {
       "outputLogs": "new-only",
       "inputs": [
-        "native/faces/**",
-        "scripts/build-faces.ts",
-        "scripts/shared/build-target.ts",
-        "scripts/shared/build-assets.ts"
+        "backend/native/faces/**",
+        "backend/scripts/build-faces.ts",
+        "backend/scripts/shared/**"
       ],
       "env": ["BUILD_TARGET"],
-      "outputs": [".cache/face-engine-linux/**", ".cache/face-engine-host/**"]
+      "outputs": [
+        "backend/.cache/face-engine-linux/**",
+        "backend/.cache/face-engine-host/**"
+      ]
+    },
+    "build:faces:host": {
+      "outputLogs": "new-only",
+      "inputs": [
+        "backend/native/faces/**",
+        "backend/scripts/build-faces.ts",
+        "backend/scripts/shared/**"
+      ],
+      "outputs": ["backend/.cache/face-engine-host/**"]
     },
     "check:types": {
       "dependsOn": ["^check:types"]
@@ -35,41 +64,16 @@
       "env": ["BUILD_TARGET"],
       "outputs": ["dist/**"]
     },
-    "@repo/context-use#build:client": {
-      "dependsOn": ["@repo/frontend#build"],
-      "outputs": ["dist/public/**"]
-    },
-    "@repo/context-use#build": {
-      "dependsOn": ["build:client", "@repo/backend#build:faces"],
-      "env": ["BUILD_TARGET"],
-      "outputs": ["dist/context-use", "dist/face-engine/**"]
-    },
-    "@repo/demo#build:client": {
-      "dependsOn": ["@repo/frontend#build"],
-      "outputs": ["dist/public/**"]
-    },
-    "@repo/backend#build:faces:host": {
-      "dependsOn": [],
-      "inputs": [
-        "native/faces/**",
-        "scripts/build-faces.ts",
-        "scripts/shared/build-target.ts",
-        "scripts/shared/build-assets.ts"
-      ],
-      "outputs": [".cache/face-engine-host/**"],
-      "outputLogs": "new-only"
-    },
-    "@repo/demo#build": {
-      "dependsOn": ["build:client", "@repo/backend#build:faces:host"],
-      "env": ["BUILD_TARGET"],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/scripts/seeds/isolated-development/**"
-      ],
-      "outputs": ["dist/context-use-demo"]
-    },
     "test:binary": {
       "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:binary:instance": {
+      "dependsOn": ["build:instance"],
+      "cache": false
+    },
+    "test:binary:demo": {
+      "dependsOn": ["build:demo"],
       "cache": false
     }
   }

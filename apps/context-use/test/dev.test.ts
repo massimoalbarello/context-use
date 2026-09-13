@@ -6,9 +6,9 @@ import { join } from 'node:path';
 test('development starts the server without requiring a native build or production frontend', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'context-use-dev-test-'));
   try {
-    await cp(new URL('../dev.ts', import.meta.url), join(directory, 'dev.ts'));
+    await cp(new URL('../scripts/dev.ts', import.meta.url), join(directory, 'dev.ts'));
     await Bun.write(
-      join(directory, 'main.ts'),
+      join(directory, 'backend/src/main.ts'),
       'console.log(JSON.stringify({ public: PUBLIC_FRONTEND_DIR_NAME, migrations: DB_MIGRATIONS_DIR_NAME }));',
     );
     const child = Bun.spawn([process.execPath, 'run', 'dev.ts'], {

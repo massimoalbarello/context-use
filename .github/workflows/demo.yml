@@ -16,4 +16,4 @@ jobs:
       - name: Build standalone read-only demo
         run: bun run build:demo
       - name: Verify compiled demo isolation
-        run: bun --filter @repo/demo test:binary
+        run: bun --filter @repo/context-use test:binary:demo

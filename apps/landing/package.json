@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "bun --bun vite",
-    "build": "bun --bun vite build && bun run build.ts",
+    "build": "bun --bun vite build && bun run scripts/build.ts",
     "check:types": "bun run --bun tsc -b",
     "test:binary": "bun test ./test/binary.test.ts",
-    "deploy": "bun run deploy.ts"
+    "deploy": "bun run scripts/deploy.ts"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
@@ -19,7 +19,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
-    "@repo/pack-utils": "workspace:*",
+    "@repo/build-tools": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
