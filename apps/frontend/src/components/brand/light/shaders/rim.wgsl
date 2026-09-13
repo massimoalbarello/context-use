@@ -12,9 +12,11 @@ import { Lighting, Shape } from "./contracts.wgsl";
   let color = shapes[shape_index].color.rgb;
   let unit = min(lighting.size.x, lighting.size.y);
   let point = (uv - 0.5) * lighting.size / unit;
-  let delta = point - lighting.light;
+  // Keep the highlight on the mark even when the beam target is over the form.
+  let highlight = lighting.light / max(1.0, length(lighting.light) / 0.22);
+  let delta = point - highlight;
   let spot = exp(-dot(delta, delta) / 0.033);
   let edge = exp(-abs(distance) / (0.85 * lighting.pixel_ratio));
-  let energy = edge * (0.45 + spot * 3.5);
+  let energy = edge * (0.9 + spot * 3.5);
   return vec4f(color * energy, 1.0);
 }
