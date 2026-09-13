@@ -92,3 +92,8 @@ Every change should have one outcome a reviewer can state in one sentence. Keep 
 refactors, upgrades, generated churn, and renames separate; preserve work already present in the
 tree. Update the nearest `AGENTS.md` only when the change establishes or removes an enduring
 principle that belongs there.
+
+Do not add README files, component guides, implementation summaries, or other documentation
+artifacts unless explicitly requested. Keep discoverable usage and implementation details in code
+and configuration. Preserve required third-party notices in an existing license or attribution
+file instead of adding a per-feature file.
