@@ -3,7 +3,7 @@
   <h1>Context Use</h1>
   <p><em>Personal hypermedia for human-agent collaboration.</em></p>
 
-[**View the Steve Jobs demo**](https://steve-jobs-demo-fye81b.nibrun.app/hypermedia)
+[**View the Steve Jobs demo**](https://demo.context-use.com/hypermedia)
 
 [![Deploy your own](.github/assets/deploy-your-own.svg)](https://app.nibrun.com/deploy?name=context-use&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fnibrun-latest%2Fcontext-use&port=3000&minimal)
 
