@@ -17,11 +17,11 @@ export const PALETTES = {
   },
   warm: {
     label: 'Sand',
-    description: 'champagne gold, dusty coral, and muted rose',
+    description: 'sand beige, pale coral, and warm stone grey',
     colors: [
-      [0.95, 0.82, 0.49],
-      [0.82, 0.32, 0.25],
-      [0.66, 0.35, 0.4],
+      [0.9, 0.78, 0.61],
+      [0.74, 0.58, 0.52],
+      [0.52, 0.5, 0.47],
     ],
   },
   neon: {
