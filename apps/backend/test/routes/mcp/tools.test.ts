@@ -25,6 +25,7 @@ import {
 } from '#services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import type { RecordResourcesServiceContract } from '#services/records/service.ts';
+import { unusedAssetFacesService } from '../../support/app.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
@@ -88,6 +89,7 @@ const principal: McpClientAuthorizationPrincipal = {
 };
 
 const unusedAssetsService: AssetsServiceContract = {
+  faces: unusedAssetFacesService,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,

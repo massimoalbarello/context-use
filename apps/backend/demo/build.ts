@@ -1,15 +1,20 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { LocalFaceAnalyzer } from '#lib/face-analysis/local-analyzer.ts';
 import { BACKEND_BUILD_TARGET } from '../scripts/shared/constants';
 import { seedDemoSnapshot } from './seed';
 
 const output = join(import.meta.dir, 'dist');
 const snapshot = join(output, 'demo-seed');
 const frontend = join(import.meta.dir, '../../frontend/demo/dist');
+// Keep downloaded models outside the snapshot embedded in the public binary.
+const analyzer = new LocalFaceAnalyzer({
+  dataFolder: join(import.meta.dir, '../.cache/demo-faces'),
+});
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 try {
-  await seedDemoSnapshot({ dataFolder: snapshot });
+  await seedDemoSnapshot({ dataFolder: snapshot, analyzer });
   const result = await Bun.build({
     entrypoints: [join(import.meta.dir, 'main.ts')],
     compile: {
@@ -29,5 +34,6 @@ try {
   }
   console.log(`Built ${join(output, 'context-use-demo')}`);
 } finally {
+  await analyzer.close();
   await rm(snapshot, { recursive: true, force: true });
 }

@@ -1,3 +1,4 @@
+import type { AssetFacesServiceContract } from '#services/assets/faces.ts';
 import type { HypermediaServiceContract } from '#services/hypermedia/service.ts';
 import type {
   RecordDeliveryAcceptanceContract,
@@ -31,4 +32,17 @@ export const unusedRecordSyncsService: RecordSyncAuthenticationContract &
   create: unexpectedCall,
   list: unexpectedCall,
   revoke: unexpectedCall,
+};
+
+export const unusedAssetFacesService: AssetFacesServiceContract = {
+  detail: unexpectedCall,
+  process: unexpectedCall,
+  annotate: unexpectedCall,
+  crop: unexpectedCall,
+  settings: unexpectedCall,
+  saveThreshold: unexpectedCall,
+  retryBatch: unexpectedCall,
+  images: unexpectedCall,
+  processSavedAsset: () => Promise.resolve(),
+  preparePortrait: () => Promise.resolve(),
 };

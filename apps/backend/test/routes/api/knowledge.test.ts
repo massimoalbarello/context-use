@@ -27,7 +27,11 @@ import { HypermediaService } from '#services/hypermedia/service.ts';
 import { KnowledgePagesService } from '#services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
-import { unusedRecordSyncsService, unusedRecordsService } from '../../support/app.ts';
+import {
+  unusedAssetFacesService,
+  unusedRecordSyncsService,
+  unusedRecordsService,
+} from '../../support/app.ts';
 import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   testMcpServerUrl,
@@ -120,11 +124,16 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
     const app = createApp({
       retrievalService: retrieval,
       auth: ownerAuth(),
-      assetsService: new AssetsService({ assets: assetsRepository, storage }),
+      assetsService: new AssetsService({
+        faces: unusedAssetFacesService,
+        assets: assetsRepository,
+        storage,
+      }),
       assetTransferCapabilities: unusedAssetTransferCapabilities,
       frontendAssetsService,
       entitiesService: new EntitiesService({
         assets: assetsRepository,
+        onPersonPortraitAvailable: unusedAssetFacesService.preparePortrait,
         entities: entitiesRepository,
         pages: pagesRepository,
       }),

@@ -7,6 +7,7 @@ import {
   type SetEntityImageVariables,
   setEntityImage,
 } from '../../queries/entities';
+import { facesQueryKey } from '../../queries/faces';
 import { hypermediaQueryKey } from '../../queries/hypermedia';
 import { pagesQueryKey } from '../../queries/pages';
 import { profileQueryKey } from '../../queries/profile';
@@ -21,6 +22,7 @@ function useEntityImageMutation<TVariables>({
     mutationFn,
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: facesQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetsQueryKey }),

@@ -10,9 +10,19 @@
       "outputs": ["dist/**"]
     },
     "@repo/backend#build": {
-      "dependsOn": ["@repo/frontend#build"],
+      "dependsOn": ["@repo/frontend#build", "@repo/backend#build:faces"],
       "env": ["BUILD_TARGET"],
       "outputs": ["dist/**", "public/**"]
+    },
+    "@repo/backend#build:faces": {
+      "outputLogs": "new-only",
+      "inputs": [
+        "native/faces/**",
+        "scripts/build-faces.ts",
+        "scripts/shared/constants.ts"
+      ],
+      "env": ["BUILD_TARGET"],
+      "outputs": [".cache/face-engine-linux/**", ".cache/face-engine-host/**"]
     },
     "check:types": {
       "dependsOn": ["^check:types"]

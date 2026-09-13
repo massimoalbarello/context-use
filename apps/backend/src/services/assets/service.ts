@@ -13,6 +13,8 @@ import {
 } from '#models/readable-ids/model.ts';
 import type { AssetsRepositoryContract } from '#repositories/assets/repository.ts';
 
+import type { AssetFacesServiceContract } from './faces.ts';
+
 export type AssetCreateResult =
   | { state: 'created'; asset: Asset }
   | { state: 'invalid'; message: string }
@@ -23,21 +25,36 @@ function hash(bytes: Uint8Array): string {
 }
 
 export class AssetsService {
+  readonly faces: AssetFacesServiceContract;
   private readonly assets: AssetsRepositoryContract;
   private readonly storage: StorageClient;
 
   constructor({
     assets,
     storage,
+    faces,
   }: {
     assets: AssetsRepositoryContract;
+    faces: AssetFacesServiceContract;
     storage: StorageClient;
   }) {
+    this.faces = faces;
     this.assets = assets;
     this.storage = storage;
   }
 
-  async create(input: {
+  async create(input: Parameters<AssetsService['persist']>[0]): Promise<AssetCreateResult> {
+    const result = await this.persist(input);
+    if (result.state === 'created') {
+      await this.faces.processSavedAsset({
+        ownerId: input.ownerId,
+        readableId: result.asset.readableId,
+      });
+    }
+    return result;
+  }
+
+  private async persist(input: {
     ownerId: string;
     name: string;
     file: Blob;
@@ -141,5 +158,5 @@ export class AssetsService {
 
 export type AssetsServiceContract = Pick<
   AssetsService,
-  'create' | 'list' | 'detail' | 'updateName' | 'archive' | 'content'
+  'create' | 'list' | 'detail' | 'updateName' | 'archive' | 'content' | 'faces'
 >;

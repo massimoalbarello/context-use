@@ -34,6 +34,12 @@ export const AssetResourceInUseResponseSchema = t.Object({
 export const AssetSchema = t.Object({
   ...AssetSummarySchema.properties,
   usages: t.Array(AssetUsageSchema),
+  depicts: t.Array(
+    t.Object({
+      entity: EntityReferenceSchema,
+      source: t.Union([t.Literal('detected'), t.Literal('confirmed')]),
+    }),
+  ),
 });
 
 export const AssetListSchema = t.Object({
@@ -73,5 +79,12 @@ export function assetUsageResponse(usage: AssetUsage) {
 }
 
 export function assetResponse(asset: Asset) {
-  return { ...assetSummaryResponse(asset), usages: asset.usages.map(assetUsageResponse) };
+  return {
+    ...assetSummaryResponse(asset),
+    usages: asset.usages.map(assetUsageResponse),
+    depicts: asset.depicts.map(({ entity, source }) => ({
+      entity: entityReferenceResponse(entity),
+      source,
+    })),
+  };
 }

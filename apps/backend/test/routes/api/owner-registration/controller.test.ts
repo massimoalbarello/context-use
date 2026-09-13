@@ -17,6 +17,7 @@ import type { KnowledgePagesServiceContract } from '#services/knowledge-pages/se
 import type { KnowledgeProfilesServiceContract } from '#services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#services/owner-registration/service.ts';
 import {
+  unusedAssetFacesService,
   unusedHypermediaService,
   unusedRecordSyncsService,
   unusedRecordsService,
@@ -49,6 +50,7 @@ const frontendAssetsService: FrontendAssetsServiceContract = {
   fallback: () => null,
 };
 const assetsService: AssetsServiceContract = {
+  faces: unusedAssetFacesService,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
@@ -57,12 +59,12 @@ const assetsService: AssetsServiceContract = {
   content: unexpectedCall,
 };
 const entitiesService: EntitiesServiceContract = {
+  setImage: unexpectedCall,
+  removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
-  setImage: unexpectedCall,
-  removeImage: unexpectedCall,
   archive: unexpectedCall,
 };
 const healthService: HealthServiceContract = { check: unexpectedCall };

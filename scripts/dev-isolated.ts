@@ -113,7 +113,7 @@ try {
     }
 
     try {
-      const response = await fetch(APP_URL, {
+      const response = await fetch(new URL('/api/health', APP_URL), {
         signal: AbortSignal.timeout(APP_PROBE_TIMEOUT_MS),
       });
       if (response.ok) {

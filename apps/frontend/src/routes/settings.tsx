@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router';
-import { ArrowLeft, Bot, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Bot, RefreshCw, ScanFace } from 'lucide-react';
 import { WorkspaceSplitLayout } from '../components/layout/workspace-split-layout';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/class-names';
@@ -51,6 +51,17 @@ function SettingsLayout() {
           >
             <RefreshCw aria-hidden="true" />
             Syncs
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/settings/faces"
+          >
+            <ScanFace aria-hidden="true" />
+            Face recognition
           </Link>
         </nav>
       </aside>

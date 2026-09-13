@@ -1,3 +1,4 @@
+import { Database } from 'bun:sqlite';
 import { join } from 'node:path';
 import { SQL } from 'bun';
 import { ensureDir } from '#lib/filesystem.ts';
@@ -11,6 +12,10 @@ export function createSqliteReader({ dataFolder }: { dataFolder: string }): SQL 
     filename: join(dataFolder, DATABASE_FILE_NAME),
     readonly: true,
   });
+}
+
+export function createSynchronousSqliteReader({ dataFolder }: { dataFolder: string }): Database {
+  return new Database(join(dataFolder, DATABASE_FILE_NAME), { readonly: true });
 }
 
 export async function createSqliteDatabase({ dataFolder }: { dataFolder: string }): Promise<SQL> {
@@ -29,4 +34,12 @@ export async function createSqliteDatabase({ dataFolder }: { dataFolder: string 
     await database.close();
     throw error;
   }
+}
+
+/** A short synchronous writer for background publications; callers retry contention between transactions. */
+export function createSynchronousSqliteDatabase({ dataFolder }: { dataFolder: string }): Database {
+  ensureDir(dataFolder);
+  const database = new Database(join(dataFolder, DATABASE_FILE_NAME));
+  database.exec('PRAGMA foreign_keys = ON');
+  return database;
 }
