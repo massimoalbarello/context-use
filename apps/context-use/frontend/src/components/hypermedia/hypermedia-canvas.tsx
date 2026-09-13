@@ -15,11 +15,7 @@ import {
   useState,
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
-import {
-  type HypermediaEntityReference,
-  type HypermediaPage,
-  hypermediaEntityReference,
-} from '../../queries/hypermedia';
+import { type HypermediaPage, hypermediaEntityReference } from '../../queries/hypermedia';
 import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
 import {
   buildHypermediaLayout,
@@ -29,11 +25,7 @@ import {
   initialHypermediaViewBox,
   zoomedHypermediaViewBox,
 } from './hypermedia-layout';
-import {
-  type HypermediaSelection,
-  hypermediaSelectionKey,
-  selectedHypermediaEntityKeys,
-} from './hypermedia-selection';
+import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
 import {
   HypermediaEntityNode,
   HypermediaHoverPreview,
@@ -99,7 +91,6 @@ function EntityDot({
 const HypermediaScene = memo(function HypermediaScene({
   layout,
   activeKey,
-  selectedEntityKeys,
   suppressNextCloudClick,
   onSelect,
   onPreview,
@@ -107,7 +98,6 @@ const HypermediaScene = memo(function HypermediaScene({
 }: {
   layout: HypermediaLayout;
   activeKey: string | undefined;
-  selectedEntityKeys: Set<string>;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: HypermediaSelection) => void;
   onPreview: (preview: HypermediaPreview) => void;
@@ -165,7 +155,7 @@ const HypermediaScene = memo(function HypermediaScene({
           <EntityDot
             key={entity.key}
             entity={entity}
-            active={activeKey === entity.key || selectedEntityKeys.has(entity.key)}
+            active={activeKey === entity.key}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(entity.key)}
             onActivate={() =>
@@ -214,7 +204,6 @@ export function HypermediaCanvas({
   entities,
   pages,
   month,
-  selectedEntities,
   selectedKey,
   onSelect,
   onViewportSettled,
@@ -227,7 +216,6 @@ export function HypermediaCanvas({
 }: {
   entities: HypermediaLayoutEntity[];
   pages: HypermediaPage[];
-  selectedEntities: HypermediaEntityReference[];
   selectedKey?: string;
   onSelect: (selection: HypermediaSelection) => void;
   onViewportSettled: (viewport: SettledHypermediaViewport) => void;
@@ -241,15 +229,10 @@ export function HypermediaCanvas({
 }) {
   const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(entities));
   const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const selectedEntityKeys = useMemo(
-    () => selectedHypermediaEntityKeys(selectedEntities),
-    [selectedEntities],
-  );
   const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
   const clearPreview = useCallback((key: string) => {
     setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
   }, []);
-  const spotlightActive = selectedEntities.length > 0;
   const layout = useMemo(() => buildHypermediaLayout(entities, pages), [pages, entities]);
   const viewBoxRef = useRef(viewBox);
   const canvasRef = useRef<SVGSVGElement | null>(null);
@@ -272,11 +255,8 @@ export function HypermediaCanvas({
     cloudReadableId?: string;
   } | null>(null);
   const visibleLayout = useMemo(
-    () =>
-      spotlightActive
-        ? layout
-        : hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
-    [layout, selectedKey, spotlightActive, viewBox],
+    () => hypermediaLayoutInViewport({ layout, viewport: viewBox, selectedKey }),
+    [layout, selectedKey, viewBox],
   );
   const updateViewBox = useCallback((nextViewBox: ViewBox) => {
     viewBoxRef.current = nextViewBox;
@@ -285,7 +265,7 @@ export function HypermediaCanvas({
 
   const publishViewport = useCallback(
     (viewport: ViewBox) => {
-      const focus = focusedEntities({ entities: layout.entities, viewport, selectedKey });
+      const focus = focusedEntities({ entities: layout.entities, viewport });
       const discoverMoreEntities = viewportNeedsEntityDiscovery({
         entities: layout.entities,
         viewport,
@@ -303,7 +283,7 @@ export function HypermediaCanvas({
         boundaryAnchor,
       });
     },
-    [layout.entityBounds, layout.entities, onViewportSettled, selectedKey],
+    [layout.entityBounds, layout.entities, onViewportSettled],
   );
 
   const scheduleViewport = useCallback(
@@ -317,9 +297,6 @@ export function HypermediaCanvas({
   );
 
   useEffect(() => {
-    if (spotlightActive) {
-      return;
-    }
     const viewport = viewBoxRef.current;
     publishViewport(viewport);
     return () => {
@@ -327,7 +304,7 @@ export function HypermediaCanvas({
         clearTimeout(settleTimer.current);
       }
     };
-  }, [publishViewport, spotlightActive]);
+  }, [publishViewport]);
 
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     setShowExplorationHint(false);
@@ -345,9 +322,7 @@ export function HypermediaCanvas({
       return;
     }
     updateViewBox(nextViewBox);
-    if (!spotlightActive) {
-      scheduleViewport(nextViewBox);
-    }
+    scheduleViewport(nextViewBox);
   }
 
   function handlePinchZoom(event: globalThis.WheelEvent) {
@@ -442,7 +417,7 @@ export function HypermediaCanvas({
       drag.current = null;
       setPanning(false);
       event.currentTarget.releasePointerCapture(event.pointerId);
-      if (completedDrag.moved && !spotlightActive) {
+      if (completedDrag.moved) {
         scheduleViewport(completedDrag.currentViewBox);
       }
     }
@@ -482,7 +457,6 @@ export function HypermediaCanvas({
         <HypermediaScene
           layout={visibleLayout}
           activeKey={activeKey}
-          selectedEntityKeys={selectedEntityKeys}
           suppressNextCloudClick={suppressNextCloudClick}
           onSelect={onSelect}
           onPreview={setPreview}

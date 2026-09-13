@@ -32,18 +32,15 @@ function squaredDistance(first: CanvasPoint, second: CanvasPoint): number {
 export function focusedEntities({
   entities,
   viewport,
-  selectedKey,
 }: {
   entities: HypermediaLayoutEntity[];
   viewport: CanvasBounds;
-  selectedKey?: string;
 }): HypermediaEntityReference[] {
   const center = viewportCenter(viewport);
   const ordered = entities
-    .filter((entity) => entity.key === selectedKey || pointNearViewport(entity.point, viewport))
+    .filter((entity) => pointNearViewport(entity.point, viewport))
     .sort(
       (first, second) =>
-        Number(second.key === selectedKey) - Number(first.key === selectedKey) ||
         squaredDistance(first.point, center) - squaredDistance(second.point, center) ||
         first.key.localeCompare(second.key),
     );

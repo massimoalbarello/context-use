@@ -3,13 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { useState } from 'react';
 import { HypermediaExplorer } from '../components/hypermedia/hypermedia-explorer';
 import { HypermediaPreviewPanel } from '../components/hypermedia/hypermedia-preview-panel';
-import {
-  type HypermediaSelection,
-  removeHypermediaEntitySelection,
-  selectedHypermediaEntities,
-  selectedHypermediaEntitiesValue,
-  toggleHypermediaEntitySelection,
-} from '../components/hypermedia/hypermedia-selection';
+import type { HypermediaSelection } from '../components/hypermedia/hypermedia-selection';
 import { HypermediaSidebar } from '../components/hypermedia/hypermedia-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
@@ -29,7 +23,6 @@ export type HypermediaSearch = {
   month?: CalendarMonth;
   kind?: HypermediaSelection['kind'];
   id?: string;
-  focus?: string;
 };
 
 export function hypermediaSearch(search: Record<string, unknown>): HypermediaSearch {
@@ -44,27 +37,7 @@ export function hypermediaSearch(search: Record<string, unknown>): HypermediaSea
     result.kind = selectionKind;
     result.id = search.id.trim().slice(0, MAX_HYPERMEDIA_READABLE_ID_LENGTH);
   }
-  result.focus = selectedHypermediaEntitiesValue(selectedHypermediaEntities(search.focus));
   return result;
-}
-
-export function hypermediaSearchAfterEscape({
-  previous,
-  selection,
-}: {
-  previous: HypermediaSearch;
-  selection: HypermediaSelection;
-}): HypermediaSearch {
-  const entities = removeHypermediaEntitySelection({
-    entities: selectedHypermediaEntities(previous.focus),
-    selection,
-  });
-  return {
-    ...previous,
-    kind: undefined,
-    id: undefined,
-    focus: selectedHypermediaEntitiesValue(entities),
-  };
 }
 
 export const Route = createFileRoute('/hypermedia')({
@@ -94,15 +67,13 @@ export const Route = createFileRoute('/hypermedia')({
 function HypermediaRoute() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { kind, id, focus, month } = search;
+  const { kind, id, month } = search;
   const navigate = Route.useNavigate();
   const [visibleEntities, setVisibleEntities] = useState<HypermediaEntityReference[]>([]);
   const selection: HypermediaSelection | undefined =
     kind && id ? { kind, readableId: id } : undefined;
-  const selectedEntities = selectedHypermediaEntities(focus);
   const pageQuery = useInfiniteQuery({
     ...hypermediaPagesQueryOptions({
-      entities: selectedEntities,
       visibleEntities,
       month,
     }),
@@ -118,51 +89,31 @@ function HypermediaRoute() {
     false;
   function selectKnowledge(nextSelection: HypermediaSelection) {
     void navigate({
-      search: (previous) => {
-        const previousEntities = selectedHypermediaEntities(previous.focus);
-        const wasSelected =
-          nextSelection.kind !== 'page' &&
-          previousEntities.some(
-            (entity) =>
-              hypermediaEntityKey(entity) === `${nextSelection.kind}:${nextSelection.readableId}`,
-          );
-        const entities = toggleHypermediaEntitySelection({
-          entities: previousEntities,
-          selection: nextSelection,
-        });
-        return {
-          ...previous,
-          kind: wasSelected ? undefined : nextSelection.kind,
-          id: wasSelected ? undefined : nextSelection.readableId,
-          focus: selectedHypermediaEntitiesValue(entities),
-        };
-      },
+      search: (previous) => ({
+        ...hypermediaSearch(previous),
+        kind: nextSelection.kind,
+        id: nextSelection.readableId,
+      }),
     });
   }
-  function clearSelectedEntities() {
+  function closePreview() {
     void navigate({
       search: (previous) => ({
-        ...previous,
+        ...hypermediaSearch(previous),
         kind: undefined,
         id: undefined,
-        focus: undefined,
       }),
     });
   }
 
   return (
     <KnowledgeWorkspace>
-      <HypermediaSidebar
-        profile={profile}
-        selectedEntities={selectedEntities}
-        onClearSelectedEntities={clearSelectedEntities}
-      />
+      <HypermediaSidebar profile={profile} />
       <KnowledgeWorkspaceDetail>
         <div className="relative size-full">
           <HypermediaExplorer
             selfReadableId={profile.selfEntity.readableId}
             selection={selection}
-            selectedEntities={selectedEntities}
             pages={loadedPages}
             month={month}
             pagesLoading={pageQuery.isFetching}
@@ -174,7 +125,7 @@ function HypermediaRoute() {
             onMonthChange={(nextMonth) => {
               void navigate({
                 search: (previous) => ({
-                  ...previous,
+                  ...hypermediaSearch(previous),
                   month: nextMonth,
                   kind: previous.kind === 'page' ? undefined : previous.kind,
                   id: previous.kind === 'page' ? undefined : previous.id,
@@ -205,20 +156,8 @@ function HypermediaRoute() {
             <HypermediaPreviewPanel
               selection={selection}
               onSelect={selectKnowledge}
-              onEscape={() => {
-                void navigate({
-                  search: (previous) => hypermediaSearchAfterEscape({ previous, selection }),
-                });
-              }}
-              onClose={() => {
-                void navigate({
-                  search: (previous) => ({
-                    ...previous,
-                    kind: undefined,
-                    id: undefined,
-                  }),
-                });
-              }}
+              onEscape={closePreview}
+              onClose={closePreview}
             />
           )}
         </div>

@@ -104,7 +104,6 @@ function HypermediaMapFixture({
       <HypermediaCanvas
         entities={entities}
         pages={[]}
-        selectedEntities={[{ readableId: 'grace-hopper' }]}
         selectedKey={selectedKey}
         month={month}
         onSelect={() => undefined}

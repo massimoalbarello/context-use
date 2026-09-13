@@ -101,7 +101,7 @@ describe('entity-first hypermedia layout', () => {
     expect(expanded.find(({ key }) => key === 'entity:diagram')?.point).toEqual(initial[0]?.point);
   });
 
-  test('focus follows the viewport while retaining a selected entity', () => {
+  test('focus follows only the viewport', () => {
     const entities = buildStableEntities([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
     ]);
@@ -110,9 +110,6 @@ describe('entity-first hypermedia layout', () => {
 
     expect(focusedEntities({ entities, viewport })[0]).toEqual({
       readableId: 'beta',
-    });
-    expect(focusedEntities({ entities, viewport, selectedKey: 'entity:self' })[0]).toEqual({
-      readableId: 'self',
     });
     expect(focusedEntities({ entities, viewport })).toHaveLength(1);
   });

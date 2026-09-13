@@ -27,7 +27,6 @@ export class HypermediaService {
 
   pages(input: {
     ownerId: string;
-    entities: HypermediaEntityReference[];
     visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;

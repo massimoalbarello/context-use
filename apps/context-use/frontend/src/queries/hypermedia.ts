@@ -53,26 +53,19 @@ export function hypermediaEntityNeighborhoodQueryOptions({
 }
 
 type HypermediaPageQuery = {
-  entities: HypermediaEntityReference[];
   visibleEntities: HypermediaEntityReference[];
   month?: CalendarMonth;
 };
 
 const HYPERMEDIA_PAGE_LIMIT = 32;
 
-export function hypermediaPagesQueryOptions({
-  entities,
-  visibleEntities,
-  month,
-}: HypermediaPageQuery) {
-  const entityKeys = entities.map(({ readableId }) => readableId).sort();
+export function hypermediaPagesQueryOptions({ visibleEntities, month }: HypermediaPageQuery) {
   const visibleEntityKeys = visibleEntities.map(({ readableId }) => readableId).sort();
   return infiniteQueryOptions({
     queryKey: [
       ...hypermediaQueryKey,
       'pages',
       {
-        entities: entityKeys,
         visibleEntities: visibleEntityKeys,
         month: month ?? null,
       },
@@ -82,7 +75,6 @@ export function hypermediaPagesQueryOptions({
     queryFn: async ({ pageParam, signal }) => {
       const { data, error } = await api.api.hypermedia.pages.get({
         query: {
-          entities: entityKeys.length > 0 ? entityKeys.join(',') : undefined,
           visible: visibleEntityKeys.length > 0 ? visibleEntityKeys.join(',') : undefined,
           limit: HYPERMEDIA_PAGE_LIMIT,
           offset: pageParam,

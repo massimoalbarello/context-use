@@ -36,28 +36,9 @@ function appendNeighborhoodRequest({
     : [...current, request];
 }
 
-function neighborhoodRequestsForEntities({
-  entities,
-  initial = [],
-}: {
-  entities: HypermediaEntityReference[];
-  initial?: NeighborhoodRequest[];
-}): NeighborhoodRequest[] {
-  let requests = initial;
-  for (const anchor of entities) {
-    requests = appendNeighborhoodRequest({ current: requests, request: { anchor } });
-  }
-  return requests;
-}
-
-function entitySelection(selection?: HypermediaSelection): HypermediaEntityReference | undefined {
-  return selection && selection.kind !== 'page' ? { readableId: selection.readableId } : undefined;
-}
-
 export function HypermediaExplorer({
   selfReadableId,
   selection,
-  selectedEntities,
   pages,
   month,
   pagesLoading,
@@ -73,7 +54,6 @@ export function HypermediaExplorer({
 }: {
   selfReadableId: string;
   selection?: HypermediaSelection;
-  selectedEntities: HypermediaEntityReference[];
   pages: HypermediaPage[];
   month?: CalendarMonth;
   pagesLoading: boolean;
@@ -91,22 +71,9 @@ export function HypermediaExplorer({
     () => ({ readableId: selfReadableId }),
     [selfReadableId],
   );
-  const selectedEntity = useMemo(() => entitySelection(selection), [selection]);
-  const selectedNeighborhoodEntities = useMemo(
-    () => (selectedEntity ? [...selectedEntities, selectedEntity] : selectedEntities),
-    [selectedEntity, selectedEntities],
-  );
-  const [exploredNeighborhoodRequests, setExploredNeighborhoodRequests] = useState<
-    NeighborhoodRequest[]
-  >(() => neighborhoodRequestsForEntities({ entities: [self, ...selectedNeighborhoodEntities] }));
-  const neighborhoodRequests = useMemo(
-    () =>
-      neighborhoodRequestsForEntities({
-        entities: selectedNeighborhoodEntities,
-        initial: exploredNeighborhoodRequests,
-      }),
-    [exploredNeighborhoodRequests, selectedNeighborhoodEntities],
-  );
+  const [neighborhoodRequests, setNeighborhoodRequests] = useState<NeighborhoodRequest[]>(() => [
+    { anchor: self },
+  ]);
   const neighborhoodQueries = useQueries({
     queries: neighborhoodRequests.map((request) =>
       hypermediaEntityNeighborhoodQueryOptions(request),
@@ -175,9 +142,7 @@ export function HypermediaExplorer({
         anchor,
         cursor: matching.at(-1)?.result?.data?.nextCursor ?? undefined,
       };
-      setExploredNeighborhoodRequests((current) =>
-        appendNeighborhoodRequest({ current, request: next }),
-      );
+      setNeighborhoodRequests((current) => appendNeighborhoodRequest({ current, request: next }));
     },
     [
       fetchNextEntityPage,
@@ -187,19 +152,6 @@ export function HypermediaExplorer({
       neighborhoodRequests,
       onVisibleEntitiesChange,
     ],
-  );
-
-  const handleSelect = useCallback(
-    (nextSelection: HypermediaSelection) => {
-      const entity = entitySelection(nextSelection);
-      if (entity) {
-        setExploredNeighborhoodRequests((current) =>
-          appendNeighborhoodRequest({ current, request: { anchor: entity } }),
-        );
-      }
-      onSelect(nextSelection);
-    },
-    [onSelect],
   );
 
   const neighborhoodError = neighborhoodQueries.find(({ error }) => error)?.error ?? entityError;
@@ -217,9 +169,8 @@ export function HypermediaExplorer({
         entities={entities}
         pages={pages}
         month={month}
-        selectedEntities={selectedEntities}
         selectedKey={selectedKey}
-        onSelect={handleSelect}
+        onSelect={onSelect}
         onViewportSettled={handleViewportSettled}
         onMonthChange={onMonthChange}
         onIntervalScrollingChange={setIntervalScrolling}

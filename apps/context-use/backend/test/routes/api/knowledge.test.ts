@@ -630,7 +630,7 @@ Every observation changes the next action.`,
     const filteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?time=2025&entities=temporal-subject&limit=2',
+        path: '/hypermedia/pages?time=2025&visible=temporal-subject&limit=2',
       }),
     );
     expect(filteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -658,7 +658,7 @@ Every observation changes the next action.`,
     const remainingFilteredHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?time=2025&entities=temporal-subject&limit=2&offset=2',
+        path: '/hypermedia/pages?time=2025&visible=temporal-subject&limit=2&offset=2',
       }),
     );
     expect(remainingFilteredHypermediaResponse.status).toBe(StatusMap.OK);
@@ -668,19 +668,6 @@ Every observation changes the next action.`,
     };
     expect(remainingFilteredHypermedia.pages).toEqual([]);
     expect(remainingFilteredHypermedia.nextOffset).toBeNull();
-
-    const intersectedHypermediaResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/hypermedia/pages?entities=temporal-subject,test-owner',
-      }),
-    );
-    const intersectedHypermedia = (await intersectedHypermediaResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-    };
-    expect(intersectedHypermedia.pages.map(({ readableId }) => readableId)).toEqual([
-      'alpha-principles',
-    ]);
 
     const viewportHypermediaResponse = await app.handle(
       jsonRequest({
@@ -697,20 +684,10 @@ Every observation changes the next action.`,
       'growth-playbook',
     ]);
 
-    const combinedScopeResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/hypermedia/pages?time=2025&entities=test-owner&visible=temporal-subject',
-      }),
-    );
-    expect(
-      ((await combinedScopeResponse.json()) as { pages: Array<{ readableId: string }> }).pages,
-    ).toEqual([]);
-
     const rangedHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?entities=temporal-subject&time=2025-04',
+        path: '/hypermedia/pages?visible=temporal-subject&time=2025-04',
       }),
     );
     const rangedHypermedia = (await rangedHypermediaResponse.json()) as {
@@ -1207,7 +1184,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     const denseHypermediaResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/hypermedia/pages?entities=temporal-subject&visible=test-owner',
+        path: '/hypermedia/pages?visible=temporal-subject,test-owner',
       }),
     );
     const denseHypermedia = (await denseHypermediaResponse.json()) as {

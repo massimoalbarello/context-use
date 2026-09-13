@@ -347,10 +347,10 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       new Request('http://localhost/api/hypermedia/entities?anchor=asset:quarterly-chart&limit=1'),
     );
     expect(assetNeighborhoodResponse.status).toBe(StatusMap['Bad Request']);
-    const assetSelectionResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages?entities=asset:quarterly-chart'),
+    const assetViewportResponse = await app.handle(
+      new Request('http://localhost/api/hypermedia/pages?visible=asset:quarterly-chart'),
     );
-    expect(assetSelectionResponse.status).toBe(StatusMap['Bad Request']);
+    expect(assetViewportResponse.status).toBe(StatusMap['Bad Request']);
 
     const entityNeighborhoodResponse = await app.handle(
       new Request('http://localhost/api/hypermedia/entities?anchor=luca-bianchi'),

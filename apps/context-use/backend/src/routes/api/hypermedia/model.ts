@@ -51,12 +51,6 @@ export const HypermediaEntityNeighborhoodSchema = t.Object({
 });
 
 export const HypermediaPagesQuerySchema = t.Object({
-  entities: t.Optional(
-    t.String({
-      minLength: 1,
-      maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
-    }),
-  ),
   visible: t.Optional(
     t.String({
       minLength: 1,

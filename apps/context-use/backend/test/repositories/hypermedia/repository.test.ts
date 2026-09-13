@@ -59,7 +59,6 @@ test.each([
     const hypermedia = new HypermediaRepository(database);
     const input = {
       ownerId: OWNER_A,
-      entities: [{ readableId: 'topic' }],
       visibleEntities: [],
       limit: 1,
       temporalBounds: time ? temporalBoundsFrom(time) : undefined,
