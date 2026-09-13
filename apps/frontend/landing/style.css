@@ -1,0 +1,11 @@
+@import "tailwindcss" source(none);
+@import "../src/styles/minimal-neutral.css";
+@source "./*.tsx";
+@source "../src/components/brand";
+@source "../src/components/ui/button.tsx";
+
+:root {
+  color-scheme: dark;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
