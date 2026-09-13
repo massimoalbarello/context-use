@@ -106,8 +106,14 @@ export async function deployToNibrun({
     target[1] = await resolveAppSlug({ nib, requested: target[1] });
   }
   const { name }: { name: string } = await Bun.file(join(directory, 'package.json')).json();
-  await $`${process.execPath} run --bun turbo ${task} ${`--filter=${name}`}`
+  const build = await $`${process.execPath} run --bun turbo ${task} ${`--filter=${name}`}`
     .cwd(directory)
-    .env({ ...process.env, BUILD_TARGET: NIBRUN_BUILD_TARGET });
+    .env({ ...process.env, BUILD_TARGET: NIBRUN_BUILD_TARGET })
+    .nothrow();
+  if (build.exitCode !== 0) {
+    console.error(`Deployment stopped: ${task} failed. See the build error above.`);
+    process.exitCode = build.exitCode;
+    return;
+  }
   await $`${nib} run ${join(directory, binary)} ${target} --port ${NIBRUN_PORT}`.cwd(directory);
 }

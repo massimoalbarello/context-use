@@ -76,7 +76,10 @@ async function deploymentFixture(task = 'build:instance') {
   await Bun.write(
     join(app, 'build.ts'),
     `
-    if (process.env.TEST_BUILD_FAIL) process.exit(${BUILD_FAILURE_CODE});
+    if (process.env.TEST_BUILD_FAIL) {
+      console.error('fixture build prerequisite is unavailable');
+      process.exit(${BUILD_FAILURE_CODE});
+    }
     await Bun.write('dist/app', process.env.BUILD_TARGET ?? 'missing target');
   `,
   );
@@ -303,6 +306,10 @@ test(
     await using fixture = await deploymentFixture();
     const result = await fixture.run({ args: ['--new', 'context-use'], fail: true });
     expect(result.code).not.toBe(0);
+    expect(result.output).toContain('fixture build prerequisite is unavailable');
+    expect(result.output).toContain('Deployment stopped: build:instance failed.');
+    expect(result.output).not.toContain('ShellError');
+    expect(result.output).not.toContain('stdout:');
     expect(await Bun.file(fixture.invocation).exists()).toBe(false);
   },
   DEPLOY_TEST_TIMEOUT_MS,

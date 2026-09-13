@@ -41,6 +41,20 @@ if (process.argv.includes('--build')) {
 `,
   );
   await chmod(join(bin, 'cmake'), EXECUTABLE_MODE);
+  await Bun.write(
+    join(bin, 'docker'),
+    `#!${process.execPath}
+if (process.argv[2] === 'info') {
+  if (process.env.TEST_DOCKER_UNAVAILABLE) {
+    console.error('Cannot connect to the Docker daemon at fixture.sock');
+    process.exit(1);
+  }
+} else {
+  await Bun.write(${JSON.stringify(join(root, 'docker-build-started'))}, 'started');
+}
+`,
+  );
+  await chmod(join(bin, 'docker'), EXECUTABLE_MODE);
   return {
     root,
     app,
@@ -50,10 +64,12 @@ if (process.argv.includes('--build')) {
       command,
       fail = false,
       slow = false,
+      dockerUnavailable = false,
     }: {
       command: string[];
       fail?: boolean;
       slow?: boolean;
+      dockerUnavailable?: boolean;
     }) => {
       const child = Bun.spawn([process.execPath, 'run', ...command], {
         cwd: app,
@@ -62,6 +78,8 @@ if (process.argv.includes('--build')) {
           PATH: `${bin}:${process.env.PATH}`,
           TEST_COMPILER_FAILURE: fail ? '1' : undefined,
           TEST_COMPILER_SLOW: slow ? '1' : undefined,
+          BUILD_TARGET: 'bun-linux-x64',
+          TEST_DOCKER_UNAVAILABLE: dockerUnavailable ? '1' : undefined,
         },
         stdout: 'pipe',
         stderr: 'pipe',
@@ -76,6 +94,39 @@ if (process.argv.includes('--build')) {
     close: () => rm(root, { recursive: true, force: true }),
   };
 }
+
+test('an unavailable Docker daemon reports recovery steps before compiling for Linux', async () => {
+  const context = await fixture();
+  try {
+    const engine = join(context.app, '.cache/face-engine-linux/face-analyzer');
+    await Bun.write(engine, 'previous Linux engine');
+    const result = await context.run({
+      command: ['scripts/build-faces.ts'],
+      dockerUnavailable: true,
+    });
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain('Cannot connect to the Docker daemon at fixture.sock');
+    expect(result.stderr).toContain('open Docker Desktop');
+    expect(result.stderr).toContain('wait until `docker info` succeeds');
+    expect(result.stdout).not.toContain('Face recognition ready');
+    expect(await Bun.file(join(context.root, 'docker-build-started')).exists()).toBe(false);
+    expect(await Bun.file(engine).text()).toBe('previous Linux engine');
+  } finally {
+    await context.close();
+  }
+});
+
+test('an available Docker daemon allows the Linux build to proceed', async () => {
+  const context = await fixture();
+  try {
+    const result = await context.run({ command: ['scripts/build-faces.ts'] });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('Face recognition ready');
+    expect(await Bun.file(join(context.root, 'docker-build-started')).exists()).toBe(true);
+  } finally {
+    await context.close();
+  }
+});
 
 test('the optional native build installs the local engine', async () => {
   const context = await fixture();
