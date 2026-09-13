@@ -60,6 +60,7 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
   client.setQueryData(sessionQueryOptions.queryKey, session);
   client.setQueryData(profileQueryOptions.queryKey, profile);
   const writes: { path: string; body: unknown }[] = [];
+  const reads: string[] = [];
   let imageFailed = false;
   let uploadFailed = false;
   async function writeResponse({ request, path }: { request: Request; path: string }) {
@@ -92,6 +93,7 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
     }
   }
   function readResponse(path: string) {
+    reads.push(path);
     switch (path) {
       case '/api/profile':
         return profile
@@ -141,11 +143,12 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
   return {
     user,
     writes,
+    reads,
     router,
     client,
     submit: () =>
       user.click(
-        screen.getByRole('button', { name: onboarding ? 'Create first entity' : 'Create entity' }),
+        screen.getByRole('button', { name: onboarding ? 'Create my profile' : 'Create entity' }),
       ),
     dispose: () => {
       cleanup();
@@ -156,14 +159,27 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
 }
 
 for (const onboarding of [false, true]) {
-  test(`creation chooses an existing asset and resumes image assignment (${onboarding ? 'onboarding' : 'dashboard'})`, async () => {
+  test(`creation resumes image assignment (${onboarding ? 'onboarding upload' : 'existing dashboard asset'})`, async () => {
     const world = await creationWorld({ onboarding, failImage: true });
     try {
-      await world.user.click(screen.getByRole('tab', { name: 'Choose existing' }));
-      await world.user.click(await screen.findByRole('button', { name: /Portrait/ }));
-      expect(screen.getByRole('button', { name: /Portrait/ }).getAttribute('aria-pressed')).toBe(
-        'true',
-      );
+      if (onboarding) {
+        expect(screen.queryByRole('tab', { name: 'Choose existing' })).toBeNull();
+        expect(world.reads).not.toContain('/api/assets');
+        expect(screen.queryByRole('textbox', { name: 'Search image assets' })).toBeNull();
+        expect(
+          screen.getByText(/help Context Use recognize you in images you upload later/),
+        ).toBeTruthy();
+        await world.user.upload(
+          screen.getByLabelText('Profile photo (optional)'),
+          new File(['image'], 'portrait.png', { type: 'image/png' }),
+        );
+      } else {
+        await world.user.click(screen.getByRole('tab', { name: 'Choose existing' }));
+        await world.user.click(await screen.findByRole('button', { name: /Portrait/ }));
+        expect(screen.getByRole('button', { name: /Portrait/ }).getAttribute('aria-pressed')).toBe(
+          'true',
+        );
+      }
       await world.submit();
       await screen.findByText('Image is already assigned');
       expect(world.router.state.location.pathname).toBe('/entities/new');
@@ -177,11 +193,11 @@ for (const onboarding of [false, true]) {
       await world.user.click(screen.getByRole('button', { name: 'Continue' }));
       await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
       expect(world.writes.map((write) => write.path)).toEqual([
-        onboarding ? '/api/profile' : '/api/entities',
+        ...(onboarding ? ['/api/assets', '/api/profile'] : ['/api/entities']),
         '/api/entities/alice/image',
         '/api/entities/alice/image',
       ]);
-      expect(world.writes[1]?.body).toEqual({ assetReadableId: 'portrait' });
+      expect(world.writes.at(-1)?.body).toEqual({ assetReadableId: 'portrait' });
     } finally {
       world.dispose();
     }
@@ -191,7 +207,7 @@ for (const onboarding of [false, true]) {
 test('onboarding validates uploads, preserves the draft after upload failure, and creates an image asset', async () => {
   const world = await creationWorld({ onboarding: true, failUpload: true });
   try {
-    const input = screen.getByLabelText('File');
+    const input = screen.getByLabelText('Profile photo (optional)');
     const oversized = new File(['image'], 'portrait.png', { type: 'image/png' });
     Object.defineProperty(oversized, 'size', { value: MAX_ASSET_BYTES + 1 });
     await world.user.upload(input, oversized);
@@ -240,13 +256,17 @@ test('removing the image after assignment failure continues without creating ano
   }
 });
 
-test('creation without an image does not upload or assign an asset', async () => {
-  const world = await creationWorld();
-  try {
-    await world.submit();
-    await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
-    expect(world.writes.map((write) => write.path)).toEqual(['/api/entities']);
-  } finally {
-    world.dispose();
-  }
-});
+for (const onboarding of [false, true]) {
+  test(`creation without an image does not upload or assign an asset (${onboarding ? 'onboarding' : 'dashboard'})`, async () => {
+    const world = await creationWorld({ onboarding });
+    try {
+      await world.submit();
+      await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
+      expect(world.writes.map((write) => write.path)).toEqual([
+        onboarding ? '/api/profile' : '/api/entities',
+      ]);
+    } finally {
+      world.dispose();
+    }
+  });
+}

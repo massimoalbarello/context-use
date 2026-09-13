@@ -1,4 +1,4 @@
-import { buttonVariants } from '@repo/ui/button';
+import { Button, buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { useState } from 'react';
 import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
@@ -9,6 +9,8 @@ import { AssetCardContent } from '../assets/asset-link';
 import { ResourceList, resourceCardVariants } from '../knowledge/resource-list';
 import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import type { EntityImageInputProps } from './entity-form';
 
 const IMAGE_ACCEPT = EMBEDDABLE_ASSET_MEDIA_TYPES.join(',');
 
@@ -69,14 +71,21 @@ export function EntityImageUploadField({
   file,
   pending,
   onChange,
+  label = 'File',
+  buttonLabel = 'Choose file',
+  description,
 }: {
+  label?: string;
+  buttonLabel?: string;
+  description?: string;
   file: File | null;
   pending: boolean;
   onChange: (file: File | null) => void;
 }) {
   return (
     <Field>
-      <FieldLabel htmlFor="entity-image-file">File</FieldLabel>
+      <FieldLabel htmlFor="entity-image-file">{label}</FieldLabel>
+      {description && <FieldDescription>{description}</FieldDescription>}
       <div className="flex flex-wrap items-center gap-3">
         <input
           className="peer sr-only"
@@ -98,7 +107,7 @@ export function EntityImageUploadField({
           })}
           htmlFor="entity-image-file"
         >
-          Choose file
+          {buttonLabel}
         </label>
         <span className="min-w-0 truncate text-muted-foreground text-sm">
           {file?.name ?? 'No file chosen'}
@@ -106,5 +115,55 @@ export function EntityImageUploadField({
       </div>
       <FieldDescription>Up to {MAX_ASSET_MEBIBYTES} MB.</FieldDescription>
     </Field>
+  );
+}
+
+export function EntityCreationImageInput({ value, pending, onChange }: EntityImageInputProps) {
+  const [imageSource, setImageSource] = useState('upload');
+  return (
+    <>
+      <span className="font-medium text-sm" id="entity-image-label">
+        Image (optional)
+      </span>
+      <FieldDescription>Upload a new image asset or choose an available one.</FieldDescription>
+      {value && (
+        <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted p-3">
+          {value instanceof File ? (
+            <span className="min-w-0 flex-1 truncate text-sm">{value.name}</span>
+          ) : (
+            <AssetCardContent asset={value} />
+          )}
+          <Button type="button" variant="ghost" disabled={pending} onClick={() => onChange(null)}>
+            Remove image
+          </Button>
+        </div>
+      )}
+      <Tabs value={imageSource} onValueChange={setImageSource}>
+        <TabsList variant="line" aria-labelledby="entity-image-label">
+          <TabsTrigger value="upload" disabled={pending}>
+            Upload new
+          </TabsTrigger>
+          <TabsTrigger value="existing" disabled={pending}>
+            Choose existing
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="upload" className="pt-4">
+          <EntityImageUploadField
+            file={value instanceof File ? value : null}
+            pending={pending}
+            onChange={onChange}
+          />
+        </TabsContent>
+        <TabsContent value="existing">
+          <EntityImagePicker
+            selectedImageReadableId={
+              value && !(value instanceof File) ? value.readableId : undefined
+            }
+            pending={pending}
+            onSelect={onChange}
+          />
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }

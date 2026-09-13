@@ -1,4 +1,4 @@
-import { buttonVariants } from '@repo/ui/button';
+import { Button, buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
@@ -9,8 +9,13 @@ import {
   EntityForm,
   type EntityFormSubmission,
   type EntityFormValues,
+  type EntityImageInputProps,
 } from '../components/entities/entity-form';
 import { createEntityImageAsset } from '../components/entities/entity-image-asset';
+import {
+  EntityCreationImageInput,
+  EntityImageUploadField,
+} from '../components/entities/entity-image-inputs';
 import { DetailShell } from '../components/knowledge/detail-shell';
 import { internalAppPath } from '../lib/internal-app-path';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
@@ -83,21 +88,24 @@ function NewEntityRoute() {
     <>
       <header className="grid gap-1">
         <h1 className="font-semibold text-2xl tracking-tight">
-          {profile ? 'New entity' : 'Create your first entity'}
+          {profile ? 'New entity' : 'Let’s start with you'}
         </h1>
         <p className="text-muted-foreground text-sm">
           {profile
             ? 'The permanent address will be derived from the entity’s name.'
-            : 'Start with yourself. This entity anchors your workspace and can be mentioned like any other.'}
+            : 'Tell us a little about yourself to make this workspace yours.'}
         </p>
       </header>
       <EntityForm
         initialValues={profile ? EMPTY_ENTITY : { ...EMPTY_ENTITY, entityType: SELF_ENTITY_TYPE }}
         entityTypeReadOnly={!profile}
+        renderImageInput={(props) =>
+          profile ? <EntityCreationImageInput {...props} /> : <ProfileImageInput {...props} />
+        }
         pending={creation.isPending}
         identitySaved={createdReadableId !== null}
         error={creation.error}
-        submitLabel={profile ? 'Create entity' : 'Create first entity'}
+        submitLabel={profile ? 'Create entity' : 'Create my profile'}
         onSubmit={(values) => creation.mutate(values)}
       />
     </>
@@ -115,7 +123,7 @@ function NewEntityRoute() {
           search={{ redirect: redirectTo }}
         >
           <ArrowLeft aria-hidden="true" />
-          Back to agent bootstrap
+          Back to setup
         </Link>
         <div className="mx-auto grid w-full max-w-2xl gap-5">{content}</div>
       </main>
@@ -123,4 +131,30 @@ function NewEntityRoute() {
   }
 
   return <DetailShell className="w-full max-w-2xl gap-5">{content}</DetailShell>;
+}
+
+function ProfileImageInput({ value, pending, onChange }: EntityImageInputProps) {
+  return (
+    <>
+      <EntityImageUploadField
+        label="Profile photo (optional)"
+        buttonLabel="Choose a photo"
+        description="Add a clear photo of your face to help Context Use recognize you in images you upload later. You can skip this for now."
+        file={value instanceof File ? value : null}
+        pending={pending}
+        onChange={onChange}
+      />
+      {value && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="justify-self-start"
+          disabled={pending}
+          onClick={() => onChange(null)}
+        >
+          Remove photo
+        </Button>
+      )}
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
-import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { MAX_ASSET_BYTES, MAX_ASSET_MEBIBYTES } from '#backend/models/assets/model.ts';
 import {
@@ -11,12 +11,9 @@ import {
 import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { AssetSummary } from '../../queries/assets';
-import { AssetCardContent } from '../assets/asset-link';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Textarea } from '../ui/textarea';
-import { EntityImagePicker, EntityImageUploadField } from './entity-image-inputs';
 import { EntityTypeField } from './entity-type-field';
 import { validateEntityDescription, validateEntityName } from './entity-validation';
 
@@ -25,6 +22,12 @@ export type EntityFormValues = {
   description: string;
   entityType: EntityType | null;
   image: File | AssetSummary | null;
+};
+
+export type EntityImageInputProps = {
+  value: EntityFormValues['image'];
+  pending: boolean;
+  onChange: (value: EntityFormValues['image']) => void;
 };
 
 export type EntityFormSubmission = EntityFormValues & { allowDuplicate?: boolean };
@@ -36,6 +39,7 @@ export function EntityForm({
   submitLabel,
   entityTypeReadOnly = false,
   identitySaved = false,
+  renderImageInput,
   onSubmit,
 }: {
   initialValues: EntityFormValues;
@@ -44,9 +48,9 @@ export function EntityForm({
   submitLabel: string;
   entityTypeReadOnly?: boolean;
   identitySaved?: boolean;
+  renderImageInput: (props: EntityImageInputProps) => ReactNode;
   onSubmit: (values: EntityFormSubmission) => void;
 }) {
-  const [imageSource, setImageSource] = useState('upload');
   const form = useForm({
     defaultValues: { ...initialValues, allowDuplicate: false },
     validationLogic: submitThenChangeValidation,
@@ -152,57 +156,7 @@ export function EntityForm({
       >
         {(field) => (
           <Field data-invalid={field.state.meta.errors.length > 0}>
-            <span className="font-medium text-sm" id="entity-image-label">
-              Image (optional)
-            </span>
-            <FieldDescription>
-              Upload a new image asset or choose an available one.
-            </FieldDescription>
-            {field.state.value && (
-              <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted p-3">
-                {field.state.value instanceof File ? (
-                  <span className="min-w-0 flex-1 truncate text-sm">{field.state.value.name}</span>
-                ) : (
-                  <AssetCardContent asset={field.state.value} />
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={pending}
-                  onClick={() => field.handleChange(null)}
-                >
-                  Remove image
-                </Button>
-              </div>
-            )}
-            <Tabs value={imageSource} onValueChange={setImageSource}>
-              <TabsList variant="line" aria-labelledby="entity-image-label">
-                <TabsTrigger value="upload" disabled={pending}>
-                  Upload new
-                </TabsTrigger>
-                <TabsTrigger value="existing" disabled={pending}>
-                  Choose existing
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="upload" className="pt-4">
-                <EntityImageUploadField
-                  file={field.state.value instanceof File ? field.state.value : null}
-                  pending={pending}
-                  onChange={field.handleChange}
-                />
-              </TabsContent>
-              <TabsContent value="existing">
-                <EntityImagePicker
-                  selectedImageReadableId={
-                    field.state.value && !(field.state.value instanceof File)
-                      ? field.state.value.readableId
-                      : undefined
-                  }
-                  pending={pending}
-                  onSelect={field.handleChange}
-                />
-              </TabsContent>
-            </Tabs>
+            {renderImageInput({ value: field.state.value, pending, onChange: field.handleChange })}
             <FieldError>{field.state.meta.errors[0]}</FieldError>
           </Field>
         )}
