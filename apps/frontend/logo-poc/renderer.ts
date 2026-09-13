@@ -1,6 +1,7 @@
 import { type Gpu, init, surface } from 'vgpu';
 import logoSvg from '../src/assets/context-use.svg?raw';
 import { type Point, readLogo } from './logo';
+import type { Palette } from './palettes';
 import { createPipeline } from './pipeline';
 
 const MAX_OUTPUT_DIMENSION = 1920;
@@ -15,9 +16,11 @@ const VERTICAL_ORBIT_RATIO = 0.85;
 
 export function createRenderer({
   canvas,
+  palette,
   onStatus,
 }: {
   canvas: HTMLCanvasElement;
+  palette: Palette;
   onStatus: (status: string) => void;
 }) {
   let disposed = false;
@@ -54,7 +57,11 @@ export function createRenderer({
     gpu = nextGpu;
     cleanups.push(gpu.onError(fail));
     const output = surface(gpu, canvas, { autoResize: false });
-    const pipeline = createPipeline({ gpu, output, shapes: readLogo(logoSvg) });
+    const pipeline = createPipeline({
+      gpu,
+      output,
+      shapes: readLogo({ svg: logoSvg, palette }),
+    });
     let sceneChanged = true;
     let needsResize = true;
     let inFlight = false;

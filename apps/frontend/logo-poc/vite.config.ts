@@ -8,5 +8,12 @@ export default defineConfig({
   cacheDir: fileURLToPath(new URL('../node_modules/.vite-logo-poc', import.meta.url)),
   plugins: [wgslVitePlugin(), react()],
   server: { host: '127.0.0.1', port: 4174, strictPort: true },
-  build: { outDir: 'dist' },
+  build: {
+    outDir: 'dist',
+    rolldownOptions: {
+      input: ['index.html', 'warm.html', 'neon.html'].map((page) =>
+        fileURLToPath(new URL(page, import.meta.url)),
+      ),
+    },
+  },
 });
