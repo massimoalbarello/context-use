@@ -8,14 +8,14 @@ const SAMPLE_COUNT = 128;
 @fragment fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
   let light_uv = 0.5 + lighting.light * min(lighting.size.x, lighting.size.y) / lighting.size;
   let sample_scale = 48.0 / f32(SAMPLE_COUNT);
-  let delta = (uv - light_uv) * (0.9 / f32(SAMPLE_COUNT));
   let decay = pow(0.965, sample_scale);
-  var coordinate = uv;
   var rays = vec3f(0.0);
   var weight = 1.0;
   for (var i = 0; i < SAMPLE_COUNT; i++) {
-    coordinate -= delta;
-    rays += textureSample(blurred_rim, linear_sampler, coordinate).rgb * weight;
+    // Sample away from the pointer so each stroke casts its glow toward it.
+    let progress = f32(i) / f32(SAMPLE_COUNT);
+    let coordinate = light_uv + (uv - light_uv) / (1.0 - progress * 0.98);
+    rays += textureSample(blurred_rim, linear_sampler, coordinate).rgb * weight * (1.0 - progress);
     weight *= decay;
   }
   return vec4f(rays * (0.075 * sample_scale), 1.0);

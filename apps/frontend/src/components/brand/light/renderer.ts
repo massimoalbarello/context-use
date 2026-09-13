@@ -16,7 +16,6 @@ const INITIAL_LIGHT: Point = [INITIAL_LIGHT_X, INITIAL_LIGHT_Y];
 const ORBIT_SPEED = 0.24;
 const ORBIT_RADIUS = 0.22;
 const VERTICAL_ORBIT_RATIO = 0.85;
-const POINTER_RANGE = 0.4;
 const POINTER_RESPONSE = 10;
 const MAX_FRAME_SECONDS = 0.05;
 
@@ -175,10 +174,9 @@ export function createRenderer({
       }
       const bounds = canvas.getBoundingClientRect();
       const unit = Math.max(1, Math.min(bounds.width, bounds.height));
-      const clamp = (value: number) => Math.max(-POINTER_RANGE, Math.min(POINTER_RANGE, value));
       pointer = [
-        clamp((event.clientX - bounds.left - bounds.width / 2) / unit),
-        clamp((event.clientY - bounds.top - bounds.height / 2) / unit),
+        (event.clientX - bounds.left - bounds.width / 2) / unit,
+        (event.clientY - bounds.top - bounds.height / 2) / unit,
       ];
       schedule();
     };
