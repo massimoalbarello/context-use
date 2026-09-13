@@ -3,6 +3,7 @@
 @source "./*.tsx";
 @source "../src/components/brand";
 @source "../src/components/ui/button.tsx";
+@source "../src/components/ui/popover.tsx";
 
 :root {
   color-scheme: dark;
