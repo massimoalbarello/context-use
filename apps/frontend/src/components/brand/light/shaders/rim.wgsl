@@ -14,7 +14,7 @@ import { Lighting, Shape } from "./contracts.wgsl";
   let point = (uv - 0.5) * lighting.size / unit;
   let delta = point - lighting.light;
   let spot = exp(-dot(delta, delta) / 0.033);
-  let edge = exp(-abs(distance) / 0.85);
+  let edge = exp(-abs(distance) / (0.85 * lighting.pixel_ratio));
   let energy = edge * (0.45 + spot * 3.5);
   return vec4f(color * energy, 1.0);
 }

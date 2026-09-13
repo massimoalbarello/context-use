@@ -1,30 +1,16 @@
-import { Lighting } from "./contracts.wgsl";
 @group(0) @binding(0) var field: texture_2d<f32>;
 @group(0) @binding(1) var irradiance: texture_2d<f32>;
 @group(0) @binding(3) var rim: texture_2d<f32>;
 @group(0) @binding(4) var blurred_rim: texture_2d<f32>;
 @group(0) @binding(5) var linear_sampler: sampler;
-@group(0) @binding(6) var<uniform> lighting: Lighting;
+@group(0) @binding(6) var rays_texture: texture_2d<f32>;
 
 @fragment fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
   let dimensions = vec2f(textureDimensions(field));
   let unit = min(dimensions.x, dimensions.y);
   let distances = textureSample(field, linear_sampler, uv);
   let logo = 1.0 - smoothstep(-0.5, 0.5, distances.g);
-  let light_uv = 0.5 + lighting.light * min(lighting.size.x, lighting.size.y) / lighting.size;
-  let delta = (uv - light_uv) * (0.9 / 48.0);
-  // Dither the ray origin per pixel to avoid visible steps along the fine logo lines.
-  let pixel = floor(uv * lighting.size);
-  let jitter = fract(52.9829189 * fract(dot(pixel, vec2f(0.06711056, 0.00583715))));
-  var coordinate = uv - delta * jitter;
-  var rays = vec3f(0.0);
-  var weight = 1.0;
-  for (var i = 0; i < 48; i++) {
-    coordinate -= delta;
-    rays += textureSample(blurred_rim, linear_sampler, coordinate).rgb * weight;
-    weight *= 0.965;
-  }
-  rays *= 0.075;
+  let rays = textureSample(rays_texture, linear_sampler, uv).rgb;
   let sharp = textureSample(rim, linear_sampler, uv).rgb;
   let soft = textureSample(blurred_rim, linear_sampler, uv).rgb;
   let light = textureSample(irradiance, linear_sampler, uv).rgb;

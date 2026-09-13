@@ -5,6 +5,7 @@ import compositeShader from './shaders/composite.wgsl';
 import emitterShader from './shaders/emitter.wgsl';
 import fieldShader from './shaders/field.wgsl';
 import cascadeShader from './shaders/radiance-cascade.wgsl';
+import raysShader from './shaders/rays.wgsl';
 import resolveShader from './shaders/resolve.wgsl';
 import rimShader from './shaders/rim.wgsl';
 
@@ -14,7 +15,7 @@ const ATLAS_SCALE = 2;
 const MAX_FIELD_DIMENSION = 768;
 const FLOATS_PER_SHAPE = 8;
 const HDR_FORMAT = 'rgba16float';
-const BLUR_RADIUS = 3;
+const BLUR_STEP = 1;
 
 export function createPipeline({
   gpu,
@@ -27,18 +28,22 @@ export function createPipeline({
 }) {
   const makeTarget = () => target(gpu, { size: [1, 1], format: HDR_FORMAT });
   const field = makeTarget();
+  const outlineField = makeTarget();
   const emitter = makeTarget();
   const irradiance = makeTarget();
   const rim = makeTarget();
+  const rays = makeTarget();
   const blurHorizontal = makeTarget();
   const blurVertical = makeTarget();
   const cascades = [makeTarget(), makeTarget()] as const;
   const linearSampler = sampler(gpu, { minFilter: 'linear', magFilter: 'linear' });
   const shaders = {
     field: effect(gpu, fieldShader),
+    outlineField: effect(gpu, fieldShader),
     emitter: effect(gpu, emitterShader),
     resolve: effect(gpu, resolveShader),
     rim: effect(gpu, rimShader),
+    rays: effect(gpu, raysShader),
     blurH: effect(gpu, blurShader),
     blurV: effect(gpu, blurShader),
     composite: effect(gpu, compositeShader),
@@ -51,6 +56,7 @@ export function createPipeline({
   );
   buffer.write(packShapes(shapes));
   shaders.field.set({ shapes: buffer });
+  shaders.outlineField.set({ shapes: buffer });
   shaders.emitter.set({ shapes: buffer });
   shaders.rim.set({ shapes: buffer });
 
@@ -58,9 +64,11 @@ export function createPipeline({
     Promise.all([
       ...[
         shaders.field,
+        shaders.outlineField,
         shaders.emitter,
         shaders.resolve,
         shaders.rim,
+        shaders.rays,
         shaders.blurH,
         shaders.blurV,
         ...shaders.cascades,
@@ -68,7 +76,9 @@ export function createPipeline({
       shaders.composite.compile({ colors: [output.format] }),
     ]);
 
-  const resize = (size: Point) => {
+  let pixelRatio = 1;
+  const resize = ({ size, ratio }: { size: Point; ratio: number }) => {
+    pixelRatio = ratio;
     output.resize(size);
     const scale = Math.min(1, MAX_FIELD_DIMENSION / Math.max(...size));
     const fieldSize: Point = [
@@ -79,42 +89,46 @@ export function createPipeline({
       Math.ceil(fieldSize[0] / CASCADE_ALIGNMENT) * CASCADE_ALIGNMENT * ATLAS_SCALE,
       Math.ceil(fieldSize[1] / CASCADE_ALIGNMENT) * CASCADE_ALIGNMENT * ATLAS_SCALE,
     ];
-    for (const resource of [field, emitter, irradiance]) {
+    for (const resource of [field, emitter, irradiance, rays]) {
       resource.resize(fieldSize);
     }
     for (const resource of cascades) {
       resource.resize(atlasSize);
     }
-    for (const resource of [rim, blurHorizontal, blurVertical]) {
+    // Keep the logo geometry sharp independently of the diffuse-light resolution.
+    for (const resource of [outlineField, rim, blurHorizontal, blurVertical]) {
       resource.resize(size);
     }
     shaders.emitter.set({ field });
     shaders.resolve.set({ field });
-    shaders.rim.set({ field, linear_sampler: linearSampler });
+    shaders.rim.set({ field: outlineField, linear_sampler: linearSampler });
     shaders.blurH.set({
       source: rim,
       linear_sampler: linearSampler,
-      blur: { direction: [BLUR_RADIUS, 0], padding: [0, 0] },
+      blur: { direction: [BLUR_STEP * pixelRatio, 0], padding: [0, 0] },
     });
     shaders.blurV.set({
       source: blurHorizontal,
       linear_sampler: linearSampler,
-      blur: { direction: [0, BLUR_RADIUS], padding: [0, 0] },
+      blur: { direction: [0, BLUR_STEP * pixelRatio], padding: [0, 0] },
     });
     shaders.composite.set({
-      field,
+      field: outlineField,
       irradiance,
       rim,
       blurred_rim: blurVertical,
       linear_sampler: linearSampler,
+      rays_texture: rays,
     });
+    shaders.rays.set({ blurred_rim: blurVertical, linear_sampler: linearSampler });
   };
 
   const render = ({ light, sceneChanged }: { light: Point; sceneChanged: boolean }) => {
-    const lighting = { light, size: output.size };
+    const lighting = { light, size: output.size, pixel_ratio: pixelRatio };
     shaders.rim.set({ lighting });
-    shaders.composite.set({ lighting });
+    shaders.rays.set({ lighting });
     shaders.field.set({ scene: { size: field.size, count: shapes.length, padding: 0 } });
+    shaders.outlineField.set({ scene: { size: output.size, count: shapes.length, padding: 0 } });
     let upper = cascades[0];
     let destination = cascades[1];
     const cascadePasses = Array.from(shaders.cascades.entries(), ([index, shader]) => {
@@ -134,6 +148,7 @@ export function createPipeline({
     shaders.resolve.set({ cascade: upper });
     frame(gpu, (current) => {
       if (sceneChanged) {
+        current.pass({ target: outlineField }, (pass) => pass.draw(shaders.outlineField));
         current.pass({ target: field }, (pass) => pass.draw(shaders.field));
         current.pass({ target: emitter }, (pass) => pass.draw(shaders.emitter));
         for (const cascade of cascadePasses) {
@@ -144,6 +159,7 @@ export function createPipeline({
       current.pass({ target: rim }, (pass) => pass.draw(shaders.rim));
       current.pass({ target: blurHorizontal }, (pass) => pass.draw(shaders.blurH));
       current.pass({ target: blurVertical }, (pass) => pass.draw(shaders.blurV));
+      current.pass({ target: rays }, (pass) => pass.draw(shaders.rays));
       current.pass({ target: output }, (pass) => pass.draw(shaders.composite));
     });
   };

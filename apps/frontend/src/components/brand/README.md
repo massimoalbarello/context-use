@@ -10,6 +10,10 @@ import { AnimatedContextUseLogo } from './components/brand/animated-context-use-
 
 The component defaults to a square filling its parent's width. Set its dimensions through `className` when using it as a panel. Its light and SVG geometry scale to the smaller container dimension. The optional `palette` prop accepts `sand` (default), `cool`, or `neon`; the playground uses these same presets.
 
-The renderer loads on mount, respects reduced motion, pauses when outside the viewport or in a hidden tab, and releases GPU resources on unmount. A static SVG appears while loading or if WebGPU is unavailable. Rendering does not block surrounding controls.
+The light smoothly follows mouse and pen movement across the page, returning to its slow orbit when the pointer leaves the window. Touch scrolling remains native. Reduced motion keeps the light still.
+
+Logo outlines render at display resolution, independently of the lower-resolution diffuse lighting. Retina rendering supports up to 3× pixel density, bounded by 4096 pixels per dimension and an eight-megapixel budget. Glow widths stay consistent across pixel densities.
+
+The renderer loads on mount, pauses when outside the viewport or in a hidden tab, and releases GPU resources and pointer listeners on unmount. A static SVG appears while loading or if WebGPU is unavailable. Rendering does not block surrounding controls.
 
 The Vite WGSL plugin is configured for both the application and the playground. Shader source and the Vercel MIT attribution live in `light/shaders`; colors live in `light/palettes.ts`.
