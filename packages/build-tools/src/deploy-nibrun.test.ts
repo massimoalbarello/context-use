@@ -9,7 +9,7 @@ const BUILD_FAILURE_CODE = 7;
 const DEPLOY_TEST_TIMEOUT_MS = 30_000;
 
 test('deployment requires an explicit creation or redeployment target', () => {
-  expect(deploymentTarget(['--name', 'context-use-landing'])).toEqual([
+  expect(deploymentTarget(['--new', 'context-use-landing'])).toEqual([
     '--name',
     'context-use-landing',
   ]);
@@ -20,12 +20,13 @@ test('deployment requires an explicit creation or redeployment target', () => {
   for (const args of [
     [],
     ['--app', ''],
-    ['--name', ' '],
-    ['--app', 'one', '--name', 'two'],
-    ['--app', ' ', '--name', 'valid'],
+    ['--new', ' '],
+    ['--app', 'one', '--new', 'two'],
+    ['--app', ' ', '--new', 'valid'],
   ]) {
-    expect(() => deploymentTarget(args)).toThrow('Choose --name');
+    expect(() => deploymentTarget(args)).toThrow('Choose --new');
   }
+  expect(() => deploymentTarget(['--name', 'old-option'])).toThrow('Unknown option');
 });
 
 async function deploymentFixture(task = 'build:instance') {
@@ -92,8 +93,8 @@ async function deploymentFixture(task = 'build:instance') {
   return {
     app,
     invocation,
-    async run(fail: boolean) {
-      const child = Bun.spawn([process.execPath, 'run', 'deploy.ts', '--app', 'existing-slug'], {
+    async run({ args, fail = false }: { args: string[]; fail?: boolean }) {
+      const child = Bun.spawn([process.execPath, 'run', 'deploy.ts', ...args], {
         cwd: app,
         env: {
           ...process.env,
@@ -121,7 +122,7 @@ test.each(['build:instance', 'build:demo', 'build'])(
   'deployment selects %s and builds Linux x64 before sending one binary to nib',
   async (task) => {
     await using fixture = await deploymentFixture(task);
-    const result = await fixture.run(false);
+    const result = await fixture.run({ args: ['--app', 'existing-slug'] });
     expect(result.code, result.output).toBe(0);
     expect(await Bun.file(join(fixture.app, 'dist/app')).text()).toBe('bun-linux-x64');
     expect(await Bun.file(fixture.invocation).json()).toEqual([
@@ -137,10 +138,28 @@ test.each(['build:instance', 'build:demo', 'build'])(
 );
 
 test(
+  'new deployments translate the creation option to nibrun',
+  async () => {
+    await using fixture = await deploymentFixture();
+    const result = await fixture.run({ args: ['--new', 'context-use-landing'] });
+    expect(result.code, result.output).toBe(0);
+    expect(await Bun.file(fixture.invocation).json()).toEqual([
+      'run',
+      join(fixture.app, 'dist/app'),
+      '--name',
+      'context-use-landing',
+      '--port',
+      '3000',
+    ]);
+  },
+  DEPLOY_TEST_TIMEOUT_MS,
+);
+
+test(
   'a failed build never invokes nibrun',
   async () => {
     await using fixture = await deploymentFixture();
-    const result = await fixture.run(true);
+    const result = await fixture.run({ args: ['--new', 'context-use'], fail: true });
     expect(result.code).not.toBe(0);
     expect(await Bun.file(fixture.invocation).exists()).toBe(false);
   },

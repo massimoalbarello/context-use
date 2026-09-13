@@ -42,16 +42,16 @@ Each binary has its own build and deploy commands:
 
 | App | Build a Linux binary | Deploy to nibrun |
 | --- | --- | --- |
-| Context Use instance | `bun run build:instance` | `bun run deploy:instance --name context-use` |
-| Steve Jobs demo | `bun run build:demo` | `bun run deploy:demo --name steve-jobs-demo` |
-| Project landing page | `bun run build:landing` | `bun run deploy:landing --name context-use-landing` |
+| Context Use instance | `bun run build:instance` | `bun run deploy:instance --new context-use` |
+| Steve Jobs demo | `bun run build:demo` | `bun run deploy:demo --new steve-jobs-demo` |
+| Project landing page | `bun run build:landing` | `bun run deploy:landing --new context-use-landing` |
 
 Builds produce `apps/context-use/dist/context-use`, `apps/context-use/dist/context-use-demo`, and
 `apps/landing/dist/context-use-landing`. Use `BUILD_TARGET=host` before a build command to compile
 for your local machine. The instance's Linux build requires Docker for the native face engine;
 the demo build uses CMake 3.24+ and a C++ toolchain to prepare its embedded snapshot.
 
-Deploy commands build for Linux automatically. Use `--name` only for the first deployment; to
+Deploy commands build for Linux automatically. Use `--new <app-name>` to create an app; to
 update an existing app, replace it with `--app <exact-slug>` from `nib apps list`. For example:
 ```sh
 bun run deploy:landing --app context-use-landing-abc123

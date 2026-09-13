@@ -20,7 +20,7 @@ contains the frontend, database, and files.
 
 ```sh
 nib login
-bun run deploy:demo --name steve-jobs-demo
+bun run deploy:demo --new steve-jobs-demo
 ```
 
 For redeployment, use `bun run deploy:demo --app <existing-slug>`.

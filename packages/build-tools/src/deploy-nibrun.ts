@@ -8,19 +8,19 @@ const NIBRUN_PORT = 3000;
 export function deploymentTarget(args: string[]): string[] {
   const { values } = parseArgs({
     args,
-    options: { app: { type: 'string' }, name: { type: 'string' } },
+    options: { app: { type: 'string' }, new: { type: 'string' } },
     allowPositionals: false,
   });
   if (
     (values.app !== undefined && !values.app.trim()) ||
-    (values.name !== undefined && !values.name.trim()) ||
-    (values.app !== undefined) === (values.name !== undefined)
+    (values.new !== undefined && !values.new.trim()) ||
+    (values.app !== undefined) === (values.new !== undefined)
   ) {
     throw new Error(
-      'Choose --name <new-app-name> for a first deployment or --app <existing-slug> to redeploy.',
+      'Choose --new <app-name> to create an app or --app <existing-slug> to redeploy.',
     );
   }
-  return values.app ? ['--app', values.app] : ['--name', values.name!];
+  return values.app ? ['--app', values.app] : ['--name', values.new!];
 }
 
 export async function deployToNibrun({
