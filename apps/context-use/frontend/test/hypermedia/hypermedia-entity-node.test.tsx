@@ -2,7 +2,7 @@ import { afterEach, expect, mock, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
 import type { HypermediaLayoutEntity } from '../../src/components/hypermedia/hypermedia-layout';
-import { KnowledgeWorkspace } from '../../src/components/knowledge/knowledge-workspace';
+import { KnowledgeWorkspaceProvider } from '../../src/components/knowledge/knowledge-workspace';
 import {
   type CalendarMonth,
   calendarMonthLabel,
@@ -99,7 +99,7 @@ function HypermediaMapFixture({
   selectedKey?: string;
 }) {
   return (
-    <KnowledgeWorkspace>
+    <KnowledgeWorkspaceProvider>
       <div />
       <HypermediaCanvas
         entities={entities}
@@ -116,7 +116,7 @@ function HypermediaMapFixture({
         neighborhoodError={null}
         onRetryNeighborhood={() => undefined}
       />
-    </KnowledgeWorkspace>
+    </KnowledgeWorkspaceProvider>
   );
 }
 

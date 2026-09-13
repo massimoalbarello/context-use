@@ -109,7 +109,8 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByRole('link', { name: 'Browse resources' })).toBeTruthy();
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Open sidebar' }));
+    expect(screen.getByRole('link', { name: 'Browse resources' })).toBeTruthy();
     expect(screen.getByText('1 entity selected')).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull();

@@ -1,6 +1,6 @@
 import { Button, buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { ContextUseLogo } from '@repo/ui/context-use-logo';
+import { ContextUseBrand } from '@repo/ui/context-use-brand';
 import { Link } from '@tanstack/react-router';
 import { Menu, Settings } from 'lucide-react';
 import { MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
@@ -24,11 +24,7 @@ export function KnowledgeSidebarHeader() {
         to={MAIN_KNOWLEDGE_PATH}
         aria-label="Context Use"
       >
-        <ContextUseLogo />
-        <span className="grid min-w-0 leading-tight">
-          <strong className="truncate font-semibold text-sm">Context Use</strong>
-          <small className="truncate text-muted-foreground text-xs">Private workspace</small>
-        </span>
+        <ContextUseBrand />
       </Link>
       <Button
         className={cn(
