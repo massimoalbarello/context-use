@@ -118,7 +118,7 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
         await run({ label: 'Checking Docker', command: ['docker', 'info'] });
       } catch {
         throw new Error(
-          'Linux face recognition builds require a running Docker daemon. Install and start Docker (on macOS, open Docker Desktop), wait until `docker info` succeeds, then retry the build.',
+          'Docker is unavailable. Building the Linux face-recognition engine requires Docker running on your computer. This is a local setup requirement, not a Context Use bug. Install and start Docker (on macOS, open Docker Desktop), wait until `docker info` succeeds, then retry the same command.',
         );
       }
       await run({
