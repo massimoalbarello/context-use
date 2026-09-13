@@ -1,6 +1,7 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
 import { AnimatedContextUseLogo } from '../components/brand/animated-context-use-logo';
+import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { internalAppPath } from '../lib/internal-app-path';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
@@ -33,8 +34,9 @@ function RouteComponent() {
         <AnimatedContextUseLogo className="absolute inset-0 size-full" />
         <Link
           to="/"
-          className="absolute top-6 left-6 z-10 font-semibold text-foreground text-lg tracking-tight sm:top-8 sm:left-8"
+          className="absolute top-6 left-6 z-10 flex items-center gap-2.5 whitespace-nowrap font-semibold text-foreground text-lg tracking-tight sm:top-8 sm:left-8"
         >
+          <ContextUseLogo />
           Context Use
         </Link>
       </div>
