@@ -1,9 +1,17 @@
 import { cp, mkdir, rename, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { clearLine, cursorTo } from 'node:readline';
 import { BACKEND_BUILD_TARGET } from './shared/constants';
 
 const backend = resolve(import.meta.dir, '..');
 const root = resolve(backend, '../..');
+const SPINNER_FRAMES = ['|', '/', '-', '\\'];
+const SPINNER_INTERVAL_MS = 100;
+const STATUS_INTERVAL_MS = 15_000;
+const MILLISECONDS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const FAILURE_LOG_BYTES = 8192;
+const FAILURE_LOG_LINES = 12;
 
 async function buildFaceAnalyzer({ host }: { host: boolean }) {
   const destination = join(backend, '.cache', host ? 'face-engine-host' : 'face-engine-linux');
@@ -11,9 +19,18 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
   await mkdir(build, { recursive: true });
   const logPath = join(build, 'build.log');
   const log = Bun.file(logPath).writer();
-  console.log(`Preparing face recognition (${host ? 'local' : 'Linux'}) · build log: ${logPath}`);
+  const started = performance.now();
+  function elapsed() {
+    const seconds = Math.floor((performance.now() - started) / MILLISECONDS_PER_SECOND);
+    const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+    return minutes ? `${minutes}m ${seconds % SECONDS_PER_MINUTE}s` : `${seconds}s`;
+  }
+  console.log(`Preparing face recognition for ${host ? 'this computer' : 'Linux deployment'}.`);
+  console.log(
+    'This builds the engine that finds people in images. The first build can take several minutes; later builds reuse cached work.',
+  );
 
-  async function run(command: string[]) {
+  async function run({ command, label }: { command: string[]; label: string }) {
     log.write(`\n> ${command.join(' ')}\n`);
     if (!Bun.which(command[0]!)) {
       throw new Error(
@@ -30,27 +47,40 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
     const terminate = () => child.kill('SIGTERM');
     process.once('SIGINT', interrupt);
     process.once('SIGTERM', terminate);
-    async function forward(input: {
-      stream: ReadableStream<Uint8Array>;
-      output: NodeJS.WriteStream;
-    }) {
-      for await (const chunk of input.stream) {
+    const interactive = Boolean(process.stdout.isTTY);
+    let frame = 0;
+    function progress() {
+      const message = `${interactive ? SPINNER_FRAMES[frame++ % SPINNER_FRAMES.length] : '…'} ${label} · ${elapsed()} elapsed`;
+      if (interactive) {
+        clearLine(process.stdout, 0);
+        cursorTo(process.stdout, 0);
+        process.stdout.write(message);
+      } else {
+        console.log(message);
+      }
+    }
+    progress();
+    const timer = setInterval(progress, interactive ? SPINNER_INTERVAL_MS : STATUS_INTERVAL_MS);
+    async function capture(stream: ReadableStream<Uint8Array>) {
+      for await (const chunk of stream) {
         log.write(chunk);
-        input.output.write(chunk);
       }
     }
     try {
       const [exitCode] = await Promise.all([
         child.exited,
-        forward({ stream: child.stdout, output: process.stdout }),
-        forward({ stream: child.stderr, output: process.stderr }),
+        capture(child.stdout),
+        capture(child.stderr),
       ]);
       if (exitCode !== 0) {
-        throw new Error(
-          `Native face analyzer build failed (exit ${exitCode}): ${command.join(' ')}`,
-        );
+        throw new Error(`${label} failed (exit ${exitCode}).`);
       }
     } finally {
+      clearInterval(timer);
+      if (interactive) {
+        clearLine(process.stdout, 0);
+        cursorTo(process.stdout, 0);
+      }
       process.off('SIGINT', interrupt);
       process.off('SIGTERM', terminate);
     }
@@ -59,15 +89,21 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
   try {
     if (host) {
       // CMake owns incremental rebuilds, including changes to the native sources and configuration.
-      await run([
-        'cmake',
-        '-S',
-        'apps/backend/native/faces',
-        '-B',
-        build,
-        '-DCMAKE_BUILD_TYPE=Release',
-      ]);
-      await run(['cmake', '--build', build, '--target', 'face-analyzer', '-j2']);
+      await run({
+        label: 'Checking build configuration',
+        command: [
+          'cmake',
+          '-S',
+          'apps/backend/native/faces',
+          '-B',
+          build,
+          '-DCMAKE_BUILD_TYPE=Release',
+        ],
+      });
+      await run({
+        label: 'Building face recognition engine',
+        command: ['cmake', '--build', build, '--target', 'face-analyzer', '-j2'],
+      });
       await mkdir(destination, { recursive: true });
       const temporary = join(destination, `face-analyzer-${Bun.randomUUIDv7()}`);
       try {
@@ -77,21 +113,32 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
         await rm(temporary, { force: true });
       }
     } else {
-      await run([
-        'docker',
-        'buildx',
-        'build',
-        '--platform',
-        'linux/amd64',
-        '-f',
-        'apps/backend/native/faces/Dockerfile',
-        '--output',
-        `type=local,dest=${destination}`,
-        '.',
-      ]);
+      await run({
+        label: 'Building face recognition engine',
+        command: [
+          'docker',
+          'buildx',
+          'build',
+          '--platform',
+          'linux/amd64',
+          '--progress=plain',
+          '-f',
+          'apps/backend/native/faces/Dockerfile',
+          '--output',
+          `type=local,dest=${destination}`,
+          '.',
+        ],
+      });
     }
+    console.log(`Face recognition ready · ${elapsed()}.`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    await log.flush();
+    const file = Bun.file(logPath);
+    const tail = await file.slice(Math.max(0, file.size - FAILURE_LOG_BYTES)).text();
+    if (tail.trim()) {
+      console.error(tail.trim().split(/\r?\n/).slice(-FAILURE_LOG_LINES).join('\n'));
+    }
     log.write(`\n${message}\n`);
     throw new Error(`${message}\nFull build output: ${logPath}`);
   } finally {

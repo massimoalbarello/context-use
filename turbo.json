@@ -15,6 +15,7 @@
       "outputs": ["dist/**", "public/**"]
     },
     "@repo/backend#build:faces": {
+      "outputLogs": "new-only",
       "inputs": [
         "native/faces/**",
         "scripts/build-faces.ts",
