@@ -9,7 +9,7 @@ Compare three palettes with the same geometry and animation (colors listed top t
 | Study | Local URL | Horizontal colors |
 | --- | --- | --- |
 | Cool | http://127.0.0.1:4174/ | Ice blue, mint green, lavender |
-| Sand | http://127.0.0.1:4174/warm.html | Champagne, sand beige, warm taupe |
+| Sand | http://127.0.0.1:4174/warm.html | Pale peach, dusty coral, muted rose |
 | Neon | http://127.0.0.1:4174/neon.html | Cyan, electric blue, magenta |
 
 All three pages are included in the static build. Color values are defined together in `palettes.ts`.
