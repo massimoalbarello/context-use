@@ -1,4 +1,4 @@
-import { cp, mkdir, rename, rm } from 'node:fs/promises';
+import { cp, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { clearLine, cursorTo } from 'node:readline';
 import { faceEngineDirectory } from './shared/build-assets';
@@ -19,6 +19,7 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
   const build = join(root, '.cache', host ? 'face-build-host' : 'face-build-linux');
   await mkdir(build, { recursive: true });
   const logPath = join(build, 'build.log');
+  await writeFile(logPath, '');
   const log = Bun.file(logPath).writer();
   const started = performance.now();
   function elapsed() {
@@ -89,11 +90,12 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
 
   try {
     if (host) {
-      // CMake owns incremental rebuilds, including changes to the native sources and configuration.
+      // Refresh wrapper metadata after source moves; keep ExternalProject's compiled dependencies.
       await run({
         label: 'Checking build configuration',
         command: [
           'cmake',
+          '--fresh',
           '-S',
           'apps/context-use/backend/native/faces',
           '-B',

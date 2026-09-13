@@ -21,7 +21,10 @@ ExternalProject_Add(face-analyzer
   DEPENDS opencv
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/engine
   BINARY_DIR ${CMAKE_BINARY_DIR}/runtime
-  CMAKE_ARGS -DOpenCV_DIR=${opencv_install}/lib/cmake/opencv4
+  # Include the source path in the command so moving it invalidates the configure stamp.
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} --fresh
+    -S ${CMAKE_CURRENT_SOURCE_DIR}/engine -B <BINARY_DIR> -G "${CMAKE_GENERATOR}"
+    -DOpenCV_DIR=${opencv_install}/lib/cmake/opencv4
     -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
   BUILD_ALWAYS TRUE
   INSTALL_COMMAND "")
