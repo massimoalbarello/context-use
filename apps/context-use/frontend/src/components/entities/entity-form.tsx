@@ -125,16 +125,18 @@ export function EntityForm({
               </Field>
             )}
           </form.Field>
-          <form.Field name="entityType">
-            {(field) => (
-              <EntityTypeField
-                value={field.state.value}
-                onChange={field.handleChange}
-                onBlur={field.handleBlur}
-                readOnly={entityTypeReadOnly || pending || identitySaved}
-              />
-            )}
-          </form.Field>
+          {!entityTypeReadOnly && (
+            <form.Field name="entityType">
+              {(field) => (
+                <EntityTypeField
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  onBlur={field.handleBlur}
+                  readOnly={pending || identitySaved}
+                />
+              )}
+            </form.Field>
+          )}
         </FieldGroup>
       </fieldset>
       <form.Field

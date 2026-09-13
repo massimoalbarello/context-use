@@ -74,10 +74,12 @@ export function EntityImageUploadField({
   label = 'File',
   buttonLabel = 'Choose file',
   description,
+  sizeHint = `Up to ${MAX_ASSET_MEBIBYTES} MB.`,
 }: {
   label?: string;
   buttonLabel?: string;
   description?: string;
+  sizeHint?: string | null;
   file: File | null;
   pending: boolean;
   onChange: (file: File | null) => void;
@@ -113,7 +115,7 @@ export function EntityImageUploadField({
           {file?.name ?? 'No file chosen'}
         </span>
       </div>
-      <FieldDescription>Up to {MAX_ASSET_MEBIBYTES} MB.</FieldDescription>
+      {sizeHint && <FieldDescription>{sizeHint}</FieldDescription>}
     </Field>
   );
 }

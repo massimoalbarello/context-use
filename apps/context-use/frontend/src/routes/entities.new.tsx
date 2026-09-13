@@ -139,7 +139,8 @@ function ProfileImageInput({ value, pending, onChange }: EntityImageInputProps) 
       <EntityImageUploadField
         label="Profile photo (optional)"
         buttonLabel="Choose a photo"
-        description="Add a clear photo of your face to help Context Use recognize you in images you upload later. You can skip this for now."
+        sizeHint={null}
+        description="Add a clear photo of your face to help Context Use recognize you in images you upload later."
         file={value instanceof File ? value : null}
         pending={pending}
         onChange={onChange}

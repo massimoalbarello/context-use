@@ -165,6 +165,9 @@ for (const onboarding of [false, true]) {
       if (onboarding) {
         expect(screen.queryByRole('tab', { name: 'Choose existing' })).toBeNull();
         expect(world.reads).not.toContain('/api/assets');
+        expect(screen.queryByRole('combobox', { name: 'Type' })).toBeNull();
+        expect(screen.queryByText(/You can skip this for now/)).toBeNull();
+        expect(screen.queryByText(/Up to .* MB/)).toBeNull();
         expect(screen.queryByRole('textbox', { name: 'Search image assets' })).toBeNull();
         expect(
           screen.getByText(/help Context Use recognize you in images you upload later/),
@@ -198,6 +201,11 @@ for (const onboarding of [false, true]) {
         '/api/entities/alice/image',
       ]);
       expect(world.writes.at(-1)?.body).toEqual({ assetReadableId: 'portrait' });
+      if (onboarding) {
+        expect(world.writes.find((write) => write.path === '/api/profile')?.body).toMatchObject({
+          entityType: 'person',
+        });
+      }
     } finally {
       world.dispose();
     }
