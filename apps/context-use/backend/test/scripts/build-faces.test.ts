@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { chmod, cp, mkdir, mkdtemp, realpath, rename, rm } from 'node:fs/promises';
+import { chmod, cp, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -10,7 +10,7 @@ const SLOW_BUILD_TIMEOUT_MS = 30_000;
 const PREVIOUS_LOG_LINES = 4096;
 
 async function fixture() {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'context-use-dev-build-test-')));
+  const root = await mkdtemp(join(tmpdir(), 'context-use-dev-build-test-'));
   const app = join(root, 'apps/context-use/backend');
   const bin = join(root, 'bin');
   await mkdir(join(app, 'scripts/shared'), { recursive: true });
@@ -121,68 +121,6 @@ test('a failed optional native build preserves the engine and full diagnostics',
     await context.close();
   }
 });
-
-test.skipIf(!Bun.which('cmake'))(
-  'native builds refresh both CMake source paths after the backend moves',
-  async () => {
-    const context = await fixture();
-    try {
-      await rm(join(context.root, 'bin/cmake'));
-      const oldSource = join(context.root, 'apps/backend/native/faces');
-      const source = join(context.app, 'native/faces');
-      const build = join(context.root, '.cache/face-build-host');
-      const project = await Bun.file(join(backend, 'native/faces/CMakeLists.txt')).text();
-      // Keep the real wrapper and ExternalProject configuration, substituting only OpenCV
-      // and compilation with a tiny local project so this test needs no downloads or compiler.
-      await Bun.write(
-        join(oldSource, 'CMakeLists.txt'),
-        project
-          .replace('LANGUAGES C CXX', 'LANGUAGES NONE')
-          .replace(
-            /ExternalProject_Add\(opencv[\s\S]*?(?=ExternalProject_Add\(face-analyzer)/,
-            'add_custom_target(opencv)\n',
-          ),
-      );
-      await Bun.write(
-        join(oldSource, 'engine/CMakeLists.txt'),
-        `cmake_minimum_required(VERSION 3.24)
-project(fixture LANGUAGES NONE)
-add_custom_target(face-analyzer ALL
-  COMMAND \${CMAKE_COMMAND} -E copy
-    \${CMAKE_CURRENT_SOURCE_DIR}/../main.cpp
-    \${CMAKE_CURRENT_BINARY_DIR}/face-analyzer)
-`,
-      );
-      await Bun.write(join(oldSource, 'main.cpp'), 'previous engine');
-      for (const args of [
-        ['-S', oldSource, '-B', build],
-        ['--build', build, '--target', 'face-analyzer'],
-      ]) {
-        const result = Bun.spawnSync(['cmake', ...args]);
-        expect(result.exitCode, result.stderr.toString()).toBe(0);
-      }
-      await Bun.write(join(build, 'opencv/cached-dependency'), 'preserve compiled dependencies');
-      await mkdir(join(context.app, 'native'), { recursive: true });
-      await rename(oldSource, source);
-      await Bun.write(join(source, 'main.cpp'), 'current engine');
-
-      const result = await context.run({ command: ['scripts/build-faces.ts', '--host'] });
-      expect(result.code, result.stderr).toBe(0);
-      expect(await Bun.file(context.engine).text()).toBe('current engine');
-      expect(await Bun.file(join(build, 'opencv/cached-dependency')).text()).toBe(
-        'preserve compiled dependencies',
-      );
-      for (const cache of ['CMakeCache.txt', 'runtime/CMakeCache.txt']) {
-        const contents = await Bun.file(join(build, cache)).text();
-        expect(contents).toContain('apps/context-use/backend/native/faces');
-        expect(contents).not.toContain('apps/backend/native/faces');
-      }
-    } finally {
-      await context.close();
-    }
-  },
-  SLOW_BUILD_TIMEOUT_MS,
-);
 
 test(
   'a quiet compiler still reports elapsed progress when output is piped through Turbo or CI',

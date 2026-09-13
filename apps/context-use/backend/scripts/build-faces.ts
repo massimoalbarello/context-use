@@ -90,12 +90,10 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
 
   try {
     if (host) {
-      // Refresh wrapper metadata after source moves; keep ExternalProject's compiled dependencies.
       await run({
         label: 'Checking build configuration',
         command: [
           'cmake',
-          '--fresh',
           '-S',
           'apps/context-use/backend/native/faces',
           '-B',
