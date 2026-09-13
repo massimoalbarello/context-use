@@ -1,7 +1,8 @@
 <div align="center">
-  <img src="packages/ui/src/assets/context-use.svg" alt="Context Use logo" width="128" height="128" />
-  <h1>Context Use</h1>
+  <h1><img src="packages/ui/src/assets/context-use.svg" alt="" width="32" height="32" align="absmiddle" /> Context Use</h1>
   <p><em>Personal hypermedia for human-agent collaboration.</em></p>
+
+  <img src=".github/assets/context-use-logo.gif" alt="Context Use logo illuminated by orbiting warm light" width="720" height="405" />
 
 [**View the Steve Jobs demo**](https://demo.context-use.com/hypermedia)
 
