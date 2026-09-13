@@ -1,8 +1,10 @@
 import { type Gpu, init, surface } from 'vgpu';
-import logoSvg from '../src/assets/context-use.svg?raw';
+import logoSvg from '../../../assets/context-use.svg?raw';
 import { type Point, readLogo } from './logo';
 import type { Palette } from './palettes';
 import { createPipeline } from './pipeline';
+
+export type RendererStatus = 'loading' | 'ready' | 'unavailable';
 
 const MAX_OUTPUT_DIMENSION = 1920;
 const MAX_DPR = 2;
@@ -21,7 +23,7 @@ export function createRenderer({
 }: {
   canvas: HTMLCanvasElement;
   palette: Palette;
-  onStatus: (status: string) => void;
+  onStatus: (status: RendererStatus) => void;
 }) {
   let disposed = false;
   let gpu: Gpu | undefined;
@@ -43,8 +45,8 @@ export function createRenderer({
     if (disposed) {
       return;
     }
-    console.error('Context Use light playground:', error);
-    onStatus('Live lighting is unavailable in this browser. Try a browser with WebGPU enabled.');
+    console.error('Context Use logo lighting:', error);
+    onStatus('unavailable');
     dispose();
   };
 
@@ -65,11 +67,13 @@ export function createRenderer({
     let sceneChanged = true;
     let needsResize = true;
     let inFlight = false;
+    let visible = true;
+    let hasRendered = false;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     let currentDpr = window.devicePixelRatio;
 
     const schedule = () => {
-      if (!disposed && !animationFrame && !inFlight && !document.hidden) {
+      if (!disposed && !animationFrame && !inFlight && !document.hidden && visible) {
         animationFrame = requestAnimationFrame(tick);
       }
     };
@@ -101,7 +105,7 @@ export function createRenderer({
     };
     function tick(now: number) {
       animationFrame = 0;
-      if (disposed || document.hidden) {
+      if (disposed || document.hidden || !visible) {
         return;
       }
       inFlight = true;
@@ -111,6 +115,13 @@ export function createRenderer({
           .onSubmittedWorkDone()
           .then(() => {
             inFlight = false;
+            if (disposed) {
+              return;
+            }
+            if (!hasRendered) {
+              hasRendered = true;
+              onStatus('ready');
+            }
             if (!motion.matches || sceneChanged || needsResize) {
               schedule();
             }
@@ -141,7 +152,14 @@ export function createRenderer({
     cleanups.push(() => document.removeEventListener('visibilitychange', resume));
     cleanups.push(() => motion.removeEventListener('change', resume));
     void gpu.gpu.lost.then(() => fail(new Error('WebGPU device lost')));
-    onStatus('ready');
+    const visibility = new IntersectionObserver(([entry]) => {
+      visible = Boolean(entry?.isIntersecting);
+      if (visible) {
+        schedule();
+      }
+    });
+    visibility.observe(canvas);
+    cleanups.push(() => visibility.disconnect());
     schedule();
   };
 

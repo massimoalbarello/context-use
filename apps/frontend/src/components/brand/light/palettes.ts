@@ -1,6 +1,5 @@
 export type Palette = {
   readonly label: string;
-  readonly description: string;
   readonly colors: readonly (readonly [number, number, number])[];
 };
 
@@ -8,16 +7,14 @@ export type Palette = {
 export const PALETTES = {
   cool: {
     label: 'Cool',
-    description: 'ice blue, mint green, and lavender',
     colors: [
       [0.28, 0.62, 0.95],
       [0.24, 0.72, 0.42],
       [0.64, 0.45, 0.86],
     ],
   },
-  warm: {
+  sand: {
     label: 'Sand',
-    description: 'sand beige, pale coral, and warm stone grey',
     colors: [
       [0.9, 0.78, 0.61],
       [0.74, 0.58, 0.52],
@@ -26,7 +23,6 @@ export const PALETTES = {
   },
   neon: {
     label: 'Neon',
-    description: 'cyan, electric blue, and magenta',
     colors: [
       [0.02, 0.9, 1.15],
       [0.12, 0.28, 1.35],
@@ -36,8 +32,4 @@ export const PALETTES = {
 } as const satisfies Record<string, Palette>;
 // biome-ignore-end lint/style/noMagicNumbers: End of lighting palette configuration.
 
-export function getPalette(name: string | undefined): Palette {
-  return name && Object.hasOwn(PALETTES, name)
-    ? PALETTES[name as keyof typeof PALETTES]
-    : PALETTES.cool;
-}
+export type LogoPalette = keyof typeof PALETTES;

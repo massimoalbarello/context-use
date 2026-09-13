@@ -30,7 +30,8 @@
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "vgpu": "0.4.1"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.0",
@@ -45,7 +46,6 @@
     "@vgpu/wgsl": "0.4.1",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "catalog:",
-    "vgpu": "0.4.1",
     "vite": "^8.2.2"
   }
 }

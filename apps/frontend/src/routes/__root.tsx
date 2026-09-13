@@ -1,5 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet, redirect } from '@tanstack/react-router';
+import {
+  createRootRouteWithContext,
+  Link,
+  Outlet,
+  redirect,
+  useRouterState,
+} from '@tanstack/react-router';
 import { ContextUseLogo } from '../components/brand/context-use-logo';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { buttonVariants } from '../components/ui/button';
@@ -29,7 +35,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RouteComponent() {
   const { profile, session } = Route.useRouteContext();
-  const showPublicHeader = !session;
+  const loginPage = useRouterState({ select: (state) => state.location.pathname === '/login' });
+  const showPublicHeader = !session && !loginPage;
 
   return (
     <div
