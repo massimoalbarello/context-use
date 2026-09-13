@@ -7,9 +7,7 @@
     "build": "bun --bun vite build",
     "check:types": "bun run --bun tsc -b",
     "test": "bun test",
-    "demo:build": "bun run --bun vite build --config demo/vite.config.ts",
-    "logo:dev": "bun --bun vite --config logo-poc/vite.config.ts",
-    "logo:build": "bun --bun vite build --config logo-poc/vite.config.ts"
+    "demo:build": "bun run --bun vite build --config demo/vite.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

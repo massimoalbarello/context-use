@@ -6,13 +6,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "react", "react-dom"]
   },
-  "include": [
-    "src",
-    "test",
-    "demo/*.tsx",
-    "demo/calendar-now.ts",
-    "logo-poc/*.ts",
-    "logo-poc/*.tsx"
-  ],
-  "exclude": ["logo-poc/vite.config.ts"]
+  "include": ["src", "test", "demo/*.tsx", "demo/calendar-now.ts"]
 }
