@@ -7,7 +7,9 @@
     "build": "bun --bun vite build",
     "check:types": "bun run --bun tsc -b",
     "test": "bun test",
-    "demo:build": "bun run --bun vite build --config demo/vite.config.ts"
+    "demo:build": "bun run --bun vite build --config demo/vite.config.ts",
+    "logo:dev": "bun --bun vite --config logo-poc/vite.config.ts",
+    "logo:build": "bun --bun vite build --config logo-poc/vite.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -40,8 +42,10 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
+    "@vgpu/wgsl": "0.4.1",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "catalog:",
+    "vgpu": "0.4.1",
     "vite": "^8.2.2"
   }
 }

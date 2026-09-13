@@ -1,0 +1,91 @@
+:root {
+  font-family: "DM Sans Variable", sans-serif;
+  color: #e4e5e8;
+  background: #050608;
+  color-scheme: dark;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.playground {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+header {
+  position: absolute;
+  top: 36px;
+  left: 42px;
+  pointer-events: none;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+header span {
+  display: block;
+  margin-top: 6px;
+  color: #62656e;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.hint {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+  color: #93959e;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+.hint span {
+  display: block;
+  margin-top: 7px;
+  font-size: 10px;
+  color: #53565f;
+}
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  pointer-events: none;
+}
+.fallback span {
+  display: block;
+  width: 44vmin;
+  height: 44vmin;
+  background: #b5b9c5;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+.fallback p {
+  max-width: 32ch;
+  padding: 0 16px;
+  text-align: center;
+  color: #93959e;
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  header {
+    top: 24px;
+    left: 24px;
+  }
+}

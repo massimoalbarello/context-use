@@ -1,0 +1,159 @@
+import { effect, frame, type Gpu, type Surface, sampler, storage, target } from 'vgpu';
+import { type Point, packShapes, type Shape } from './drawing';
+import blurShader from './shaders/blur.wgsl';
+import compositeShader from './shaders/composite.wgsl';
+import emitterShader from './shaders/emitter.wgsl';
+import fieldShader from './shaders/field.wgsl';
+import cascadeShader from './shaders/radiance-cascade.wgsl';
+import resolveShader from './shaders/resolve.wgsl';
+import rimShader from './shaders/rim.wgsl';
+
+const CASCADE_COUNT = 6;
+const CASCADE_ALIGNMENT = 2 ** (CASCADE_COUNT - 1);
+const ATLAS_SCALE = 2;
+const MAX_FIELD_DIMENSION = 768;
+const INITIAL_SHAPE_CAPACITY = 32;
+const FLOATS_PER_SHAPE = 8;
+const HDR_FORMAT = 'rgba16float';
+const BLUR_RADIUS = 3;
+
+export function createPipeline({ gpu, output }: { gpu: Gpu; output: Surface }) {
+  const makeTarget = () => target(gpu, { size: [1, 1], format: HDR_FORMAT });
+  const field = makeTarget();
+  const emitter = makeTarget();
+  const irradiance = makeTarget();
+  const rim = makeTarget();
+  const blurHorizontal = makeTarget();
+  const blurVertical = makeTarget();
+  const cascades = [makeTarget(), makeTarget()] as const;
+  const linearSampler = sampler(gpu, { minFilter: 'linear', magFilter: 'linear' });
+  const shaders = {
+    field: effect(gpu, fieldShader),
+    emitter: effect(gpu, emitterShader),
+    resolve: effect(gpu, resolveShader),
+    rim: effect(gpu, rimShader),
+    blurH: effect(gpu, blurShader),
+    blurV: effect(gpu, blurShader),
+    composite: effect(gpu, compositeShader),
+    cascades: Array.from({ length: CASCADE_COUNT }, () => effect(gpu, cascadeShader)),
+  };
+  let capacity = INITIAL_SHAPE_CAPACITY;
+  let buffer = storage(gpu, capacity * FLOATS_PER_SHAPE * Float32Array.BYTES_PER_ELEMENT, 'read');
+  let shapeCount = 0;
+
+  const prepare = () =>
+    Promise.all([
+      ...[
+        shaders.field,
+        shaders.emitter,
+        shaders.resolve,
+        shaders.rim,
+        shaders.blurH,
+        shaders.blurV,
+        ...shaders.cascades,
+      ].map((shader) => shader.compile({ colors: [HDR_FORMAT] })),
+      shaders.composite.compile({ colors: [output.format] }),
+    ]);
+
+  const resize = (size: Point) => {
+    output.resize(size);
+    const scale = Math.min(1, MAX_FIELD_DIMENSION / Math.max(...size));
+    const fieldSize: Point = [
+      Math.max(1, Math.round(size[0] * scale)),
+      Math.max(1, Math.round(size[1] * scale)),
+    ];
+    const atlasSize: Point = [
+      Math.ceil(fieldSize[0] / CASCADE_ALIGNMENT) * CASCADE_ALIGNMENT * ATLAS_SCALE,
+      Math.ceil(fieldSize[1] / CASCADE_ALIGNMENT) * CASCADE_ALIGNMENT * ATLAS_SCALE,
+    ];
+    for (const resource of [field, emitter, irradiance]) {
+      resource.resize(fieldSize);
+    }
+    for (const resource of cascades) {
+      resource.resize(atlasSize);
+    }
+    for (const resource of [rim, blurHorizontal, blurVertical]) {
+      resource.resize(size);
+    }
+    shaders.emitter.set({ field });
+    shaders.resolve.set({ field });
+    shaders.rim.set({ field, linear_sampler: linearSampler });
+    shaders.blurH.set({
+      source: rim,
+      linear_sampler: linearSampler,
+      blur: { direction: [BLUR_RADIUS, 0], padding: [0, 0] },
+    });
+    shaders.blurV.set({
+      source: blurHorizontal,
+      linear_sampler: linearSampler,
+      blur: { direction: [0, BLUR_RADIUS], padding: [0, 0] },
+    });
+    shaders.composite.set({
+      field,
+      emitter,
+      irradiance,
+      rim,
+      blurred_rim: blurVertical,
+      linear_sampler: linearSampler,
+    });
+  };
+
+  const setShapes = (shapes: readonly Shape[]) => {
+    shapeCount = shapes.length;
+    if (shapeCount > capacity) {
+      capacity = Math.max(shapeCount, capacity * ATLAS_SCALE);
+      buffer = storage(gpu, capacity * FLOATS_PER_SHAPE * Float32Array.BYTES_PER_ELEMENT, 'read');
+    }
+    buffer.write(packShapes(shapes));
+    shaders.field.set({ shapes: buffer });
+    shaders.emitter.set({ shapes: buffer });
+  };
+
+  const render = ({
+    light,
+    time,
+    sceneChanged,
+  }: {
+    light: Point;
+    time: number;
+    sceneChanged: boolean;
+  }) => {
+    const lighting = { light, size: output.size, time, padding: 0 };
+    shaders.rim.set({ lighting });
+    shaders.composite.set({ lighting });
+    shaders.field.set({ scene: { size: field.size, count: shapeCount, padding: 0 } });
+    let upper = cascades[0];
+    let destination = cascades[1];
+    const cascadePasses = Array.from(shaders.cascades.entries(), ([index, shader]) => {
+      const level = CASCADE_COUNT - index - 1;
+      shader.set({
+        rc: { state: [level, index > 0 ? 1 : 0, 0, 0] },
+        sdf_tex: field,
+        sdf_samp: linearSampler,
+        emitter_tex: emitter,
+        emitter_samp: linearSampler,
+        upper_tex: upper,
+      });
+      const pass = { shader, target: destination };
+      [upper, destination] = [destination, upper];
+      return pass;
+    });
+    shaders.resolve.set({ cascade: upper });
+    frame(gpu, (current) => {
+      if (sceneChanged) {
+        current.pass({ target: field }, (pass) => pass.draw(shaders.field));
+        current.pass({ target: emitter }, (pass) => pass.draw(shaders.emitter));
+        for (const cascade of cascadePasses) {
+          current.pass({ target: cascade.target }, (pass) => pass.draw(cascade.shader));
+        }
+        current.pass({ target: irradiance }, (pass) => pass.draw(shaders.resolve));
+      }
+      current.pass({ target: rim }, (pass) => pass.draw(shaders.rim));
+      current.pass({ target: blurHorizontal }, (pass) => pass.draw(shaders.blurH));
+      current.pass({ target: blurVertical }, (pass) => pass.draw(shaders.blurV));
+      current.pass({ target: output }, (pass) => pass.draw(shaders.composite));
+    });
+  };
+
+  return { prepare, resize, setShapes, render };
+}
