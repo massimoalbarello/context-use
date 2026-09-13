@@ -2,7 +2,6 @@ import { FaceAnalysisError, type FaceAnalyzer } from '#lib/face-analysis/analyze
 import { createLogger } from '#lib/logger.ts';
 import type { Storage } from '#lib/storage/storage.ts';
 import type { StoredAsset } from '#models/assets/model.ts';
-import { matchFace } from '#models/faces/matching.ts';
 import type { AssetFaces, FaceDecision, FaceObservation } from '#models/faces/model.ts';
 import type { AssetsRepositoryContract } from '#repositories/assets/repository.ts';
 import type { EntityRepositoryContract } from '#repositories/entities/repository.ts';
@@ -14,6 +13,12 @@ const DEFAULT_IMAGE_LIMIT = 30;
 const logger = createLogger('face-analysis');
 
 type AssetInput = { ownerId: string; readableId: string };
+
+export class FaceProcessingBusyError extends Error {
+  constructor() {
+    super('Image processing is busy. Retry when the current image finishes.');
+  }
+}
 
 export class AssetFacesService {
   private readonly repository: FacesRepositoryContract;
@@ -75,9 +80,10 @@ export class AssetFacesService {
 
   private async processNow(input: AssetInput): Promise<AssetFaces | null> {
     const asset = await this.assets.find(input);
-    if (!asset || !this.supports(asset) || this.activeAsset || this.stopping.signal.aborted) {
+    if (!asset || !this.supports(asset)) {
       return this.detail(input);
     }
+    this.assertIdle();
     this.activeAsset = asset.id;
     const model = this.analyzer.model;
     const attempt: AnalysisAttempt = {
@@ -158,8 +164,10 @@ export class AssetFacesService {
 
   /** Saving returns immediately. Busy images stay unprocessed; there is no deferred queue. */
   processSavedAsset(input: AssetInput): Promise<void> {
-    void this.process(input).catch(() => {
-      logger.error('Could not record image analysis; the saved asset can be retried.');
+    void this.process(input).catch((error) => {
+      if (!(error instanceof FaceProcessingBusyError)) {
+        logger.error('Could not record image analysis; the saved asset can be retried.');
+      }
     });
     return Promise.resolve();
   }
@@ -318,11 +326,15 @@ export class AssetFacesService {
 
   async retryBatch(input: { ownerId: string; after: string | null }) {
     // One asset per request lets the browser show progress and stop; no work is queued after disconnect.
+    this.assertIdle();
     const [asset] = await this.repository.assetBatch({ ...input, limit: 1 });
     if (!asset) {
       return { next: null };
     }
     const current = await this.detail({ ownerId: input.ownerId, readableId: asset.readableId });
+    if (current?.state === 'processing') {
+      throw new FaceProcessingBusyError();
+    }
     if (current?.state === 'not_processed' || current?.state === 'failed' || current?.outdated) {
       await this.process({ ownerId: input.ownerId, readableId: asset.readableId });
     }
@@ -350,28 +362,14 @@ export class AssetFacesService {
     };
   }
 
-  private async matchAsset(input: { ownerId: string; assetId: string }) {
-    const threshold = await this.repository.threshold({
-      ownerId: input.ownerId,
-      model: this.analyzer.model,
-    });
-    const references = await this.repository.references({
-      ownerId: input.ownerId,
-      embeddingSpace: this.analyzer.model.embeddingSpace,
-    });
-    const observations = await this.repository.observations(input);
-    const matches = observations
-      .filter((face) => face.current && !face.protected)
-      .flatMap((face) => {
-        const match = matchFace({ face, references, threshold });
-        return match ? [match] : [];
-      });
-    await this.repository.saveMatches({
-      ...input,
-      matches,
-      threshold,
-      embeddingSpace: this.analyzer.model.embeddingSpace,
-    });
+  private matchAsset(input: { ownerId: string; assetId: string }) {
+    return this.repository.matchAsset({ ...input, model: this.analyzer.model });
+  }
+
+  private assertIdle() {
+    if (this.activeAsset || this.stopping.signal.aborted) {
+      throw new FaceProcessingBusyError();
+    }
   }
 
   private supports(asset: Pick<StoredAsset, 'mediaType'>) {

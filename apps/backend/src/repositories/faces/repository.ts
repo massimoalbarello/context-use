@@ -1,5 +1,5 @@
 import type { Database } from 'bun:sqlite';
-import { reconcileFaces } from '#models/faces/matching.ts';
+import { matchFace, reconcileFaces } from '#models/faces/matching.ts';
 import type { FaceBox, FaceDecision } from '#models/faces/model.ts';
 import { entityTypeFrom } from '#views/entities/entity-view.ts';
 import type { FaceAssetInput, FacesRepositoryContract, StoredFace } from './contract.ts';
@@ -227,9 +227,8 @@ export class FacesRepository implements FacesRepositoryContract {
     });
   }
 
-  references(input: Input<'references'>) {
-    return this.run(() => {
-      const rows = this.sql.ListFaceReferences`
+  private references(input: { ownerId: string; embeddingSpace: string }) {
+    const rows = this.sql.ListFaceReferences`
         /* @notNull entityId faceId assetId embeddingSpace embeddingRevision vector */
         select entity."id" as "entityId", face."id" as "faceId", face."asset_id" as "assetId", face."embedding_space" as "embeddingSpace", face."embedding_revision" as "embeddingRevision", face."embedding" as "vector"
         from "entity_face_reference" reference
@@ -239,8 +238,7 @@ export class FacesRepository implements FacesRepositoryContract {
         where reference."owner_id" = ${input.ownerId} and face."embedding_space" = ${input.embeddingSpace}
         order by entity."id"
       `;
-      return rows.map(({ vector, ...row }) => ({ ...row, embedding: vectorFrom(vector) }));
-    });
+    return rows.map(({ vector, ...row }) => ({ ...row, embedding: vectorFrom(vector) }));
   }
 
   enrollPortrait(input: Input<'enrollPortrait'>) {
@@ -345,32 +343,45 @@ export class FacesRepository implements FacesRepositoryContract {
     );
   }
 
-  saveMatches(input: Input<'saveMatches'>) {
+  matchAsset(input: Input<'matchAsset'>) {
     return this.run(() =>
       this.sql.begin(() => {
-        const currentThreshold = this.readThreshold(input);
-        if (currentThreshold !== null && currentThreshold !== input.threshold) {
-          return;
-        }
+        // Read, match and publish without yielding, so a stale snapshot can never replace newer links.
+        const embeddingSpace = input.model.embeddingSpace;
+        const threshold =
+          this.readThreshold({ ownerId: input.ownerId, embeddingSpace }) ??
+          input.model.defaultThreshold;
+        const references = this.references({ ownerId: input.ownerId, embeddingSpace });
+        const observations = readObservations({
+          database: this.database,
+          ownerId: input.ownerId,
+          assetId: input.assetId,
+        });
+        const matches = observations
+          .filter((face) => face.current && !face.protected)
+          .flatMap((face) => {
+            const match = matchFace({ face, references, threshold });
+            return match ? [match] : [];
+          });
         this.sql`
           update "asset_face" set "matched_entity_id" = null, "matched_reference_face_id" = null,
             "match_similarity" = null, "match_threshold" = null
           where "owner_id" = ${input.ownerId} and "asset_id" = ${input.assetId} and "annotation_decision" is null
         `;
-        for (const match of input.matches) {
+        for (const match of matches) {
           this.sql`
             update "asset_face" as face
             set "matched_entity_id" = reference."entity_id", "matched_reference_face_id" = reference."face_id",
-              "match_similarity" = ${match.similarity}, "match_threshold" = ${input.threshold}
+              "match_similarity" = ${match.similarity}, "match_threshold" = ${threshold}
             from "entity_face_reference" reference
             join "asset_face" reference_face on reference_face."id" = reference."face_id" and reference_face."owner_id" = reference."owner_id"
             join "entity" entity on entity."id" = reference."entity_id" and entity."owner_id" = reference."owner_id"
             join "asset" portrait on portrait."id" = reference_face."asset_id" and portrait."owner_id" = reference_face."owner_id"
             where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId} and face."id" = ${match.faceId}
               and face."current" = 1 and face."needs_review" = 0 and face."annotation_decision" is null
-              and face."embedding_space" = ${input.embeddingSpace} and face."embedding_revision" = ${match.faceEmbeddingRevision}
+              and face."embedding_space" = ${embeddingSpace} and face."embedding_revision" = ${match.faceEmbeddingRevision}
               and reference."owner_id" = face."owner_id" and reference."entity_id" = ${match.entityId} and reference."face_id" = ${match.referenceFaceId}
-              and reference_face."embedding_space" = ${input.embeddingSpace} and reference_face."embedding_revision" = ${match.referenceEmbeddingRevision}
+              and reference_face."embedding_space" = ${embeddingSpace} and reference_face."embedding_revision" = ${match.referenceEmbeddingRevision}
               and entity."image_asset_id" = reference_face."asset_id" and entity."entity_type" = 'person' and entity."archived_at" is null
               and portrait."archived_at" is null
               and exists (select 1 from "asset" where "id" = face."asset_id" and "owner_id" = face."owner_id" and "archived_at" is null)

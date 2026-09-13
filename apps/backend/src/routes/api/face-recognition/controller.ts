@@ -2,7 +2,7 @@ import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#lib/errors.ts';
-import type { AssetFacesServiceContract } from '#services/assets/faces.ts';
+import { type AssetFacesServiceContract, FaceProcessingBusyError } from '#services/assets/faces.ts';
 import {
   FaceRetryBodySchema,
   FaceRetryResultSchema,
@@ -56,10 +56,19 @@ export function createFaceRecognitionController({
     )
     .post(
       '/face-recognition/retry',
-      ({ user, body }) => faces.retryBatch({ ownerId: user.id, after: body.after }),
+      async ({ user, body, status }) => {
+        try {
+          return await faces.retryBatch({ ownerId: user.id, after: body.after });
+        } catch (error) {
+          if (error instanceof FaceProcessingBusyError) {
+            return status(StatusMap.Conflict, { error: error.message });
+          }
+          throw error;
+        }
+      },
       {
         body: FaceRetryBodySchema,
-        response: FaceRetryResultSchema,
+        response: { 200: FaceRetryResultSchema, 409: ErrorResponseSchema },
         detail: {
           tags: ['Assets'],
           summary: 'Retry the next failed or unprocessed image in a resumable scan',

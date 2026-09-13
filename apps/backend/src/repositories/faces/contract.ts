@@ -2,10 +2,8 @@ import type { AssetSummary } from '#models/assets/model.ts';
 import type {
   AssetFaces,
   FaceAnnotation,
-  FaceMatch,
   FaceModel,
   FaceObservation,
-  FaceReference,
 } from '#models/faces/model.ts';
 
 export type FaceAssetInput = { ownerId: string; assetId: string };
@@ -28,7 +26,6 @@ export interface FacesRepositoryContract {
   begin(input: AnalysisAttempt): Promise<void>;
   complete(input: AnalysisAttempt & { faces: FaceObservation[] }): Promise<string[]>;
   fail(input: AnalysisAttempt & { error: string }): Promise<void>;
-  references(input: { ownerId: string; embeddingSpace: string }): Promise<FaceReference[]>;
   enrollPortrait(
     input: FaceAssetInput & { entityId: string; analysisVersion: string; updatedAt: string },
   ): Promise<boolean>;
@@ -40,9 +37,7 @@ export interface FacesRepositoryContract {
       updatedAt: string;
     },
   ): Promise<boolean>;
-  saveMatches(
-    input: FaceAssetInput & { matches: FaceMatch[]; threshold: number; embeddingSpace: string },
-  ): Promise<void>;
+  matchAsset(input: FaceAssetInput & { model: FaceModel }): Promise<void>;
   threshold(input: { ownerId: string; model: FaceModel }): Promise<number>;
   setThreshold(input: {
     ownerId: string;

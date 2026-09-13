@@ -11,7 +11,6 @@ import type { AnalyzedFace, FaceAnalyzer } from '#lib/face-analysis/analyzer.ts'
 import { LocalStorage } from '#lib/storage/local-storage.ts';
 import type { Asset } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
-import { matchFace } from '#models/faces/matching.ts';
 import type { FaceModel } from '#models/faces/model.ts';
 import { AssetsRepository } from '#repositories/assets/repository.ts';
 import { EntitiesRepository } from '#repositories/entities/repository.ts';
@@ -265,6 +264,22 @@ async function fixture() {
       await rm(folder, { recursive: true, force: true });
     },
   };
+}
+
+function holdNextMatch({ repository, assetId }: { repository: FacesRepository; assetId: string }) {
+  const entered = Promise.withResolvers<void>();
+  const released = Promise.withResolvers<void>();
+  const matchAsset = repository.matchAsset.bind(repository);
+  let held = false;
+  repository.matchAsset = async (input) => {
+    if (input.assetId === assetId && !held) {
+      held = true;
+      entered.resolve();
+      await released.promise;
+    }
+    return matchAsset(input);
+  };
+  return { entered: entered.promise, release: () => released.resolve() };
 }
 
 test('a new portrait matches earlier unknown faces and exposes links in both directions without crop assets', async () => {
@@ -665,39 +680,37 @@ test.each(['unknown', 'dismissed', 'person'] as const)(
   },
 );
 
-test('a match computed before a reference was re-embedded cannot be published afterward', async () => {
+test.each([
+  { before: [1, 0], after: [1, 0], matched: true },
+  { before: [1, 0], after: [0, 1], matched: false },
+  { before: [0, 1], after: [1, 0], matched: true },
+])('overlapping rematches use the latest portrait: %j', async ({ before, after, matched }) => {
   await using context = await fixture();
   const person = await context.person();
+  context.analyzer.next = [detectedFace([...before])];
   const portrait = await context.upload('Portrait');
   await context.assignPortrait({
     personReadableId: person.readableId,
     assetReadableId: portrait.readableId,
   });
+  context.analyzer.next = [detectedFace()];
   const photo = await context.upload('Photo');
-  const references = await context.repository.references({
-    ownerId: OWNER,
-    embeddingSpace: context.analyzer.model.embeddingSpace,
-  });
-  const [face] = await context.repository.observations({ ownerId: OWNER, assetId: photo.id });
-  const match = matchFace({
-    face: face!,
-    references,
-    threshold: context.analyzer.model.defaultThreshold,
-  });
-  expect(match).not.toBeNull();
-  context.analyzer.next = [detectedFace([0, 1])];
-  await context.faces.process({ ownerId: OWNER, readableId: portrait.readableId });
-  await context.repository.saveMatches({
-    ownerId: OWNER,
-    assetId: photo.id,
-    embeddingSpace: context.analyzer.model.embeddingSpace,
-    threshold: context.analyzer.model.defaultThreshold,
-    matches: [match!],
-  });
-  expect(
-    (await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId }))!.faces[0]!
-      .entity,
-  ).toBeNull();
+  const input = { ownerId: OWNER, readableId: photo.readableId };
+  const held = holdNextMatch({ repository: context.repository, assetId: photo.id });
+  const rematching = context.faces.rematch({ ownerId: OWNER });
+  await held.entered;
+  try {
+    context.analyzer.next = [detectedFace([...after])];
+    await context.faces.process({ ownerId: OWNER, readableId: portrait.readableId });
+    expect((await context.assets.detail(input))!.depicts).toHaveLength(Number(matched));
+  } finally {
+    held.release();
+    await rematching;
+  }
+  expect((await context.assets.detail(input))!.depicts).toHaveLength(Number(matched));
+  expect((await context.faces.detail(input))!.faces[0]!.entity?.readableId ?? null).toBe(
+    matched ? person.readableId : null,
+  );
 });
 
 test('saving an upload finishes while inference is still running', async () => {
@@ -758,12 +771,7 @@ test('choosing a different person for a reused portrait retires its previous ref
     (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!.faces[0]!
       .entity?.readableId,
   ).toBe(second.readableId);
-  expect(
-    await context.repository.references({
-      ownerId: OWNER,
-      embeddingSpace: context.analyzer.model.embeddingSpace,
-    }),
-  ).toHaveLength(0);
+  expect(await context.reference(second)).toBeNull();
 });
 
 test('face corrections wait for a concurrent canonical writer without holding a competing write lock', async () => {
@@ -800,7 +808,7 @@ test('face corrections wait for a concurrent canonical writer without holding a 
   ).toBe('Edited during face review');
 });
 
-test('matches computed before a threshold change cannot overwrite the newer re-match', async () => {
+test('a delayed rematch uses the latest saved threshold', async () => {
   await using context = await fixture();
   const person = await context.person();
   const portrait = await context.upload('Threshold reference');
@@ -810,29 +818,18 @@ test('matches computed before a threshold change cannot overwrite the newer re-m
   });
   context.analyzer.next = [detectedFace([SIMILAR_FACE_X, SIMILAR_FACE_Y])];
   const photo = await context.upload('Threshold race');
-  const references = await context.repository.references({
-    ownerId: OWNER,
-    embeddingSpace: context.analyzer.model.embeddingSpace,
-  });
-  const [face] = await context.repository.observations({ ownerId: OWNER, assetId: photo.id });
-  const match = matchFace({
-    face: face!,
-    references,
-    threshold: context.analyzer.model.defaultThreshold,
-  });
-  expect(match).not.toBeNull();
-  await context.faces.saveThreshold({ ownerId: OWNER, threshold: HIGH_THRESHOLD, rematch: true });
-  await context.repository.saveMatches({
-    ownerId: OWNER,
-    assetId: photo.id,
-    embeddingSpace: context.analyzer.model.embeddingSpace,
-    threshold: context.analyzer.model.defaultThreshold,
-    matches: [match!],
-  });
+  const held = holdNextMatch({ repository: context.repository, assetId: photo.id });
+  const rematching = context.faces.rematch({ ownerId: OWNER });
+  await held.entered;
+  try {
+    await context.faces.saveThreshold({ ownerId: OWNER, threshold: HIGH_THRESHOLD, rematch: true });
+  } finally {
+    held.release();
+    await rematching;
+  }
   expect(
-    (await context.faces.detail({ ownerId: OWNER, readableId: photo.readableId }))!.faces[0]!
-      .entity,
-  ).toBeNull();
+    (await context.assets.detail({ ownerId: OWNER, readableId: photo.readableId }))!.depicts,
+  ).toEqual([]);
 });
 
 test('a failed replacement portrait removes automatic links immediately while preserving confirmed faces', async () => {
@@ -854,18 +851,6 @@ test('a failed replacement portrait removes automatic links immediately while pr
     decision: 'person',
     entityReadableId: person.readableId,
   });
-  const [observation] = (
-    await context.repository.observations({ ownerId: OWNER, assetId: photo.id })
-  ).filter((face) => face.readableId === faces[1]!.readableId);
-  const staleMatch = matchFace({
-    face: observation!,
-    references: await context.repository.references({
-      ownerId: OWNER,
-      embeddingSpace: context.analyzer.model.embeddingSpace,
-    }),
-    threshold: context.analyzer.model.defaultThreshold,
-  });
-  expect(staleMatch).not.toBeNull();
   context.analyzer.failure = new Error('Replacement cannot be analyzed');
   const replacement = await context.upload('Failed replacement');
   await context.entities.setImage({
@@ -874,12 +859,10 @@ test('a failed replacement portrait removes automatic links immediately while pr
     assetReadableId: replacement.readableId,
   });
   expect(await context.reference(person)).toBeNull();
-  await context.repository.saveMatches({
+  await context.repository.matchAsset({
     ownerId: OWNER,
     assetId: photo.id,
-    matches: [staleMatch!],
-    threshold: context.analyzer.model.defaultThreshold,
-    embeddingSpace: context.analyzer.model.embeddingSpace,
+    model: context.analyzer.model,
   });
   const result = (await context.faces.detail(input))!;
   expect(result.faces[0]).toMatchObject({
@@ -1039,4 +1022,78 @@ test('face rows and stored links reject invalid decisions, embeddings, and cross
   expect(
     (await context.assets.detail({ ownerId: OWNER, readableId: photo.readableId }))!.depicts,
   ).toEqual([]);
+});
+
+test('busy manual processing and scans report a conflict without skipping images or blocking uploads', async () => {
+  await using context = await fixture();
+  const first = await context.upload('A running image');
+  const firstInput = { ownerId: OWNER, readableId: first.readableId };
+  const deferred = Promise.withResolvers<void>();
+  context.analyzer.wait = deferred.promise;
+  const processing = context.faces.process(firstInput);
+  let second: Asset;
+  try {
+    while ((await context.faces.detail(firstInput))?.state !== 'processing') {
+      await Bun.sleep(1);
+    }
+    const saved = await context.assets.create({
+      ownerId: OWNER,
+      name: 'B waiting image',
+      file: Bun.file(PHOTO_PATH),
+    });
+    if (saved.state !== 'created') {
+      throw new Error('Busy recognition must not block saving an upload');
+    }
+    second = saved.asset;
+    for (const readableId of [first.readableId, second.readableId]) {
+      const response = await context.request({
+        path: `/assets/${readableId}/faces/analyze`,
+        method: 'POST',
+      });
+      expect(response.status).toBe(StatusMap.Conflict);
+      expect(await response.json()).toEqual({
+        error: 'Image processing is busy. Retry when the current image finishes.',
+      });
+    }
+    for (const after of [null, first.readableId]) {
+      const response = await context.request({
+        path: '/face-recognition/retry',
+        method: 'POST',
+        body: { after },
+      });
+      expect(response.status).toBe(StatusMap.Conflict);
+      expect(await response.json()).not.toHaveProperty('next');
+    }
+    expect(
+      (await context.faces.detail({ ownerId: OWNER, readableId: second.readableId }))?.state,
+    ).toBe('not_processed');
+    expect(
+      (await context.assets.content({ ownerId: OWNER, readableId: second.readableId }))?.blob.size,
+    ).toBe(second.sizeBytes);
+    const foreign = await context.request({
+      path: `/assets/${second.readableId}/faces/analyze`,
+      method: 'POST',
+      owner: OTHER_OWNER,
+    });
+    expect(foreign.status).toBe(StatusMap['Not Found']);
+  } finally {
+    deferred.resolve();
+    await processing;
+  }
+  const resumed = await context.request({
+    path: '/face-recognition/retry',
+    method: 'POST',
+    body: { after: first.readableId },
+  });
+  expect(resumed.status).toBe(StatusMap.OK);
+  expect(await resumed.json()).toEqual({ next: second.readableId });
+  expect(
+    (await context.faces.detail({ ownerId: OWNER, readableId: second.readableId }))?.state,
+  ).toBe('ready');
+  const complete = await context.request({
+    path: '/face-recognition/retry',
+    method: 'POST',
+    body: { after: second.readableId },
+  });
+  expect(await complete.json()).toEqual({ next: null });
 });
