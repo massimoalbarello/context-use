@@ -1,4 +1,4 @@
-import { afterEach, expect, spyOn, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -28,47 +28,32 @@ function Workspace({ route = 'hypermedia' }: { route?: string }) {
   );
 }
 
-test('sidebar starts closed and restores both preferences after workspace and app remounts', async () => {
-  const user = userEvent.setup();
-  const view = render(<Workspace />);
-  expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
-    'false',
-  );
-  await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
-
-  view.rerender(<Workspace route="resources" />);
-  expect(
-    screen.getByRole('button', { name: 'Collapse sidebar' }).getAttribute('aria-expanded'),
-  ).toBe('true');
-  view.unmount();
-
-  const refreshed = render(<Workspace route="resources" />);
-  await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
-  refreshed.rerender(<Workspace />);
-  expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy();
-  refreshed.unmount();
-
-  render(<Workspace />);
-  expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy();
-});
-
-test('unavailable storage keeps sidebar toggles and navigation usable', async () => {
-  const getItem = spyOn(window.localStorage, 'getItem').mockImplementation(() => {
-    throw new Error('Storage unavailable');
-  });
-  const setItem = spyOn(window.localStorage, 'setItem').mockImplementation(() => {
-    throw new Error('Storage unavailable');
-  });
-  try {
+for (const route of ['hypermedia', 'resources']) {
+  test(`sidebar retains navigation state but resets after refreshing ${route}`, async () => {
     const user = userEvent.setup();
-    const view = render(<Workspace />);
+    const otherRoute = route === 'hypermedia' ? 'resources' : 'hypermedia';
+    const view = render(<Workspace route={route} />);
+    expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
     await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
-    view.rerender(<Workspace route="resources" />);
+
+    view.rerender(<Workspace route={otherRoute} />);
+    expect(
+      screen.getByRole('button', { name: 'Collapse sidebar' }).getAttribute('aria-expanded'),
+    ).toBe('true');
+    view.rerender(<Workspace route={route} />);
     await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
-    view.rerender(<Workspace />);
+    view.rerender(<Workspace route={otherRoute} />);
     expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy();
-  } finally {
-    getItem.mockRestore();
-    setItem.mockRestore();
-  }
-});
+    await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
+    view.rerender(<Workspace route={route} />);
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeTruthy();
+    view.unmount();
+
+    render(<Workspace route={route} />);
+    expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+  });
+}

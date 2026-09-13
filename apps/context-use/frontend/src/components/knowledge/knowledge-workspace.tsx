@@ -1,5 +1,5 @@
 import { cn } from '@repo/ui/class-names';
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
 import { WorkspaceSplitLayout } from '../layout/workspace-split-layout';
 
 type KnowledgeWorkspaceContextValue = {
@@ -8,7 +8,6 @@ type KnowledgeWorkspaceContextValue = {
 };
 
 const KnowledgeWorkspaceContext = createContext<KnowledgeWorkspaceContextValue | null>(null);
-const SIDEBAR_STORAGE_KEY = 'context-use:sidebar-collapsed';
 
 export function useKnowledgeWorkspace() {
   const context = useContext(KnowledgeWorkspaceContext);
@@ -21,20 +20,7 @@ export function useKnowledgeWorkspace() {
 }
 
 export function KnowledgeWorkspaceProvider({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false';
-    } catch {
-      return true;
-    }
-  });
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
-    } catch {
-      // Sidebar navigation still works when browser storage is unavailable.
-    }
-  }, [collapsed]);
+  const [collapsed, setCollapsed] = useState(true);
   const context = useMemo(
     () => ({ collapsed, toggleSidebar: () => setCollapsed((value) => !value) }),
     [collapsed],
