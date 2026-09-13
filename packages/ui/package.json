@@ -5,6 +5,7 @@
   "exports": {
     "./animated-context-use-logo": "./src/components/brand/animated-context-use-logo.tsx",
     "./context-use-logo": "./src/components/brand/context-use-logo.tsx",
+    "./context-use-brand": "./src/components/brand/context-use-brand.tsx",
     "./button": "./src/components/ui/button.tsx",
     "./popover": "./src/components/ui/popover.tsx",
     "./class-names": "./src/lib/class-names.ts",

@@ -12,29 +12,33 @@ const KnowledgeWorkspaceContext = createContext<KnowledgeWorkspaceContextValue |
 export function useKnowledgeWorkspace() {
   const context = useContext(KnowledgeWorkspaceContext);
   if (!context) {
-    throw new Error('Knowledge workspace components must be rendered inside KnowledgeWorkspace.');
+    throw new Error(
+      'Knowledge workspace components must be rendered inside KnowledgeWorkspaceProvider.',
+    );
   }
   return context;
 }
 
-export function KnowledgeWorkspace({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+export function KnowledgeWorkspaceProvider({ children }: { children: ReactNode }) {
+  const [collapsed, setCollapsed] = useState(true);
   const context = useMemo(
     () => ({ collapsed, toggleSidebar: () => setCollapsed((value) => !value) }),
     [collapsed],
   );
 
+  return <KnowledgeWorkspaceContext value={context}>{children}</KnowledgeWorkspaceContext>;
+}
+
+export function KnowledgeWorkspace({ children }: { children: ReactNode }) {
+  const { collapsed } = useKnowledgeWorkspace();
   return (
-    <KnowledgeWorkspaceContext value={context}>
-      <WorkspaceSplitLayout
-        className={cn(
-          'relative grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)]',
-          collapsed &&
-            'grid-rows-[0_minmax(0,1fr)] md:grid-cols-[0_minmax(0,1fr)] md:grid-rows-none',
-        )}
-      >
-        {children}
-      </WorkspaceSplitLayout>
-    </KnowledgeWorkspaceContext>
+    <WorkspaceSplitLayout
+      className={cn(
+        'relative grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)]',
+        collapsed && 'grid-rows-[0_minmax(0,1fr)] md:grid-cols-[0_minmax(0,1fr)] md:grid-rows-none',
+      )}
+    >
+      {children}
+    </WorkspaceSplitLayout>
   );
 }

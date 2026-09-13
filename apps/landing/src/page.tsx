@@ -1,5 +1,5 @@
 import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
-import { ContextUseLogo } from '@repo/ui/context-use-logo';
+import { ContextUseBrand } from '@repo/ui/context-use-brand';
 import { LandingNavigation } from './navigation';
 
 export function LandingPage() {
@@ -10,13 +10,7 @@ export function LandingPage() {
         <AnimatedContextUseLogo className="aspect-auto size-full" />
       </main>
       <header className="flex items-center justify-between gap-4 px-5 py-5 sm:px-8 sm:py-6">
-        <a
-          href="/"
-          className="inline-flex items-center gap-2.5 rounded-sm font-medium text-base tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ContextUseLogo className="size-6" />
-          context-use
-        </a>
+        <ContextUseBrand />
         <LandingNavigation />
       </header>
     </div>

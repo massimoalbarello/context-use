@@ -113,6 +113,7 @@ test('entity filters survive navigation, self stays a person, and other types ca
       </QueryClientProvider>,
     );
     const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Open sidebar' }));
     await user.click(await screen.findByRole('link', { name: /zoe Person Research colleague/ }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/entities/zoe'));
     expect(router.state.location.search.entityType).toBe('person');

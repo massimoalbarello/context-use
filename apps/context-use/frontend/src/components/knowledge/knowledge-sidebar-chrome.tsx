@@ -1,9 +1,8 @@
 import { Button, buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { ContextUseLogo } from '@repo/ui/context-use-logo';
+import { ContextUseBrand } from '@repo/ui/context-use-brand';
 import { Link } from '@tanstack/react-router';
 import { Menu, Settings } from 'lucide-react';
-import { MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { SignOutButton } from '../auth/sign-out-button';
 import { EntityAvatar } from '../entities/entity-link';
@@ -19,17 +18,7 @@ export function KnowledgeSidebarHeader() {
         collapsed && 'absolute top-6 left-6 items-center justify-center p-0 md:top-7 md:left-7',
       )}
     >
-      <Link
-        className={cn('flex min-w-0 items-center gap-2.5', collapsed && 'hidden')}
-        to={MAIN_KNOWLEDGE_PATH}
-        aria-label="Context Use"
-      >
-        <ContextUseLogo />
-        <span className="grid min-w-0 leading-tight">
-          <strong className="truncate font-semibold text-sm">Context Use</strong>
-          <small className="truncate text-muted-foreground text-xs">Private workspace</small>
-        </span>
-      </Link>
+      <ContextUseBrand className={cn(collapsed && 'hidden')} />
       <Button
         className={cn(
           'size-10 shrink-0 rounded-xl bg-transparent text-muted-foreground [&_svg]:size-5',

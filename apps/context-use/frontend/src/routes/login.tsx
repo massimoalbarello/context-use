@@ -1,6 +1,6 @@
 import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
-import { ContextUseLogo } from '@repo/ui/context-use-logo';
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { ContextUseBrand } from '@repo/ui/context-use-brand';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { internalAppPath } from '../lib/internal-app-path';
@@ -32,13 +32,7 @@ function RouteComponent() {
     <main className="grid min-h-full grid-rows-[50dvh_1fr] lg:grid-cols-2 lg:grid-rows-1">
       <div className="dark relative lg:sticky lg:top-0 lg:h-dvh">
         <AnimatedContextUseLogo className="absolute inset-0 size-full" />
-        <Link
-          to="/"
-          className="absolute top-6 left-6 z-10 flex items-center gap-2.5 whitespace-nowrap font-semibold text-foreground text-lg tracking-tight sm:top-8 sm:left-8"
-        >
-          <ContextUseLogo />
-          Context Use
-        </Link>
+        <ContextUseBrand className="absolute top-6 left-6 z-10 text-foreground text-lg sm:top-8 sm:left-8" />
       </div>
       <section className="flex min-w-0 items-center justify-center bg-background px-6 py-12 sm:px-10 lg:px-16">
         <div className="w-full max-w-sm">

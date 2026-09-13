@@ -1,6 +1,6 @@
 import { buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { ContextUseLogo } from '@repo/ui/context-use-logo';
+import { ContextUseBrand } from '@repo/ui/context-use-brand';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   createRootRouteWithContext,
@@ -9,6 +9,7 @@ import {
   redirect,
   useRouterState,
 } from '@tanstack/react-router';
+import { KnowledgeWorkspaceProvider } from '../components/knowledge/knowledge-workspace';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { profileQueryOptions } from '../queries/profile';
@@ -47,14 +48,7 @@ function RouteComponent() {
     >
       {showPublicHeader && (
         <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 bg-sidebar/95 px-4 py-2 backdrop-blur md:min-h-16 md:flex-nowrap md:gap-5 md:px-8 md:py-0">
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 whitespace-nowrap font-semibold text-lg tracking-tight"
-            activeOptions={{ exact: true }}
-          >
-            <ContextUseLogo />
-            Context Use
-          </Link>
+          <ContextUseBrand className="text-lg" />
           <div className="ml-auto flex shrink-0 items-center gap-3 whitespace-nowrap text-muted-foreground text-sm">
             <Link to="/login" className={buttonVariants({ variant: 'ghost' })}>
               Login
@@ -63,7 +57,9 @@ function RouteComponent() {
         </header>
       )}
       <div className={cn('min-h-0', profile ? 'overflow-hidden' : 'overflow-y-auto')}>
-        <Outlet />
+        <KnowledgeWorkspaceProvider>
+          <Outlet />
+        </KnowledgeWorkspaceProvider>
       </div>
     </div>
   );
