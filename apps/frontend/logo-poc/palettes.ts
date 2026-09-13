@@ -17,10 +17,10 @@ export const PALETTES = {
   },
   warm: {
     label: 'Sand',
-    description: 'pale peach, dusty coral, and muted rose',
+    description: 'champagne gold, dusty coral, and muted rose',
     colors: [
-      [0.95, 0.65, 0.47],
-      [0.82, 0.44, 0.34],
+      [0.95, 0.82, 0.49],
+      [0.82, 0.32, 0.25],
       [0.66, 0.35, 0.4],
     ],
   },
