@@ -6,13 +6,13 @@ export type FaceDecision = (typeof FACE_DECISIONS)[number];
 export const MAX_FACES_PER_IMAGE = 100;
 
 export interface FaceModel {
-  analysisVersion: string;
-  embeddingSpace: string;
-  dimensions: number;
-  name: string;
-  metric: 'cosine';
-  defaultThreshold: number;
-  supportedMediaTypes: readonly string[];
+  readonly analysisVersion: string;
+  readonly embeddingSpace: string;
+  readonly dimensions: number;
+  readonly name: string;
+  readonly metric: 'cosine';
+  readonly defaultThreshold: number;
+  readonly supportedMediaTypes: readonly string[];
 }
 
 export interface FaceObservation {
@@ -47,7 +47,7 @@ export interface AssetFaces {
 }
 
 export interface FaceSettings {
-  model: FaceModel;
+  model: Pick<FaceModel, 'analysisVersion' | 'defaultThreshold'>;
   threshold: number;
 }
 

@@ -28,13 +28,8 @@ export const FaceAnnotationBodySchema = t.Union([
 ]);
 export const FaceSettingsSchema = t.Object({
   model: t.Object({
-    name: t.String(),
     analysisVersion: t.String(),
-    embeddingSpace: t.String(),
-    dimensions: t.Integer(),
-    metric: t.Literal('cosine'),
     defaultThreshold: t.Number(),
-    supportedMediaTypes: t.Array(t.String()),
   }),
   threshold: t.Number(),
 });
@@ -62,6 +57,9 @@ export function assetFacesResponse(result: AssetFaces) {
 export function faceSettingsResponse(result: FaceSettings) {
   return {
     threshold: result.threshold,
-    model: { ...result.model, supportedMediaTypes: [...result.model.supportedMediaTypes] },
+    model: {
+      analysisVersion: result.model.analysisVersion,
+      defaultThreshold: result.model.defaultThreshold,
+    },
   };
 }

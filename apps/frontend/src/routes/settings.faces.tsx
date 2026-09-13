@@ -77,8 +77,7 @@ function FaceSettingsRoute() {
         </h2>
         <p className="text-muted-foreground text-sm">
           Retry failed or unprocessed images and update images analyzed by an older model. Your
-          originals and corrections are preserved. JPEG, PNG, and WebP images up to 20 MB and 16
-          megapixels are supported.
+          originals and corrections are preserved.
         </p>
         <div className="flex gap-3">
           <Button variant="outline" disabled={scanning} onClick={() => void retryImages()}>

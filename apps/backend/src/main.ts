@@ -173,6 +173,7 @@ try {
     syncsService,
   }).onStop(async () => {
     await facesService.close();
+    await faceAnalyzer.close();
     await Promise.all([
       database.close(),
       recordsDatabase?.close(),

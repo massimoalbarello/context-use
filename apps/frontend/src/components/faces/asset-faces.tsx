@@ -138,7 +138,7 @@ function FacesStatus({
       )}
       {result?.state === 'unsupported' && (
         <p className="text-muted-foreground text-sm">
-          Face recognition supports JPEG, PNG, and WebP images. This asset is saved.
+          Face recognition is unavailable for this image format. This asset is saved.
         </p>
       )}
       {result?.state === 'ready' && result.faces.length === 0 && (

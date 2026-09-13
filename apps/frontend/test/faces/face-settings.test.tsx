@@ -8,13 +8,8 @@ import type { FaceSettings } from '../../src/queries/faces';
 afterEach(cleanup);
 const settings: FaceSettings = {
   model: {
-    name: 'Test model',
     analysisVersion: 'test-v1',
-    embeddingSpace: 'test-space',
-    dimensions: 2,
-    metric: 'cosine',
     defaultThreshold: 0.363,
-    supportedMediaTypes: ['image/jpeg'],
   },
   threshold: 0.363,
 };

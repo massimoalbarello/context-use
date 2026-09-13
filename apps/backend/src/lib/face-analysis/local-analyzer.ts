@@ -4,32 +4,27 @@ import type { ReadableStreamDefaultReader } from 'node:stream/web';
 import type { BunFile, Subprocess } from 'bun';
 import { z } from 'zod';
 import { MAX_FACES_PER_IMAGE } from '#models/faces/model.ts';
-import { type AnalyzedFace, FaceAnalysisError, type FaceAnalyzer } from './analyzer.ts';
+import {
+  type AnalyzedFace,
+  AnalyzedFaceSchema,
+  type FaceAnalysis,
+  FaceAnalysisError,
+  type FaceAnalyzer,
+  MAX_FACE_CROP_BYTES,
+} from './analyzer.ts';
 import { prepareFaceModels } from './model-files.ts';
 import { LOCAL_FACE_MODEL } from './models.ts';
 
 const MAX_RESPONSE_CHARACTERS = 2_000_000;
 const MAX_IMAGE_BYTES = 20_971_520;
-const MAX_CROP_BYTES = 262_144;
-const BOX_EDGE_TOLERANCE = 1.000001;
 const OWNER_EXECUTABLE_MODE = 0o700;
 const MAX_DECODED_PIXELS = 16_000_000;
 const FACE_ENGINE_FOLDER = 'face-engine';
 const PREPARATION_TIMEOUT_MS = 90_000;
 const NativeFaceSchema = z.object({
-  box: z
-    .tuple([
-      z.number().min(0).max(1),
-      z.number().min(0).max(1),
-      z.number().positive().max(1),
-      z.number().positive().max(1),
-    ])
-    .refine(
-      ([x, y, width, height]) =>
-        x + width <= BOX_EDGE_TOLERANCE && y + height <= BOX_EDGE_TOLERANCE,
-    ),
-  score: z.number().min(0).max(1),
-  embedding: z.array(z.number().finite()).length(LOCAL_FACE_MODEL.dimensions),
+  box: AnalyzedFaceSchema.shape.box,
+  score: AnalyzedFaceSchema.shape.detectionScore,
+  embedding: AnalyzedFaceSchema.shape.embedding,
 });
 const NativeResultSchema = z.object({ faces: z.array(NativeFaceSchema).max(MAX_FACES_PER_IMAGE) });
 
@@ -59,7 +54,7 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
     ownerId,
     image,
     signal,
-  }: Parameters<FaceAnalyzer['analyze']>[0]): Promise<AnalyzedFace[]> {
+  }: Parameters<FaceAnalyzer['analyze']>[0]): Promise<FaceAnalysis> {
     if (this.busy) {
       throw new FaceAnalysisError(
         'Face analysis is busy. Retry this image when the current analysis finishes.',
@@ -102,7 +97,7 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
       const result: AnalyzedFace[] = [];
       for (const [index, face] of faces.entries()) {
         const file = Bun.file(join(workspace, `${index}.jpg`));
-        if (file.size === 0 || file.size > MAX_CROP_BYTES) {
+        if (file.size === 0 || file.size > MAX_FACE_CROP_BYTES) {
           throw new FaceAnalysisError('Face analyzer returned an invalid crop.');
         }
         result.push({
@@ -112,7 +107,7 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
           crop: new Blob([await file.bytes()], { type: 'image/jpeg' }),
         });
       }
-      return result;
+      return { model: this.model, faces: result };
     } catch (error) {
       await this.stop();
       if (signal.aborted) {

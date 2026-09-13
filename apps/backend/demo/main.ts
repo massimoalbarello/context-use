@@ -45,7 +45,6 @@ try {
         analyzer: {
           model: LOCAL_FACE_MODEL,
           analyze: () => Promise.reject(new Error('Public demo cannot run face analysis')),
-          close: async () => {},
         },
       }),
       frontendAssetsService: new FrontendAssetsService(new FrontendAssetsRepository()),

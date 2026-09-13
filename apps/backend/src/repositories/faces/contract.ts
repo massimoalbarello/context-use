@@ -37,8 +37,13 @@ export interface FacesRepositoryContract {
       updatedAt: string;
     },
   ): Promise<boolean>;
-  matchAsset(input: FaceAssetInput & { model: FaceModel }): Promise<void>;
-  threshold(input: { ownerId: string; model: FaceModel }): Promise<number>;
+  matchAsset(
+    input: FaceAssetInput & { model: Pick<FaceModel, 'embeddingSpace' | 'defaultThreshold'> },
+  ): Promise<void>;
+  threshold(input: {
+    ownerId: string;
+    model: Pick<FaceModel, 'embeddingSpace' | 'defaultThreshold'>;
+  }): Promise<number>;
   setThreshold(input: {
     ownerId: string;
     embeddingSpace: string;

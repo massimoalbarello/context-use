@@ -92,8 +92,11 @@ test('background preparation shares downloads with the first image and reuses fi
     const processing = context.analyzer.analyze(imageRequest());
     release.resolve();
     await preparing;
-    expect(await processing).toEqual([]);
-    expect(await context.analyzer.analyze(imageRequest())).toEqual([]);
+    expect(await processing).toMatchObject({ model: LOCAL_FACE_MODEL, faces: [] });
+    expect(await context.analyzer.analyze(imageRequest())).toMatchObject({
+      model: LOCAL_FACE_MODEL,
+      faces: [],
+    });
     expect(await Bun.file(context.engineStarts).text()).toBe('started\nstarted\n');
     expect(requests).toEqual(['/0', '/1']);
     await context.analyzer.close();
@@ -121,7 +124,10 @@ test('a failed background download can be retried by image processing', async ()
   try {
     await expect(context.analyzer.prepare()).rejects.toThrow('could not be downloaded');
     fail = false;
-    expect(await context.analyzer.analyze(imageRequest())).toEqual([]);
+    expect(await context.analyzer.analyze(imageRequest())).toMatchObject({
+      model: LOCAL_FACE_MODEL,
+      faces: [],
+    });
   } finally {
     await context.close();
   }

@@ -39,30 +39,33 @@ const TEST_TIMEOUT_MS = 30_000;
 const unavailableAnalyzer: FaceAnalyzer = {
   model: LOCAL_FACE_MODEL,
   analyze: () => Promise.reject(new Error('Demo inference unavailable')),
-  close: async () => {},
 };
 
 async function fixtureAnalyzer(): Promise<FaceAnalyzer> {
   const signatures = new Set<string>();
+  const fixtures = resolve(import.meta.dir, '../../../scripts/seeds/isolated-development/assets');
+  const crop = new Blob([await Bun.file(join(fixtures, 'steve-jobs-2010.jpg')).bytes()], {
+    type: 'image/jpeg',
+  });
   for (const name of ['steve-jobs-2010.jpg', 'steve-presents-iphone.jpg']) {
-    const file = Bun.file(
-      resolve(import.meta.dir, '../../../scripts/seeds/isolated-development/assets', name),
-    );
+    const file = Bun.file(join(fixtures, name));
     signatures.add(Bun.SHA256.hash(await file.arrayBuffer(), 'hex'));
   }
   return {
     ...unavailableAnalyzer,
-    analyze: async ({ image }) =>
-      signatures.has(Bun.SHA256.hash(await image.arrayBuffer(), 'hex'))
+    analyze: async ({ image }) => ({
+      model: LOCAL_FACE_MODEL,
+      faces: signatures.has(Bun.SHA256.hash(await image.arrayBuffer(), 'hex'))
         ? [
             {
               box: [0, 0, 1, 1],
               detectionScore: 1,
               embedding: [1, ...Array<number>(LOCAL_FACE_MODEL.dimensions - 1).fill(0)],
-              crop: image,
+              crop,
             },
           ]
         : [],
+    }),
   };
 }
 
@@ -168,7 +171,7 @@ test(
           await Bun.file(
             resolve(
               import.meta.dir,
-              '../../../scripts/seeds/isolated-development/assets/steve-presents-iphone.jpg',
+              '../../../scripts/seeds/isolated-development/assets/steve-jobs-2010.jpg',
             ),
           ).arrayBuffer(),
         );

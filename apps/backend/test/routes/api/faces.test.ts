@@ -7,7 +7,7 @@ import { createApp } from '#app.ts';
 import { createSqliteDatabase, createSynchronousSqliteDatabase } from '#db/client.ts';
 import { runMigrations } from '#db/migrate.ts';
 import type { Auth } from '#lib/auth/better-auth.ts';
-import type { AnalyzedFace, FaceAnalyzer } from '#lib/face-analysis/analyzer.ts';
+import type { AnalyzedFace, FaceAnalysis, FaceAnalyzer } from '#lib/face-analysis/analyzer.ts';
 import { LocalStorage } from '#lib/storage/local-storage.ts';
 import type { Asset } from '#models/assets/model.ts';
 import type { Entity } from '#models/entities/model.ts';
@@ -79,21 +79,21 @@ class TestAnalyzer implements FaceAnalyzer {
     supportedMediaTypes: ['image/jpeg'],
   };
   next = [detectedFace()];
+  resultModel: FaceAnalysis['model'] | null = null;
   failure: Error | null = null;
   wait: Promise<void> | null = null;
   calls = 0;
-  async analyze(): Promise<AnalyzedFace[]> {
+  lastImage: Blob | null = null;
+  async analyze({ image }: Parameters<FaceAnalyzer['analyze']>[0]): Promise<FaceAnalysis> {
     this.calls++;
+    this.lastImage = image;
     if (this.wait) {
       await this.wait;
     }
     if (this.failure) {
       throw this.failure;
     }
-    return this.next;
-  }
-  close() {
-    return Promise.resolve();
+    return { model: this.resultModel ?? this.model, faces: this.next };
   }
 }
 
@@ -445,6 +445,90 @@ test('threshold saves affect subsequent matches; explicit re-matching preserves 
     decision: 'automatic',
   });
   expect((await context.faces.detail(input))!.faces[0]!.entity?.readableId).toBe(person.readableId);
+});
+
+test('the analyzer receives verified image bytes with their media type independently of storage naming', async () => {
+  await using context = await fixture();
+  const file = context.dependencies.storage.file.bind(context.dependencies.storage);
+  context.dependencies.storage.file = (key) =>
+    new Blob([file(key)], { type: 'application/octet-stream' });
+  const photo = await context.upload('Portable image input');
+  expect(context.analyzer.lastImage!.type).toBe(photo.mediaType);
+  expect(await context.analyzer.lastImage!.bytes()).toEqual(await Bun.file(PHOTO_PATH).bytes());
+});
+
+test.each(['analysisVersion', 'embeddingSpace'] as const)(
+  'results from a different %s cannot be labeled with the configured model, even with equal dimensions',
+  async (field) => {
+    await using context = await fixture();
+    context.analyzer.resultModel = { ...context.analyzer.model, [field]: 'other-model' };
+    const photo = await context.upload('Mismatched model');
+    const input = { ownerId: OWNER, readableId: photo.readableId };
+    expect(await context.faces.detail(input)).toMatchObject({ state: 'failed', faces: [] });
+    expect(await context.repository.observations({ ownerId: OWNER, assetId: photo.id })).toEqual(
+      [],
+    );
+    expect((await context.assets.content(input))?.blob.size).toBe(photo.sizeBytes);
+    context.analyzer.resultModel = null;
+    expect(await context.faces.process(input)).toMatchObject({ state: 'ready' });
+  },
+);
+
+test.each([
+  { reason: 'wrong vector dimensions', invalid: detectedFace([1, 0, 0]) },
+  { reason: 'non-finite stored vector', invalid: detectedFace([Number.MAX_VALUE, 0]) },
+  { reason: 'zero vector', invalid: detectedFace([0, 0]) },
+  { reason: 'out-of-bounds box', invalid: { ...detectedFace(), box: [1, 0, 1, 1] as const } },
+  {
+    reason: 'different crop format',
+    invalid: { ...detectedFace(), crop: new Blob(['crop'], { type: 'image/png' }) },
+  },
+])(
+  'invalid inference output ($reason) preserves existing faces, crops and decisions',
+  async ({ invalid }) => {
+    await using context = await fixture();
+    const person = await context.person();
+    const photo = await context.upload('Reviewed image');
+    const input = { ownerId: OWNER, readableId: photo.readableId };
+    const original = (await context.faces.detail(input))!.faces[0]!;
+    await context.faces.annotate({
+      ...input,
+      faceReadableId: original.readableId,
+      decision: 'person',
+      entityReadableId: person.readableId,
+    });
+    const before = await context.repository.observations({ ownerId: OWNER, assetId: photo.id });
+    const cropFiles = await readdir(join(context.folder, 'face-crops'), { recursive: true });
+    // A valid first result must not be written before the invalid second result is rejected.
+    context.analyzer.next = [detectedFace(), invalid];
+    expect(await context.faces.process(input)).toMatchObject({ state: 'failed' });
+    expect(await context.repository.observations({ ownerId: OWNER, assetId: photo.id })).toEqual(
+      before,
+    );
+    expect(await readdir(join(context.folder, 'face-crops'), { recursive: true })).toEqual(
+      cropFiles,
+    );
+    expect(
+      await context.faces.images({
+        ownerId: OWNER,
+        entityReadableId: person.readableId,
+        offset: 0,
+      }),
+    ).toMatchObject({ items: [expect.objectContaining({ readableId: photo.readableId })] });
+  },
+);
+
+test('face settings expose the editing contract without inference implementation details', async () => {
+  await using context = await fixture();
+  const response = await context.request({ path: '/face-recognition/settings' });
+  expect(response.status).toBe(StatusMap.OK);
+  expect(await response.json()).toEqual({
+    threshold: context.analyzer.model.defaultThreshold,
+    model: {
+      analysisVersion: context.analyzer.model.analysisVersion,
+      defaultThreshold: context.analyzer.model.defaultThreshold,
+    },
+  });
 });
 
 test('saved uploads survive analysis failure, interrupted attempts and model unavailability', async () => {

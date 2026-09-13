@@ -1,4 +1,8 @@
-import { FaceAnalysisError, type FaceAnalyzer } from '#lib/face-analysis/analyzer.ts';
+import {
+  FaceAnalysisError,
+  type FaceAnalyzer,
+  validateFaceAnalysis,
+} from '#lib/face-analysis/analyzer.ts';
 import { createLogger } from '#lib/logger.ts';
 import type { Storage } from '#lib/storage/storage.ts';
 import type { StoredAsset } from '#models/assets/model.ts';
@@ -99,11 +103,12 @@ export class AssetFacesService {
     try {
       await this.repository.begin(attempt);
       const image = await this.verifiedImage(asset);
-      const extracted = await this.analyzer.analyze({
+      const result = await this.analyzer.analyze({
         ownerId: input.ownerId,
         image,
         signal: AbortSignal.any([AbortSignal.timeout(ANALYSIS_TIMEOUT_MS), this.stopping.signal]),
       });
+      const extracted = validateFaceAnalysis({ result, model });
       const faces: FaceObservation[] = [];
       for (const face of extracted) {
         const id = Bun.randomUUIDv7();
@@ -188,7 +193,6 @@ export class AssetFacesService {
   async close(): Promise<void> {
     this.stopping.abort();
     await Promise.allSettled(this.operations);
-    await this.analyzer.close();
   }
 
   private async preparePortraitNow(input: AssetInput): Promise<void> {
@@ -283,8 +287,9 @@ export class AssetFacesService {
   }
 
   async settings(input: { ownerId: string }) {
+    const { analysisVersion, defaultThreshold } = this.analyzer.model;
     return {
-      model: this.analyzer.model,
+      model: { analysisVersion, defaultThreshold },
       threshold: await this.repository.threshold({ ...input, model: this.analyzer.model }),
     };
   }
@@ -387,7 +392,7 @@ export class AssetFacesService {
     if (size !== asset.sizeBytes || hash.digest('hex') !== asset.contentHash) {
       throw new FaceAnalysisError('Image content failed its integrity check.');
     }
-    return file;
+    return new Blob([file], { type: asset.mediaType });
   }
 
   private async removeCrops(keys: string[]): Promise<void> {
