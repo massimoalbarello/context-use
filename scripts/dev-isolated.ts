@@ -1,7 +1,10 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BACKEND_ENVIRONMENT, LOCAL_PUBLIC_ORIGIN } from '../apps/backend/src/lib/runtime-config';
+import {
+  BACKEND_ENVIRONMENT,
+  LOCAL_PUBLIC_ORIGIN,
+} from '../apps/context-use/backend/src/lib/runtime-config';
 
 const INTERRUPTED_EXIT_CODE = 130;
 const TERMINATED_EXIT_CODE = 143;
@@ -11,7 +14,7 @@ const APP_START_TIMEOUT_MS = 30_000;
 const APP_PROBE_TIMEOUT_MS = 1_000;
 const APP_PROBE_INTERVAL_MS = 200;
 const BROWSER_SCRIPTS_FOLDER = join(import.meta.dir, '..', '.agents', 'scripts');
-const ISOLATED_DEVELOPMENT_SEED_FOLDER = join(import.meta.dir, 'seeds', 'isolated-development');
+const ISOLATED_DEVELOPMENT_SEED_FOLDER = join(import.meta.dir, '../apps/context-use/demo/fixtures');
 const ISOLATED_DEVELOPMENT_SEED_SCRIPT = join(ISOLATED_DEVELOPMENT_SEED_FOLDER, 'seed.py');
 const seedIsolatedData = Bun.argv.includes('--seed');
 const seedAllIsolatedData = seedIsolatedData && Bun.argv.includes('--all');

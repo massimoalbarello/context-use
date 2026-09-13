@@ -3,8 +3,8 @@
 Read the nearest nested `AGENTS.md` before changing a workspace. A nested guide applies only to its
 subtree and overrides broader guidance.
 
-Scoped guidance begins in the [backend](./apps/backend/AGENTS.md),
-[frontend](./apps/frontend/AGENTS.md), and [scripts](./scripts/AGENTS.md) guides. Each guide links to
+Scoped guidance begins in the [backend](./apps/context-use/backend/AGENTS.md),
+[frontend](./apps/context-use/frontend/AGENTS.md), and [scripts](./scripts/AGENTS.md) guides. Each guide links to
 the narrower guides it owns; follow only the branch relevant to the code being changed.
 
 The repository's compatibility policy is documented separately in

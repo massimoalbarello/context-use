@@ -1,0 +1,207 @@
+import { expect, test } from 'bun:test';
+import { StatusMap } from 'elysia';
+import { createApp } from '#backend/app.ts';
+import type { Auth } from '#backend/lib/auth/better-auth.ts';
+import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#backend/models/records/delivery-contract.generated.ts';
+import {
+  RECORD_DELIVERY_ROUTE_PATH,
+  RECORD_SYNC_SECURITY_SCHEME,
+} from '#backend/routes/api/records/delivery-controller.ts';
+import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
+import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
+import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
+import type { HealthServiceContract } from '#backend/services/health/service.ts';
+import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
+import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
+import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
+import { unusedAssetFacesService, unusedHypermediaService } from './support/app.ts';
+import {
+  testMcpServerUrl,
+  unusedAssetTransferCapabilities,
+  unusedHypermediaRetrievalService,
+  unusedMcpClientAuthorizationsService,
+  unusedMcpProtection,
+  unusedMcpTransport,
+} from './support/mcp.ts';
+
+function unexpectedCall(): never {
+  throw new Error('Unexpected dependency call');
+}
+
+const SHA256_HEX_LENGTH = 64;
+
+test('createApp uses supplied dependencies without production bootstrap', async () => {
+  let healthChecks = 0;
+  const auth: Auth = {
+    handler: async () => new Response(null, { status: 404 }),
+    getSession: async () => null,
+    protectMcpRequest: unusedMcpProtection,
+  };
+  const frontendAssetsService: FrontendAssetsServiceContract = {
+    routes: () => new Map<string, Response>(),
+    fallback: () => new Response('frontend'),
+  };
+  const assetsService: AssetsServiceContract = {
+    faces: unusedAssetFacesService,
+    create: unexpectedCall,
+    list: unexpectedCall,
+    detail: unexpectedCall,
+    updateName: unexpectedCall,
+    archive: unexpectedCall,
+    content: unexpectedCall,
+  };
+  const entitiesService: EntitiesServiceContract = {
+    setImage: unexpectedCall,
+    removeImage: unexpectedCall,
+    create: unexpectedCall,
+    list: unexpectedCall,
+    detail: unexpectedCall,
+    update: unexpectedCall,
+    archive: unexpectedCall,
+  };
+  const pagesService: KnowledgePagesServiceContract = {
+    create: unexpectedCall,
+    list: unexpectedCall,
+    preview: unexpectedCall,
+    detail: unexpectedCall,
+    update: unexpectedCall,
+    archive: unexpectedCall,
+  };
+  const profilesService: KnowledgeProfilesServiceContract = {
+    create: unexpectedCall,
+    find: unexpectedCall,
+  };
+  const ownerRegistrationService: OwnerRegistrationServiceContract = {
+    status: unexpectedCall,
+  };
+  const healthService: HealthServiceContract = {
+    check() {
+      healthChecks += 1;
+      return Promise.resolve({ status: 'ok', uptime: 0 });
+    },
+  };
+  let acceptedRecordDeliveries = 0;
+  const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
+
+  const app = createApp({
+    auth,
+    assetsService,
+    assetTransferCapabilities: unusedAssetTransferCapabilities,
+    frontendAssetsService,
+    entitiesService,
+    healthService,
+    hypermediaService: unusedHypermediaService,
+    retrievalService: unusedHypermediaRetrievalService,
+    mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
+    mcpServerUrl: testMcpServerUrl,
+    mcpTransport: unusedMcpTransport,
+    recordsService: {
+      accept: () => {
+        acceptedRecordDeliveries += 1;
+        return Promise.resolve({ state: 'accepted' });
+      },
+      findResource: unexpectedCall,
+      listResources: unexpectedCall,
+      filterOptions: unexpectedCall,
+    },
+    syncsService: {
+      authenticate: async ({ apiKey }) =>
+        apiKey === deliveryApiKey
+          ? {
+              syncId: '01991f43-0c00-7000-8000-000000000011',
+              ownerId: 'context-use-owner',
+            }
+          : null,
+      create: unexpectedCall,
+      list: unexpectedCall,
+      revoke: unexpectedCall,
+    },
+    ownerRegistrationService,
+    pagesService,
+    profilesService,
+  });
+  const response = await app.handle(new Request('http://localhost/api/health'));
+
+  expect(response.status).toBe(StatusMap.OK);
+  expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });
+  expect(healthChecks).toBe(1);
+
+  const batchId = '01991f43-0c00-7000-8000-000000000012';
+  const receiverResponse = await app.handle(
+    new Request('http://localhost/api/records/batch', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${deliveryApiKey}`,
+        'content-type': 'application/json',
+        'idempotency-key': batchId,
+      },
+      body: JSON.stringify({
+        version: 1,
+        batchId,
+        records: [
+          {
+            eventId: '01991f43-0c00-7000-8000-000000000013',
+            provider: 'github',
+            sourceId: 'github-account',
+            kind: 'pull-request',
+            id: 'opaque-pr-id',
+            revision: 1,
+            operation: 'deleted',
+            contentHash: 'a'.repeat(SHA256_HEX_LENGTH),
+            committedAt: '2026-09-08T12:00:00.000Z',
+          },
+        ],
+      }),
+    }),
+  );
+  expect(receiverResponse.status).toBe(StatusMap.OK);
+  expect(acceptedRecordDeliveries).toBe(1);
+
+  const openApiResponse = await app.handle(new Request('http://localhost/openapi/json'));
+  expect(openApiResponse.status).toBe(StatusMap.OK);
+  const openApi = (await openApiResponse.json()) as {
+    components?: { securitySchemes?: Record<string, unknown> };
+    paths?: Record<
+      string,
+      {
+        post?: {
+          parameters?: Array<{ in?: string; name?: string; required?: boolean }>;
+          requestBody?: {
+            content?: {
+              'application/json'?: {
+                schema?: { properties?: { records?: { maxItems?: number } } };
+              };
+            };
+          };
+          responses?: Record<string, unknown>;
+          security?: Array<Record<string, string[]>>;
+        };
+      }
+    >;
+  };
+  expect(openApi.components?.securitySchemes?.[RECORD_SYNC_SECURITY_SCHEME]).toMatchObject({
+    type: 'http',
+    scheme: 'bearer',
+  });
+  const receiverOperation = openApi.paths?.[RECORD_DELIVERY_ROUTE_PATH]?.post;
+  expect(receiverOperation?.security).toContainEqual({ [RECORD_SYNC_SECURITY_SCHEME]: [] });
+  expect(
+    receiverOperation?.requestBody?.content?.['application/json']?.schema?.properties?.records
+      ?.maxItems,
+  ).toBe(MAX_RECORD_DELIVERY_BATCH_RECORDS);
+  const requiredHeaderNames = receiverOperation?.parameters
+    ?.filter((parameter) => parameter.in === 'header' && parameter.required)
+    .map((parameter) => parameter.name?.toLowerCase());
+  expect(requiredHeaderNames).toEqual(
+    expect.arrayContaining(['authorization', 'content-type', 'idempotency-key']),
+  );
+  for (const statusCode of ['200', '400', '401', '409', '413', '415', '500']) {
+    expect(receiverOperation?.responses).toHaveProperty(statusCode);
+  }
+
+  for (const path of ['/mcp', '/mcp/']) {
+    const nonPostMcpResponse = await app.handle(new Request(`http://localhost${path}`));
+    expect(nonPostMcpResponse.status).toBe(StatusMap['Not Found']);
+    expect(await nonPostMcpResponse.json()).toEqual({ error: 'Not Found' });
+  }
+});

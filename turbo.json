@@ -5,24 +5,45 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "@repo/frontend#build": {
-      "dependsOn": [],
-      "outputs": ["dist/**"]
-    },
-    "@repo/backend#build": {
-      "dependsOn": ["@repo/frontend#build", "@repo/backend#build:faces"],
+    "build:instance": {
+      "dependsOn": ["^build", "build:client", "build:faces"],
       "env": ["BUILD_TARGET"],
-      "outputs": ["dist/**", "public/**"]
+      "outputs": ["dist/context-use", "dist/instance/face-engine/**"]
     },
-    "@repo/backend#build:faces": {
+    "build:demo": {
+      "dependsOn": ["^build", "build:demo:client", "build:faces:host"],
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/context-use-demo"]
+    },
+    "build:client": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/instance/public/**"]
+    },
+    "build:demo:client": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/demo/public/**"]
+    },
+    "build:faces": {
       "outputLogs": "new-only",
       "inputs": [
-        "native/faces/**",
-        "scripts/build-faces.ts",
-        "scripts/shared/constants.ts"
+        "backend/native/faces/**",
+        "backend/scripts/build-faces.ts",
+        "backend/scripts/shared/**"
       ],
       "env": ["BUILD_TARGET"],
-      "outputs": [".cache/face-engine-linux/**", ".cache/face-engine-host/**"]
+      "outputs": [
+        "backend/.cache/face-engine-linux/**",
+        "backend/.cache/face-engine-host/**"
+      ]
+    },
+    "build:faces:host": {
+      "outputLogs": "new-only",
+      "inputs": [
+        "backend/native/faces/**",
+        "backend/scripts/build-faces.ts",
+        "backend/scripts/shared/**"
+      ],
+      "outputs": ["backend/.cache/face-engine-host/**"]
     },
     "check:types": {
       "dependsOn": ["^check:types"]
@@ -38,6 +59,22 @@
         "VITE_ISOLATED_CALENDAR_NOW"
       ],
       "persistent": true
+    },
+    "@repo/landing#build": {
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/**"]
+    },
+    "test:binary": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "test:binary:instance": {
+      "dependsOn": ["build:instance"],
+      "cache": false
+    },
+    "test:binary:demo": {
+      "dependsOn": ["build:demo"],
+      "cache": false
     }
   }
 }

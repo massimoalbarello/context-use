@@ -1,0 +1,17 @@
+{
+  "name": "@repo/build-tools",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./binary-check": "./src/binary-check.ts",
+    "./deploy-nibrun": "./src/deploy-nibrun.ts"
+  },
+  "scripts": {
+    "check:types": "bun run --bun tsc",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

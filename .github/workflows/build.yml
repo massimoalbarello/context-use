@@ -17,11 +17,14 @@ jobs:
       - uses: ./.github/actions/prepare
 
       - name: Build
-        run: bun run build
+        run: bun run build:instance
+
+      - name: Verify compiled instance
+        run: bun --filter @repo/context-use test:binary:instance
 
       - name: Prepare nibrun binary
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: cp apps/backend/dist/app context-use
+        run: cp apps/context-use/dist/context-use context-use
 
       - name: Upload nibrun binary
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

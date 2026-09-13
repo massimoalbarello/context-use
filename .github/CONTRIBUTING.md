@@ -6,12 +6,12 @@
 git clone <repository-url>
 cd <repository-name>
 bun install
-cp apps/backend/.env.example apps/backend/.env
+cp apps/context-use/.env.example apps/context-use/.env
 bun run dev
 ```
 
 Context Use generates a development auth secret inside `DATA_FOLDER`. Set `BETTER_AUTH_SECRET` in
-`apps/backend/.env` only to override it.
+`apps/context-use/.env` only to override it.
 
 ## Before opening a pull request
 
@@ -19,7 +19,7 @@ Context Use generates a development auth secret inside `DATA_FOLDER`. Set `BETTE
 bun fix:codestyle
 bun check:all
 bun run test
-bun run build
+bun run build:instance
 ```
 
 Exercise the changed behavior locally as well; passing static checks is necessary but does not

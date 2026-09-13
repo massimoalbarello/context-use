@@ -1,0 +1,14 @@
+import { cn } from '@repo/ui/class-names';
+import type { ComponentProps } from 'react';
+
+export function WorkspaceSplitLayout({ className, ...props }: ComponentProps<'main'>) {
+  return (
+    <main
+      className={cn(
+        'grid h-full min-h-0 overflow-hidden overscroll-none bg-sidebar md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-none',
+        className,
+      )}
+      {...props}
+    />
+  );
+}

@@ -2,7 +2,7 @@ MIT License
 
 Copyright (c) [year] [fullname]
 
-The Radiance Cascades shader portions in apps/frontend/src/components/brand/light/shaders
+The Radiance Cascades shader portions in packages/ui/src/components/brand/light/shaders
 (radiance-cascade.wgsl, rc-directions.wgsl, and sdf-sample.wgsl):
 Copyright (c) 2025 Vercel, Inc.
 
