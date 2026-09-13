@@ -1,8 +1,7 @@
 import { type Gpu, init, surface } from 'vgpu';
 import logoSvg from '../src/assets/context-use.svg?raw';
-import { type Point, readLogo } from './drawing';
+import { type Point, readLogo } from './logo';
 import { createPipeline } from './pipeline';
-import { installDrawing } from './pointer-input';
 
 const MAX_OUTPUT_DIMENSION = 1920;
 const MAX_DPR = 2;
@@ -13,7 +12,6 @@ const INITIAL_LIGHT: Point = [INITIAL_LIGHT_X, INITIAL_LIGHT_Y];
 const ORBIT_SPEED = 0.24;
 const ORBIT_RADIUS = 0.22;
 const VERTICAL_ORBIT_RATIO = 0.85;
-const LIGHT_EASING = 0.055;
 
 export function createRenderer({
   canvas,
@@ -56,13 +54,10 @@ export function createRenderer({
     gpu = nextGpu;
     cleanups.push(gpu.onError(fail));
     const output = surface(gpu, canvas, { autoResize: false });
-    const pipeline = createPipeline({ gpu, output });
-    const logo = readLogo(logoSvg);
+    const pipeline = createPipeline({ gpu, output, shapes: readLogo(logoSvg) });
     let sceneChanged = true;
     let needsResize = true;
     let inFlight = false;
-    let pointer: Point | undefined;
-    let light = INITIAL_LIGHT;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     let currentDpr = window.devicePixelRatio;
 
@@ -88,17 +83,13 @@ export function createRenderer({
         resize();
       }
       const time = motion.matches ? 0 : now / MILLISECONDS_PER_SECOND;
-      const desired: Point = motion.matches
+      const light: Point = motion.matches
         ? INITIAL_LIGHT
-        : (pointer ?? [
+        : [
             Math.cos(time * ORBIT_SPEED) * ORBIT_RADIUS,
             Math.sin(time * ORBIT_SPEED) * ORBIT_RADIUS * VERTICAL_ORBIT_RATIO,
-          ]);
-      light = [
-        light[0] + (desired[0] - light[0]) * LIGHT_EASING,
-        light[1] + (desired[1] - light[1]) * LIGHT_EASING,
-      ];
-      pipeline.render({ light, time, sceneChanged });
+          ];
+      pipeline.render({ light, sceneChanged });
       sceneChanged = false;
     };
     function tick(now: number) {
@@ -123,27 +114,11 @@ export function createRenderer({
       }
     }
 
-    pipeline.setShapes(logo.shapes);
     resize();
     await pipeline.prepare();
     if (disposed) {
       return;
     }
-    cleanups.push(
-      installDrawing({
-        canvas,
-        horizontalHalfWidth: logo.horizontalHalfWidth,
-        verticalHalfWidth: logo.verticalHalfWidth,
-        onChange: (strokes) => {
-          pipeline.setShapes([...logo.shapes, ...strokes]);
-          sceneChanged = true;
-          schedule();
-        },
-        onHover: (point) => {
-          pointer = point;
-        },
-      }),
-    );
     const observer = new ResizeObserver(() => {
       needsResize = true;
       schedule();

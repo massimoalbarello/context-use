@@ -23,8 +23,6 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
-  touch-action: none;
-  cursor: crosshair;
 }
 header {
   position: absolute;
@@ -40,24 +38,6 @@ header span {
   color: #62656e;
   font-size: 11px;
   letter-spacing: 0.04em;
-}
-.hint {
-  position: absolute;
-  bottom: 28px;
-  left: 0;
-  width: 100%;
-  margin: 0;
-  text-align: center;
-  pointer-events: none;
-  color: #93959e;
-  font-size: 12px;
-  letter-spacing: 0.01em;
-}
-.hint span {
-  display: block;
-  margin-top: 7px;
-  font-size: 10px;
-  color: #53565f;
 }
 .fallback {
   position: absolute;

@@ -1,5 +1,5 @@
 import { effect, frame, type Gpu, type Surface, sampler, storage, target } from 'vgpu';
-import { type Point, packShapes, type Shape } from './drawing';
+import { type Point, packShapes, type Shape } from './logo';
 import blurShader from './shaders/blur.wgsl';
 import compositeShader from './shaders/composite.wgsl';
 import emitterShader from './shaders/emitter.wgsl';
@@ -12,12 +12,19 @@ const CASCADE_COUNT = 6;
 const CASCADE_ALIGNMENT = 2 ** (CASCADE_COUNT - 1);
 const ATLAS_SCALE = 2;
 const MAX_FIELD_DIMENSION = 768;
-const INITIAL_SHAPE_CAPACITY = 32;
 const FLOATS_PER_SHAPE = 8;
 const HDR_FORMAT = 'rgba16float';
 const BLUR_RADIUS = 3;
 
-export function createPipeline({ gpu, output }: { gpu: Gpu; output: Surface }) {
+export function createPipeline({
+  gpu,
+  output,
+  shapes,
+}: {
+  gpu: Gpu;
+  output: Surface;
+  shapes: readonly Shape[];
+}) {
   const makeTarget = () => target(gpu, { size: [1, 1], format: HDR_FORMAT });
   const field = makeTarget();
   const emitter = makeTarget();
@@ -37,9 +44,15 @@ export function createPipeline({ gpu, output }: { gpu: Gpu; output: Surface }) {
     composite: effect(gpu, compositeShader),
     cascades: Array.from({ length: CASCADE_COUNT }, () => effect(gpu, cascadeShader)),
   };
-  let capacity = INITIAL_SHAPE_CAPACITY;
-  let buffer = storage(gpu, capacity * FLOATS_PER_SHAPE * Float32Array.BYTES_PER_ELEMENT, 'read');
-  let shapeCount = 0;
+  const buffer = storage(
+    gpu,
+    shapes.length * FLOATS_PER_SHAPE * Float32Array.BYTES_PER_ELEMENT,
+    'read',
+  );
+  buffer.write(packShapes(shapes));
+  shaders.field.set({ shapes: buffer });
+  shaders.emitter.set({ shapes: buffer });
+  shaders.rim.set({ shapes: buffer });
 
   const prepare = () =>
     Promise.all([
@@ -90,7 +103,6 @@ export function createPipeline({ gpu, output }: { gpu: Gpu; output: Surface }) {
     });
     shaders.composite.set({
       field,
-      emitter,
       irradiance,
       rim,
       blurred_rim: blurVertical,
@@ -98,30 +110,11 @@ export function createPipeline({ gpu, output }: { gpu: Gpu; output: Surface }) {
     });
   };
 
-  const setShapes = (shapes: readonly Shape[]) => {
-    shapeCount = shapes.length;
-    if (shapeCount > capacity) {
-      capacity = Math.max(shapeCount, capacity * ATLAS_SCALE);
-      buffer = storage(gpu, capacity * FLOATS_PER_SHAPE * Float32Array.BYTES_PER_ELEMENT, 'read');
-    }
-    buffer.write(packShapes(shapes));
-    shaders.field.set({ shapes: buffer });
-    shaders.emitter.set({ shapes: buffer });
-  };
-
-  const render = ({
-    light,
-    time,
-    sceneChanged,
-  }: {
-    light: Point;
-    time: number;
-    sceneChanged: boolean;
-  }) => {
-    const lighting = { light, size: output.size, time, padding: 0 };
+  const render = ({ light, sceneChanged }: { light: Point; sceneChanged: boolean }) => {
+    const lighting = { light, size: output.size };
     shaders.rim.set({ lighting });
     shaders.composite.set({ lighting });
-    shaders.field.set({ scene: { size: field.size, count: shapeCount, padding: 0 } });
+    shaders.field.set({ scene: { size: field.size, count: shapes.length, padding: 0 } });
     let upper = cascades[0];
     let destination = cascades[1];
     const cascadePasses = Array.from(shaders.cascades.entries(), ([index, shader]) => {
@@ -155,5 +148,5 @@ export function createPipeline({ gpu, output }: { gpu: Gpu; output: Surface }) {
     });
   };
 
-  return { prepare, resize, setShapes, render };
+  return { prepare, resize, render };
 }

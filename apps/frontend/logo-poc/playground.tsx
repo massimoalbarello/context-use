@@ -19,7 +19,7 @@ export function Playground() {
     <main className="playground" data-status={status}>
       <canvas
         ref={canvasRef}
-        aria-label="Illuminated Context Use logo. Drag horizontally or vertically to draw colored light. Reload to start over."
+        aria-label="Animated Context Use logo. White light radiates from the vertical strokes; cyan, violet, and amber light radiates from the horizontal bars."
       />
       {status !== 'ready' && (
         <div className="fallback">
@@ -28,13 +28,8 @@ export function Playground() {
         </div>
       )}
       <header>
-        context use<span>light playground</span>
+        context use<span>light study</span>
       </header>
-      {status === 'ready' && (
-        <p className="hint">
-          Drag to draw light<span>Reload to start over</span>
-        </p>
-      )}
     </main>
   );
 }
