@@ -52,10 +52,13 @@ for your local machine. The instance's Linux build requires Docker for the nativ
 the demo build uses CMake 3.24+ and a C++ toolchain to prepare its embedded snapshot.
 
 Deploy commands build for Linux automatically. Use `--new <app-name>` to create an app; to
-update an existing app, replace it with `--app <exact-slug>` from `nib apps list`. For example:
+update an existing app, use `--app <app-name>` or its exact slug from `nib apps list`. For example:
 ```sh
-bun run deploy:landing --app context-use-landing-abc123
+bun run deploy:landing --app context-use-landing
 ```
+An exact slug takes precedence. Otherwise the command resolves the name to a single app before
+building. If several apps share that name, it stops and lists their exact slugs for you to choose.
+If no app matches, it stops without creating an app.
 
 The main app owns the backend, dashboard, and demo build target; the landing is a separate app.
 Each binary ships independently. Context Use instances include the dashboard, while the demo embeds
