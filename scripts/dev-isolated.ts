@@ -1,7 +1,10 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BACKEND_ENVIRONMENT, LOCAL_PUBLIC_ORIGIN } from '../apps/backend/src/lib/runtime-config';
+import {
+  BACKEND_ENVIRONMENT,
+  LOCAL_PUBLIC_ORIGIN,
+} from '../packages/backend/src/lib/runtime-config';
 
 const INTERRUPTED_EXIT_CODE = 130;
 const TERMINATED_EXIT_CODE = 143;

@@ -5,21 +5,13 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "@repo/frontend#build": {
-      "dependsOn": ["@repo/ui#build"],
-      "outputs": ["dist/**"]
-    },
-    "@repo/backend#build": {
-      "dependsOn": ["@repo/frontend#build", "@repo/backend#build:faces"],
-      "env": ["BUILD_TARGET"],
-      "outputs": ["dist/**", "public/**"]
-    },
     "@repo/backend#build:faces": {
       "outputLogs": "new-only",
       "inputs": [
         "native/faces/**",
         "scripts/build-faces.ts",
-        "scripts/shared/constants.ts"
+        "scripts/shared/build-target.ts",
+        "scripts/shared/build-assets.ts"
       ],
       "env": ["BUILD_TARGET"],
       "outputs": [".cache/face-engine-linux/**", ".cache/face-engine-host/**"]
@@ -42,6 +34,43 @@
     "@repo/landing#build": {
       "env": ["BUILD_TARGET"],
       "outputs": ["dist/**"]
+    },
+    "@repo/context-use#build:client": {
+      "dependsOn": ["@repo/frontend#build"],
+      "outputs": ["dist/public/**"]
+    },
+    "@repo/context-use#build": {
+      "dependsOn": ["build:client", "@repo/backend#build:faces"],
+      "env": ["BUILD_TARGET"],
+      "outputs": ["dist/context-use", "dist/face-engine/**"]
+    },
+    "@repo/demo#build:client": {
+      "dependsOn": ["@repo/frontend#build"],
+      "outputs": ["dist/public/**"]
+    },
+    "@repo/backend#build:faces:host": {
+      "dependsOn": [],
+      "inputs": [
+        "native/faces/**",
+        "scripts/build-faces.ts",
+        "scripts/shared/build-target.ts",
+        "scripts/shared/build-assets.ts"
+      ],
+      "outputs": [".cache/face-engine-host/**"],
+      "outputLogs": "new-only"
+    },
+    "@repo/demo#build": {
+      "dependsOn": ["build:client", "@repo/backend#build:faces:host"],
+      "env": ["BUILD_TARGET"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/seeds/isolated-development/**"
+      ],
+      "outputs": ["dist/context-use-demo"]
+    },
+    "test:binary": {
+      "dependsOn": ["build"],
+      "cache": false
     }
   }
 }

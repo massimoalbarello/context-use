@@ -6,7 +6,8 @@
     "dev": "bun --bun vite",
     "build": "bun --bun vite build && bun run build.ts",
     "check:types": "bun run --bun tsc -b",
-    "check:binary": "bun run check-binary.ts"
+    "test:binary": "bun test ./test/binary.test.ts",
+    "deploy": "bun run deploy.ts"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

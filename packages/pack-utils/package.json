@@ -4,13 +4,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./binary-check": "./src/binary-check.ts"
+    "./binary-check": "./src/binary-check.ts",
+    "./deploy-nibrun": "./src/deploy-nibrun.ts"
   },
   "imports": {
     "#*": "./src/*"
   },
   "scripts": {
-    "check:types": "bun run --bun tsc"
+    "check:types": "bun run --bun tsc",
+    "test": "bun test"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",

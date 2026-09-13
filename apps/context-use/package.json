@@ -1,0 +1,29 @@
+{
+  "name": "@repo/context-use",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --no-orphans --parallel dev:server dev:client",
+    "dev:server": "bun run dev.ts",
+    "dev:client": "bun --bun vite",
+    "build:client": "bun --bun vite build",
+    "build": "bun run build.ts",
+    "deploy": "bun run deploy.ts",
+    "check:types": "bun run --bun tsc -b",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@repo/backend": "workspace:*",
+    "@repo/frontend": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@repo/pack-utils": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "typescript": "catalog:",
+    "vite": "^8.2.2"
+  }
+}

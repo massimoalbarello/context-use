@@ -11,7 +11,7 @@ for (const file of Bun.embeddedFiles as readonly BunFile[]) {
   }
 }
 if (!assets.has('/index.html')) {
-  throw new Error('Missing landing assets. Build with bun run landing:build first.');
+  throw new Error('Missing landing assets. Build with bun run build:landing first.');
 }
 
 const server = Bun.serve({

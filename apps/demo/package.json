@@ -1,0 +1,34 @@
+{
+  "name": "@repo/demo",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build:client": "bun --bun vite build",
+    "build": "bun run build.ts",
+    "deploy": "bun run deploy.ts",
+    "test": "bun test ./app.test.ts && bun test --cwd frontend --preload ../test/dom.ts",
+    "test:binary": "bun test ./test/binary.test.ts",
+    "check:types": "bun run --bun tsc -b"
+  },
+  "dependencies": {
+    "@repo/backend": "workspace:*",
+    "@repo/frontend": "workspace:*",
+    "elysia": "^1.4.30",
+    "@tanstack/react-router": "^1.170.32",
+    "@repo/ui": "workspace:*",
+    "react": "^19.2.8",
+    "canonicalize": "^5.0.0",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@repo/pack-utils": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "typescript": "catalog:",
+    "vite": "^8.2.2",
+    "@happy-dom/global-registrator": "^20.14.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7"
+  }
+}

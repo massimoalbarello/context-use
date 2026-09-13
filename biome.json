@@ -14,8 +14,8 @@
       "!**/bun.lock",
       "!**/*.lock",
       "!**/*.svg",
-      "!apps/backend/src/queries.gen.ts",
-      "!apps/frontend/src/routeTree.gen.ts"
+      "!packages/backend/src/queries.gen.ts",
+      "!packages/frontend/src/routeTree.gen.ts"
     ]
   },
   "formatter": {
@@ -105,7 +105,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/repositories/**/*.ts"],
+      "includes": ["packages/backend/src/repositories/**/*.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -134,7 +134,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/lib/**/*.ts"],
+      "includes": ["packages/backend/src/lib/**/*.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -163,7 +163,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/models/**/*.ts"],
+      "includes": ["packages/backend/src/models/**/*.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -196,7 +196,9 @@
       }
     },
     {
-      "includes": ["apps/backend/src/services/hypermedia-retrieval/service.ts"],
+      "includes": [
+        "packages/backend/src/services/hypermedia-retrieval/service.ts"
+      ],
       "linter": {
         "rules": {
           "style": {
@@ -229,8 +231,8 @@
     },
     {
       "includes": [
-        "apps/backend/src/services/**/*.ts",
-        "!apps/backend/src/services/hypermedia-retrieval/service.ts"
+        "packages/backend/src/services/**/*.ts",
+        "!packages/backend/src/services/hypermedia-retrieval/service.ts"
       ],
       "linter": {
         "rules": {
@@ -272,7 +274,7 @@
       }
     },
     {
-      "includes": ["apps/frontend/src/routes/**/*.$*.tsx"],
+      "includes": ["packages/frontend/src/routes/**/*.$*.tsx"],
       "linter": {
         "rules": {
           "style": {
@@ -282,7 +284,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/routes/**/*.ts"],
+      "includes": ["packages/backend/src/routes/**/*.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -310,7 +312,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/routes/**/model.ts"],
+      "includes": ["packages/backend/src/routes/**/model.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -338,7 +340,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/db/**/*.ts"],
+      "includes": ["packages/backend/src/db/**/*.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -363,7 +365,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/app.ts"],
+      "includes": ["packages/backend/src/app.ts"],
       "linter": {
         "rules": {
           "style": {
@@ -391,7 +393,7 @@
       }
     },
     {
-      "includes": ["apps/backend/src/types.ts"],
+      "includes": ["packages/backend/src/types.ts"],
       "linter": {
         "rules": {
           "style": {

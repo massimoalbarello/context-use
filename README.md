@@ -12,12 +12,12 @@
 ## Run it locally
 ```sh
 bun install
-cp apps/backend/.env.example apps/backend/.env
+cp apps/context-use/.env.example apps/context-use/.env
 bun run dev
 ```
 
 Local face recognition is optional. To enable it, run
-`bun --filter @repo/backend build:faces:local` with CMake 3.24+ and a C++ toolchain installed,
+`bun --filter @repo/backend build:faces:host` with CMake 3.24+ and a C++ toolchain installed,
 then retry image processing. Full compiler output is saved in `.cache/face-build-host/build.log`.
 
 Open [http://localhost:5173](http://localhost:5173). The first person to register a passkey becomes
@@ -38,11 +38,26 @@ with the CLI. Install it and sign in once:
 curl -fsSL https://nibrun.com/install.sh | sh
 nib login
 ```
-Create or update your instance:
+Each app has its own build and deploy commands:
+
+| App | Build a Linux binary | Deploy to nibrun |
+| --- | --- | --- |
+| Context Use instance | `bun run build:instance` | `bun run deploy:instance --name context-use` |
+| Steve Jobs demo | `bun run build:demo` | `bun run deploy:demo --name steve-jobs-demo` |
+| Project landing page | `bun run build:landing` | `bun run deploy:landing --name context-use-landing` |
+
+Builds produce `apps/context-use/dist/context-use`, `apps/demo/dist/context-use-demo`, and
+`apps/landing/dist/context-use-landing`. Use `BUILD_TARGET=host` before a build command to compile
+for your local machine. The instance's Linux build requires Docker for the native face engine;
+the demo build uses CMake 3.24+ and a C++ toolchain to prepare its embedded snapshot.
+
+Deploy commands build for Linux automatically. Use `--name` only for the first deployment; to
+update an existing app, replace it with `--app <exact-slug>` from `nib apps list`. For example:
 ```sh
-bun run deploy:nibrun
+bun run deploy:landing --app context-use-landing-abc123
 ```
-The command builds the Linux binary and creates a configured Context Use app on its first run. Each
-later run deploys onto that same app. Your database, uploaded files, OAuth credentials, and generated
-auth secret live in nibrun's persistent `/app/data` directory, so clients stay authorized across
-updates and restarts.
+
+Each app ships independently. Context Use instances include the dashboard, while the demo embeds
+its read-only snapshot and the landing page includes only the shared branding UI. Instance data,
+uploaded files, OAuth credentials, and the generated auth secret live in nibrun's persistent
+`/app/data` directory, so clients stay authorized across updates and restarts.

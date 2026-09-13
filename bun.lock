@@ -15,7 +15,71 @@
         "typescript": "catalog:",
       },
     },
-    "apps/backend": {
+    "apps/context-use": {
+      "name": "@repo/context-use",
+      "dependencies": {
+        "@repo/backend": "workspace:*",
+        "@repo/frontend": "workspace:*",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+      },
+      "devDependencies": {
+        "@repo/pack-utils": "workspace:*",
+        "@repo/typescript-config": "workspace:*",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.5",
+        "typescript": "catalog:",
+        "vite": "^8.2.2",
+      },
+    },
+    "apps/demo": {
+      "name": "@repo/demo",
+      "dependencies": {
+        "@repo/backend": "workspace:*",
+        "@repo/frontend": "workspace:*",
+        "@repo/ui": "workspace:*",
+        "@tanstack/react-router": "^1.170.32",
+        "canonicalize": "^5.0.0",
+        "elysia": "^1.4.30",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+      },
+      "devDependencies": {
+        "@happy-dom/global-registrator": "^20.14.0",
+        "@repo/pack-utils": "workspace:*",
+        "@repo/typescript-config": "workspace:*",
+        "@testing-library/react": "^16.3.3",
+        "@testing-library/user-event": "^14.6.7",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.5",
+        "typescript": "catalog:",
+        "vite": "^8.2.2",
+      },
+    },
+    "apps/landing": {
+      "name": "@repo/landing",
+      "dependencies": {
+        "@fontsource-variable/dm-sans": "^5.3.0",
+        "@primer/octicons-react": "^19.35.0",
+        "@repo/ui": "workspace:*",
+        "lucide-react": "^1.37.0",
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8",
+        "tailwindcss": "^4.3.3",
+      },
+      "devDependencies": {
+        "@repo/pack-utils": "workspace:*",
+        "@repo/typescript-config": "workspace:*",
+        "@tailwindcss/vite": "^4.3.3",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.5",
+        "@vgpu/wgsl": "0.4.1",
+        "@vitejs/plugin-react": "^6.1.1",
+        "typescript": "catalog:",
+        "vite": "^8.2.2",
+      },
+    },
+    "packages/backend": {
       "name": "@repo/backend",
       "dependencies": {
         "@better-auth/cimd": "^1.7.2",
@@ -38,7 +102,6 @@
       },
       "devDependencies": {
         "@modelcontextprotocol/client": "^2",
-        "@repo/pack-utils": "workspace:*",
         "@repo/typescript-config": "workspace:*",
         "@types/mdast": "^4.0.0",
         "json-schema-to-typescript": "^16.0.0",
@@ -48,7 +111,7 @@
         "yaml": "^2.9.0",
       },
     },
-    "apps/frontend": {
+    "packages/frontend": {
       "name": "@repo/frontend",
       "dependencies": {
         "@base-ui/react": "^1.7.0",
@@ -78,29 +141,6 @@
         "@tanstack/router-plugin": "^1.168.35",
         "@testing-library/react": "^16.3.3",
         "@testing-library/user-event": "^14.6.7",
-        "@types/react": "^19.2.18",
-        "@types/react-dom": "^19.2.5",
-        "@vgpu/wgsl": "0.4.1",
-        "@vitejs/plugin-react": "^6.1.1",
-        "typescript": "catalog:",
-        "vite": "^8.2.2",
-      },
-    },
-    "apps/landing": {
-      "name": "@repo/landing",
-      "dependencies": {
-        "@fontsource-variable/dm-sans": "^5.3.0",
-        "@primer/octicons-react": "^19.35.0",
-        "@repo/ui": "workspace:*",
-        "lucide-react": "^1.37.0",
-        "react": "^19.2.8",
-        "react-dom": "^19.2.8",
-        "tailwindcss": "^4.3.3",
-      },
-      "devDependencies": {
-        "@repo/pack-utils": "workspace:*",
-        "@repo/typescript-config": "workspace:*",
-        "@tailwindcss/vite": "^4.3.3",
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.5",
         "@vgpu/wgsl": "0.4.1",
@@ -365,9 +405,13 @@
 
     "@primer/octicons-react": ["@primer/octicons-react@19.35.0", "", { "peerDependencies": { "react": ">=16.3" } }, "sha512-HrNykL6EuWjffgONUx+qT5amdhKgVBPcU73Z1ppWve0n/DnZpAcxIDUKWn3hfSe/L9nXv+pKyY/i5Yu99ECHwQ=="],
 
-    "@repo/backend": ["@repo/backend@workspace:apps/backend"],
+    "@repo/backend": ["@repo/backend@workspace:packages/backend"],
 
-    "@repo/frontend": ["@repo/frontend@workspace:apps/frontend"],
+    "@repo/context-use": ["@repo/context-use@workspace:apps/context-use"],
+
+    "@repo/demo": ["@repo/demo@workspace:apps/demo"],
+
+    "@repo/frontend": ["@repo/frontend@workspace:packages/frontend"],
 
     "@repo/landing": ["@repo/landing@workspace:apps/landing"],
 
@@ -469,7 +513,7 @@
 
     "@tanstack/react-router": ["@tanstack/react-router@1.170.32", "", { "dependencies": { "@tanstack/history": "1.162.1", "@tanstack/react-store": "^0.9.3", "@tanstack/router-core": "1.171.27", "isbot": "^5.1.22" }, "peerDependencies": { "react": ">=18.0.0 || >=19.0.0", "react-dom": ">=18.0.0 || >=19.0.0" } }, "sha512-SIpxvaTKco100a5ZR3ePmArbhtm3XOx+w1dpGYY9gxHDta4iXSKDdQuhLonwJbIMkVJsU1rwXf0UDHMrF/1snw=="],
 
-    "@tanstack/react-store": ["@tanstack/react-store@0.11.1", "", { "dependencies": { "@tanstack/store": "0.11.1", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-HaIGKI3YLmjBYIvy5DFDY23oNaYZIsTZfngey07Uh5iLVJgM3bIGCnZeOFOqzjFld9JHWcaHJnasD/bKoGKwJQ=="],
+    "@tanstack/react-store": ["@tanstack/react-store@0.9.3", "", { "dependencies": { "@tanstack/store": "0.9.3", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-y2iHd/N9OkoQbFJLUX1T9vbc2O9tjH0pQRgTcx1/Nz4IlwLvkgpuglXUx+mXt0g5ZDFrEeDnONPqkbfxXJKwRg=="],
 
     "@tanstack/router-core": ["@tanstack/router-core@1.171.27", "", { "dependencies": { "@tanstack/history": "1.162.1", "cookie-es": "^3.0.0", "seroval": "^1.6.2", "seroval-plugins": "^1.6.2" } }, "sha512-wDwSLvoLwIaNcnx9UNcN9Mb7Y8QwCYq1U1RQZwyN186gnkIoIYI2SOxy8VqH1vFigbkHkk4FmwMAQlghPgDK2g=="],
 
@@ -479,7 +523,7 @@
 
     "@tanstack/router-utils": ["@tanstack/router-utils@1.162.2", "", { "dependencies": { "@babel/generator": "^7.28.5", "@babel/parser": "^7.28.5", "@babel/types": "^7.28.5", "ansis": "^4.1.0", "babel-dead-code-elimination": "^1.0.12", "diff": "^8.0.2", "pathe": "^2.0.3", "tinyglobby": "^0.2.15" } }, "sha512-hTWqJtqIFFdvuCl8WXNyrodp2L9zo2G37xKRrcVmVRWpAB2h+U1LuRAfS4tsFTiWOIoE/B+WDVFB8JpoEdw6jQ=="],
 
-    "@tanstack/store": ["@tanstack/store@0.11.1", "", {}, "sha512-mzTOBhypOuDJAy/D8n2MfUZ1HFkXnmSETviRyhqEC8LUE7/IZQExOTxMANj3KjTofYTkFNpBY67qaVrT41YccA=="],
+    "@tanstack/store": ["@tanstack/store@0.9.3", "", {}, "sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw=="],
 
     "@tanstack/virtual-file-routes": ["@tanstack/virtual-file-routes@1.162.0", "", {}, "sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA=="],
 
@@ -1101,7 +1145,9 @@
 
     "@tailwindcss/oxide-wasm32-wasi/tslib": ["tslib@2.8.1", "", { "bundled": true }, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
-    "@tanstack/react-router/@tanstack/react-store": ["@tanstack/react-store@0.9.3", "", { "dependencies": { "@tanstack/store": "0.9.3", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-y2iHd/N9OkoQbFJLUX1T9vbc2O9tjH0pQRgTcx1/Nz4IlwLvkgpuglXUx+mXt0g5ZDFrEeDnONPqkbfxXJKwRg=="],
+    "@tanstack/form-core/@tanstack/store": ["@tanstack/store@0.11.1", "", {}, "sha512-mzTOBhypOuDJAy/D8n2MfUZ1HFkXnmSETviRyhqEC8LUE7/IZQExOTxMANj3KjTofYTkFNpBY67qaVrT41YccA=="],
+
+    "@tanstack/react-form/@tanstack/react-store": ["@tanstack/react-store@0.11.1", "", { "dependencies": { "@tanstack/store": "0.11.1", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-HaIGKI3YLmjBYIvy5DFDY23oNaYZIsTZfngey07Uh5iLVJgM3bIGCnZeOFOqzjFld9JHWcaHJnasD/bKoGKwJQ=="],
 
     "better-call/@better-auth/utils": ["@better-auth/utils@0.5.0", "", { "dependencies": { "@noble/hashes": "^2.0.1" } }, "sha512-BL8W4EfIZFwlu0r54m3v1ztjDhu6dDe/amLTm0xybmbZaNgYUqhD3SjpAsnq0q8YD6/ki4iwIgxJNLP/N3TxiA=="],
 
@@ -1145,6 +1191,6 @@
 
     "@tailwindcss/node/lightningcss/lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.32.0", "", { "os": "win32", "cpu": "x64" }, "sha512-Amq9B/SoZYdDi1kFrojnoqPLxYhQ4Wo5XiL8EVJrVsB8ARoC1PWW6VGtT0WKCemjy8aC+louJnjS7U18x3b06Q=="],
 
-    "@tanstack/react-router/@tanstack/react-store/@tanstack/store": ["@tanstack/store@0.9.3", "", {}, "sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw=="],
+    "@tanstack/react-form/@tanstack/react-store/@tanstack/store": ["@tanstack/store@0.11.1", "", {}, "sha512-mzTOBhypOuDJAy/D8n2MfUZ1HFkXnmSETviRyhqEC8LUE7/IZQExOTxMANj3KjTofYTkFNpBY67qaVrT41YccA=="],
   }
 }

@@ -1,7 +1,0 @@
-{
-  "extends": "@repo/typescript-config/base.json",
-  "compilerOptions": {
-    "composite": true
-  },
-  "include": ["src", "scripts", "test", "demo"]
-}
