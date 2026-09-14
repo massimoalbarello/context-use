@@ -197,7 +197,7 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
                 aria-controls={manualSetupId}
                 onClick={() => setManualSetupOpen(!manualSetupOpen)}
               >
-                Connect manually
+                Connect other agents
                 <ChevronDown aria-hidden="true" className={manualSetupOpen ? 'rotate-180' : ''} />
               </Button>
             </div>

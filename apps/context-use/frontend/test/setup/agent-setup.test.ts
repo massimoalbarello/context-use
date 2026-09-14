@@ -29,7 +29,7 @@ test('Claude quick connect preserves the instance URL and leaves manual setup av
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
     const user = userEvent.setup();
-    const manualSetup = screen.getByRole('button', { name: 'Connect manually' });
+    const manualSetup = screen.getByRole('button', { name: 'Connect other agents' });
     expect(manualSetup.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByRole('textbox', { name: 'Server URL' })).toBeNull();
     await user.click(manualSetup);
@@ -121,7 +121,7 @@ test('setup presents the user-owned connection flow as three numbered steps', ()
   expect(html).toContain('Context Use');
   expect(html).not.toContain('Server URL');
   expect(html).toContain('Connect Claude');
-  expect(html).toContain('Connect manually');
+  expect(html).toContain('Connect other agents');
   expect(html).not.toContain('Copy server name');
   expect(html).not.toContain('Copy server URL');
   expect(html).not.toContain('Open your agent’s MCP or connector settings');
