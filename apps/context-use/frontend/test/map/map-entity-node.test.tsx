@@ -1,5 +1,6 @@
-import { afterEach, expect, mock, test } from 'bun:test';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, mock, spyOn, test } from 'bun:test';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { KnowledgeWorkspaceProvider } from '../../src/components/knowledge/knowledge-workspace';
 import { MapCanvas } from '../../src/components/map/map-canvas';
 import type { MapLayoutEntity } from '../../src/components/map/map-layout';
@@ -20,8 +21,10 @@ async function settleIntervalScroll() {
   await act(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_SETTLE_WAIT_MS)));
 }
 
-function intervalIndicatorPosition(name: string): string {
-  return screen.getByRole('img', { name }).style.getPropertyValue('--interval-position');
+function expectSelectedMonth(month?: CalendarMonth) {
+  expect(
+    screen.getByRole('spinbutton', { name: 'Selected month' }).getAttribute('aria-valuetext'),
+  ).toBe(calendarMonthLabel(month));
 }
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
@@ -120,7 +123,7 @@ function MapFixture({
 }
 
 test('Map distinguishes entity identities and retains partial progress between months', async () => {
-  const onMonthChange = mock(() => undefined);
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
   const onIntervalScrollingChange = mock(() => undefined);
   render(
     <MapFixture
@@ -132,127 +135,157 @@ test('Map distinguishes entity identities and retains partial progress between m
   expectEntityIdentities();
   const canvas = screen.getByLabelText('Interactive map');
 
-  expect(screen.getByText('Undated')).toBeTruthy();
-  expect(screen.getByText('Now')).toBeTruthy();
-  expect(screen.getByText('Past')).toBeTruthy();
-  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
-  const undatedPosition = intervalIndicatorPosition('Pages without a time interval');
+  expectSelectedMonth();
+  const present = currentCalendarMonth();
+  const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
 
   fireEvent.wheel(canvas, { deltaY: 40 });
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
-  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
-  expect(screen.getByText('Now')).toBeTruthy();
-  expect(screen.getByText('Past')).toBeTruthy();
-  const partialPosition = intervalIndicatorPosition('Pages without a time interval');
+  expectSelectedMonth();
   await settleIntervalScroll();
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
-  expect(intervalIndicatorPosition('Pages without a time interval')).toBe(partialPosition);
   expect(onMonthChange).not.toHaveBeenCalled();
 
   fireEvent.wheel(canvas, { deltaY: 40 });
-  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
-  expect(onMonthChange).not.toHaveBeenCalled();
-
+  expectSelectedMonth();
   fireEvent.wheel(canvas, { deltaY: 80 });
-  const present = currentCalendarMonth();
-  expect(
-    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
-  ).toBeTruthy();
-  const presentPosition = intervalIndicatorPosition(
-    `Selected interval: ${calendarMonthLabel(present)}`,
-  );
+  expectSelectedMonth(present);
   expect(onMonthChange).not.toHaveBeenCalled();
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(present);
-  expect(screen.getByText('Past')).toBeTruthy();
 
   fireEvent.wheel(canvas, { deltaY: 120 });
   fireEvent.wheel(canvas, { deltaY: 40 });
-  const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
-  const previousPosition = intervalIndicatorPosition(
-    `Selected interval: ${calendarMonthLabel(previousMonth)}`,
-  );
-  expect(previousPosition).not.toBe(presentPosition);
-  expect(onMonthChange).toHaveBeenCalledTimes(1);
+  expectSelectedMonth(previousMonth);
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
-  expect(onMonthChange).toHaveBeenCalledTimes(2);
 
   fireEvent.wheel(canvas, { deltaY: -120 });
   fireEvent.wheel(canvas, { deltaY: -40 });
-  expect(
-    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(present)}` }),
-  ).toBeTruthy();
+  expectSelectedMonth(present);
   await settleIntervalScroll();
 
   fireEvent.wheel(canvas, { deltaY: -40 });
-  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
-  expect(screen.getByText('Undated')).toBeTruthy();
-  expect(intervalIndicatorPosition('Pages without a time interval')).not.toBe(undatedPosition);
-  expect(screen.getByText('Now')).toBeTruthy();
-  expect(screen.getByText('Past')).toBeTruthy();
+  expectSelectedMonth();
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
 
   fireEvent.wheel(canvas, { deltaY: -120 });
   await settleIntervalScroll();
-  expect(screen.getByText('Undated')).toBeTruthy();
-  expect(screen.getByText('Now')).toBeTruthy();
-  expect(screen.getByText('Past')).toBeTruthy();
-  expect(screen.getByRole('img', { name: 'Pages without a time interval' })).toBeTruthy();
-  expect(intervalIndicatorPosition('Pages without a time interval')).toBe(undatedPosition);
-  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
+  expectSelectedMonth();
+  expect(onMonthChange.mock.calls).toEqual([[present], [previousMonth], [present], [undefined]]);
 });
 
-test('Map keeps the indicator at Past while older month labels continue changing', async () => {
-  const onMonthChange = mock(() => undefined);
-  const oldMonth = shiftCalendarMonth({ value: currentCalendarMonth(), offset: -24 });
-  render(<MapFixture onMonthChange={onMonthChange} month={oldMonth} />);
+test('The month wheel navigates across year boundaries and resets pending canvas scrolling', async () => {
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+  const user = userEvent.setup();
+  render(<MapFixture onMonthChange={onMonthChange} month="2025-01" />);
 
   const canvas = screen.getByLabelText('Interactive map');
-  const oldPosition = intervalIndicatorPosition(
-    `Selected interval: ${calendarMonthLabel(oldMonth)}`,
-  );
+  const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
   fireEvent.wheel(canvas, { deltaY: 120 });
+  picker.focus();
+  await user.keyboard('{ArrowDown}');
+  await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
+  expect(onMonthChange).toHaveBeenLastCalledWith('2024-12');
+  expect(onMonthChange).toHaveBeenCalledTimes(1);
+
   fireEvent.wheel(canvas, { deltaY: 40 });
-  const olderMonth = shiftCalendarMonth({ value: oldMonth, offset: -1 });
-
-  expect(
-    screen.getByRole('img', { name: `Selected interval: ${calendarMonthLabel(olderMonth)}` }),
-  ).toBeTruthy();
-  expect(intervalIndicatorPosition(`Selected interval: ${calendarMonthLabel(olderMonth)}`)).toBe(
-    oldPosition,
-  );
   await settleIntervalScroll();
-  expect(onMonthChange).toHaveBeenLastCalledWith(olderMonth);
+  expectSelectedMonth('2024-12');
+  expect(onMonthChange).toHaveBeenCalledTimes(1);
+
+  fireEvent.wheel(picker, { deltaY: 80 });
+  await waitFor(() => expectSelectedMonth('2024-11'));
+  await settleIntervalScroll();
+  expect(onMonthChange.mock.calls).toEqual([['2024-12'], ['2024-11']]);
+
+  await user.keyboard('{ArrowUp}');
+  await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
 });
 
-test('Map hides the interval indicator while a detail card is open', () => {
-  const present = currentCalendarMonth();
-  render(
-    <MapFixture
-      onMonthChange={() => undefined}
-      month={present}
-      selectedKey="entity:grace-hopper"
-    />,
-  );
-
-  expect(screen.queryByText(calendarMonthLabel(present))).toBeNull();
-  expect(screen.queryByText('Now')).toBeNull();
-  expect(screen.queryByText('Past')).toBeNull();
-  expect(screen.queryByRole('img', { name: /Selected interval:/ })).toBeNull();
-});
-
-test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
-  const onMonthChange = mock(() => undefined);
-  render(<MapFixture onMonthChange={onMonthChange} />);
-  const canvas = screen.getByLabelText('Interactive map');
-  const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
-  const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });
-  Object.defineProperty(pinch, 'ctrlKey', { value: true });
-
-  expect(fireEvent(canvas, pinch)).toBe(false);
+test('The month wheel stops at Undated and follows external month changes', async () => {
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+  const user = userEvent.setup();
+  const { rerender } = render(<MapFixture onMonthChange={onMonthChange} />);
+  const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
+  picker.focus();
+  await user.keyboard('{ArrowUp}');
+  expectSelectedMonth();
   expect(onMonthChange).not.toHaveBeenCalled();
-  const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
-  expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
+
+  await user.keyboard('{ArrowDown}');
+  await waitFor(() => expectSelectedMonth(currentCalendarMonth()));
+  await user.keyboard('{ArrowUp}');
+  await waitFor(() => expectSelectedMonth());
+
+  rerender(<MapFixture onMonthChange={onMonthChange} month="1999-01" />);
+  expectSelectedMonth('1999-01');
+  await user.keyboard('{ArrowDown}');
+  await waitFor(() => expectSelectedMonth('1998-12'));
 });
+
+test('On phones the month wheel opens from a compact control and stays synchronized with the map', async () => {
+  const matchMedia = spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => true,
+  }));
+  try {
+    const user = userEvent.setup();
+    const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+    const { rerender } = render(<MapFixture onMonthChange={onMonthChange} month="2025-01" />);
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Change month: January 2025' }));
+    const picker = await screen.findByRole('spinbutton', { name: 'Selected month' });
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('spinbutton')).toBeNull());
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Change month: December 2024' }),
+    );
+
+    const canvas = screen.getByLabelText('Interactive map');
+    fireEvent.wheel(canvas, { deltaY: 120 });
+    fireEvent.wheel(canvas, { deltaY: 40 });
+    await settleIntervalScroll();
+    await user.click(screen.getByRole('button', { name: 'Change month: November 2024' }));
+    expectSelectedMonth('2024-11');
+    rerender(
+      <MapFixture
+        onMonthChange={onMonthChange}
+        month="2024-11"
+        selectedKey="entity:grace-hopper"
+      />,
+    );
+    expect(screen.queryByRole('navigation', { name: 'Time navigation' })).toBeNull();
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+  } finally {
+    cleanup();
+    matchMedia.mockRestore();
+  }
+});
+
+test.each(['Interactive map', 'Selected month'])(
+  'Map consumes pinch zoom over %s before the browser can zoom the dashboard',
+  (targetLabel) => {
+    const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+    render(<MapFixture onMonthChange={onMonthChange} />);
+    const canvas = screen.getByLabelText('Interactive map');
+    const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+    const pinch = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -80 });
+    Object.defineProperty(pinch, 'ctrlKey', { value: true });
+
+    expect(fireEvent(screen.getByLabelText(targetLabel), pinch)).toBe(false);
+    expect(onMonthChange).not.toHaveBeenCalled();
+    const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+    expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
+  },
+);

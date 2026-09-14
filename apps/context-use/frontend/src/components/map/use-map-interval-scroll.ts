@@ -59,7 +59,6 @@ export function useMapIntervalScroll({
   const progressRef = useRef(0);
   const committedMonthRef = useRef(month);
   const displayedMonthRef = useRef(month);
-  const [progress, setProgress] = useState(0);
   const [displayedMonth, setDisplayedMonth] = useState(month);
 
   useEffect(
@@ -80,8 +79,21 @@ export function useMapIntervalScroll({
     displayedMonthRef.current = month;
     progressRef.current = 0;
     setDisplayedMonth(month);
-    setProgress(0);
   }, [month]);
+
+  function selectMonth(nextMonth?: CalendarMonth) {
+    if (wheelTimer.current) {
+      clearTimeout(wheelTimer.current);
+    }
+    progressRef.current = 0;
+    displayedMonthRef.current = nextMonth;
+    setDisplayedMonth(nextMonth);
+    if (committedMonthRef.current !== nextMonth) {
+      committedMonthRef.current = nextMonth;
+      onMonthChange(nextMonth);
+    }
+    onIntervalScrollingChange(false);
+  }
 
   function adjacentMonth(direction: IntervalDirection): CalendarMonth | undefined {
     return mapMonthAfterScroll({
@@ -143,9 +155,8 @@ export function useMapIntervalScroll({
       wheelTimer.current = setTimeout(settle, WHEEL_INTERVAL_SETTLE_MS);
       const nextProgress = moveThroughMonths(progressRef.current + deltaY / WHEEL_MONTH_DISTANCE);
       progressRef.current = nextProgress;
-      setProgress(nextProgress);
     },
   );
 
-  return { displayedMonth, handleWheel, progress };
+  return { displayedMonth, handleWheel, selectMonth };
 }

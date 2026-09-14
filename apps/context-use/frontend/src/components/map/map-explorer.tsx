@@ -223,7 +223,7 @@ export function MapPageStatus({
   }
   return (
     <div
-      className="absolute right-4 bottom-4 z-20 flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur"
+      className="absolute right-4 bottom-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur"
       role={error ? 'alert' : 'status'}
       hidden={suppressed}
     >

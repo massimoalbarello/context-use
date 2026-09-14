@@ -169,7 +169,7 @@ const MapScene = memo(function MapScene({
 function MapExplorationCue({ error, onRetry }: { error: Error | null; onRetry: () => void }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
+      className="pointer-events-none absolute right-4 bottom-4 left-4 z-10 flex justify-center"
       role="status"
     >
       {error ? (
@@ -177,14 +177,14 @@ function MapExplorationCue({ error, onRetry }: { error: Error | null; onRetry: (
           type="button"
           variant="outline"
           size="sm"
-          className="pointer-events-auto rounded-full bg-card/92 shadow-sm backdrop-blur"
+          className="pointer-events-auto h-auto max-w-full whitespace-normal rounded-full bg-card/92 py-2 shadow-sm backdrop-blur"
           onClick={onRetry}
         >
           Retry loading nearby entities
         </Button>
       ) : (
-        <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
-          <Move className="size-3.5" aria-hidden="true" />
+        <p className="flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
+          <Move className="size-3.5 shrink-0" aria-hidden="true" />
           Drag to move, pinch to zoom, and scroll through time.
         </p>
       )}
@@ -228,6 +228,7 @@ export function MapCanvas({
   const layout = useMemo(() => buildMapLayout(entities, pages), [pages, entities]);
   const viewBoxRef = useRef(viewBox);
   const canvasRef = useRef<SVGSVGElement | null>(null);
+  const surfaceRef = useRef<HTMLElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalScroll = useMapIntervalScroll({
     month,
@@ -334,22 +335,27 @@ export function MapCanvas({
   }
 
   const handleWheel = useEffectEvent((event: globalThis.WheelEvent) => {
-    event.preventDefault();
     if (event.ctrlKey) {
+      event.preventDefault();
+      event.stopPropagation();
       handlePinchZoom(event);
       return;
     }
+    if (event.target instanceof Element && event.target.closest('[data-rwp]')) {
+      return;
+    }
+    event.preventDefault();
     intervalScroll.handleWheel({ event, viewportHeight: canvasRef.current?.clientHeight ?? 1 });
     setShowExplorationHint(false);
   });
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
+    const surface = surfaceRef.current;
+    if (!surface) {
       return;
     }
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheel);
+    surface.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => surface.removeEventListener('wheel', handleWheel, { capture: true });
   }, []);
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
@@ -429,6 +435,7 @@ export function MapCanvas({
 
   return (
     <section
+      ref={surfaceRef}
       className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
       aria-label={`Map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.entities.length} visible entities`}
     >
@@ -459,7 +466,7 @@ export function MapCanvas({
       {!selectedKey && (
         <MapIntervalIndicator
           month={intervalScroll.displayedMonth}
-          scrollProgress={intervalScroll.progress}
+          onMonthChange={intervalScroll.selectMonth}
         />
       )}
 
