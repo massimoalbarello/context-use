@@ -1366,3 +1366,92 @@ test('model checks cannot acquire the engine after the face service closes', asy
   expect(checks).toBe(0);
   expect(() => context.faces.startProcessing()).toThrow('cannot be restarted');
 });
+
+test.each(['no faces', 'failed analysis'] as const)(
+  'assigned portraits appear without detection evidence: %s',
+  async (scenario) => {
+    await using context = await fixture();
+    context.analyzer.next = [];
+    context.analyzer.failure =
+      scenario === 'failed analysis' ? new Error('Model unavailable') : null;
+    const portrait = await context.upload('Assigned portrait');
+    const person = await context.person();
+    const selected = await context.request({
+      path: `/entities/${person.readableId}/image`,
+      method: 'PUT',
+      body: { assetReadableId: portrait.readableId },
+    });
+    expect(selected.status).toBe(StatusMap.OK);
+    const response = await context.request({ path: `/entities/${person.readableId}/images` });
+    const body = await response.json();
+    expect(body).toMatchObject({ items: [{ readableId: portrait.readableId }], nextOffset: null });
+    expectNoInternalResourceIds(body);
+    expect(await context.reference(person)).toBeNull();
+    expect(
+      (await context.assets.detail({ ownerId: OWNER, readableId: portrait.readableId }))!.depicts,
+    ).toEqual([]);
+    const foreign = await context.request({
+      path: `/entities/${person.readableId}/images`,
+      owner: OTHER_OWNER,
+    });
+    expect(foreign.status).toBe(StatusMap['Not Found']);
+  },
+);
+
+test('assigned portraits appear immediately while analysis is still running', async () => {
+  await using context = await fixture();
+  const release = Promise.withResolvers<void>();
+  context.analyzer.wait = release.promise;
+  try {
+    const portrait = await context.assets.create({
+      ownerId: OWNER,
+      name: 'Pending portrait',
+      file: Bun.file(PHOTO_PATH),
+    });
+    if (portrait.state !== 'created') {
+      throw new Error('Upload failed');
+    }
+    const person = await context.person();
+    expect(
+      await context.entities.setImage({
+        ownerId: OWNER,
+        readableId: person.readableId,
+        assetReadableId: portrait.asset.readableId,
+      }),
+    ).toMatchObject({ state: 'updated' });
+    const response = await context.request({ path: `/entities/${person.readableId}/images` });
+    expect(await response.json()).toMatchObject({
+      items: [{ readableId: portrait.asset.readableId }],
+      nextOffset: null,
+    });
+    expect(await context.reference(person)).toBeNull();
+  } finally {
+    release.resolve();
+  }
+});
+
+test('portrait-only appearances follow replacement, removal, and person archiving', async () => {
+  await using context = await fixture();
+  context.analyzer.next = [];
+  const first = await context.upload('First portrait');
+  const second = await context.upload('Replacement portrait');
+  const person = await context.person();
+  const input = { ownerId: OWNER, readableId: person.readableId };
+  const images = () =>
+    context.faces.images({ ownerId: OWNER, entityReadableId: person.readableId, offset: 0 });
+  await context.entities.setImage({ ...input, assetReadableId: first.readableId });
+  expect((await images())!.items.map((asset) => asset.readableId)).toEqual([first.readableId]);
+  await context.entities.setImage({ ...input, assetReadableId: second.readableId });
+  expect((await images())!.items.map((asset) => asset.readableId)).toEqual([second.readableId]);
+  await context.entities.removeImage(input);
+  expect((await images())!.items).toEqual([]);
+  await context.entities.setImage({ ...input, assetReadableId: second.readableId });
+  expect(
+    await context.assets.archive({ ownerId: OWNER, readableId: second.readableId }),
+  ).toMatchObject({ state: 'resource_in_use' });
+  await context.entities.archive(input);
+  expect(await images()).toBeNull();
+  expect(
+    await context.assets.archive({ ownerId: OWNER, readableId: second.readableId }),
+  ).toMatchObject({ state: 'archived' });
+});
