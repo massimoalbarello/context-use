@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -157,14 +157,19 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(model.observations.setupCalls > 1, 'The real agent did not execute installation');
   console.log('Real OpenClaw agent installed the package and started authorization.');
 
-  const pending = await Bun.file(connectionFile).json();
-  assert(pending.oauth.pending?.url);
+  assert((await Bun.file(connectionFile).json()).oauth.pending?.url);
   const before = await configuration();
   assert.notEqual(
     before.plugins?.slots?.memory,
     PLUGIN_ID,
     'Installation activated memory before authorization',
   );
+  await command(['npx', '--yes', packageSpec, 'remove']);
+  assert(!(await Bun.file(connectionFile).exists()), 'Cancelled setup retained credentials');
+  assert(!(await configuration()).plugins.entries?.[PLUGIN_ID]);
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  const pending = await Bun.file(connectionFile).json();
+  console.log('Removed an unfinished installation through the npm helper and connected again.');
   const redirectUrl = await owner.authorize({
     authorizationUrl: pending.oauth.pending.url,
     callbackUrl: CALLBACK_URL,
@@ -203,7 +208,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert((await command(['openclaw', 'context-use', 'status'])).includes('"connected": true'));
   console.log('Native installation and pasted callback authorization passed.');
 
-  assert(!(await Bun.file(join(workspace, 'AGENTS.md')).text()).includes('context_use_'));
+  const initialAgents = await Bun.file(join(workspace, 'AGENTS.md')).text();
+  assert(!initialAgents.includes('context_use_'));
+  const backups = join(stateDir, 'backups', 'context-use-workspace');
+  const [backup] = await readdir(backups);
+  assert(backup, 'Workspace cleanup did not retain a recovery backup');
   assert((await Bun.file(join(workspace, 'USER.md')).text()).includes('Likes architecture'));
   await writeFile(
     join(workspace, 'USER.md'),
@@ -306,7 +315,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert.equal(removed.plugins.entries['active-memory'].config.timeoutMs, USER_TIMEOUT_MS);
   assert.notEqual(removed.plugins.slots?.memory, PLUGIN_ID);
   assert(!(await Bun.file(connectionFile).exists()), 'Credentials survived disconnect');
-  await owner.page.goto(`${app.origin}/hypermedia`);
+  await owner.page.goto(`${app.origin}/map`);
   const remote = await owner.page.request.get(`${app.origin}/api/pages`);
   assert(remote.ok(), 'Could not verify memories survived disconnect');
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
@@ -402,6 +411,18 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log(
     'Reinstalled in the same profile, recalled the preserved remote memory, removed through the native plugin command, and verified a fresh chat through the refreshed gateway.',
   );
+  const refresh = await command(['npx', '--yes', packageSpec, 'refresh']);
+  assert(refresh.includes('Gateway refresh requested'));
+  await waitGateway();
+  // Recover one unchanged file while leaving subsequent edits to USER.md intact.
+  await writeFile(join(workspace, 'AGENTS.md'), initialAgents);
+  await command(['npx', '--yes', packageSpec, 'restore-workspace', join(backups, backup)]);
+  assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), LEGACY_AGENTS);
+  assert((await Bun.file(join(workspace, 'USER.md')).text()).includes('LOCAL_MEMORY_CANARY'));
+  const inventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
+  assert(!inventory.plugins.some((plugin: { id: string }) => plugin.id === PLUGIN_ID));
+  assert(!(await Bun.file(connectionFile).exists()));
+  console.log('The npm helper refreshed the gateway and recovered a backup after uninstall.');
 } finally {
   try {
     await owner?.close();

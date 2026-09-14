@@ -26,6 +26,7 @@ test('copies setup for this instance and exposes script-owned removal', async ()
   await user.click(screen.getByText('Remove the plugin', { selector: 'summary' }));
   await user.click(screen.getByRole('button', { name: 'Copy removal prompt' }));
   expect(await navigator.clipboard.readText()).toBe(OPENCLAW_REMOVAL_PROMPT);
+  expect(OPENCLAW_REMOVAL_PROMPT).toContain(`npx --yes ${OPENCLAW_PACKAGE} remove`);
 });
 
 test('clipboard failure keeps the exact setup prompt available for manual copying', async () => {

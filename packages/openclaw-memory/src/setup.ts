@@ -3,12 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { connect, disconnect, finishAuthorization, status } from './connection';
 import { PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
-import { refreshGateway, refreshLocalMemory, verifyRuntime } from './host';
+import { refreshLocalMemory, verifyRuntime } from './host';
 import { checkHost } from './host-command';
 import { install, uninstall } from './install';
+import { refreshGateway, runRecoveryCommand } from './recovery';
 import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
-import { connectionDirectory, withConnection } from './state';
-import { restoreWorkspace } from './workspace';
+import { connectionDirectory } from './state';
 
 const usage = `context-use-openclaw connect <instance-url> [agent-id=main]
 context-use-openclaw authorize <redirect-url-file|->
@@ -41,7 +41,8 @@ Disconnect restores setup-owned settings while preserving later edits and remote
 Use remove for credential cleanup and uninstall; native disable alone retains connection state.
 Connect and removal retire recognized obsolete provider instructions from workspace startup files.
 Private recovery backups live outside the active workspace and survive uninstall. Removal does not
-reactivate obsolete instructions. restore-workspace explicitly recovers a backup, preserving later edits.
+reactivate obsolete instructions. After uninstall, recover a backup with
+${OPENCLAW_INSTALL_COMMAND} restore-workspace <backup-directory>, preserving later edits.
 Historical conversations and ordinary project notes are preserved. Existing chats retain their history;
 start a new conversation to test the restored memory provider without earlier discussion of Context Use.
 Removal rebuilds local memory's index and requests a gateway refresh. Existing memory import is outside this version.
@@ -58,6 +59,9 @@ async function main(args: string[]): Promise<void> {
     return;
   }
   await checkHost();
+  if (await runRecoveryCommand(args)) {
+    return;
+  }
   const directory = connectionDirectory();
   switch (command) {
     case 'connect': {
@@ -110,19 +114,6 @@ async function main(args: string[]): Promise<void> {
       }
       await refreshLocalMemory(agentId);
       await refreshGateway();
-      return;
-    }
-    case 'refresh':
-      await refreshGateway();
-      return;
-    case 'restore-workspace': {
-      if (!argument) {
-        throw new ConnectionError(usage);
-      }
-      const preserved = await withConnection({ directory, run: () => restoreWorkspace(argument) });
-      console.log(
-        `Workspace backup restored.${preserved.length ? ` Kept later edits: ${preserved.join(', ')}.` : ''}`,
-      );
       return;
     }
     default:
