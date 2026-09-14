@@ -1,6 +1,7 @@
-import { Button } from '@repo/ui/button';
-import { Check, Copy } from 'lucide-react';
+import { Button, buttonVariants } from '@repo/ui/button';
+import { Check, ChevronDown, Copy } from 'lucide-react';
 import { useId, useState } from 'react';
+import claudeLogoUrl from '../../assets/claude.svg';
 import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -150,8 +151,16 @@ function CopyablePrompt({
 }
 
 export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
+  const [manualSetupOpen, setManualSetupOpen] = useState(false);
+  const manualSetupId = useId();
   const connectionHelpPrompt = agentConnectionHelpPrompt(mcpServerUrl);
   const contextPrompt = initialContextPrompt();
+  const claudeConnectionUrl = new URL('https://claude.ai/customize/connectors');
+  claudeConnectionUrl.search = new URLSearchParams({
+    modal: 'add-custom-connector',
+    connectorName: MCP_SERVER_NAME,
+    connectorUrl: mcpServerUrl,
+  }).toString();
 
   return (
     <ol className="grid list-none gap-10 p-0">
@@ -167,25 +176,50 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
             Connect your agent to Context Use MCP server
           </h2>
 
-          <McpServerDetails serverUrl={mcpServerUrl} />
-
-          <details>
-            <summary className="cursor-pointer font-medium text-sm">
-              Not sure where those settings are?
-            </summary>
-            <div className="grid gap-2 pt-3">
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Paste this short prompt into your agent for setup instructions.
-              </p>
-              <CopyablePrompt
-                ariaLabel="MCP setup help prompt"
-                copyLabel="Copy setup help"
-                copiedLabel="Setup help copied"
-                rows={5}
-                value={connectionHelpPrompt}
-              />
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              className={buttonVariants({ variant: 'outline', size: 'lg' })}
+              href={claudeConnectionUrl.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src={claudeLogoUrl} alt="" className="size-5" width={20} height={20} />
+              Connect Claude
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-sm">or</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="lg"
+                aria-expanded={manualSetupOpen}
+                aria-controls={manualSetupId}
+                onClick={() => setManualSetupOpen(!manualSetupOpen)}
+              >
+                Connect other agents
+                <ChevronDown aria-hidden="true" className={manualSetupOpen ? 'rotate-180' : ''} />
+              </Button>
             </div>
-          </details>
+          </div>
+
+          <div id={manualSetupId} hidden={!manualSetupOpen}>
+            {manualSetupOpen && (
+              <div className="grid gap-4">
+                <McpServerDetails serverUrl={mcpServerUrl} />
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Paste this prompt into your agent for setup instructions.
+                </p>
+                <CopyablePrompt
+                  ariaLabel="MCP setup help prompt"
+                  copyLabel="Copy setup help"
+                  copiedLabel="Setup help copied"
+                  rows={5}
+                  value={connectionHelpPrompt}
+                />
+              </div>
+            )}
+          </div>
         </section>
       </li>
 
