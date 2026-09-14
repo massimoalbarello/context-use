@@ -100,15 +100,15 @@ export function CollectionWorkspace({
             toolbar={
               <header
                 className={cn(
-                  'shrink-0 border-b px-5 pt-6 pb-4 md:px-8',
+                  'flex shrink-0 items-center gap-2 border-b px-3 py-4 sm:px-5 md:gap-4 md:px-8',
                   collapsed && 'pt-20 md:pt-20',
                 )}
               >
-                <div className="mb-4 flex items-baseline gap-3">
-                  <h1 className="font-semibold text-2xl tracking-tight">{title}</h1>
+                <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap">
+                  <h1 className="font-semibold text-lg tracking-tight sm:text-2xl">{title}</h1>
                   <span className="text-muted-foreground text-sm">{countLabel ?? count}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                   {search}
                   {filters}
                   {createTo && (
