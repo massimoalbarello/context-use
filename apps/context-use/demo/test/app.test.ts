@@ -38,7 +38,7 @@ const EXPECTED_PEOPLE = 11;
 const EXPECTED_ORGANIZATIONS = 7;
 const EXPECTED_UNTYPED_ENTITIES = 12;
 const EXPECTED_RECORDS = 51;
-const EXPECTED_ASSETS = 27;
+const EXPECTED_ASSETS = 33;
 const TEST_TIMEOUT_MS = 30_000;
 
 const unavailableAnalyzer: FaceAnalyzer = {
