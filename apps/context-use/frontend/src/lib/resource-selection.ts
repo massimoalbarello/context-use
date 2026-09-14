@@ -1,6 +1,15 @@
 const MAX_RESOURCE_READABLE_ID_LENGTH = 120;
 
-const RESOURCE_KINDS = ['entity', 'page', 'asset', 'record'] as const;
+export const RESOURCE_COLLECTION_PATHS = {
+  entity: '/entities',
+  page: '/pages',
+  asset: '/assets',
+  record: '/records',
+} as const;
+
+const RESOURCE_KINDS = Object.keys(
+  RESOURCE_COLLECTION_PATHS,
+) as (keyof typeof RESOURCE_COLLECTION_PATHS)[];
 
 export type ResourceSelection = {
   kind: (typeof RESOURCE_KINDS)[number];

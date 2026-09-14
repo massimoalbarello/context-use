@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { type ReactNode, useRef } from 'react';
 import { useNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import {
+  RESOURCE_COLLECTION_PATHS,
   type ResourceSelection,
   resourceSearch,
   selectedResource,
@@ -48,7 +49,7 @@ export function ResourceBrowser({
         ...previous,
         resource: next.kind,
         resourceId: next.readableId,
-        expanded: narrow || undefined,
+        expanded: state.expanded || narrow || undefined,
         view: undefined,
       }),
       hash: next.fragment,
@@ -71,6 +72,28 @@ export function ResourceBrowser({
         preventScroll: true,
       }),
     );
+  }
+  function backToBrowsing() {
+    if (!selection) {
+      return;
+    }
+    const to = RESOURCE_COLLECTION_PATHS[selection.kind];
+    if (narrow && to === from) {
+      close();
+      return;
+    }
+    void navigate({
+      to,
+      search: (previous) => ({
+        ...(to === from ? previous : {}),
+        resource: narrow ? undefined : selection.kind,
+        resourceId: narrow ? undefined : selection.readableId,
+        expanded: undefined,
+        view: undefined,
+      }),
+      hash: '',
+      resetScroll: false,
+    });
   }
   function changeView({
     view,
@@ -106,21 +129,7 @@ export function ResourceBrowser({
                 ref={focusExpandedResource}
               >
                 <div className={cn('shrink-0 border-b px-5 py-3', collapsed && 'pl-20')}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (narrow) {
-                        close();
-                      } else {
-                        void navigate({
-                          search: (previous) => ({ ...previous, expanded: undefined }),
-                          resetScroll: false,
-                        });
-                      }
-                    }}
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={backToBrowsing}>
                     <ArrowLeft aria-hidden="true" />
                     Back to browsing
                   </Button>

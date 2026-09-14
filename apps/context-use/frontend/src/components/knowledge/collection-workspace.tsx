@@ -3,7 +3,6 @@ import { cn } from '@repo/ui/class-names';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { ArrowLeft, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { isNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import type { KnowledgeCollection } from '../../lib/knowledge-navigation';
 import type { KnowledgeProfile } from '../../queries/profile';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
@@ -78,7 +77,7 @@ export function CollectionWorkspace({
                       ...previous,
                       resource: selection.kind,
                       resourceId: selection.readableId,
-                      expanded: isNarrowWorkspace() || undefined,
+                      expanded: true,
                       view: undefined,
                     }),
                     hash: selection.fragment,

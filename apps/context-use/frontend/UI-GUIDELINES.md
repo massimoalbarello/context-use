@@ -66,8 +66,10 @@ for the screen.
   content surface. On narrow screens navigation may become a drawer without changing ownership.
 - Keep workspace destinations in navigation. Resource collections own their visible search,
   filters, creation actions, and incrementally loaded lists in the primary content surface.
-- Selecting a resource preserves its browsing context and opens a right-hand preview. Expanded
-  detail hides collection controls; narrow screens open expanded detail directly.
+- Selecting a resource from a collection opens a right-hand preview; links in that preview retain
+  the active collection. Links in expanded detail stay expanded, and returning to browsing opens
+  the current resource’s collection. Expanded detail hides collection controls; narrow screens
+  open expanded detail directly and return to the list without a preview.
 - Treat Map as the default workspace destination. Visually separate it from the entity, page,
   asset, and record collections in shared navigation: the map is an overview, not a resource.
 - Creation begins with an explicit action and receives a focused route, dialog, or surface. Do not
