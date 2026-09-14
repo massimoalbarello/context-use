@@ -8,7 +8,7 @@ import { type KnowledgeProfile, profileQueryOptions } from '../src/queries/profi
 import { sessionQueryOptions } from '../src/queries/session';
 import { routeTree } from '../src/routeTree.gen';
 
-async function domainWorld({ signedIn, path }: { signedIn: boolean; path: string }) {
+async function passkeyWorld({ signedIn, path }: { signedIn: boolean; path: string }) {
   const now = new Date();
   const session: Session = {
     session: {
@@ -49,7 +49,7 @@ async function domainWorld({ signedIn, path }: { signedIn: boolean; path: string
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
       () => {
-        throw new Error('Domain help must not require an API call');
+        throw new Error('Passkey help must not require an API call');
       },
       { preconnect: globalThis.fetch.preconnect },
     ),
@@ -82,26 +82,26 @@ async function domainWorld({ signedIn, path }: { signedIn: boolean; path: string
   }
 }
 
-test('signed-in owners can find custom-domain instructions in Settings', async () => {
-  const world = await domainWorld({ signedIn: true, path: '/settings/domain' });
+test('signed-in owners can find passkey settings for custom domains', async () => {
+  const world = await passkeyWorld({ signedIn: true, path: '/settings/passkeys' });
   try {
-    await screen.findByRole('heading', { name: 'Custom domain' });
-    expect(screen.getByRole('link', { name: 'Custom domain' }).getAttribute('href')).toBe(
-      '/settings/domain',
+    await screen.findByRole('heading', { name: 'Passkeys' });
+    expect(screen.getByRole('link', { name: 'Passkeys' }).getAttribute('href')).toBe(
+      '/settings/passkeys',
     );
     expect(screen.getByText('BASE_URL=https://context.example.com')).toBeTruthy();
-    expect(screen.getByText(/Update your MCP clients/)).toBeTruthy();
+    expect(screen.getByText(/only if you set a custom domain/)).toBeTruthy();
   } finally {
     world.dispose();
   }
 });
 
-test('custom-domain settings retain the settings authentication boundary', async () => {
-  const world = await domainWorld({ signedIn: false, path: '/settings/domain' });
+test('passkey settings retain the settings authentication boundary', async () => {
+  const world = await passkeyWorld({ signedIn: false, path: '/settings/passkeys' });
   try {
     await screen.findByRole('heading', { name: 'Create the owner account' });
     expect(world.router.state.location.pathname).toBe('/login');
-    expect(world.router.state.location.search).toEqual({ redirect: '/settings/domain' });
+    expect(world.router.state.location.search).toEqual({ redirect: '/settings/passkeys' });
   } finally {
     world.dispose();
   }
