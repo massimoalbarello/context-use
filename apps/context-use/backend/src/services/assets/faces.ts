@@ -26,7 +26,7 @@ type AssetInput = { ownerId: string; readableId: string };
 
 export class FaceProcessingBusyError extends Error {
   constructor() {
-    super('Image processing is busy. Retry when the current image finishes.');
+    super('Face recognition is busy. Retry after the current image or model check finishes.');
   }
 }
 
@@ -191,9 +191,8 @@ export class AssetFacesService {
   }
 
   /** The saved asset itself is durable pending work, including a crash before this wake-up. */
-  processSavedAsset(_input: AssetInput): Promise<void> {
+  notifyAssetSaved(): void {
     this.worker.wake();
-    return Promise.resolve();
   }
 
   async enqueue(input: AssetInput): Promise<AssetFaces | null> {
@@ -216,7 +215,12 @@ export class AssetFacesService {
   }
 
   private async processNext(): Promise<boolean> {
-    if (this.activeAsset || this.stopping.signal.aborted || Date.now() < this.modelRetryAt) {
+    if (
+      this.activeAsset ||
+      this.modelCheck ||
+      this.stopping.signal.aborted ||
+      Date.now() < this.modelRetryAt
+    ) {
       return false;
     }
     const next = await this.repository.nextPending({
@@ -253,7 +257,7 @@ export class AssetFacesService {
   }
 
   checkModel(): Promise<void> {
-    if (this.activeAsset) {
+    if (this.activeAsset || this.stopping.signal.aborted) {
       return Promise.resolve();
     }
     this.modelRetryAt = 0;
@@ -325,7 +329,7 @@ export class AssetFacesService {
       const assetInput = { ownerId: input.ownerId, readableId: entity.image.readableId };
       const current = await this.detail(assetInput);
       if (current?.state !== 'ready' || current.outdated) {
-        await this.processSavedAsset(assetInput);
+        this.worker.wake();
         return;
       }
       await this.enrollAnalyzedPortrait({
@@ -476,7 +480,7 @@ export class AssetFacesService {
   }
 
   private assertIdle() {
-    if (this.activeAsset || this.stopping.signal.aborted) {
+    if (this.activeAsset || this.modelCheck || this.stopping.signal.aborted) {
       throw new FaceProcessingBusyError();
     }
   }
@@ -514,7 +518,7 @@ export type AssetFacesServiceContract = Pick<
   AssetFacesService,
   | 'detail'
   | 'process'
-  | 'processSavedAsset'
+  | 'notifyAssetSaved'
   | 'preparePortrait'
   | 'annotate'
   | 'crop'

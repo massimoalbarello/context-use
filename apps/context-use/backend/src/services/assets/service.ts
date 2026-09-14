@@ -46,10 +46,7 @@ export class AssetsService {
   async create(input: Parameters<AssetsService['persist']>[0]): Promise<AssetCreateResult> {
     const result = await this.persist(input);
     if (result.state === 'created') {
-      await this.faces.processSavedAsset({
-        ownerId: input.ownerId,
-        readableId: result.asset.readableId,
-      });
+      this.faces.notifyAssetSaved();
     }
     return result;
   }

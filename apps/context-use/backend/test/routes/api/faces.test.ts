@@ -1322,3 +1322,47 @@ test('images remain queued while the model is unavailable and resume after a suc
   await waitForState({ faces: context.faces, readableId: saved.asset.readableId, state: 'ready' });
   expect(context.analyzer.calls).toBe(1);
 });
+
+test('a model check excludes direct analysis and keeps queued images pending until it completes', async () => {
+  await using context = await fixture({ automatic: false });
+  const saved = await context.assets.create({
+    ownerId: OWNER,
+    name: 'Waiting for exclusive engine access',
+    file: Bun.file(PHOTO_PATH),
+  });
+  if (saved.state !== 'created') {
+    throw new Error('Upload failed');
+  }
+  const checking = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  context.analyzer.check = async () => {
+    checking.resolve();
+    await release.promise;
+  };
+  const input = { ownerId: OWNER, readableId: saved.asset.readableId };
+  try {
+    await context.faces.checkModel();
+    await checking.promise;
+    context.faces.startProcessing();
+    await expect(context.faces.process(input)).rejects.toThrow('busy');
+    expect(context.analyzer.calls).toBe(0);
+    expect(await context.faces.detail(input)).toMatchObject({ state: 'queued', error: null });
+  } finally {
+    release.resolve();
+  }
+  await waitForState({ faces: context.faces, readableId: saved.asset.readableId, state: 'ready' });
+  expect(context.analyzer.calls).toBe(1);
+});
+
+test('model checks cannot acquire the engine after the face service closes', async () => {
+  await using context = await fixture();
+  let checks = 0;
+  context.analyzer.check = () => {
+    checks++;
+    return Promise.resolve();
+  };
+  await context.faces.close();
+  await context.faces.checkModel();
+  expect(checks).toBe(0);
+  expect(() => context.faces.startProcessing()).toThrow('cannot be restarted');
+});
