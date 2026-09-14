@@ -7,21 +7,14 @@ test('Hypermedia validates its scroll month in URL state', () => {
   expect(hypermediaSearch({ month: '2025-13' }).month).toBeUndefined();
 });
 
-test('Hypermedia accepts only entity and page URL selections', () => {
-  expect(
-    hypermediaSearch({
-      show: 'assets',
-      kind: 'asset',
-      id: 'chart',
-      focus: 'asset:chart,entity:owner',
-    }),
-  ).toEqual({});
-  expect(hypermediaSearch({ kind: 'entity', id: 'owner' })).toMatchObject({
-    kind: 'entity',
-    id: 'owner',
-  });
-  expect(hypermediaSearch({ kind: 'page', id: 'notes' })).toMatchObject({
-    kind: 'page',
-    id: 'notes',
-  });
+test('Hypermedia can inspect every resource type without changing the canvas route', () => {
+  for (const resource of ['entity', 'page', 'asset', 'record'] as const) {
+    expect(hypermediaSearch({ resource, resourceId: 'notes', expanded: true })).toEqual({
+      resource,
+      resourceId: 'notes',
+      expanded: true,
+    });
+  }
+  expect(hypermediaSearch({ resource: 'unknown', resourceId: 'notes' })).toEqual({});
+  expect(hypermediaSearch({ resource: 'page', resourceId: ' ' })).toEqual({});
 });

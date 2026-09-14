@@ -24,7 +24,7 @@ function SettingsLayout() {
             to={MAIN_KNOWLEDGE_PATH}
           >
             <ArrowLeft aria-hidden="true" />
-            Back to Hypermedia
+            Back to Map
           </Link>
           <strong className="px-2 font-semibold text-xl tracking-tight">Settings</strong>
         </div>
@@ -76,8 +76,8 @@ function SettingsLayout() {
           </Link>
         </nav>
       </aside>
-      <section className="min-h-0 min-w-0 overflow-hidden p-2 md:p-3">
-        <div className="h-full min-h-0 overflow-y-auto rounded-2xl bg-card">
+      <section className="flex min-h-0 min-w-0 flex-col overflow-clip p-2 md:p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl bg-card">
           <Outlet />
         </div>
       </section>

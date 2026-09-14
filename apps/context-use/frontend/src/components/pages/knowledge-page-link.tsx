@@ -4,6 +4,7 @@ import { FileText } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { resourceCardVariants } from '../knowledge/resource-list';
+import { useResourceLink } from '../knowledge/resource-navigation';
 import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 type KnowledgePageName = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
@@ -73,9 +74,12 @@ export function KnowledgePageLink({
   active,
   children,
 }: KnowledgePageLinkProps) {
+  const resourceLink = useResourceLink({ kind: 'page', readableId: page.readableId, fragment });
   if (presentation === 'inline') {
     return (
       <Link
+        onClick={resourceLink.onClick}
+        preload={resourceLink.preload}
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
         to="/pages/$id"
         params={{ id: page.readableId }}
@@ -89,14 +93,16 @@ export function KnowledgePageLink({
 
   return (
     <Link
+      onClick={resourceLink.onClick}
+      preload={resourceLink.preload}
       className={cn(resourceCardVariants(), 'h-auto min-h-20 transition')}
       to="/pages/$id"
       params={{ id: page.readableId }}
       search={(previous) => ({ ...previous, view: 'preview' })}
       hash={fragment}
       activeOptions={{ exact: true, includeSearch: false }}
-      data-route-selected={active ? 'true' : undefined}
-      aria-current={active ? 'page' : undefined}
+      data-route-selected={(resourceLink.selected ?? active) ? 'true' : undefined}
+      aria-current={(resourceLink.selected ?? active) ? 'page' : undefined}
     >
       <KnowledgePageCardContent page={page} fragment={fragment} />
     </Link>

@@ -1,14 +1,14 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import {
   type KnowledgePageIntervalFilter,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
-import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
-import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
-import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
+import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
+import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { PageFilters } from '../components/pages/page-filters';
 import { usePages } from '../lib/hooks/use-pages';
+import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { type KnowledgePageListFilters, pagesQueryOptions } from '../queries/pages';
 
@@ -42,7 +42,10 @@ export const Route = createFileRoute('/pages')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  validateSearch: pageSearch,
+  validateSearch: (search: Record<string, unknown>): PageSearch & ResourceSearch => ({
+    ...pageSearch(search),
+    ...resourceSearch(search),
+  }),
   loaderDeps: ({ search }) => ({ filters: pageListFilters(search) }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(pagesQueryOptions(deps.filters)),
@@ -51,43 +54,29 @@ export const Route = createFileRoute('/pages')({
 
 function PageFilterControl({ search }: { search: PageSearch }) {
   const navigate = Route.useNavigate();
-  const { q = '', interval } = search;
+  const { interval } = search;
   const dateRange = calendarDateRangeFromSearch(search);
-  const commonSearch = {
-    q: search.q,
-    interval,
-    from: dateRange?.from,
-    to: dateRange?.to,
-  };
 
   return (
     <PageFilters
-      query={q}
       interval={interval}
       dateRange={dateRange}
-      onQueryApply={(query) => {
-        void navigate({
-          to: '/pages',
-          search: { ...commonSearch, q: query || undefined },
-          replace: true,
-        });
-      }}
       onIntervalChange={(nextInterval) => {
         void navigate({
           to: '/pages',
-          search: {
-            ...commonSearch,
+          search: (previous) => ({
+            ...previous,
             interval: nextInterval,
-            from: nextInterval === 'without' ? undefined : commonSearch.from,
-            to: nextInterval === 'without' ? undefined : commonSearch.to,
-          },
+            from: nextInterval === 'without' ? undefined : previous.from,
+            to: nextInterval === 'without' ? undefined : previous.to,
+          }),
           replace: true,
         });
       }}
       onDateRangeApply={(nextRange) => {
         void navigate({
           to: '/pages',
-          search: { ...commonSearch, from: nextRange?.from, to: nextRange?.to },
+          search: (previous) => ({ ...previous, from: nextRange?.from, to: nextRange?.to }),
           replace: true,
         });
       }}
@@ -98,6 +87,7 @@ function PageFilterControl({ search }: { search: PageSearch }) {
 function PagesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const filters = pageListFilters(search);
   const { pages, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = usePages(filters);
   if (!profile) {
@@ -105,27 +95,38 @@ function PagesLayout() {
   }
 
   return (
-    <KnowledgeWorkspace>
-      <KnowledgeSidebar
-        collection="pages"
-        count={total}
-        createTo="/pages/new"
-        createLabel="New page"
-        profile={profile}
-        error={error}
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-        loadMore={fetchNextPage}
-        actions={<PageFilterControl search={search} />}
-      >
-        <KnowledgePageList
-          pages={pages}
-          filtered={Boolean(filters.dateRange || filters.query || filters.interval)}
+    <CollectionWorkspace
+      collection="pages"
+      title="Pages"
+      search={
+        <KeywordFilter
+          inputId="page-keyword"
+          value={search.q ?? ''}
+          placeholder="Search pages"
+          maxLength={MAX_KNOWLEDGE_PAGE_TITLE_LENGTH}
+          onApply={(query) => {
+            void navigate({
+              to: '/pages',
+              search: { ...search, q: query || undefined },
+              replace: true,
+            });
+          }}
         />
-      </KnowledgeSidebar>
-      <KnowledgeWorkspaceDetail>
-        <Outlet />
-      </KnowledgeWorkspaceDetail>
-    </KnowledgeWorkspace>
+      }
+      count={total}
+      createTo="/pages/new"
+      createLabel="New page"
+      profile={profile}
+      error={error}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+      loadMore={fetchNextPage}
+      filters={<PageFilterControl search={search} />}
+    >
+      <KnowledgePageList
+        pages={pages}
+        filtered={Boolean(filters.dateRange || filters.query || filters.interval)}
+      />
+    </CollectionWorkspace>
   );
 }

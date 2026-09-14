@@ -34,7 +34,7 @@ export function KnowledgeWorkspace({ children }: { children: ReactNode }) {
   return (
     <WorkspaceSplitLayout
       className={cn(
-        'relative grid-rows-[minmax(14rem,22rem)_minmax(0,1fr)]',
+        'relative grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[16rem_minmax(0,1fr)]',
         collapsed && 'grid-rows-[0_minmax(0,1fr)] md:grid-cols-[0_minmax(0,1fr)] md:grid-rows-none',
       )}
     >

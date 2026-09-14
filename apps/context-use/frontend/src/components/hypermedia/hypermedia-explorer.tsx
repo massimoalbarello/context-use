@@ -4,6 +4,7 @@ import { LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
+import type { ResourceSelection } from '../../lib/resource-selection';
 import {
   type HypermediaEntityReference,
   type HypermediaPage,
@@ -53,7 +54,7 @@ export function HypermediaExplorer({
   onDiscoverMorePages,
 }: {
   selfReadableId: string;
-  selection?: HypermediaSelection;
+  selection?: ResourceSelection;
   pages: HypermediaPage[];
   month?: CalendarMonth;
   pagesLoading: boolean;

@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from 'bun:test';
 import { cleanup, render, screen } from '@testing-library/react';
+import { RecordMetadata } from '../../src/components/records/record-detail';
 import { RecordCardContent } from '../../src/components/records/record-link';
 import type { ExternalRecord } from '../../src/queries/records';
-import { RecordMetadata } from '../../src/routes/records.$id';
 
 afterEach(cleanup);
 

@@ -1,11 +1,17 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
-import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
-import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
-import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
+import { createFileRoute, redirect } from '@tanstack/react-router';
+import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '#backend/models/hypermedia-retrieval/model.ts';
+import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
+import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { RecordFilters } from '../components/records/record-filters';
 import { RecordList } from '../components/records/record-list';
 import { useRecords } from '../lib/hooks/use-records';
-import { recordListFilters, recordSearch, recordsAreFiltered } from '../lib/record-filters';
+import {
+  type RecordSearch,
+  recordListFilters,
+  recordSearch,
+  recordsAreFiltered,
+} from '../lib/record-filters';
+import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
 import { recordsQueryOptions } from '../queries/records';
 
 export const Route = createFileRoute('/records')({
@@ -14,7 +20,10 @@ export const Route = createFileRoute('/records')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  validateSearch: recordSearch,
+  validateSearch: (search: Record<string, unknown>): RecordSearch & ResourceSearch => ({
+    ...recordSearch(search),
+    ...resourceSearch(search),
+  }),
   loaderDeps: ({ search }) => ({ filters: recordListFilters(search) }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(recordsQueryOptions(deps.filters)),
@@ -32,30 +41,45 @@ function RecordsLayout() {
   }
 
   return (
-    <KnowledgeWorkspace>
-      <KnowledgeSidebar
-        collection="records"
-        count={records.length}
-        profile={profile}
-        error={error}
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-        loadMore={fetchNextPage}
-        actions={
-          <RecordFilters
-            search={search}
-            options={filterOptions}
-            onChange={(next) => {
-              void navigate({ to: '/records', search: next, replace: true });
-            }}
-          />
-        }
-      >
-        <RecordList records={records} filtered={recordsAreFiltered(search)} />
-      </KnowledgeSidebar>
-      <KnowledgeWorkspaceDetail>
-        <Outlet />
-      </KnowledgeWorkspaceDetail>
-    </KnowledgeWorkspace>
+    <CollectionWorkspace
+      collection="records"
+      title="Records"
+      search={
+        <KeywordFilter
+          inputId="record-keyword"
+          value={search.q ?? ''}
+          placeholder="Search records"
+          maxLength={MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH}
+          onApply={(query) => {
+            void navigate({
+              to: '/records',
+              search: { ...search, q: query || undefined },
+              replace: true,
+            });
+          }}
+        />
+      }
+      count={records.length}
+      profile={profile}
+      error={error}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+      loadMore={fetchNextPage}
+      filters={
+        <RecordFilters
+          search={search}
+          options={filterOptions}
+          onChange={(next) => {
+            void navigate({
+              to: '/records',
+              search: (previous) => ({ ...next, ...resourceSearch(previous) }),
+              replace: true,
+            });
+          }}
+        />
+      }
+    >
+      <RecordList records={records} filtered={recordsAreFiltered(search)} />
+    </CollectionWorkspace>
   );
 }

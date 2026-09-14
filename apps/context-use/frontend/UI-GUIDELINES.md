@@ -44,7 +44,7 @@ Each resource type owns one reusable identity treatment:
   source dates, and identifiers belong in detail. Delivered Markdown
   remains content and is not interpreted as record identity.
 
-Call the relationship overview **Hypermedia**. In the compact collection selector, use the
+Call the relationship overview **Map**. In collection navigation, use the
 plain labels **Entities**, **Pages**, **Assets**, and **Records**; explain “knowledge page” where the
 resource type needs to be distinguished from a generic web page.
 
@@ -64,10 +64,14 @@ for the screen.
 
 - Use one shared workspace shell with a bounded, collapsible navigation region and a primary
   content surface. On narrow screens navigation may become a drawer without changing ownership.
-- Keep collection selection, current-resource selection, and contextual creation actions in
-  navigation. Resource lists scroll within their region and load incrementally.
-- Treat Hypermedia as the default workspace destination. Entity, page, asset, and record
-  collections are secondary browsing views with a labelled route back to Hypermedia.
+- Keep workspace destinations in navigation. Resource collections own their visible search,
+  filters, creation actions, and incrementally loaded lists in the primary content surface.
+- Selecting a resource from a collection opens a right-hand preview; links in that preview retain
+  the active collection. Links in expanded detail stay expanded, and returning to browsing restores
+  the original collection or Map. Expanded detail hides collection controls; narrow screens
+  open expanded detail directly and return to browsing without a preview.
+- Treat Map as the default workspace destination. Visually separate it from the entity, page,
+  asset, and record collections in shared navigation: the map is an overview, not a resource.
 - Creation begins with an explicit action and receives a focused route, dialog, or surface. Do not
   leave creation forms permanently in the main workspace.
 - Add persistent chrome or primary navigation only when it owns a real product task.

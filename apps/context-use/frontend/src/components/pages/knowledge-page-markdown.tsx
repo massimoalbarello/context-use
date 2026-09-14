@@ -1,10 +1,12 @@
 import { cn } from '@repo/ui/class-names';
-import { isValidElement, type ReactNode } from 'react';
+import { isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
-import { EntityAvatar, EntityLink } from '../entities/entity-link';
+import { AssetLink } from '../assets/asset-link';
+import { EntityLink } from '../entities/entity-link';
+import { ResourceNavigation } from '../knowledge/resource-navigation';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
@@ -13,11 +15,6 @@ type InternalLink =
   | { kind: 'page'; readableId: string; fragment: string | undefined }
   | { kind: 'asset'; readableId: string }
   | { kind: 'record'; readableId: string };
-
-export type KnowledgePageMarkdownSelection = {
-  kind: Extract<InternalLink['kind'], 'entity' | 'page'>;
-  readableId: string;
-};
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
 type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;
@@ -80,113 +77,31 @@ export function entityMentionFrom({
   );
 }
 
-type SelectMarkdownResource = (selection: KnowledgePageMarkdownSelection) => void;
-
-function EntityMarkdownLink({
-  target,
-  children,
-  mentions,
-  onSelectResource,
-}: {
-  target: Extract<InternalLink, { kind: 'entity' }>;
-  children: ReactNode;
-  mentions: EntityMention[];
-  onSelectResource?: SelectMarkdownResource;
-}) {
-  const entity = entityMentionFrom({
-    readableId: target.readableId,
-    name: textContent(children),
-    mentions,
-  });
-  if (onSelectResource) {
-    return (
-      <button
-        type="button"
-        className="relative mx-0.5 inline-block rounded-full bg-muted py-0.5 pr-2 pl-[2.0625rem] align-baseline font-medium text-foreground transition hover:bg-accent"
-        onClick={() => onSelectResource(target)}
-      >
-        <EntityAvatar
-          entity={entity}
-          size="sm"
-          className="absolute top-1/2 left-[0.3125rem] -translate-y-1/2 text-[0.6rem]"
-        />
-        <span>{children}</span>
-      </button>
-    );
-  }
-  return (
-    <EntityLink entity={entity} presentation="inline">
-      {children}
-    </EntityLink>
-  );
-}
-
-function PageMarkdownLink({
-  target,
-  children,
-  onSelectResource,
-}: {
-  target: Extract<InternalLink, { kind: 'page' }>;
-  children: ReactNode;
-  onSelectResource?: SelectMarkdownResource;
-}) {
-  if (onSelectResource) {
-    return (
-      <button
-        type="button"
-        className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
-        onClick={() => onSelectResource(target)}
-      >
-        {children}
-      </button>
-    );
-  }
-  return (
-    <KnowledgePageLink
-      page={{ readableId: target.readableId, title: textContent(children) }}
-      presentation="inline"
-      fragment={target.fragment}
-    >
-      {children}
-    </KnowledgePageLink>
-  );
-}
-
-function AssetMarkdownLink({
-  target,
-  children,
-}: {
-  target: Extract<InternalLink, { kind: 'asset' }>;
-  children: ReactNode;
-}) {
-  const className =
-    'font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground';
-  return (
-    <a className={className} href={assetContentUrl(target.readableId)}>
-      {children}
-    </a>
-  );
-}
-
 function MarkdownLink({
   href,
   children,
   mentions,
   recordReferences,
-  onSelectResource,
 }: {
   href?: string;
   children: ReactNode;
   mentions: EntityMention[];
   recordReferences: RecordReference[];
-  onSelectResource?: SelectMarkdownResource;
 }) {
+  const navigation = useContext(ResourceNavigation);
   const target = href ? internalLink(href) : null;
   if (target?.kind === 'entity') {
     return (
-      <EntityMarkdownLink target={target} mentions={mentions} onSelectResource={onSelectResource}>
+      <EntityLink
+        entity={entityMentionFrom({
+          readableId: target.readableId,
+          name: textContent(children),
+          mentions,
+        })}
+        presentation="inline"
+      >
         {children}
-      </EntityMarkdownLink>
+      </EntityLink>
     );
   }
   if (target?.kind === 'record') {
@@ -212,13 +127,34 @@ function MarkdownLink({
   }
   if (target?.kind === 'page') {
     return (
-      <PageMarkdownLink target={target} onSelectResource={onSelectResource}>
+      <KnowledgePageLink
+        page={{ readableId: target.readableId, title: textContent(children) }}
+        presentation="inline"
+        fragment={target.fragment}
+      >
         {children}
-      </PageMarkdownLink>
+      </KnowledgePageLink>
     );
   }
   if (target?.kind === 'asset') {
-    return <AssetMarkdownLink target={target}>{children}</AssetMarkdownLink>;
+    if (!navigation) {
+      return (
+        <a
+          className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
+          href={assetContentUrl(target.readableId)}
+        >
+          {children}
+        </a>
+      );
+    }
+    return (
+      <AssetLink
+        asset={{ readableId: target.readableId, name: textContent(children) }}
+        presentation="inline"
+      >
+        {children}
+      </AssetLink>
+    );
   }
   return (
     <a
@@ -248,12 +184,10 @@ export function KnowledgePageMarkdown({
   markdown,
   mentions = [],
   recordReferences = [],
-  onSelectResource,
 }: {
   markdown: string;
   mentions?: EntityMention[];
   recordReferences?: RecordReference[];
-  onSelectResource?: (selection: KnowledgePageMarkdownSelection) => void;
 }) {
   return (
     <article className="py-3 md:py-5">
@@ -261,12 +195,7 @@ export function KnowledgePageMarkdown({
         urlTransform={(url) => (url.startsWith('context-use://') ? url : defaultUrlTransform(url))}
         components={{
           a: ({ href, children }) => (
-            <MarkdownLink
-              href={href}
-              mentions={mentions}
-              recordReferences={recordReferences}
-              onSelectResource={onSelectResource}
-            >
+            <MarkdownLink href={href} mentions={mentions} recordReferences={recordReferences}>
               {children}
             </MarkdownLink>
           ),

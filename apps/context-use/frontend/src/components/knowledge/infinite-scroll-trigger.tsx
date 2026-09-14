@@ -27,7 +27,7 @@ export function InfiniteScrollTrigger({
         }
       },
       {
-        root: marker.closest('[data-sidebar-scroll]'),
+        root: marker.closest('[data-collection-scroll]'),
         rootMargin: '160px 0px',
       },
     );

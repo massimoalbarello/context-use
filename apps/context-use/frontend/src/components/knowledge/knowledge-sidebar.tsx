@@ -1,105 +1,54 @@
-import { buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
-import { Map as MapIcon, Plus } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { type KnowledgeCollection, MAIN_KNOWLEDGE_PATH } from '../../lib/knowledge-navigation';
+import { FileInput, FileText, Image, Map as MapIcon, Users } from 'lucide-react';
+import { Fragment } from 'react';
+import { isNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import type { KnowledgeProfile } from '../../queries/profile';
-import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
-import { KnowledgeCollectionNavigation } from './knowledge-collection-navigation';
 import { KnowledgeSidebarFooter, KnowledgeSidebarHeader } from './knowledge-sidebar-chrome';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 
-type KnowledgeSidebarCreation =
-  | {
-      createTo: '/entities/new' | '/pages/new' | '/assets/new';
-      createLabel: string;
-    }
-  | { createTo?: never; createLabel?: never };
+const destinations = [
+  { to: '/hypermedia', label: 'Map', icon: MapIcon },
+  { to: '/entities', label: 'Entities', icon: Users },
+  { to: '/pages', label: 'Pages', icon: FileText },
+  { to: '/assets', label: 'Assets', icon: Image },
+  { to: '/records', label: 'Records', icon: FileInput },
+] as const;
 
-type KnowledgeSidebarProps = KnowledgeSidebarCreation & {
-  collection: KnowledgeCollection;
-  count: number;
-  profile: KnowledgeProfile;
-  error?: Error | null;
-  hasNextPage: boolean;
-  isFetchingNextPage: boolean;
-  loadMore: () => Promise<unknown>;
-  actions?: ReactNode;
-  children: ReactNode;
-};
-
-export function KnowledgeSidebar({
-  collection,
-  count,
-  createTo,
-  createLabel,
-  profile,
-  error,
-  hasNextPage,
-  isFetchingNextPage,
-  loadMore,
-  actions,
-  children,
-}: KnowledgeSidebarProps) {
-  const { collapsed } = useKnowledgeWorkspace();
-  const initialLoadFailed = Boolean(error && count === 0);
-
+export function KnowledgeSidebar({ profile }: { profile: KnowledgeProfile }) {
+  const { collapsed, toggleSidebar } = useKnowledgeWorkspace();
   return (
     <aside
-      className={cn('flex min-h-0 flex-col overflow-hidden', collapsed && 'z-10 overflow-visible')}
+      className={cn('flex min-h-0 flex-col overflow-hidden', collapsed && 'z-40 overflow-visible')}
       data-collapsed={collapsed}
     >
       <KnowledgeSidebarHeader />
-
       <div className={cn('flex min-h-0 flex-1 flex-col', collapsed && 'hidden')}>
-        <div className="shrink-0 px-4">
-          <Link
-            className={cn(buttonVariants({ variant: 'outline' }), 'w-full justify-start')}
-            to={MAIN_KNOWLEDGE_PATH}
-          >
-            <MapIcon aria-hidden="true" />
-            Hypermedia
-          </Link>
-        </div>
-        <div className="mt-3 flex shrink-0 items-center justify-between gap-3 px-4">
-          <KnowledgeCollectionNavigation
-            collection={collection}
-            ownerEntityReadableId={profile.selfEntity.readableId}
-          />
-          {(actions || (createTo && createLabel)) && (
-            <div className="flex shrink-0 items-center gap-1">
-              {actions}
-              {createTo && createLabel && (
-                <Link
-                  className={cn(buttonVariants({ size: 'icon-lg' }), 'shrink-0')}
-                  to={createTo}
-                  aria-label={createLabel}
-                  title={createLabel}
-                >
-                  <Plus aria-hidden="true" />
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto px-3 pb-2" data-sidebar-scroll>
-          {initialLoadFailed ? (
-            <p className="p-2 text-destructive text-sm">{error?.message}</p>
-          ) : (
-            <>
-              {children}
-              <InfiniteScrollTrigger
-                hasNextPage={hasNextPage}
-                isFetchingNextPage={isFetchingNextPage}
-                error={error}
-                loadMore={loadMore}
-              />
-            </>
-          )}
-        </div>
-
+        <nav aria-label="Workspace" className="grid gap-1 px-3 py-2">
+          {destinations.map(({ to, label, icon: Icon }) => (
+            <Fragment key={to}>
+              <Link
+                to={to}
+                search={{}}
+                className="flex items-center gap-3 rounded-xl px-3 py-3 font-medium text-muted-foreground hover:bg-accent hover:text-foreground data-[status=active]:bg-card data-[status=active]:text-foreground data-[status=active]:shadow-sm"
+                activeProps={{
+                  'aria-current': 'page',
+                }}
+                activeOptions={{ includeSearch: false }}
+                onClick={() => {
+                  if (isNarrowWorkspace()) {
+                    toggleSidebar();
+                  }
+                }}
+              >
+                <Icon className="size-5" aria-hidden="true" />
+                {label}
+              </Link>
+              {to === '/hypermedia' && <hr className="mx-3 my-2 border-border" />}
+            </Fragment>
+          ))}
+        </nav>
+        <div className="flex-1" />
         <KnowledgeSidebarFooter profile={profile} />
       </div>
     </aside>
