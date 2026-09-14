@@ -15,7 +15,7 @@ import {
   useState,
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
-import { type MapPage, mapEntityReference } from '../../queries/map';
+import { type MapPage, mapEntityKey, mapEntityReference } from '../../queries/map';
 import { MapIntervalIndicator } from './map-interval-indicator';
 import {
   buildMapLayout,
@@ -53,12 +53,14 @@ const VIEWPORT_SETTLE_MS = 280;
 function EntityDot({
   entity,
   active,
+  muted,
   onActivate,
   onPreview,
   onPreviewEnd,
 }: {
   entity: MapLayoutEntity;
   active: boolean;
+  muted: boolean;
   onActivate: () => void;
   onPreview: () => void;
   onPreviewEnd: () => void;
@@ -72,7 +74,8 @@ function EntityDot({
       href={href}
       data-map-item
       aria-label={`Open entity ${label}`}
-      className="cursor-pointer outline-none"
+      className="cursor-pointer outline-none transition-[opacity,filter] duration-200 motion-reduce:transition-none"
+      style={{ opacity: muted ? 0.5 : 1, filter: muted ? 'grayscale(1)' : undefined }}
       onPointerEnter={onPreview}
       onPointerLeave={onPreviewEnd}
       onFocus={onPreview}
@@ -91,6 +94,7 @@ function EntityDot({
 const MapScene = memo(function MapScene({
   layout,
   activeKey,
+  emphasizedEntityKeys,
   suppressNextCloudClick,
   onSelect,
   onPreview,
@@ -98,6 +102,7 @@ const MapScene = memo(function MapScene({
 }: {
   layout: MapLayout;
   activeKey: string | undefined;
+  emphasizedEntityKeys: ReadonlySet<string> | undefined;
   suppressNextCloudClick: { current: boolean };
   onSelect: (selection: MapSelection) => void;
   onPreview: (preview: MapPreview) => void;
@@ -156,6 +161,7 @@ const MapScene = memo(function MapScene({
             key={entity.key}
             entity={entity}
             active={activeKey === entity.key}
+            muted={Boolean(emphasizedEntityKeys && !emphasizedEntityKeys.has(entity.key))}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(entity.key)}
             onActivate={() => onSelect({ kind: 'entity', ...mapEntityReference(entity.entity) })}
@@ -222,6 +228,16 @@ export function MapCanvas({
   const [viewBox, setViewBox] = useState<ViewBox>(() => initialMapViewBox(entities));
   const [preview, setPreview] = useState<MapPreview | null>(null);
   const activeKey = preview ? mapPreviewKey(preview) : selectedKey;
+  const emphasizedPage =
+    preview?.kind === 'page'
+      ? preview.page
+      : pages.find(
+          (page) => mapSelectionKey({ kind: 'page', readableId: page.readableId }) === selectedKey,
+        );
+  const emphasizedEntityKeys = useMemo(
+    () => (emphasizedPage ? new Set(emphasizedPage.entities.map(mapEntityKey)) : undefined),
+    [emphasizedPage],
+  );
   const clearPreview = useCallback((key: string) => {
     setPreview((current) => (current && mapPreviewKey(current) === key ? null : current));
   }, []);
@@ -456,6 +472,7 @@ export function MapCanvas({
         <MapScene
           layout={visibleLayout}
           activeKey={activeKey}
+          emphasizedEntityKeys={emphasizedEntityKeys}
           suppressNextCloudClick={suppressNextCloudClick}
           onSelect={onSelect}
           onPreview={setPreview}
