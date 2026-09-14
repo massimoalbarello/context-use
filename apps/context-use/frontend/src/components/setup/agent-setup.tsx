@@ -1,6 +1,7 @@
-import { Button } from '@repo/ui/button';
+import { Button, buttonVariants } from '@repo/ui/button';
 import { Check, Copy } from 'lucide-react';
 import { useId, useState } from 'react';
+import claudeLogoUrl from '../../assets/claude.svg';
 import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -152,6 +153,12 @@ function CopyablePrompt({
 export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
   const connectionHelpPrompt = agentConnectionHelpPrompt(mcpServerUrl);
   const contextPrompt = initialContextPrompt();
+  const claudeConnectionUrl = new URL('https://claude.ai/customize/connectors');
+  claudeConnectionUrl.search = new URLSearchParams({
+    modal: 'add-custom-connector',
+    connectorName: MCP_SERVER_NAME,
+    connectorUrl: mcpServerUrl,
+  }).toString();
 
   return (
     <ol className="grid list-none gap-10 p-0">
@@ -167,7 +174,34 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
             Connect your agent to Context Use MCP server
           </h2>
 
-          <McpServerDetails serverUrl={mcpServerUrl} />
+          <div className="grid gap-2">
+            <a
+              className={buttonVariants({
+                variant: 'outline',
+                size: 'lg',
+                className: 'justify-self-start',
+              })}
+              href={claudeConnectionUrl.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img src={claudeLogoUrl} alt="" className="size-5" width={20} height={20} />
+              Connect to Claude
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Opens Claude with the server name and URL filled in. Add the connector, then connect
+              and approve access to Context Use.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              To connect manually in Claude or another agent, add a custom MCP connector using these
+              details.
+            </p>
+            <McpServerDetails serverUrl={mcpServerUrl} />
+          </div>
 
           <details>
             <summary className="cursor-pointer font-medium text-sm">
