@@ -1,16 +1,18 @@
 import { Button } from '@repo/ui/button';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 export function InfiniteScrollTrigger({
   hasNextPage,
   isFetchingNextPage,
   error,
   loadMore,
+  idleContent,
 }: {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   error?: Error | null;
   loadMore: () => Promise<unknown>;
+  idleContent?: ReactNode;
 }) {
   const markerRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +57,8 @@ export function InfiniteScrollTrigger({
         </>
       ) : isFetchingNextPage ? (
         <span>Loading…</span>
+      ) : idleContent !== undefined ? (
+        idleContent
       ) : (
         <Button variant="ghost" size="sm" type="button" onClick={() => void loadMore()}>
           Load more

@@ -101,21 +101,23 @@ export type FaceQueueFilter = NonNullable<
 >;
 export function faceProcessingQueryOptions({
   filter = 'pending',
-  offset = 0,
 }: {
   filter?: FaceQueueFilter;
-  offset?: number;
 } = {}) {
-  return queryOptions({
-    queryKey: [...facesQueryKey, 'processing', filter, offset],
+  return infiniteQueryOptions({
+    queryKey: [...facesQueryKey, 'processing', filter],
+    initialPageParam: 0,
     refetchInterval: ANALYSIS_POLL_MS,
-    queryFn: async () => {
-      const { data, error } = await settingsApi.processing.get({ query: { filter, offset } });
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await settingsApi.processing.get({
+        query: { filter, offset: pageParam },
+      });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
       return data;
     },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
   });
 }
 export async function retryFailedImages() {

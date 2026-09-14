@@ -1,7 +1,8 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { FaceModelHealth, FaceProcessingQueue } from '../components/faces/face-processing';
 import { FaceSettingsForm } from '../components/faces/face-settings';
+import { InfiniteScrollTrigger } from '../components/knowledge/infinite-scroll-trigger';
 import {
   useAnalyzeAsset,
   useCheckFaceModel,
@@ -15,9 +16,7 @@ import {
 } from '../queries/faces';
 
 export const Route = createFileRoute('/settings/faces')({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { filter?: FaceQueueFilter; offset?: number } => ({
+  validateSearch: (search: Record<string, unknown>): { filter?: FaceQueueFilter } => ({
     filter:
       search.filter === 'failed' ||
       search.filter === 'ready' ||
@@ -25,27 +24,29 @@ export const Route = createFileRoute('/settings/faces')({
       search.filter === 'all'
         ? search.filter
         : 'pending',
-    offset:
-      typeof search.offset === 'number' && Number.isSafeInteger(search.offset) && search.offset > 0
-        ? search.offset
-        : 0,
   }),
-  loaderDeps: ({ search }) => ({ filter: search.filter, offset: search.offset }),
+  loaderDeps: ({ search }) => ({ filter: search.filter }),
   loader: ({ context, deps }) =>
     Promise.all([
       context.queryClient.ensureQueryData(faceSettingsQueryOptions),
-      context.queryClient.ensureQueryData(faceProcessingQueryOptions(deps)),
+      context.queryClient.ensureInfiniteQueryData(faceProcessingQueryOptions(deps)),
     ]),
   component: FaceSettingsRoute,
 });
 
 function FaceSettingsRoute() {
   const { data } = useSuspenseQuery(faceSettingsQueryOptions);
-  const { filter = 'pending', offset = 0 } = Route.useSearch();
+  const { filter = 'pending' } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { data: processing, error: processingError } = useSuspenseQuery(
-    faceProcessingQueryOptions({ filter, offset }),
-  );
+  const processing = useSuspenseInfiniteQuery(faceProcessingQueryOptions({ filter }));
+  const latest = processing.data.pages[0]!;
+  const items = [
+    ...new Map(
+      processing.data.pages
+        .flatMap((page) => page.items)
+        .map((item) => [item.asset.readableId, item]),
+    ).values(),
+  ];
   const save = useSaveFaceThreshold();
   const retry = useRetryFailedImages();
   const analyze = useAnalyzeAsset();
@@ -61,23 +62,33 @@ function FaceSettingsRoute() {
       </header>
       <div className="grid max-w-2xl gap-10">
         <FaceModelHealth
-          model={processing.model}
+          model={latest.model}
           pending={check.isPending}
           error={check.error}
           onCheck={() => check.mutate(undefined)}
         />
         <FaceProcessingQueue
-          data={processing}
+          data={{ counts: latest.counts, items }}
           filter={filter}
-          offset={offset}
           pending={retry.isPending}
           retrying={analyze.isPending ? analyze.variables : null}
-          error={retry.error ?? analyze.error ?? processingError}
-          onFilter={(value) => void navigate({ search: { filter: value, offset: 0 } })}
-          onPage={(value) => void navigate({ search: { filter, offset: value } })}
+          error={
+            retry.error ??
+            analyze.error ??
+            (processing.isFetchNextPageError ? null : processing.error)
+          }
+          onFilter={(value) => void navigate({ search: { filter: value } })}
           onRetry={(id) => analyze.mutate(id)}
           onRetryFailed={() => retry.mutate(undefined)}
-        />
+        >
+          <InfiniteScrollTrigger
+            hasNextPage={processing.hasNextPage}
+            isFetchingNextPage={processing.isFetchingNextPage}
+            error={processing.isFetchNextPageError ? processing.error : null}
+            loadMore={() => processing.fetchNextPage({ cancelRefetch: false })}
+            idleContent={null}
+          />
+        </FaceProcessingQueue>
         <FaceSettingsForm
           key={`${data.model.analysisVersion}/${data.threshold}`}
           settings={data}

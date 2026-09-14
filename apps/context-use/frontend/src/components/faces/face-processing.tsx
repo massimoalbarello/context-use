@@ -1,4 +1,5 @@
 import { Button } from '@repo/ui/button';
+import type { ReactNode } from 'react';
 import type { FaceProcessing, FaceQueueFilter } from '../../queries/faces';
 import { AssetLink } from '../assets/asset-link';
 import { FieldError } from '../ui/field';
@@ -80,25 +81,23 @@ export function FaceModelHealth({
 export function FaceProcessingQueue({
   data,
   filter,
-  offset,
   pending,
   retrying,
   error,
   onFilter,
-  onPage,
   onRetry,
   onRetryFailed,
+  children,
 }: {
-  data: FaceProcessing;
+  data: Pick<FaceProcessing, 'counts' | 'items'>;
   filter: FaceQueueFilter;
-  offset: number;
   pending: boolean;
   retrying: string | null;
   error: Error | null;
   onFilter: (value: FaceQueueFilter) => void;
-  onPage: (offset: number) => void;
   onRetry: (id: string) => void;
   onRetryFailed: () => void;
+  children: ReactNode;
 }) {
   return (
     <section className="grid gap-4" aria-labelledby="face-queue-heading">
@@ -144,49 +143,38 @@ export function FaceProcessingQueue({
               : 'No images in this view.'}
         </p>
       ) : (
-        <ul className="grid max-h-80 gap-3 overflow-y-auto" aria-label="Image processing queue">
-          {data.items.map((item) => (
-            <li key={item.asset.readableId} className="grid gap-1">
-              <div className="flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <AssetLink asset={item.asset} presentation="card" />
+        <div
+          key={filter}
+          className="max-h-80 overflow-y-auto overscroll-contain"
+          data-collection-scroll
+        >
+          <ul className="grid gap-3" aria-label="Image processing queue">
+            {data.items.map((item) => (
+              <li key={item.asset.readableId} className="grid gap-1">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <AssetLink asset={item.asset} presentation="card" />
+                  </div>
+                  <span className="shrink-0 text-muted-foreground text-xs">
+                    {stateLabels[item.state]}
+                  </span>
+                  {item.state === 'failed' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={retrying !== null}
+                      aria-label={`Retry ${item.asset.name}`}
+                      onClick={() => onRetry(item.asset.readableId)}
+                    >
+                      {retrying === item.asset.readableId ? 'Queuing…' : 'Retry'}
+                    </Button>
+                  )}
                 </div>
-                <span className="shrink-0 text-muted-foreground text-xs">
-                  {stateLabels[item.state]}
-                </span>
-                {item.state === 'failed' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={retrying !== null}
-                    aria-label={`Retry ${item.asset.name}`}
-                    onClick={() => onRetry(item.asset.readableId)}
-                  >
-                    {retrying === item.asset.readableId ? 'Queuing…' : 'Retry'}
-                  </Button>
-                )}
-              </div>
-              {item.error && <p className="px-3 text-muted-foreground text-sm">{item.error}</p>}
-            </li>
-          ))}
-        </ul>
-      )}
-      {(offset > 0 || data.nextOffset !== null) && (
-        <div className="flex gap-2">
-          <Button variant="ghost" disabled={offset === 0} onClick={() => onPage(0)}>
-            First page
-          </Button>
-          <Button
-            variant="outline"
-            disabled={data.nextOffset === null}
-            onClick={() => {
-              if (data.nextOffset !== null) {
-                onPage(data.nextOffset);
-              }
-            }}
-          >
-            More images
-          </Button>
+                {item.error && <p className="px-3 text-muted-foreground text-sm">{item.error}</p>}
+              </li>
+            ))}
+          </ul>
+          {children}
         </div>
       )}
     </section>
