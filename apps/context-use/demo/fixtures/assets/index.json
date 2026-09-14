@@ -293,5 +293,71 @@
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
     "dateNote": "4 December 2012, outside the story period; identity reference only."
+  },
+  {
+    "readableId": "steve-jobs-at-macworld-2007",
+    "name": "Steve Jobs at Macworld 2007",
+    "path": "assets/steve-jobs-macworld-2007.jpg",
+    "expectedMediaType": "image/jpeg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Steve_Jobs_(352583119).jpg",
+    "credit": "JD Lasica; unchanged Commons file",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "dateNote": "9 January 2007 during the Macworld keynote; Flickr publication was 10 January 2007."
+  },
+  {
+    "readableId": "steve-jobs-at-wwdc-2007",
+    "name": "Steve Jobs at WWDC 2007",
+    "path": "assets/steve-jobs-wwdc-2007.jpg",
+    "expectedMediaType": "image/jpeg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Steve_Jobs_2007.jpg",
+    "credit": "Ben Stanfield; unchanged Commons file",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+    "dateNote": "11 June 2007 during the WWDC keynote; Commons upload was in August 2015."
+  },
+  {
+    "readableId": "jony-ive-at-apple-2011",
+    "name": "Jony Ive at Apple 2011",
+    "path": "assets/jony-ive-apple-2011.jpg",
+    "expectedMediaType": "image/jpeg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Jonathan_Ive_at_Apple,_2011.jpg",
+    "credit": "IDharper at English Wikipedia; unchanged Commons file",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "dateNote": "10 June 2011 according to camera metadata; original upload was 15 September 2011. Outside the story period; identity reference only."
+  },
+  {
+    "readableId": "tony-fadell-at-web-summit-2022",
+    "name": "Tony Fadell at Web Summit 2022",
+    "path": "assets/tony-fadell-web-summit-2022.jpg",
+    "expectedMediaType": "image/jpeg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tony_Fadell_and_Rene_Haas_at_Web_Summit_2022.jpg",
+    "credit": "Ramsey Cardy / Web Summit / Sportsfile; Wikimedia 1280-pixel thumbnail, proportionally resized from the original",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "dateNote": "3 November 2022 in Lisbon. Tony Fadell is on the left and Rene Haas on the right. Outside the story period; identity reference only, not an Apple event."
+  },
+  {
+    "readableId": "john-lasseter-and-ed-catmull-at-ves-awards-2010",
+    "name": "John Lasseter and Ed Catmull at VES Awards 2010",
+    "path": "assets/john-lasseter-ed-catmull-2010.jpg",
+    "expectedMediaType": "image/jpeg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:VES_Awards_89.jpg",
+    "credit": "Jeff Heusser; unchanged Commons file",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "dateNote": "28 February 2010; John Lasseter is on the left and Ed Catmull on the right. Outside the story period; identity reference only."
+  },
+  {
+    "readableId": "pixar-studio-entrance-2007",
+    "name": "Pixar studio entrance 2007",
+    "path": "assets/pixar-studio-entrance-2007.png",
+    "expectedMediaType": "image/png",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pixar_animation_studios1.png",
+    "credit": "P.gobin at English Wikipedia; unchanged Commons file",
+    "license": "Public domain",
+    "licenseUrl": "https://commons.wikimedia.org/wiki/File:Pixar_animation_studios1.png#Licensing",
+    "dateNote": "30 July 2007 in Emeryville, California; original upload was December 2007 and Commons transfer March 2008. Location reference, not evidence of a visit by Steve."
   }
 ]

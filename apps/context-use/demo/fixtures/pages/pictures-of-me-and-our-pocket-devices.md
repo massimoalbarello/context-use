@@ -2,9 +2,13 @@
 
 [I](context-use://entity/steve-jobs) keep these visual references beside the product story: [the original iPod](context-use://asset/original-ipod-photo), [the original iPhone](context-use://asset/original-iphone-front-view), and [me presenting iPhone](context-use://asset/steve-presenting-iphone).
 
+The collection also shows [me at Macworld in January 2007](context-use://asset/steve-jobs-at-macworld-2007), [me at WWDC in June 2007](context-use://asset/steve-jobs-at-wwdc-2007), and the [Pixar studio entrance in July 2007](context-use://asset/pixar-studio-entrance-2007). The entrance is a location reference for [Pixar](context-use://entity/pixar), not a record of a visit by me.
+
 I can compare the shapes of our [mini](context-use://asset/first-generation-ipod-mini-photo), [nano](context-use://asset/first-generation-ipod-nano-photo), [shuffle](context-use://asset/first-generation-ipod-shuffle-image) and [touch](context-use://asset/first-generation-ipod-touch-rendering) with the [Motorola ROKR E1](context-use://asset/motorola-rokr-e1-photo-2006). These references depict the early devices in this chapter, rather than their later successors.
 
 The people around this work have faces, too: [Tony](context-use://asset/tony-fadell-portrait-2012), [Jon](context-use://asset/jon-rubinstein-portrait-2011), [Jony](context-use://asset/jony-ive-at-macworld-2006), [Phil](context-use://asset/phil-schiller-portrait-2012), [Scott](context-use://asset/scott-forstall-portrait-2008), [Tim](context-use://asset/tim-cook-portrait-2009), [Ron](context-use://asset/ron-johnson-portrait-2015), [Bob](context-use://asset/bob-iger-portrait-2010), [Ed](context-use://asset/ed-catmull-portrait-2015) and [John](context-use://asset/john-lasseter-portrait-2002). I use these as identity references for [my collaborators](context-use://page/the-people-i-build-with).
+
+Additional identity references show [Jony at Apple in 2011](context-use://asset/jony-ive-at-apple-2011), [Tony with Rene Haas at Web Summit in 2022](context-use://asset/tony-fadell-at-web-summit-2022), and [John with Ed at the VES Awards in 2010](context-use://asset/john-lasseter-and-ed-catmull-at-ves-awards-2010). These later photographs identify [Jony](context-use://entity/jony-ive), [Tony](context-use://entity/tony-fadell), [John](context-use://entity/john-lasseter) and [Ed](context-use://entity/ed-catmull); they do not add events to this story.
 
 The [Apple mark](context-use://asset/apple-company-mark), [Intel wordmark](context-use://asset/intel-company-mark-2006), [Pixar wordmark](context-use://asset/pixar-company-mark) and [Disney wordmark](context-use://asset/disney-company-mark) help me distinguish the organizations in my map.
 
