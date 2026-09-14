@@ -551,11 +551,19 @@ export class FacesRepository implements FacesRepositoryContract {
     return this.run(() => {
       const rows = this.sql.ListPersonImages`
         /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
-        select distinct asset."id", asset."readable_id" as "readableId", asset."name", asset."media_type" as "mediaType", asset."extension", asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt", asset."updated_at" as "updatedAt"
-        from "asset_depicts_entity" link join "asset" asset on asset."id" = link."asset_id" and asset."owner_id" = link."owner_id"
-        join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id"
-        where link."owner_id" = ${input.ownerId} and entity."readable_id" = ${input.entityReadableId}
-          and asset."archived_at" is null and entity."archived_at" is null and entity."entity_type" = 'person'
+        with person as (
+          select "id", "owner_id", "image_asset_id" from "entity"
+          where "owner_id" = ${input.ownerId} and "readable_id" = ${input.entityReadableId}
+            and "archived_at" is null and "entity_type" = 'person'
+        ), image_ids as (
+          select "image_asset_id" as "id" from person where "image_asset_id" is not null
+          union
+          select link."asset_id" as "id" from "asset_depicts_entity" link
+          join person on person."id" = link."entity_id" and person."owner_id" = link."owner_id"
+        )
+        select asset."id", asset."readable_id" as "readableId", asset."name", asset."media_type" as "mediaType", asset."extension", asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt", asset."updated_at" as "updatedAt"
+        from image_ids join "asset" asset on asset."id" = image_ids."id"
+        where asset."owner_id" = ${input.ownerId} and asset."archived_at" is null
         order by asset."created_at" desc, asset."readable_id" limit ${input.limit} offset ${input.offset}
       `;
       return rows.map((row) => ({ ...row, sizeBytes: Number(row.sizeBytes) }));
