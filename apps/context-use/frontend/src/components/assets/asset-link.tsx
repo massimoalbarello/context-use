@@ -2,7 +2,7 @@ import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { File, Image as ImageIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
+import { assetContentUrl, assetTypeLabel, isEmbeddableAsset } from '../../lib/asset-presentation';
 import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
@@ -45,7 +45,7 @@ export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
       <span className="grid min-w-0 flex-1 gap-0.5">
         <strong className="truncate font-semibold text-sm">{asset.name}</strong>
         <small className="truncate text-muted-foreground text-xs">
-          {asset.extension?.toUpperCase() ?? asset.mediaType} · {formatAssetSize(asset.sizeBytes)}
+          {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
         </small>
       </span>
     </>

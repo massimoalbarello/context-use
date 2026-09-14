@@ -1,9 +1,12 @@
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { wgslVitePlugin } from '@vgpu/wgsl/loader-vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, normalizePath } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { DEFAULT_BACKEND_PORT, DEFAULT_FRONTEND_PORT } from '#backend/lib/runtime-config.ts';
 
 const BACKEND_ORIGIN = `http://localhost:${DEFAULT_BACKEND_PORT}`;
@@ -35,6 +38,14 @@ export default defineConfig({
     },
   },
   plugins: [
+    viteStaticCopy({
+      targets: ['cmaps', 'standard_fonts', 'wasm'].map((folder) => ({
+        src: normalizePath(
+          join(dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json')), folder),
+        ),
+        dest: 'pdfjs',
+      })),
+    }),
     wgslVitePlugin(),
     tailwindcss(),
     tanstackRouter({

@@ -39,7 +39,7 @@ const EXPECTED_ORGANIZATIONS = 7;
 const EXPECTED_UNTYPED_ENTITIES = 12;
 const EXPECTED_RECORDS = 55;
 const EXPECTED_SYNCS = 3;
-const EXPECTED_ASSETS = 33;
+const EXPECTED_ASSETS = 35;
 const TEST_TIMEOUT_MS = 30_000;
 
 const unavailableAnalyzer: FaceAnalyzer = {
@@ -210,6 +210,7 @@ test(
           expect(response.headers.has('set-cookie')).toBe(false);
           await response.arrayBuffer();
         }
+        await assertPreviewFormats(read);
         // Prove the shared seed produces distinct, discoverable pages each month through
         // the public demo API, with no month-specific pages leaking into adjacent months.
         const seenPages = new Set<string>();
@@ -522,3 +523,18 @@ test('demo snapshot build rejects failed image analysis', async () => {
     await rm(dataFolder, { recursive: true, force: true });
   }
 });
+
+async function assertPreviewFormats(read: (path: string) => Promise<Response>) {
+  for (const [id, mediaType] of [
+    ['my-product-commitment-ledger', 'text/csv'],
+    ['synthetic-iphone-rehearsal-checklist', 'text/plain'],
+    ['synthetic-iphone-rehearsal-handout', 'application/pdf'],
+    ['synthetic-iphone-rehearsal-animation', 'video/mp4'],
+  ]) {
+    const content = await read(`/api/assets/${id}/content`);
+    expect(content.status).toBe(StatusMap.OK);
+    expect(content.headers.get('content-type')).toBe(mediaType!);
+    expect(content.headers.get('content-disposition')).toStartWith('inline;');
+    expect((await content.arrayBuffer()).byteLength).toBeGreaterThan(0);
+  }
+}

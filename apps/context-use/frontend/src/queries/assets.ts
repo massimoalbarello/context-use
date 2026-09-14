@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
+import { assetContentUrl } from '../lib/asset-presentation';
 import { searchHypermedia } from './hypermedia-search';
 
 export type AssetPage = NonNullable<Awaited<ReturnType<typeof api.api.assets.get>>['data']>;
@@ -147,4 +148,50 @@ export async function archiveAsset({
     throw new Error(apiErrorMessage(error));
   }
   return { state: 'archived' };
+}
+
+export const MAX_DOCUMENT_PREVIEW_BYTES = 20_971_520;
+
+export function assetDocumentQueryOptions(readableId: string) {
+  return queryOptions({
+    queryKey: [...assetsQueryKey, 'content', readableId],
+    queryFn: async ({ signal }) => {
+      // Fetch bytes explicitly: Eden's content-type decoding is unsuitable for document parsers.
+      const response = await fetch(assetContentUrl(readableId), { signal });
+      if (!response.ok) {
+        throw new Error('Could not load this file.');
+      }
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('This file is empty.');
+      }
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          size += value.byteLength;
+          if (size > MAX_DOCUMENT_PREVIEW_BYTES) {
+            throw new Error('This file is too large to preview.');
+          }
+          chunks.push(value);
+        }
+      } finally {
+        await reader.cancel();
+        reader.releaseLock();
+      }
+      const bytes = new Uint8Array(size);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return bytes;
+    },
+    staleTime: Infinity,
+    retry: false,
+  });
 }
