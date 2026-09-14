@@ -93,7 +93,7 @@ function NotFoundRoute() {
               to={MAIN_KNOWLEDGE_PATH}
               replace
             >
-              Back to Hypermedia
+              Back to Map
             </Link>
           ) : (
             <Link className={buttonVariants({ size: 'lg', className: 'mt-7' })} to="/login">

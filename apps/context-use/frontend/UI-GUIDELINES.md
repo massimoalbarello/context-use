@@ -44,7 +44,7 @@ Each resource type owns one reusable identity treatment:
   source dates, and identifiers belong in detail. Delivered Markdown
   remains content and is not interpreted as record identity.
 
-Call the relationship overview **Hypermedia**. In collection navigation, use the
+Call the relationship overview **Map**. In collection navigation, use the
 plain labels **Entities**, **Pages**, **Assets**, and **Records**; explain “knowledge page” where the
 resource type needs to be distinguished from a generic web page.
 
@@ -68,8 +68,8 @@ for the screen.
   filters, creation actions, and incrementally loaded lists in the primary content surface.
 - Selecting a resource preserves its browsing context and opens a right-hand preview. Expanded
   detail hides collection controls; narrow screens open expanded detail directly.
-- Treat Hypermedia as the default workspace destination. Entity, page, asset, and record
-  collections are browsing destinations alongside it in the shared navigation.
+- Treat Map as the default workspace destination. Visually separate it from the entity, page,
+  asset, and record collections in shared navigation: the map is an overview, not a resource.
 - Creation begins with an explicit action and receives a focused route, dialog, or surface. Do not
   leave creation forms permanently in the main workspace.
 - Add persistent chrome or primary navigation only when it owns a real product task.

@@ -130,7 +130,7 @@ test('Map distinguishes entity identities and retains partial progress between m
   );
 
   expectEntityIdentities();
-  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const canvas = screen.getByLabelText('Interactive map');
 
   expect(screen.getByText('Undated')).toBeTruthy();
   expect(screen.getByText('Now')).toBeTruthy();
@@ -209,7 +209,7 @@ test('Map keeps the indicator at Past while older month labels continue changing
   const oldMonth = shiftCalendarMonth({ value: currentCalendarMonth(), offset: -24 });
   render(<HypermediaMapFixture onMonthChange={onMonthChange} month={oldMonth} />);
 
-  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const canvas = screen.getByLabelText('Interactive map');
   const oldPosition = intervalIndicatorPosition(
     `Selected interval: ${calendarMonthLabel(oldMonth)}`,
   );
@@ -246,7 +246,7 @@ test('Map hides the interval indicator while a detail card is open', () => {
 test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
   const onMonthChange = mock(() => undefined);
   render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
-  const canvas = screen.getByLabelText('Interactive Hypermedia');
+  const canvas = screen.getByLabelText('Interactive map');
   const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
   const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });
   Object.defineProperty(pinch, 'ctrlKey', { value: true });

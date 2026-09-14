@@ -24,7 +24,7 @@ function SettingsLayout() {
             to={MAIN_KNOWLEDGE_PATH}
           >
             <ArrowLeft aria-hidden="true" />
-            Back to Hypermedia
+            Back to Map
           </Link>
           <strong className="px-2 font-semibold text-xl tracking-tight">Settings</strong>
         </div>

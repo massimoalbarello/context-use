@@ -438,7 +438,7 @@ export function HypermediaCanvas({
   return (
     <section
       className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
-      aria-label={`Hypermedia with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.entities.length} visible entities`}
+      aria-label={`Map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.entities.length} visible entities`}
     >
       <svg
         ref={canvasRef}
@@ -446,7 +446,7 @@ export function HypermediaCanvas({
           'size-full touch-none select-none bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] [background-size:22px_22px]',
           panning ? 'cursor-grabbing' : 'cursor-grab',
         )}
-        aria-label="Interactive Hypermedia"
+        aria-label="Interactive map"
         viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         preserveAspectRatio="xMidYMid meet"
         onPointerDown={handlePointerDown}
