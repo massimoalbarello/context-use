@@ -2,8 +2,9 @@ import { Lighting } from "./contracts.wgsl";
 @group(0) @binding(0) var blurred_rim: texture_2d<f32>;
 @group(0) @binding(1) var linear_sampler: sampler;
 @group(0) @binding(2) var<uniform> lighting: Lighting;
+struct RayQuality { samples: u32 };
+@group(0) @binding(3) var<uniform> quality: RayQuality;
 
-const SAMPLE_COUNT = 256;
 const SOURCE_DISTANCE = 0.5;
 const RAY_REACH = 0.9;
 
@@ -17,12 +18,12 @@ const RAY_REACH = 0.9;
   let travel = boundary / max(abs(direction), vec2f(0.00001));
   let exit = min(travel.x, travel.y);
   let end_progress = min(RAY_REACH, exit);
-  let sample_scale = 48.0 * end_progress / (RAY_REACH * f32(SAMPLE_COUNT));
+  let sample_scale = 48.0 * end_progress / (RAY_REACH * f32(quality.samples));
   let decay = pow(0.965, sample_scale);
   var rays = vec3f(0.0);
   var weight = 1.0;
-  for (var i = 0; i < SAMPLE_COUNT; i++) {
-    let progress = f32(i) * end_progress / f32(SAMPLE_COUNT);
+  for (var i = 0u; i < quality.samples; i++) {
+    let progress = (f32(i) + 0.5) * end_progress / f32(quality.samples);
     let coordinate = uv + direction * progress;
     rays += textureSample(blurred_rim, linear_sampler, coordinate).rgb * weight;
     weight *= decay;

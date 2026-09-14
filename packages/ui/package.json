@@ -13,7 +13,8 @@
     "./logo.svg": "./src/assets/context-use.svg"
   },
   "scripts": {
-    "check:types": "bun run --bun tsc"
+    "check:types": "bun run --bun tsc",
+    "test": "bun test"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
