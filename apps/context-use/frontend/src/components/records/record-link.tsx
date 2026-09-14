@@ -3,6 +3,7 @@ import { FileInput } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { ExternalRecordSummary } from '../../queries/records';
 import { resourceCardVariants } from '../knowledge/resource-list';
+import { useResourceLink } from '../knowledge/resource-navigation';
 
 type RecordIdentity = Pick<ExternalRecordSummary, 'readableId' | 'title' | 'provider' | 'kind'>;
 
@@ -43,9 +44,11 @@ export function RecordLink({
       children?: ReactNode;
       active?: never;
     }) {
+  const resourceLink = useResourceLink({ kind: 'record', readableId: record.readableId });
   if (presentation === 'inline') {
     return (
       <Link
+        onClick={resourceLink.onClick}
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
         to="/records/$id"
         params={{ id: record.readableId }}
@@ -57,13 +60,14 @@ export function RecordLink({
   }
   return (
     <Link
+      onClick={resourceLink.onClick}
       className={`${resourceCardVariants()} h-auto min-h-24`}
       to="/records/$id"
       params={{ id: record.readableId }}
       search={(previous) => ({ ...previous, view: 'preview' })}
       activeOptions={{ exact: true, includeSearch: false }}
-      data-route-selected={active ? 'true' : undefined}
-      aria-current={active ? 'page' : undefined}
+      data-route-selected={(resourceLink.selected ?? active) ? 'true' : undefined}
+      aria-current={(resourceLink.selected ?? active) ? 'page' : undefined}
     >
       <RecordCardContent record={record} />
     </Link>

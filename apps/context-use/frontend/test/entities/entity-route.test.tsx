@@ -84,7 +84,9 @@ test('entity filters survive navigation, self stays a person, and other types ca
           });
         }
         const entity = people.find(
-          (person) => url.pathname === `/api/entities/${person.readableId}`,
+          (person) =>
+            url.pathname === `/api/entities/${person.readableId}` ||
+            url.pathname === `/api/entities/${person.readableId}/preview`,
         );
         if (!entity) {
           throw new Error(`Unexpected request: ${url.pathname}`);
@@ -113,14 +115,13 @@ test('entity filters survive navigation, self stays a person, and other types ca
       </QueryClientProvider>,
     );
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Open sidebar' }));
     await user.click(await screen.findByRole('link', { name: /zoe Person Research colleague/ }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/entities/zoe'));
+    await waitFor(() => expect(router.state.location.search.resourceId).toBe('zoe'));
+    expect(router.state.location.pathname).toBe('/entities');
     expect(router.state.location.search.entityType).toBe('person');
-    await user.click(screen.getByRole('button', { name: 'Filter entities' }));
-    expect(await screen.findByRole('combobox', { name: 'Entity type filter' })).toBeTruthy();
-    await user.type(screen.getByRole('searchbox', { name: 'Keyword' }), 'research');
-    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('button', { name: 'Close preview' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search entities' }), 'research');
+    await user.click(screen.getByRole('button', { name: 'Search' }));
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({ q: 'research', entityType: 'person' }),
     );
@@ -131,11 +132,13 @@ test('entity filters survive navigation, self stays a person, and other types ca
           url.searchParams.get('entityType') === 'person',
       ),
     ).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    await user.click(screen.getByRole('button', { name: 'Clear search' }));
     await waitFor(() => expect(router.state.location.search.q).toBeUndefined());
     expect(router.state.location.search.entityType).toBe('person');
-    await user.keyboard('{Escape}');
-    await user.click(screen.getByRole('button', { name: 'Edit entity' }));
+    await user.click(screen.getByRole('link', { name: /alice You Person Research colleague/ }));
+    await user.click(await screen.findByRole('button', { name: 'Expand' }));
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    await user.click(await screen.findByRole('button', { name: 'Edit entity' }));
     expect((screen.getByRole('combobox', { name: 'Type' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
@@ -143,9 +146,13 @@ test('entity filters survive navigation, self stays a person, and other types ca
       false,
     );
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
+    await user.click(screen.getByRole('button', { name: 'Close preview' }));
     await user.click(screen.getByRole('link', { name: /zoe Person Research colleague/ }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/entities/zoe'));
-    await user.click(screen.getByRole('button', { name: 'Edit entity' }));
+    await waitFor(() => expect(router.state.location.search.resourceId).toBe('zoe'));
+    expect(router.state.location.pathname).toBe('/entities');
+    await user.click(await screen.findByRole('button', { name: 'Expand' }));
+    await user.click(await screen.findByRole('button', { name: 'Edit entity' }));
     await user.click(screen.getByRole('combobox', { name: 'Type (optional)' }));
     await user.click(await screen.findByRole('option', { name: 'Untyped' }));
     await user.click(screen.getByRole('button', { name: 'Save entity' }));

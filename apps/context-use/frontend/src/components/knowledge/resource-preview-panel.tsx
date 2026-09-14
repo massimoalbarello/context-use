@@ -1,17 +1,21 @@
-import { Button, buttonVariants } from '@repo/ui/button';
+import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { Link } from '@tanstack/react-router';
-import { X } from 'lucide-react';
+import { Expand, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useAsset } from '../../lib/hooks/use-assets';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
+import { useRecord } from '../../lib/hooks/use-records';
+import type { ResourceSelection } from '../../lib/resource-selection';
 import type { KnowledgePageSummary } from '../../queries/pages';
+import { formatAssetSize } from '../assets/asset-link';
+import { AssetMedia } from '../assets/asset-media';
 import { EntityAvatar } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
-import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
+import { KnowledgePageCardContent, KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+import { ExternalRecordMarkdown } from '../records/external-record-markdown';
 
 function focusPreviewPanel(panel: HTMLElement | null) {
   panel?.focus();
@@ -20,19 +24,19 @@ function focusPreviewPanel(panel: HTMLElement | null) {
 function PreviewPanelShell({
   label,
   context,
-  openLink,
+  onExpand,
   onClose,
   children,
 }: {
   label: string;
   context?: ReactNode;
-  openLink: ReactNode;
+  onExpand: () => void;
   onClose: () => void;
   children: ReactNode;
 }) {
   return (
     <aside
-      className="absolute right-2 bottom-2 left-2 z-30 flex max-h-[70%] flex-col overflow-hidden rounded-2xl border bg-card shadow-xl md:top-3 md:right-3 md:bottom-3 md:left-auto md:max-h-none md:w-[28rem]"
+      className="absolute top-3 right-3 bottom-3 z-30 flex w-[28rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-xl"
       aria-label={`${label} preview`}
       tabIndex={-1}
       ref={focusPreviewPanel}
@@ -49,7 +53,10 @@ function PreviewPanelShell({
           <span className="truncate font-medium text-muted-foreground text-sm">{label}</span>
           {context}
         </div>
-        {openLink}
+        <Button type="button" variant="ghost" size="sm" onClick={onExpand}>
+          <Expand aria-hidden="true" />
+          Expand
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -85,7 +92,7 @@ function PreviewPageSection({
   onSelect,
 }: {
   pages: KnowledgePageSummary[];
-  onSelect: (selection: HypermediaSelection) => void;
+  onSelect: (selection: ResourceSelection) => void;
 }) {
   return (
     <section className="border-t pt-5">
@@ -112,12 +119,13 @@ function PreviewPageSection({
 }
 
 type PreviewProps = {
+  onExpand: () => void;
   readableId: string;
   onClose: () => void;
-  onSelect: (selection: HypermediaSelection) => void;
+  onSelect: (selection: ResourceSelection) => void;
 };
 
-function PagePreview({ readableId, onClose, onSelect }: PreviewProps) {
+function PagePreview({ readableId, onClose, onSelect, onExpand }: PreviewProps) {
   const { data: page, error, refetch } = usePagePreview(readableId);
   return (
     <PreviewPanelShell
@@ -131,17 +139,7 @@ function PagePreview({ readableId, onClose, onSelect }: PreviewProps) {
         ) : null
       }
       onClose={onClose}
-      openLink={
-        <Link
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-          to="/pages/$id"
-          params={{ id: readableId }}
-          search={{ view: 'preview' }}
-          aria-label="Open knowledge page"
-        >
-          Open page
-        </Link>
-      }
+      onExpand={onExpand}
     >
       {error ? (
         <PreviewError error={error} retry={refetch} />
@@ -159,23 +157,10 @@ function PagePreview({ readableId, onClose, onSelect }: PreviewProps) {
   );
 }
 
-function EntityPreview({ readableId, onClose, onSelect }: PreviewProps) {
+function EntityPreview({ readableId, onClose, onSelect, onExpand }: PreviewProps) {
   const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
-    <PreviewPanelShell
-      label="Entity"
-      onClose={onClose}
-      openLink={
-        <Link
-          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-          to="/entities/$id"
-          params={{ id: readableId }}
-          aria-label="Open entity"
-        >
-          Open entity
-        </Link>
-      }
-    >
+    <PreviewPanelShell label="Entity" onClose={onClose} onExpand={onExpand}>
       {error ? (
         <PreviewError error={error} retry={refetch} />
       ) : entity ? (
@@ -194,20 +179,43 @@ function EntityPreview({ readableId, onClose, onSelect }: PreviewProps) {
   );
 }
 
-export function HypermediaPreviewPanel({
+export function ResourcePreviewPanel({
   selection,
+  onExpand,
   onClose,
   onSelect,
 }: {
-  selection: HypermediaSelection;
+  selection: ResourceSelection;
+  onExpand: () => void;
   onClose: () => void;
-  onSelect: (selection: HypermediaSelection) => void;
+  onSelect: (selection: ResourceSelection) => void;
 }) {
-  const key = hypermediaSelectionKey(selection);
+  const key = `${selection.kind}:${selection.readableId}`;
 
+  if (selection.kind === 'asset') {
+    return (
+      <AssetPreview
+        key={key}
+        readableId={selection.readableId}
+        onClose={onClose}
+        onExpand={onExpand}
+      />
+    );
+  }
+  if (selection.kind === 'record') {
+    return (
+      <RecordPreview
+        key={key}
+        readableId={selection.readableId}
+        onClose={onClose}
+        onExpand={onExpand}
+      />
+    );
+  }
   if (selection.kind === 'page') {
     return (
       <PagePreview
+        onExpand={onExpand}
         key={key}
         readableId={selection.readableId}
         onClose={onClose}
@@ -217,10 +225,61 @@ export function HypermediaPreviewPanel({
   }
   return (
     <EntityPreview
+      onExpand={onExpand}
       key={key}
       readableId={selection.readableId}
       onClose={onClose}
       onSelect={onSelect}
     />
+  );
+}
+
+function AssetPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'onSelect'>) {
+  const { data: asset, error, refetch } = useAsset(readableId);
+  return (
+    <PreviewPanelShell label="Asset" onClose={onClose} onExpand={onExpand}>
+      {error ? (
+        <PreviewError error={error} retry={refetch} />
+      ) : asset ? (
+        <div className="grid gap-5">
+          <h2 className="break-words font-semibold text-2xl">{asset.name}</h2>
+          <p className="text-muted-foreground text-sm">
+            {asset.mediaType} · {formatAssetSize(asset.sizeBytes)}
+          </p>
+          <AssetMedia asset={asset} className="max-h-96 w-full rounded-lg object-contain" />
+        </div>
+      ) : (
+        <PreviewStatus>Loading asset…</PreviewStatus>
+      )}
+    </PreviewPanelShell>
+  );
+}
+
+function RecordPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'onSelect'>) {
+  const { data: record, error, refetch } = useRecord(readableId);
+  return (
+    <PreviewPanelShell label="Record" onClose={onClose} onExpand={onExpand}>
+      {error ? (
+        <PreviewError error={error} retry={refetch} />
+      ) : record ? (
+        <div className="grid gap-4">
+          <h2 className="font-semibold text-2xl">{record.title}</h2>
+          <p className="text-muted-foreground text-sm">
+            {record.provider} · {record.kind}
+          </p>
+          <ExternalRecordMarkdown markdown={record.markdown} label={record.title} />
+          {record.backlinks.length > 0 && (
+            <section className="grid gap-2 border-t pt-4">
+              <h3 className="font-semibold">Referenced by</h3>
+              {record.backlinks.map((page) => (
+                <KnowledgePageLink key={page.readableId} page={page} presentation="card" />
+              ))}
+            </section>
+          )}
+        </div>
+      ) : (
+        <PreviewStatus>Loading record…</PreviewStatus>
+      )}
+    </PreviewPanelShell>
   );
 }

@@ -1,27 +1,39 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, expect, test } from 'bun:test';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router';
+import { cleanup, render, screen } from '@testing-library/react';
 import { KnowledgePageLink } from '../../src/components/pages/knowledge-page-link';
 
-describe('knowledge page cards', () => {
-  test('open the canonical preview view', () => {
-    const link = KnowledgePageLink({
-      page: {
-        readableId: 'target-page',
-        title: 'Target page',
-        excerpt: 'The page summary.',
-        temporalCoverage: null,
-      },
-      presentation: 'card',
-      active: true,
-    });
+afterEach(cleanup);
 
-    expect(link).toMatchObject({
-      props: {
-        params: { id: 'target-page' },
-        activeOptions: { exact: true, includeSearch: false },
-        'data-route-selected': 'true',
-        'aria-current': 'page',
-      },
-    });
-    expect(link.props.search({ time: '2025' })).toEqual({ time: '2025', view: 'preview' });
+test('page cards outside a browser link directly to the canonical detail preview', async () => {
+  const root = createRootRoute({
+    component: () => (
+      <KnowledgePageLink
+        page={{
+          readableId: 'target-page',
+          title: 'Target page',
+          excerpt: 'Summary',
+          temporalCoverage: null,
+        }}
+        presentation="card"
+        active
+      />
+    ),
   });
+  const index = createRoute({ getParentRoute: () => root, path: '/' });
+  const router = createRouter({
+    routeTree: root.addChildren([index]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+  const link = screen.getByRole('link', { name: 'Target page Summary' });
+  expect(link.getAttribute('href')).toBe('/pages/target-page?view=preview');
+  expect(link.getAttribute('aria-current')).toBe('page');
 });

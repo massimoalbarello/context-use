@@ -6,6 +6,7 @@ import { assetContentUrl } from '../../lib/asset-presentation';
 import type { EntitySearch } from '../../lib/entity-filters';
 import type { EntitySummary } from '../../queries/entities';
 import { resourceCardVariants } from '../knowledge/resource-list';
+import { useResourceLink } from '../knowledge/resource-navigation';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 
@@ -83,9 +84,11 @@ export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
 }
 
 export function EntityLink({ entity, presentation, active, children, search }: EntityLinkProps) {
+  const resourceLink = useResourceLink({ kind: 'entity', readableId: entity.readableId });
   if (presentation === 'inline') {
     return (
       <Link
+        onClick={resourceLink.onClick}
         className="relative mx-0.5 inline-block rounded-full bg-muted py-0.5 pr-2 pl-[2.0625rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
         to="/entities/$id"
         params={{ id: entity.readableId }}
@@ -103,12 +106,13 @@ export function EntityLink({ entity, presentation, active, children, search }: E
 
   return (
     <Link
+      onClick={resourceLink.onClick}
       className={cn(resourceCardVariants(), 'transition')}
       to="/entities/$id"
       params={{ id: entity.readableId }}
       search={search}
-      data-route-selected={active ? 'true' : undefined}
-      aria-current={active ? 'page' : undefined}
+      data-route-selected={(resourceLink.selected ?? active) ? 'true' : undefined}
+      aria-current={(resourceLink.selected ?? active) ? 'page' : undefined}
     >
       <EntityCardContent entity={entity} />
     </Link>

@@ -1,10 +1,12 @@
 import { cn } from '@repo/ui/class-names';
-import { isValidElement, type ReactNode } from 'react';
+import { isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
+import { AssetLink } from '../assets/asset-link';
 import { EntityAvatar, EntityLink } from '../entities/entity-link';
+import { ResourceNavigation } from '../knowledge/resource-navigation';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
@@ -15,7 +17,7 @@ type InternalLink =
   | { kind: 'record'; readableId: string };
 
 export type KnowledgePageMarkdownSelection = {
-  kind: Extract<InternalLink['kind'], 'entity' | 'page'>;
+  kind: InternalLink['kind'];
   readableId: string;
 };
 
@@ -155,16 +157,41 @@ function PageMarkdownLink({
 function AssetMarkdownLink({
   target,
   children,
+  onSelectResource,
 }: {
   target: Extract<InternalLink, { kind: 'asset' }>;
   children: ReactNode;
+  onSelectResource?: SelectMarkdownResource;
 }) {
-  const className =
-    'font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground';
+  const navigation = useContext(ResourceNavigation);
+  if (!onSelectResource && !navigation) {
+    return (
+      <a
+        className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
+        href={assetContentUrl(target.readableId)}
+      >
+        {children}
+      </a>
+    );
+  }
+  if (onSelectResource) {
+    return (
+      <button
+        type="button"
+        className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
+        onClick={() => onSelectResource(target)}
+      >
+        {children}
+      </button>
+    );
+  }
   return (
-    <a className={className} href={assetContentUrl(target.readableId)}>
+    <AssetLink
+      asset={{ readableId: target.readableId, name: textContent(children) }}
+      presentation="inline"
+    >
       {children}
-    </a>
+    </AssetLink>
   );
 }
 
@@ -201,6 +228,17 @@ function MarkdownLink({
         </span>
       );
     }
+    if (onSelectResource) {
+      return (
+        <button
+          type="button"
+          className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
+          onClick={() => onSelectResource(target)}
+        >
+          {children}
+        </button>
+      );
+    }
     return (
       <RecordLink
         record={{ readableId: target.readableId, title: textContent(children) }}
@@ -218,7 +256,11 @@ function MarkdownLink({
     );
   }
   if (target?.kind === 'asset') {
-    return <AssetMarkdownLink target={target}>{children}</AssetMarkdownLink>;
+    return (
+      <AssetMarkdownLink target={target} onSelectResource={onSelectResource}>
+        {children}
+      </AssetMarkdownLink>
+    );
   }
   return (
     <a

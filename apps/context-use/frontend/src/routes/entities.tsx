@@ -7,11 +7,9 @@ import {
   MAX_ENTITY_NAME_LENGTH,
 } from '#backend/models/entities/model.ts';
 import { EntityList } from '../components/entities/entity-list';
+import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter-popover';
-import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
-import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
-import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
 import {
   Select,
   SelectContent,
@@ -21,6 +19,7 @@ import {
 } from '../components/ui/select';
 import { type EntitySearch, entitySearch } from '../lib/entity-filters';
 import { useEntities } from '../lib/hooks/use-entities';
+import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
 import { entitiesQueryOptions } from '../queries/entities';
 
 export const Route = createFileRoute('/entities')({
@@ -29,7 +28,10 @@ export const Route = createFileRoute('/entities')({
       throw redirect({ to: '/login', search: { redirect: location.href } });
     }
   },
-  validateSearch: entitySearch,
+  validateSearch: (search: Record<string, unknown>): EntitySearch & ResourceSearch => ({
+    ...entitySearch(search),
+    ...resourceSearch(search),
+  }),
   loaderDeps: ({ search }) => ({ query: search.q, entityType: search.entityType }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions(deps)),
@@ -43,18 +45,7 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
   };
   const type = search.entityType ?? 'all';
   return (
-    <KnowledgeFilterPopover
-      title="Filter entities"
-      filtered={Boolean(search.q || search.entityType)}
-    >
-      <KeywordFilter
-        key={search.q ?? ''}
-        value={search.q ?? ''}
-        inputId="entity-keyword"
-        placeholder="Search entities"
-        maxLength={MAX_ENTITY_NAME_LENGTH}
-        onApply={(query) => onChange({ ...search, q: query || undefined })}
-      />
+    <KnowledgeFilterPopover title="Filter entities" filtered={Boolean(search.entityType)}>
       <div className="grid gap-1.5">
         <span className="font-medium text-xs">Type</span>
         <Select<EntityTypeFilter>
@@ -75,7 +66,7 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
           </SelectContent>
         </Select>
       </div>
-      <Button type="button" variant="ghost" size="sm" onClick={() => onChange({})}>
+      <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ q: search.q })}>
         Reset filters
       </Button>
     </KnowledgeFilterPopover>
@@ -85,6 +76,7 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
 function EntitiesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
+  const navigate = Route.useNavigate();
   const { q = '', entityType } = search;
   const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities({
     query: q,
@@ -95,24 +87,36 @@ function EntitiesLayout() {
   }
 
   return (
-    <KnowledgeWorkspace>
-      <KnowledgeSidebar
-        collection="entities"
-        count={total}
-        createTo="/entities/new"
-        createLabel="New entity"
-        profile={profile}
-        error={error}
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-        loadMore={fetchNextPage}
-        actions={<EntityFilterControl search={search} />}
-      >
-        <EntityList entities={entities} filtered={Boolean(q || entityType)} search={search} />
-      </KnowledgeSidebar>
-      <KnowledgeWorkspaceDetail>
-        <Outlet />
-      </KnowledgeWorkspaceDetail>
-    </KnowledgeWorkspace>
+    <CollectionWorkspace
+      collection="entities"
+      title="Entities"
+      search={
+        <KeywordFilter
+          key={q}
+          inputId="entity-keyword"
+          value={q}
+          placeholder="Search entities"
+          maxLength={MAX_ENTITY_NAME_LENGTH}
+          onApply={(query) => {
+            void navigate({
+              to: '/entities',
+              search: { ...search, q: query || undefined },
+              replace: true,
+            });
+          }}
+        />
+      }
+      count={total}
+      createTo="/entities/new"
+      createLabel="New entity"
+      profile={profile}
+      error={error}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+      loadMore={fetchNextPage}
+      filters={<EntityFilterControl search={search} />}
+    >
+      <EntityList entities={entities} filtered={Boolean(q || entityType)} search={search} />
+    </CollectionWorkspace>
   );
 }

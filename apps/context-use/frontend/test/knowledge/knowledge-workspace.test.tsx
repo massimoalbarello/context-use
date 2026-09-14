@@ -33,27 +33,27 @@ for (const route of ['hypermedia', 'resources']) {
     const user = userEvent.setup();
     const otherRoute = route === 'hypermedia' ? 'resources' : 'hypermedia';
     const view = render(<Workspace route={route} />);
-    expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
-      'false',
-    );
-    await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
-
-    view.rerender(<Workspace route={otherRoute} />);
     expect(
       screen.getByRole('button', { name: 'Collapse sidebar' }).getAttribute('aria-expanded'),
     ).toBe('true');
-    view.rerender(<Workspace route={route} />);
     await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
-    view.rerender(<Workspace route={otherRoute} />);
-    expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
-    view.rerender(<Workspace route={route} />);
-    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeTruthy();
-    view.unmount();
 
-    render(<Workspace route={route} />);
+    view.rerender(<Workspace route={otherRoute} />);
     expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
       'false',
     );
+    view.rerender(<Workspace route={route} />);
+    await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
+    view.rerender(<Workspace route={otherRoute} />);
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    view.rerender(<Workspace route={route} />);
+    expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy();
+    view.unmount();
+
+    render(<Workspace route={route} />);
+    expect(
+      screen.getByRole('button', { name: 'Collapse sidebar' }).getAttribute('aria-expanded'),
+    ).toBe('true');
   });
 }

@@ -1,7 +1,7 @@
 import { Button } from '@repo/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ListFilter } from 'lucide-react';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 export function KnowledgeFilterPopover({
   title,
@@ -14,25 +14,6 @@ export function KnowledgeFilterPopover({
 }) {
   const [open, setOpen] = useState(false);
   const headingId = useId();
-
-  useEffect(() => {
-    function openKeywordFilter(event: KeyboardEvent) {
-      if (
-        event.key.toLocaleLowerCase() !== 'k' ||
-        !event.metaKey ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-      event.preventDefault();
-      setOpen(true);
-    }
-
-    window.addEventListener('keydown', openKeywordFilter);
-    return () => window.removeEventListener('keydown', openKeywordFilter);
-  }, []);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -50,8 +31,8 @@ export function KnowledgeFilterPopover({
         <ListFilter aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent
-        side="right"
-        align="start"
+        side="bottom"
+        align="end"
         collisionAvoidance={{ side: 'shift', align: 'shift' }}
         className="max-h-[min(var(--available-height),calc(100dvh-1rem))] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-3"
       >

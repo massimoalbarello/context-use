@@ -113,7 +113,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
       routeTree,
       context: { queryClient: client },
       history: createMemoryHistory({
-        initialEntries: ['/hypermedia?month=2026-01&q=nonexistent-keyword&focus=entity%3Aowner'],
+        initialEntries: ['/hypermedia?month=2026-01'],
       }),
     });
     await router.load();
@@ -123,8 +123,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
       </QueryClientProvider>,
     );
 
-    await userEvent.setup().click(await screen.findByRole('button', { name: 'Open sidebar' }));
-    expect(screen.getByRole('link', { name: 'Browse resources' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Pages' })).toBeTruthy();
     expect(screen.queryByText('1 entity selected')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Clear selected entities' })).toBeNull();
     expect(screen.queryByRole('searchbox')).toBeNull();
@@ -143,8 +142,8 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
       expect(screen.getByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
       expect(router.state.location.search).toEqual({
         month: '2026-01',
-        kind: 'entity',
-        id: name.toLowerCase(),
+        resource: 'entity',
+        resourceId: name.toLowerCase(),
       });
     }
     await user.click(screen.getByRole('complementary', { name: 'Entity preview' }));

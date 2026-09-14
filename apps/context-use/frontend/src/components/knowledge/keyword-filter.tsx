@@ -1,5 +1,5 @@
 import { Button } from '@repo/ui/button';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Input } from '../ui/input';
 
@@ -30,6 +30,9 @@ export function KeywordFilter({
       ) {
         return;
       }
+      if (!inputRef.current?.checkVisibility()) {
+        return;
+      }
       event.preventDefault();
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -41,16 +44,16 @@ export function KeywordFilter({
 
   return (
     <form
-      className="grid gap-2 rounded-xl bg-muted/55 p-3"
+      className="flex min-w-0 flex-1 items-center gap-2"
       onSubmit={(event) => {
         event.preventDefault();
         onApply(draft.trim());
       }}
     >
-      <label className="font-medium text-xs" htmlFor={inputId}>
-        Keyword
+      <label className="sr-only" htmlFor={inputId}>
+        {placeholder}
       </label>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <span className="relative min-w-0 flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -64,18 +67,18 @@ export function KeywordFilter({
             aria-keyshortcuts="Meta+K"
             placeholder={placeholder}
             maxLength={maxLength}
-            autoFocus
             value={draft}
             onChange={(event) => setDraft(event.currentTarget.value)}
           />
         </span>
         <Button type="submit" size="sm" className="h-10 shrink-0" disabled={draft.trim() === value}>
-          Apply
+          Search
         </Button>
       </div>
       {(draft || value) && (
         <Button
-          className="justify-self-end"
+          className="shrink-0"
+          aria-label="Clear search"
           type="button"
           size="sm"
           variant="ghost"
@@ -84,7 +87,7 @@ export function KeywordFilter({
             onApply('');
           }}
         >
-          Clear
+          <X aria-hidden="true" />
         </Button>
       )}
     </form>

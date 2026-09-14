@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { assetContentUrl, isEmbeddableAsset } from '../../lib/asset-presentation';
 import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
+import { useResourceLink } from '../knowledge/resource-navigation';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
@@ -52,9 +53,11 @@ export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
 }
 
 export function AssetLink({ asset, presentation, active, children }: AssetLinkProps) {
+  const resourceLink = useResourceLink({ kind: 'asset', readableId: asset.readableId });
   if (presentation === 'inline') {
     return (
       <Link
+        onClick={resourceLink.onClick}
         className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
         to="/assets/$id"
         params={{ id: asset.readableId }}
@@ -66,11 +69,12 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
   }
   return (
     <Link
+      onClick={resourceLink.onClick}
       className={cn(resourceCardVariants(), 'transition')}
       to="/assets/$id"
       params={{ id: asset.readableId }}
-      data-route-selected={active ? 'true' : undefined}
-      aria-current={active ? 'page' : undefined}
+      data-route-selected={(resourceLink.selected ?? active) ? 'true' : undefined}
+      aria-current={(resourceLink.selected ?? active) ? 'page' : undefined}
     >
       <AssetCardContent asset={asset} />
     </Link>

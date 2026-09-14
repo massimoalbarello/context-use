@@ -103,19 +103,7 @@ test('record controls select metadata, sort direction, and reset the current vie
   );
   expect(screen.getByRole('button', { name: 'Source created: Choose dates' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Source updated: Choose dates' })).toBeTruthy();
-  await user.type(screen.getByRole('searchbox', { name: 'Keyword' }), '  launch  ');
-  await user.click(screen.getByRole('button', { name: 'Apply' }));
-  expect(JSON.parse(screen.getByLabelText('Selected filters').textContent!)).toMatchObject({
-    q: 'launch',
-    provider: 'slack',
-    kind: 'message',
-  });
-  expect(screen.queryByRole('combobox', { name: 'Order by' })).toBeNull();
-  expect(screen.getByText('Ordered by relevance.')).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: 'Clear' }));
-  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain(
-    'Source created',
-  );
+  expect(screen.queryByRole('searchbox')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Reset filters and order' }));
   expect(screen.getByLabelText('Selected filters').textContent).toBe('{}');
 });

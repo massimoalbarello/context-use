@@ -1,11 +1,9 @@
 import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
-import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '#backend/models/hypermedia-retrieval/model.ts';
 import type { RecordFilterOptions, RecordSortField } from '#backend/models/records/model.ts';
 import { type RecordSearch, recordsAreFiltered } from '../../lib/record-filters';
 import { calendarDateRangeFromSearch } from '../../lib/temporal-coverage';
 import { DateRangeFilter } from '../knowledge/date-range-filter';
-import { KeywordFilter } from '../knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
@@ -55,15 +53,10 @@ export function RecordFilters({
   const updated = calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo });
   const sortBy = search.sortBy ?? 'sourceUpdatedAt';
   return (
-    <KnowledgeFilterPopover title="Filter and sort records" filtered={recordsAreFiltered(search)}>
-      <KeywordFilter
-        key={search.q ?? ''}
-        inputId="record-keyword"
-        value={search.q ?? ''}
-        placeholder="Search records"
-        maxLength={MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH}
-        onApply={(query) => onChange({ ...search, q: query || undefined })}
-      />
+    <KnowledgeFilterPopover
+      title="Filter and sort records"
+      filtered={recordsAreFiltered({ ...search, q: undefined })}
+    >
       <FilterSelect
         label="Provider"
         value={search.provider ?? null}
@@ -137,7 +130,7 @@ export function RecordFilters({
         hint={null}
         onApply={(range) => onChange({ ...search, updatedFrom: range?.from, updatedTo: range?.to })}
       />
-      <Button type="button" variant="ghost" size="sm" onClick={() => onChange({})}>
+      <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ q: search.q })}>
         Reset filters and order
       </Button>
     </KnowledgeFilterPopover>

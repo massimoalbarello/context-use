@@ -1,7 +1,6 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sessionQueryOptions } from '../../queries/session';
 import { authClient } from '../auth';
-import { clearRememberedKnowledgeResources } from '../knowledge-navigation';
 import { passkeyErrorMessage } from '../passkey-error';
 
 export function useSignUp(): UseMutationResult<void, Error, void> {
@@ -18,7 +17,6 @@ export function useSignUp(): UseMutationResult<void, Error, void> {
       }
     },
     onSuccess: async () => {
-      clearRememberedKnowledgeResources(window.sessionStorage);
       queryClient.clear();
       await queryClient.fetchQuery(sessionQueryOptions);
     },
