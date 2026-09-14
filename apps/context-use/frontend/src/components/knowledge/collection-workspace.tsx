@@ -95,13 +95,13 @@ export function CollectionWorkspace({
           <ResourceBrowser
             from={`/${collection}`}
             toolbar={
-              <header
-                className={cn(
-                  'flex shrink-0 items-center gap-2 border-b px-3 py-4 sm:px-5 md:gap-4 md:px-8 lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]',
-                  collapsed && 'pt-20 md:pt-20',
-                )}
-              >
-                <h1 className="shrink-0 whitespace-nowrap font-semibold text-lg tracking-tight sm:text-2xl">
+              <header className="flex shrink-0 items-center gap-2 border-b px-3 py-4.5 sm:px-5 md:gap-4 md:px-8 lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]">
+                <h1
+                  className={cn(
+                    'shrink-0 whitespace-nowrap font-semibold text-lg tracking-tight sm:text-2xl',
+                    collapsed && 'pl-14',
+                  )}
+                >
                   {title}
                 </h1>
                 <div className="mx-auto flex min-w-0 max-w-md flex-1 lg:w-full">{search}</div>
