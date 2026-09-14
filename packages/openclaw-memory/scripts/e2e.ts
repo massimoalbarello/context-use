@@ -366,7 +366,8 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(reinstalledRecall.includes('architecture'));
   gateway = Bun.spawn(['openclaw', 'gateway', 'run'], {
     cwd: directory,
-    env,
+    // This test owns restart and shutdown, even under CI's service manager.
+    env: { ...env, OPENCLAW_NO_RESPAWN: '1' },
     stdout: Bun.file(join(directory, 'gateway.log')),
     stderr: Bun.file(join(directory, 'gateway-error.log')),
   });
