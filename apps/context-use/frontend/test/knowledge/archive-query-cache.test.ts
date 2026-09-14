@@ -18,7 +18,8 @@ import {
   entityPreviewQueryOptions,
   entityQueryOptions,
 } from '../../src/queries/entities';
-import { hypermediaQueryKey } from '../../src/queries/hypermedia';
+import { knowledgeSuggestionsQueryKey } from '../../src/queries/knowledge-suggestions';
+import { mapQueryKey } from '../../src/queries/map';
 import {
   pageDetailsQueryKey,
   pagePreviewQueryOptions,
@@ -36,7 +37,7 @@ test('page archive removes its unavailable detail without refetching it', async 
   queryClient.setQueryData<unknown>(archivedDetailQueryKey, { readableId: 'weekly-review' });
   queryClient.setQueryData<unknown>(archivedPreviewQueryKey, { readableId: 'weekly-review' });
   queryClient.setQueryData(pagesListQueryKey, { items: [] });
-  queryClient.setQueryData([...hypermediaQueryKey, 'suggestions', 'week'], []);
+  queryClient.setQueryData([...knowledgeSuggestionsQueryKey, 'week'], []);
   queryClient.setQueryData([...pageDetailsQueryKey, 'project-brief'], {
     readableId: 'project-brief',
   });
@@ -48,7 +49,7 @@ test('page archive removes its unavailable detail without refetching it', async 
   });
   queryClient.setQueryData<unknown>(entityPreviewQueryKey, { readableId: 'alex-morgan' });
   queryClient.setQueryData<unknown>(assetPreviewQueryKey, { readableId: 'quarterly-chart' });
-  queryClient.setQueryData(hypermediaQueryKey, { pages: [] });
+  queryClient.setQueryData(mapQueryKey, { pages: [] });
 
   const archivedDetailObserver = new QueryObserver(queryClient, {
     queryKey: archivedDetailQueryKey,
@@ -71,9 +72,9 @@ test('page archive removes its unavailable detail without refetching it', async 
   expect(queryClient.getQueryData(archivedDetailQueryKey)).toBeUndefined();
   expect(queryClient.getQueryData(archivedPreviewQueryKey)).toBeUndefined();
   expect(queryClient.getQueryState(pagesListQueryKey)?.isInvalidated).toBe(true);
-  expect(
-    queryClient.getQueryState([...hypermediaQueryKey, 'suggestions', 'week'])?.isInvalidated,
-  ).toBe(true);
+  expect(queryClient.getQueryState([...knowledgeSuggestionsQueryKey, 'week'])?.isInvalidated).toBe(
+    true,
+  );
   expect(queryClient.getQueryState([...pageDetailsQueryKey, 'project-brief'])?.isInvalidated).toBe(
     true,
   );
@@ -85,7 +86,7 @@ test('page archive removes its unavailable detail without refetching it', async 
   ).toBe(true);
   expect(queryClient.getQueryState(entityPreviewQueryKey)?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(assetPreviewQueryKey)?.isInvalidated).toBe(true);
-  expect(queryClient.getQueryState(hypermediaQueryKey)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(mapQueryKey)?.isInvalidated).toBe(true);
 
   unsubscribe();
 });
@@ -102,7 +103,7 @@ test('asset archive removes its unavailable detail and refreshes asset discovery
   });
   queryClient.setQueryData(assetsListQueryKey, { items: [] });
   queryClient.setQueryData([...assetSuggestionsQueryKey, 'quarter'], []);
-  queryClient.setQueryData(hypermediaQueryKey, { pages: [] });
+  queryClient.setQueryData(mapQueryKey, { pages: [] });
 
   settleArchivedAssetQueries({
     queryClient,
@@ -116,7 +117,7 @@ test('asset archive removes its unavailable detail and refreshes asset discovery
   expect(queryClient.getQueryState([...assetSuggestionsQueryKey, 'quarter'])?.isInvalidated).toBe(
     true,
   );
-  expect(queryClient.getQueryState(hypermediaQueryKey)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(mapQueryKey)?.isInvalidated).toBe(true);
 });
 
 test('entity archive refreshes only its active collections and pickers', () => {
@@ -126,11 +127,11 @@ test('entity archive refreshes only its active collections and pickers', () => {
   queryClient.setQueryData<unknown>(archivedDetailQueryKey, { readableId: 'maya-chen' });
   queryClient.setQueryData<unknown>(archivedPreviewQueryKey, { readableId: 'maya-chen' });
   queryClient.setQueryData(entitiesListQueryKey, { items: [] });
-  queryClient.setQueryData([...hypermediaQueryKey, 'suggestions', 'maya'], []);
+  queryClient.setQueryData([...knowledgeSuggestionsQueryKey, 'maya'], []);
   queryClient.setQueryData([...pageDetailsQueryKey, 'project-brief'], {
     readableId: 'project-brief',
   });
-  queryClient.setQueryData(hypermediaQueryKey, { pages: [] });
+  queryClient.setQueryData(mapQueryKey, { pages: [] });
 
   settleArchivedEntityQueries({
     queryClient,
@@ -141,13 +142,13 @@ test('entity archive refreshes only its active collections and pickers', () => {
   expect(queryClient.getQueryData(archivedDetailQueryKey)).toBeUndefined();
   expect(queryClient.getQueryData(archivedPreviewQueryKey)).toBeUndefined();
   expect(queryClient.getQueryState(entitiesListQueryKey)?.isInvalidated).toBe(true);
-  expect(
-    queryClient.getQueryState([...hypermediaQueryKey, 'suggestions', 'maya'])?.isInvalidated,
-  ).toBe(true);
+  expect(queryClient.getQueryState([...knowledgeSuggestionsQueryKey, 'maya'])?.isInvalidated).toBe(
+    true,
+  );
   expect(queryClient.getQueryState([...pageDetailsQueryKey, 'project-brief'])?.isInvalidated).toBe(
     false,
   );
-  expect(queryClient.getQueryState(hypermediaQueryKey)?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(mapQueryKey)?.isInvalidated).toBe(true);
 });
 
 test('archive conflict keeps and refreshes the still-available detail', () => {

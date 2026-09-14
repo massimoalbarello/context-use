@@ -18,7 +18,7 @@ import type { KnowledgeProfilesServiceContract } from '#backend/services/knowled
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import {
   unusedAssetFacesService,
-  unusedHypermediaService,
+  unusedHypermediaGraphService,
   unusedRecordSyncsService,
   unusedRecordsService,
 } from '../../../support/app.ts';
@@ -98,7 +98,7 @@ test('owner registration API exposes only complete registration states', async (
       frontendAssetsService,
       entitiesService,
       healthService,
-      hypermediaService: unusedHypermediaService,
+      graphService: unusedHypermediaGraphService,
       retrievalService: unusedHypermediaRetrievalService,
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,

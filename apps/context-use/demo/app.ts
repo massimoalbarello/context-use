@@ -8,8 +8,8 @@ import { createEntityImagesController } from '#backend/routes/api/entities/[enti
 import { createEntitiesController } from '#backend/routes/api/entities/controller.ts';
 import { createFaceRecognitionController } from '#backend/routes/api/face-recognition/controller.ts';
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
-import { createHypermediaController } from '#backend/routes/api/hypermedia/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
+import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#backend/routes/api/profile/controller.ts';
@@ -19,8 +19,8 @@ import type { FrontendAssetsServiceContract } from '#backend/services/frontend-a
 import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
-// This list deliberately names read operations, including safe GETs only. New controller
-// routes never become public automatically. Auth, MCP and delivery controllers aren't mounted.
+// This allowlist deliberately names read operations. New controller routes never become
+// public automatically. Auth, MCP and delivery controllers aren't mounted.
 const READ_API_ROUTES = new Set([
   '/api/health',
   '/api/profile',
@@ -40,18 +40,37 @@ const READ_API_ROUTES = new Set([
   '/api/records',
   '/api/records/filter-options',
   '/api/records/:recordReadableId',
-  '/api/hypermedia/entities',
-  '/api/hypermedia/pages',
+  '/api/map/pages',
+  '/api/map/neighborhoods',
   '/api/hypermedia/search',
 ]);
 const READ_API_PATHS = [...READ_API_ROUTES].map(
   (route) => new RegExp(`^${route.replace(/:[^/]+/g, '[a-z0-9][a-z0-9-]*')}$`),
 );
 
+function publicReadResponse({
+  method,
+  path,
+  response,
+}: {
+  method: string;
+  path: string;
+  response: ReturnType<Response['clone']>;
+}): Response {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  if (path.startsWith('/api/')) {
+    response.headers.set('Cache-Control', 'no-store');
+  }
+  return new Response(method === 'HEAD' ? null : response.body, {
+    status: response.status,
+    headers: response.headers,
+  });
+}
+
 function isWorkspacePath(path: string): boolean {
   return (
     path === '/' ||
-    path === '/hypermedia' ||
+    path === '/map' ||
     path === '/settings' ||
     path === '/settings/syncs' ||
     path === '/settings/faces' ||
@@ -78,7 +97,7 @@ export function createDemoApp({
     .use(createEntityReadableIdController(dependencies))
     .use(createEntityImagesController(faceDependencies))
     .use(createFaceRecognitionController(faceDependencies))
-    .use(createHypermediaController(dependencies))
+    .use(createMapController(dependencies))
     .use(createHypermediaSearchController(dependencies))
     .use(createPagesController(dependencies))
     .use(createPageReadableIdController(dependencies))
@@ -124,13 +143,6 @@ export function createDemoApp({
         { status: 403 },
       );
     }
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    if (path.startsWith('/api/')) {
-      response.headers.set('Cache-Control', 'no-store');
-    }
-    return new Response(request.method === 'HEAD' ? null : response.body, {
-      status: response.status,
-      headers: response.headers,
-    });
+    return publicReadResponse({ method: request.method, path, response });
   };
 }

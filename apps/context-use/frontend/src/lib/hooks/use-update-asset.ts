@@ -1,6 +1,7 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assetsQueryKey, type UpdateAssetVariables, updateAsset } from '../../queries/assets';
-import { hypermediaQueryKey } from '../../queries/hypermedia';
+import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
+import { mapQueryKey } from '../../queries/map';
 
 export function useUpdateAsset(): UseMutationResult<void, Error, UpdateAssetVariables> {
   const queryClient = useQueryClient();
@@ -9,7 +10,8 @@ export function useUpdateAsset(): UseMutationResult<void, Error, UpdateAssetVari
     onSuccess: async () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: assetsQueryKey }),
-        queryClient.invalidateQueries({ queryKey: hypermediaQueryKey }),
+        queryClient.invalidateQueries({ queryKey: mapQueryKey }),
+        queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey }),
       ]),
   });
 }

@@ -129,8 +129,20 @@ async function renderResourceBrowser(path = '/pages') {
           );
         }
         const responses: Record<string, unknown> = {
-          '/api/hypermedia/entities': { anchor: entity, neighbors: [], nextCursor: null },
-          '/api/hypermedia/pages': {
+          '/api/map/neighborhoods': {
+            entities: [entity],
+            neighborhoods: [
+              {
+                anchor: { readableId: entity.readableId },
+                available: true,
+                neighbors: [],
+                nextCursor: null,
+              },
+            ],
+            relationships: [],
+            relationshipsTruncated: false,
+          },
+          '/api/map/pages': {
             pages: [],
             nextOffset: null,
             entityReferencesTruncated: false,
@@ -525,18 +537,18 @@ for (const { link, kind, id } of [
 
 test('expanded navigation from Map returns to Map with its original month', async () => {
   const app = await renderResourceBrowser(
-    '/hypermedia?month=2007-08&resource=page&resourceId=launch&expanded=true',
+    '/map?month=2007-08&resource=page&resourceId=launch&expanded=true',
   );
   try {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('link', { name: 'Owner' }));
     expect(await screen.findByRole('heading', { name: 'Owner' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/hypermedia');
+    expect(app.router.state.location.pathname).toBe('/map');
     expect(app.router.state.location.search.expanded).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
     expect(await screen.findByRole('complementary', { name: 'Entity preview' })).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
-    expect(app.router.state.location.pathname).toBe('/hypermedia');
+    expect(app.router.state.location.pathname).toBe('/map');
     expect(app.router.state.location.search.month).toBe('2007-08');
     expect(app.router.state.location.search.resourceId).toBe('owner');
   } finally {

@@ -17,7 +17,7 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { AssetFaces } from '#backend/models/faces/model.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
-import type { HypermediaPagesSchema } from '#backend/routes/api/hypermedia/model.ts';
+import type { MapPagesSchema } from '#backend/routes/api/map/model.ts';
 import { MAX_LIST_LIMIT } from '#backend/routes/api/model.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import type {
@@ -194,10 +194,9 @@ test(
           '/api/face-recognition/settings',
           '/api/face-recognition/processing',
           '/api/records/filter-options',
-          '/api/hypermedia/entities?anchor=steve-jobs',
-          '/api/hypermedia/pages',
+          '/api/map/pages',
           '/api/hypermedia/search?query=iPhone',
-          '/hypermedia',
+          '/map',
           '/pages/new',
           '/entities/new',
           '/assets/new',
@@ -216,9 +215,9 @@ test(
         const seenPages = new Set<string>();
         for (let month = 1; month <= 10; month += 1) {
           const time = `2007-${String(month).padStart(2, '0')}`;
-          const response = await read(`/api/hypermedia/pages?visible=steve-jobs&time=${time}`);
+          const response = await read(`/api/map/pages?visible=steve-jobs&time=${time}`);
           expect(response.status).toBe(StatusMap.OK);
-          const result = (await response.json()) as Static<typeof HypermediaPagesSchema>;
+          const result = (await response.json()) as Static<typeof MapPagesSchema>;
           expect(result.nextOffset).toBeNull();
           const datedPages = result.pages.filter((page) => {
             const coverage = page.temporalCoverage;
@@ -236,6 +235,35 @@ test(
             expect((await read(`/api/pages/${page.readableId}`)).status).toBe(StatusMap.OK);
           }
         }
+        const graphQuery = new URLSearchParams({
+          anchors: JSON.stringify([
+            { anchor: { readableId: 'steve-jobs' } },
+            { anchor: { readableId: 'iphone' } },
+          ]),
+          limit: '2',
+        });
+        const graphPath = `/api/map/neighborhoods?${graphQuery}`;
+        const graph = await read(graphPath);
+        expect(graph.status).toBe(StatusMap.OK);
+        expect(graph.headers.get('cache-control')).toBe('no-store');
+        expect(graph.headers.has('set-cookie')).toBe(false);
+        expect(await graph.json()).toMatchObject({
+          entities: expect.arrayContaining([
+            expect.objectContaining({ readableId: 'steve-jobs' }),
+            expect.objectContaining({ readableId: 'iphone' }),
+          ]),
+          neighborhoods: [
+            { anchor: { readableId: 'steve-jobs' }, available: true, neighbors: expect.any(Array) },
+            { anchor: { readableId: 'iphone' }, available: true, neighbors: expect.any(Array) },
+          ],
+        });
+        const graphHead = await fetchDemo(
+          new Request(`http://demo.test${graphPath}`, { method: 'HEAD' }),
+        );
+        expect(graphHead.status).toBe(StatusMap.OK);
+        expect(await graphHead.text()).toBe('');
+        const invalidGraph = await read('/api/map/neighborhoods?anchors=[]');
+        expect(invalidGraph.status).toBe(StatusMap['Bad Request']);
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')
         ).json()) as Static<typeof KnowledgePageSchema>;
@@ -349,6 +377,7 @@ test(
         expect(await head.text()).toBe('');
         // Try every mutation registered by the reused controllers, plus unmounted surfaces.
         const deniedPaths = [
+          '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',
           '/api/pages/my-work-from-ipod-to-iphone/archive',
