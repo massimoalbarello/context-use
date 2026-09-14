@@ -19,18 +19,20 @@
     "test:e2e": "bun run build && bun run scripts/e2e.ts"
   },
   "peerDependencies": {
-    "openclaw": "2026.9.4"
+    "openclaw": ">=2026.9.4"
   },
   "devDependencies": {
     "@repo/browser-testing": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/proper-lockfile": "^4.1.4",
+    "@types/semver": "^7.8.0",
     "openclaw": "2026.9.4",
     "typescript": "catalog:"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2",
     "proper-lockfile": "^4.1.2",
+    "semver": "^7.8.5",
     "typebox": "^1",
     "zod": "^4.4.3"
   },

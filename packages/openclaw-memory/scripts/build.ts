@@ -39,7 +39,7 @@ const publicBin = Object.fromEntries(
 );
 const publicOpenclaw = {
   ...openclaw,
-  install: { minHostVersion: `>=${peerDependencies.openclaw}` },
+  install: { minHostVersion: peerDependencies.openclaw },
 };
 await Bun.write(
   join(output, 'package.json'),

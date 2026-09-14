@@ -1,10 +1,11 @@
+import { satisfies } from 'semver';
 import { z } from 'zod';
 import packageJson from '../package.json';
 import { ConnectionError } from './error';
 
 export const PLUGIN_ID = 'context-use';
 export const PACKAGE_VERSION = packageJson.version;
-export const SUPPORTED_OPENCLAW_VERSION = packageJson.peerDependencies.openclaw;
+export const OPENCLAW_VERSION_RANGE = packageJson.peerDependencies.openclaw;
 export const CALLBACK_URL = 'http://127.0.0.1:49187/context-use/callback';
 export const REQUEST_TIMEOUT_MS = 30_000;
 export const AUTHORIZATION_TIMEOUT_MS = 600_000;
@@ -39,9 +40,9 @@ export function serverUrl(input: string): string {
 }
 
 export function assertHostVersion(version: string): void {
-  if (version !== SUPPORTED_OPENCLAW_VERSION) {
+  if (!satisfies(version, OPENCLAW_VERSION_RANGE)) {
     throw new ConnectionError(
-      `This plugin requires OpenClaw ${SUPPORTED_OPENCLAW_VERSION}; found ${version}.`,
+      `This plugin requires OpenClaw ${OPENCLAW_VERSION_RANGE}; found ${version}.`,
     );
   }
 }

@@ -1,10 +1,5 @@
 import { expect, test } from 'bun:test';
-import {
-  assertHostVersion,
-  CALLBACK_URL,
-  SUPPORTED_OPENCLAW_VERSION,
-  serverUrl,
-} from '../src/contract';
+import { assertHostVersion, CALLBACK_URL, serverUrl } from '../src/contract';
 import { authorizationResponse } from '../src/oauth';
 
 const NOW = 1_000_000;
@@ -47,9 +42,16 @@ test('rejects swapped, replayed, expired and ambiguous authorization responses',
   ).toThrow();
 });
 
-test('supports exactly the tested host version and secure instance locations', () => {
-  expect(() => assertHostVersion(SUPPORTED_OPENCLAW_VERSION)).not.toThrow();
-  expect(() => assertHostVersion('2026.8.1')).toThrow();
+test('accepts the minimum host version and future stable releases', () => {
+  for (const version of ['2026.9.4', '2026.9.5', '2026.10.1', '2027.1.0']) {
+    expect(() => assertHostVersion(version)).not.toThrow();
+  }
+  for (const version of ['2026.8.1', '2026.9.3', '2026.9.4-beta.1', 'invalid']) {
+    expect(() => assertHostVersion(version)).toThrow();
+  }
+});
+
+test('accepts only secure instance locations', () => {
   expect(serverUrl('https://memory.example')).toBe('https://memory.example/mcp');
   expect(serverUrl('http://localhost:3000')).toBe('http://localhost:3000/mcp');
   for (const input of [
