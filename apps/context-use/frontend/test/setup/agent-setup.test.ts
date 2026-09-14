@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
@@ -10,12 +11,12 @@ import {
 
 const SETUP_STEP_COUNT = 3;
 
-test('Claude quick connect preserves the instance URL and leaves manual setup available', () => {
+test('Claude quick connect preserves the instance URL and leaves manual setup available', async () => {
   const mcpServerUrl = 'https://personal-context.nibrun.app/nested/mcp?workspace=a%20b&mode=read';
   try {
     render(createElement(AgentSetup, { mcpServerUrl }));
 
-    const link = screen.getByRole('link', { name: 'Connect to Claude (opens in a new tab)' });
+    const link = screen.getByRole('link', { name: 'Connect Claude (opens in a new tab)' });
     const destination = new URL(link.getAttribute('href') ?? '');
     expect(destination.origin + destination.pathname).toBe(
       'https://claude.ai/customize/connectors',
@@ -27,12 +28,21 @@ test('Claude quick connect preserves the instance URL and leaves manual setup av
     });
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    const user = userEvent.setup();
+    const manualSetup = screen.getByRole('button', { name: 'Connect manually' });
+    expect(manualSetup.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('textbox', { name: 'Server URL' })).toBeNull();
+    await user.click(manualSetup);
+    expect(manualSetup.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('textbox', { name: 'Server URL' }).getAttribute('value')).toBe(
       mcpServerUrl,
     );
     expect(
       screen.getByRole('textbox', { name: 'MCP setup help prompt', hidden: true }).textContent,
     ).toContain(mcpServerUrl);
+    await user.click(manualSetup);
+    expect(manualSetup.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('textbox', { name: 'Server URL' })).toBeNull();
   } finally {
     cleanup();
   }
@@ -107,12 +117,13 @@ test('setup presents the user-owned connection flow as three numbered steps', ()
   expect(html).toContain('<ol');
   expect([...html.matchAll(/<li[\s>]/g)]).toHaveLength(SETUP_STEP_COUNT);
   expect(html).toContain('Connect your agent to Context Use MCP server');
-  expect(html).toContain('Server name');
+  expect(html).not.toContain('Server name');
   expect(html).toContain('Context Use');
-  expect(html).toContain('Server URL');
-  expect(html).toContain('https://personal-context.nibrun.app/mcp');
-  expect(html).toContain('Copy server name');
-  expect(html).toContain('Copy server URL');
+  expect(html).not.toContain('Server URL');
+  expect(html).toContain('Connect Claude');
+  expect(html).toContain('Connect manually');
+  expect(html).not.toContain('Copy server name');
+  expect(html).not.toContain('Copy server URL');
   expect(html).not.toContain('Open your agent’s MCP or connector settings');
   expect(html).not.toContain('Connect and authorize');
   expect(html).toContain('Import memories from your favorite agent');
@@ -122,9 +133,8 @@ test('setup presents the user-owned connection flow as three numbered steps', ()
   expect(html).not.toContain('check every 15 seconds');
   expect(html).not.toContain('open your hypermedia automatically');
   expect(html).not.toContain('Reload Context Use');
-  expect(html).toContain('<details>');
-  expect(html).not.toContain('<details open');
-  expect(html).toContain('MCP setup help prompt');
+  expect(html).toContain('aria-expanded="false"');
+  expect(html).not.toContain('MCP setup help prompt');
   expect(html).toContain('Initial context prompt');
   expect(html).not.toContain('access token or credential');
   expect(html).not.toContain('without trying to perform');
