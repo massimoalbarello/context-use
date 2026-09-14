@@ -42,7 +42,7 @@ function RouteComponent() {
   return (
     <div
       className={cn(
-        'grid h-dvh min-h-0 overflow-hidden overscroll-none',
+        'grid h-dvh min-h-0 overflow-clip overscroll-none',
         showPublicHeader ? 'grid-rows-[auto_minmax(0,1fr)]' : 'grid-rows-[minmax(0,1fr)]',
       )}
     >
@@ -56,7 +56,7 @@ function RouteComponent() {
           </div>
         </header>
       )}
-      <div className={cn('min-h-0', profile ? 'overflow-hidden' : 'overflow-y-auto')}>
+      <div className={cn('min-h-0', profile ? 'overflow-clip' : 'overflow-y-auto')}>
         <KnowledgeWorkspaceProvider>
           <Outlet />
         </KnowledgeWorkspaceProvider>

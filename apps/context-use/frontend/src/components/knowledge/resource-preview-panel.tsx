@@ -18,7 +18,7 @@ import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { ExternalRecordMarkdown } from '../records/external-record-markdown';
 
 function focusPreviewPanel(panel: HTMLElement | null) {
-  panel?.focus();
+  panel?.focus({ preventScroll: true });
 }
 
 function PreviewPanelShell({
@@ -36,7 +36,7 @@ function PreviewPanelShell({
 }) {
   return (
     <aside
-      className="absolute top-3 right-3 bottom-3 z-30 flex w-[28rem] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-xl"
+      className="absolute top-3 right-3 bottom-3 z-30 flex w-[28rem] max-w-[calc(100%-1.5rem)] flex-col overflow-clip rounded-2xl border bg-card shadow-xl"
       aria-label={`${label} preview`}
       tabIndex={-1}
       ref={focusPreviewPanel}
@@ -67,7 +67,7 @@ function PreviewPanelShell({
           <X aria-hidden="true" />
         </Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
     </aside>
   );
 }

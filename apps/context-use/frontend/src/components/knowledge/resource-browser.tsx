@@ -18,7 +18,7 @@ import { ResourceNavigation } from './resource-navigation';
 import { ResourcePreviewPanel } from './resource-preview-panel';
 
 function focusExpandedResource(element: HTMLElement | null) {
-  element?.focus();
+  element?.focus({ preventScroll: true });
 }
 
 export function ResourceBrowser({
@@ -66,7 +66,11 @@ export function ResourceBrowser({
       }),
       hash: '',
       resetScroll: false,
-    }).then(() => (origin.current?.isConnected ? origin.current : browsing.current)?.focus());
+    }).then(() =>
+      (origin.current?.isConnected ? origin.current : browsing.current)?.focus({
+        preventScroll: true,
+      }),
+    );
   }
   function changeView({
     view,
@@ -80,11 +84,11 @@ export function ResourceBrowser({
   const expanded = Boolean(selection && (state.expanded || narrow));
   return (
     <ResourceNavigation value={{ selection, onSelect: select }}>
-      <div className="flex size-full min-h-0 flex-col">
+      <div className="flex size-full min-h-0 flex-col overflow-clip">
         <div className="shrink-0" hidden={expanded}>
           {toolbar}
         </div>
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1 overflow-clip">
           <div
             className={cn('size-full', expanded && 'hidden')}
             aria-hidden={expanded || undefined}
@@ -96,7 +100,7 @@ export function ResourceBrowser({
           {selection &&
             (expanded ? (
               <section
-                className="absolute inset-0 flex flex-col"
+                className="absolute inset-0 flex min-h-0 flex-col overflow-clip"
                 aria-label="Expanded resource"
                 tabIndex={-1}
                 ref={focusExpandedResource}
@@ -122,7 +126,7 @@ export function ResourceBrowser({
                   </Button>
                 </div>
                 <div
-                  className="min-h-0 flex-1 overflow-y-auto"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
                   key={`${selection.kind}:${selection.readableId}`}
                 >
                   {selection.kind === 'entity' && (
