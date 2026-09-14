@@ -33,6 +33,7 @@ const SHA256_HEX_LENGTH = 64;
 test('createApp uses supplied dependencies without production bootstrap', async () => {
   let healthChecks = 0;
   const auth: Auth = {
+    passkeyOrigins: [],
     handler: async () => new Response(null, { status: 404 }),
     getSession: async () => null,
     protectMcpRequest: unusedMcpProtection,

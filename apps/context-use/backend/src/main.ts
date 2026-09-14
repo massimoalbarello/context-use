@@ -149,6 +149,7 @@ try {
   const auth = createAuth({
     database,
     baseUrl: env.BASE_URL,
+    nibrunHostname: env.NIBRUN_HOSTNAME,
     secret: authSecret.value,
     fetchClientMetadataResource,
   });

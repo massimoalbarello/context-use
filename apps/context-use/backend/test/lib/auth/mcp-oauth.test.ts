@@ -269,6 +269,7 @@ describe('MCP OAuth foundation', () => {
           const { headers: sessionHeaders } = await context.test.login({ userId: OWNER_USER_ID });
           const discovery = createAuthDiscoveryController({
             auth: {
+              passkeyOrigins: options.trustedOrigins,
               handler: oauth.handler,
               getSession: async () => null,
               protectMcpRequest: () => async () =>

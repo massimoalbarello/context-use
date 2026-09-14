@@ -13,6 +13,7 @@ const timestamp = '2026-01-01T00:00:00.000Z';
 
 function searchApp(retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'>) {
   const auth: Auth = {
+    passkeyOrigins: [],
     handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
     protectMcpRequest: unusedMcpProtection,
     getSession: ({ headers }) => {

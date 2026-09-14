@@ -33,6 +33,7 @@ type Environment = Readonly<Record<string, string | undefined>>;
 type Env = {
   PORT: number;
   BASE_URL: URL;
+  NIBRUN_HOSTNAME: string | undefined;
   DATA_FOLDER: string;
   BETTER_AUTH_SECRET: string | undefined;
 };
@@ -83,6 +84,7 @@ export function loadEnv({
       }),
     ),
     DATA_FOLDER: dataFolder({ environment, workingDirectory }),
+    NIBRUN_HOSTNAME: environment[BACKEND_ENVIRONMENT.nibrunHostname] || undefined,
     BETTER_AUTH_SECRET: environment[BACKEND_ENVIRONMENT.authSecret] || undefined,
   };
 }

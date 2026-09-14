@@ -14,6 +14,7 @@ const HTTP_UNAUTHORIZED = 401;
 test('an archived or revoked client authorization is rejected before the MCP transport', async () => {
   let transportCalls = 0;
   const auth = {
+    passkeyOrigins: [],
     handler: async () => new Response(null, { status: 404 }),
     getSession: async () => null,
     protectMcpRequest:
@@ -74,6 +75,7 @@ test('the authenticated owner and stable client authorization identity reach the
     clientAuthorizationName: 'Research agent',
   };
   const auth = {
+    passkeyOrigins: [],
     handler: async () => new Response(null, { status: 404 }),
     getSession: async () => null,
     protectMcpRequest:

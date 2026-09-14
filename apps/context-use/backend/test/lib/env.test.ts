@@ -5,6 +5,19 @@ import { BACKEND_ENVIRONMENT, NIBRUN_DATA_FOLDER } from '#backend/lib/runtime-co
 const WORKING_DIRECTORY = '/application';
 
 describe('backend environment', () => {
+  test('keeps the injected hostname when a custom public URL is configured', () => {
+    const env = loadEnv({
+      environment: {
+        [BACKEND_ENVIRONMENT.nibrunHostname]: 'context-use-test.nibrun.app',
+        [BACKEND_ENVIRONMENT.baseUrl]: 'https://knowledge.example.com',
+      },
+      workingDirectory: WORKING_DIRECTORY,
+    });
+
+    expect(env.NIBRUN_HOSTNAME).toBe('context-use-test.nibrun.app');
+    expect(env.BASE_URL.origin).toBe('https://knowledge.example.com');
+  });
+
   test('uses the persistent nibrun volume for application and authorization state', () => {
     const env = loadEnv({
       environment: { [BACKEND_ENVIRONMENT.nibrunHostname]: 'context-use-abc.nibrun.app' },
