@@ -26,9 +26,8 @@ export function demoNotice(): Plugin {
         },
         children: `
           <div class="min-w-0 flex-1 text-sm">
-            <strong class="font-medium">One shared context for you and your agents.</strong>
-            <p class="mt-1 text-muted-foreground">Explore Steve Jobs’ fictional context. Deploy your own instance and connect your agents via MCP so you can all share and curate the same context.</p>
-            <p class="mt-1 text-xs text-muted-foreground">Read-only demo · Invented conversations and notes, 2001–2007</p>
+            <p class="text-xs text-muted-foreground">Steve Jobs’ fictional context, 2001–2007 · Invented conversations and notes · Read-only demo</p>
+            <p class="mt-1">Deploy your own instance and connect your agents via MCP to share and curate the same context.</p>
           </div>
           <a href="${CONTEXT_USE_DEPLOY_URL.replaceAll('&', '&amp;')}" target="_blank" rel="noopener noreferrer" class="${buttonVariants({ className: 'sm:self-center' })}">
             Deploy your own <span aria-hidden="true">↗</span>
