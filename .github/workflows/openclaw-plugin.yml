@@ -90,3 +90,23 @@ jobs:
           release_tag=$(node -p 'require("./packages/openclaw-memory/package.json").publishConfig.tag')
           release_access=$(node -p 'require("./packages/openclaw-memory/package.json").publishConfig.access')
           npm publish "${artifacts[0]}" --tag "$release_tag" --access "$release_access" --ignore-scripts
+
+  verify-published:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: packages/openclaw-memory/.node-version
+          package-manager-cache: false
+
+      - uses: ./.github/actions/prepare
+
+      - name: Install test browser
+        run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
+
+      - name: Install and test the published version through real OpenClaw
+        run: bun run --cwd packages/openclaw-memory test:published

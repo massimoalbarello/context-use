@@ -16,6 +16,7 @@
     "check:types": "bun run --bun tsc",
     "test": "bun test test",
     "test:e2e": "bun run pack:release && bun run scripts/e2e.ts",
+    "test:published": "bun run scripts/e2e.ts --published",
     "pack:release": "bun run build:plugin && bun run scripts/pack.ts",
     "build:plugin": "bun run scripts/build.ts"
   },

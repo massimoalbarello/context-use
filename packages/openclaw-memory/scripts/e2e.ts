@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownerBrowser } from '@repo/browser-testing/owner-browser';
+import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
 import { LEGACY_AGENTS, LEGACY_USER } from '../test/fixtures/workspace';
@@ -17,6 +18,14 @@ const COMMAND_TIMEOUT_MS = 180_000;
 const COMMAND_LABEL_ARGUMENTS = 3;
 const root = resolve(import.meta.dir, '..');
 const repo = resolve(root, '../..');
+let packageSpec = `${metadata.name}@${metadata.version}`;
+if (!Bun.argv.includes('--published')) {
+  const artifacts = await Array.fromAsync(
+    new Bun.Glob('*.tgz').scan({ cwd: join(root, 'release'), absolute: true }),
+  );
+  assert.equal(artifacts.length, 1, 'Build exactly one release artifact before testing');
+  packageSpec = `file:${artifacts[0]!}`;
+}
 const directory = await mkdtemp(join(tmpdir(), 'context-use-openclaw-test-'));
 const node = process.env.OPENCLAW_TEST_NODE ?? Bun.which('node');
 if (!node) {
@@ -30,14 +39,9 @@ const env = {
   PATH: `${join(directory, 'bin')}:${dirname(node)}:${process.env.PATH}`,
   OPENCLAW_EXEC_SHELL_SNAPSHOT: '0',
   npm_config_cache: join(directory, 'npm-cache'),
+  npm_config_registry: 'https://registry.npmjs.org',
 };
-const setup = join(root, 'pkg/dist/setup.js');
 const sdkConfig = import.meta.resolve('openclaw/plugin-sdk/config-mutation');
-const artifacts = await Array.fromAsync(
-  new Bun.Glob('*.tgz').scan({ cwd: join(root, 'release'), absolute: true }),
-);
-assert.equal(artifacts.length, 1, 'Build exactly one release artifact before testing');
-const artifact = `file:${artifacts[0]!}`;
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
 const gatewayPort = availablePort();
 
@@ -86,7 +90,7 @@ await writeFile(
   `#!/bin/sh\nexec '${node.replaceAll("'", "'\\''")}' '${join(dirname(fileURLToPath(import.meta.resolve('openclaw/package.json'))), 'openclaw.mjs').replaceAll("'", "'\\''")}' "$@"\n`,
 );
 await chmod(join(directory, 'bin/openclaw'), EXECUTABLE_MODE);
-console.log(`Testing in disposable workspace ${directory}`);
+console.log(`Testing ${packageSpec} in disposable workspace ${directory}`);
 const model = startModel();
 let app: Awaited<ReturnType<typeof startApp>> | undefined;
 let owner: Awaited<ReturnType<typeof ownerBrowser>> | undefined;
@@ -132,7 +136,7 @@ config.tools={...config.tools,codeMode:{enabled:false},toolSearch:{enabled:false
 config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text'],contextWindow:100000,maxTokens:4000}]}}};`);
   const personalGroup = 'agent:main:telegram:group:-100123';
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
-  const installCommand = `OPENCLAW_STATE_DIR=${quote(stateDir)} OPENCLAW_CONFIG_PATH=${quote(env.OPENCLAW_CONFIG_PATH)} PATH=${quote(env.PATH)} npx --yes ${quote(artifact)}`;
+  const installCommand = `OPENCLAW_STATE_DIR=${quote(stateDir)} OPENCLAW_CONFIG_PATH=${quote(env.OPENCLAW_CONFIG_PATH)} PATH=${quote(env.PATH)} npx --yes ${quote(packageSpec)}`;
   model.setup(`${installCommand} connect ${quote(app.origin)}`);
   const setupPrompt = openclawSetupPrompt(app.origin).replaceAll(
     OPENCLAW_INSTALL_COMMAND,
@@ -151,7 +155,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   assert(model.observations.setupCalls > 1, 'The real agent did not execute installation');
-  console.log('Real OpenClaw agent installed the release artifact and started authorization.');
+  console.log('Real OpenClaw agent installed the package and started authorization.');
 
   const pending = await Bun.file(connectionFile).json();
   assert(pending.oauth.pending?.url);
@@ -170,7 +174,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const swapped = new URL(redirectUrl);
   swapped.searchParams.set('state', 'another-connection');
   await writeFile(callback, swapped.href, { mode: PRIVATE_MODE });
-  await assert.rejects(command(['npx', '--yes', artifact, 'authorize', callback]));
+  await assert.rejects(command(['npx', '--yes', packageSpec, 'authorize', callback]));
   await writeFile(callback, redirectUrl, { mode: PRIVATE_MODE });
   model.setup(`${installCommand} authorize ${quote(callback)}`);
   await command([
@@ -186,7 +190,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   model.learn();
-  await assert.rejects(command(['npx', '--yes', artifact, 'authorize', callback]));
+  await assert.rejects(command(['npx', '--yes', packageSpec, 'authorize', callback]));
   await rm(callback);
   const expired = await Bun.file(connectionFile).json();
   expired.oauth.tokens.access_token = 'expired-test-access-token';
@@ -296,7 +300,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await configure(
     "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow=['context_use_*','read'];",
   );
-  await command([node, setup, 'disconnect']);
+  await command(['openclaw', 'context-use', 'disconnect']);
   const removed = await configuration();
   assert.equal(removed.session.dmScope, 'per-channel-peer');
   assert.equal(removed.plugins.entries['active-memory'].config.timeoutMs, USER_TIMEOUT_MS);
@@ -306,8 +310,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const remote = await owner.page.request.get(`${app.origin}/api/pages`);
   assert(remote.ok(), 'Could not verify memories survived disconnect');
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
-  await command([node, setup, 'remove']);
-  await command([node, setup, 'remove']);
+  await command(['npx', '--yes', packageSpec, 'remove']);
   const afterRemoval = await configuration();
   assert(!afterRemoval.plugins.entries?.[PLUGIN_ID], 'Native uninstall tombstone survived');
   assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['read']);
@@ -332,12 +335,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(cleanChat.includes('Local memory is available'));
   assert(model.observations.removedCalls > 0, 'No post-removal model request was inspected');
   console.log(
-    'Repeated removal cleaned provider instructions and grants, preserved later edits and remote memory, and exposed only the restored memory provider in a fresh chat.',
+    'Removal cleaned provider instructions and grants, preserved later edits and remote memory, and exposed only the restored memory provider in a fresh chat.',
   );
 
   // Also accept a tombstone left by older native uninstall paths.
   await configure("config.plugins.entries['context-use']={enabled:false};");
-  await command(['npx', '--yes', artifact, 'connect', app.origin]);
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
   console.log('Package reinstalled; authorizing the new connection.');
   const reconnect = await Bun.file(connectionFile).json();
   const newRedirect = await owner.authorize({
@@ -346,7 +349,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     clientName: 'OpenClaw reinstallation',
   });
   await writeFile(callback, newRedirect, { mode: PRIVATE_MODE });
-  await command(['npx', '--yes', artifact, 'authorize', callback]);
+  await command(['npx', '--yes', packageSpec, 'authorize', callback]);
   await rm(callback);
   model.recall();
   const reinstalledRecall = await command([
@@ -374,13 +377,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await waitGateway();
   console.log('Disposable gateway is ready; removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
-  await command(['openclaw', 'context-use', 'remove']);
+  const removal = await command(['openclaw', 'context-use', 'remove']);
   assert(!(await Bun.file(connectionFile).exists()));
-  await waitGateway();
-  const refresh = await command([node, setup, 'refresh']);
   assert(
-    refresh.includes('Gateway refresh requested'),
-    'Setup did not request a refresh from the running gateway',
+    removal.includes('Gateway refresh requested'),
+    'Removal did not request a refresh from the running gateway',
   );
   await waitGateway();
   model.removed();
