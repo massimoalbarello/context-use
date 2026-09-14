@@ -1,0 +1,87 @@
+import {
+  OPENCLAW_REMOVAL_PROMPT,
+  OPENCLAW_REQUIREMENT,
+  openclawConnectCommand,
+  openclawSetupPrompt,
+} from '@context-use/openclaw-memory/setup-prompt';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { CopyablePrompt } from '../components/setup/copyable-prompt';
+import { mcpClientsQueryOptions } from '../queries/mcp-clients';
+
+export const Route = createFileRoute('/settings/plugins')({
+  loader: ({ context }) => context.queryClient.ensureQueryData(mcpClientsQueryOptions),
+  component: PluginsSettingsRoute,
+});
+
+function PluginsSettingsRoute() {
+  const { data } = useSuspenseQuery(mcpClientsQueryOptions);
+  return <PluginsSettings serverUrl={data.serverUrl} />;
+}
+
+export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
+  return (
+    <div className="mx-auto grid w-full max-w-4xl gap-10 px-5 py-10 md:px-10 md:py-12">
+      <header className="grid gap-2">
+        <h1 className="font-semibold text-3xl tracking-tight">Plugins</h1>
+        <p className="text-muted-foreground">Give your agent a memory that grows with you.</p>
+      </header>
+
+      <section className="grid min-w-0 gap-5" aria-labelledby="openclaw-plugin-heading">
+        <div className="grid gap-2">
+          <h2 id="openclaw-plugin-heading" className="font-semibold text-xl">
+            OpenClaw
+          </h2>
+          <p className="text-muted-foreground leading-relaxed">
+            Use Context Use as your agent’s long-term memory. OpenClaw recalls useful context and
+            learns from your conversations automatically.
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Public beta · OpenClaw {OPENCLAW_REQUIREMENT}
+          </p>
+        </div>
+
+        <p>
+          Copy this prompt into OpenClaw. It will handle setup and give you a link to authorize.
+        </p>
+        <CopyablePrompt
+          ariaLabel="OpenClaw setup prompt"
+          copyLabel="Copy setup prompt"
+          copiedLabel="Setup prompt copied"
+          rows={7}
+          value={openclawSetupPrompt(serverUrl)}
+        />
+
+        <details className="grid gap-3">
+          <summary className="cursor-pointer text-sm">Install from a terminal</summary>
+          <div className="mt-3 grid gap-3">
+            <p className="text-muted-foreground text-sm">
+              Run this command on the computer running OpenClaw, then follow its authorization
+              instructions.
+            </p>
+            <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-xs">
+              <code>{openclawConnectCommand(serverUrl)}</code>
+            </pre>
+          </div>
+        </details>
+
+        <details className="grid gap-3">
+          <summary className="cursor-pointer text-sm">Remove the plugin</summary>
+          <div className="mt-3 grid gap-3">
+            <p className="text-muted-foreground text-sm">
+              OpenClaw removes the plugin and restores its previous memory settings. Your memories
+              in Context Use are preserved.
+            </p>
+            <CopyablePrompt
+              ariaLabel="OpenClaw removal prompt"
+              copyLabel="Copy removal prompt"
+              copiedLabel="Removal prompt copied"
+              rows={4}
+              value={OPENCLAW_REMOVAL_PROMPT}
+            />
+          </div>
+        </details>
+      </section>
+    </div>
+  );
+}

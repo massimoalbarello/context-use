@@ -1,30 +1,9 @@
-import { execFile } from 'node:child_process';
 import { resolve } from 'node:path';
-import { promisify } from 'node:util';
 import { readConfigFileSnapshotForWrite } from 'openclaw/plugin-sdk/config-mutation';
 import { z } from 'zod';
-import { assertHostVersion, MCP_TOOL_NAMES, PLUGIN_ID, toolName } from './contract';
+import { MCP_TOOL_NAMES, PLUGIN_ID, toolName } from './contract';
 import { ConnectionError } from './error';
-
-const execute = promisify(execFile);
-const HOST_TIMEOUT_MS = 120_000;
-
-export async function openclaw(args: string[]): Promise<string> {
-  const result = await execute('openclaw', args, {
-    timeout: HOST_TIMEOUT_MS,
-    maxBuffer: 4_000_000,
-  });
-  return result.stdout;
-}
-
-export async function checkHost(): Promise<void> {
-  const output = await openclaw(['--version']);
-  const version = output.match(/\b\d{4}\.\d+\.\d+(?:-[\w.-]+)?\b/)?.[0];
-  if (!version) {
-    throw new ConnectionError('Could not determine the installed OpenClaw version.');
-  }
-  assertHostVersion(version);
-}
+import { openclaw } from './host-command';
 
 export async function refreshGateway(): Promise<void> {
   const { snapshot } = await readConfigFileSnapshotForWrite();

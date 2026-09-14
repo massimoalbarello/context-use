@@ -28,15 +28,54 @@ export function startModel() {
     recallCalls: 0,
     mainCalls: 0,
     removedCalls: 0,
+    setupCalls: 0,
     prompt: '',
     tools: new Set<string>(),
   };
-  let phase: 'learn' | 'recall' | 'removed' = 'learn';
+  let phase: 'setup' | 'learn' | 'recall' | 'removed' = 'learn';
+  let setupCommand = '';
+  let setupStarted = false;
+  let setupSession: string | undefined;
   let guideVersion: string | undefined;
   let mainStep = 0;
   let recallStep = 0;
   type ModelInput = z.infer<typeof RequestSchema>;
   type Reply = { call?: { name: string; arguments: Record<string, unknown> }; answer: string };
+  function setupReply(input: ModelInput): Reply {
+    observations.setupCalls += 1;
+    if (!setupStarted) {
+      setupStarted = true;
+      return {
+        call: {
+          name: 'exec',
+          arguments: { command: setupCommand, yieldMs: 120000, timeoutSeconds: 180 },
+        },
+        answer: '',
+      };
+    }
+    const output = JSON.stringify(
+      input.messages.filter((message) => message.role === 'tool').at(-1)?.content,
+    );
+    setupSession ??= output.match(/Command still running \(session ([^,]+),/)?.[1];
+    if (setupSession && !output.includes('Process exited with code 0')) {
+      assert(
+        !/Process exited with (?:code [1-9]|signal)/.test(output),
+        'Agent setup process failed',
+      );
+      return {
+        call: {
+          name: 'process',
+          arguments: { action: 'poll', sessionId: setupSession, timeout: 30000 },
+        },
+        answer: '',
+      };
+    }
+    assert(
+      output.includes('Open this URL') || output.includes('Context Use connected'),
+      `Agent setup command did not complete: ${output}`,
+    );
+    return { answer: 'Plugin setup completed; follow the authorization instructions.' };
+  }
   function recallReply(input: ModelInput): Reply {
     const names = input.tools.map((tool) => tool.function.name);
     let call: Reply['call'];
@@ -153,6 +192,9 @@ export function startModel() {
     return { answer: 'Local memory is available. You are Rowan and like architecture.' };
   }
   function reply(input: ModelInput): Reply {
+    if (phase === 'setup') {
+      return setupReply(input);
+    }
     if (phase === 'removed') {
       return removedReply(input);
     }
@@ -181,7 +223,11 @@ export function startModel() {
       const input = RequestSchema.parse(await request.json());
       const names = input.tools.map((tool) => tool.function.name);
       const { call, answer } = reply(input);
-      const toolName = call ? `context_use_${call.name}` : undefined;
+      const toolName = call
+        ? phase === 'setup'
+          ? call.name
+          : `context_use_${call.name}`
+        : undefined;
       if (toolName) {
         assert(names.includes(toolName), `Native tool ${toolName} is unavailable`);
         observations.tools.add(toolName);
@@ -191,12 +237,13 @@ export function startModel() {
           .properties ?? {};
       // Reproduce providers that require every field: unspecified inputs must
       // have an omission value, including cursors, search filters and updates.
-      const args = call
-        ? {
-            ...Object.fromEntries(Object.keys(properties).map((key) => [key, null])),
-            ...call.arguments,
-          }
-        : undefined;
+      const args =
+        call && phase !== 'setup'
+          ? {
+              ...Object.fromEntries(Object.keys(properties).map((key) => [key, null])),
+              ...call.arguments,
+            }
+          : call?.arguments;
       const delta = call
         ? {
             role: 'assistant',
@@ -231,6 +278,17 @@ export function startModel() {
   return {
     origin: `http://127.0.0.1:${server.port}`,
     observations,
+    setup: (command: string) => {
+      phase = 'setup';
+      setupCommand = command;
+      setupStarted = false;
+      setupSession = undefined;
+    },
+    learn: () => {
+      phase = 'learn';
+      mainStep = 0;
+      recallStep = 0;
+    },
     recall: () => {
       phase = 'recall';
       recallStep = 0;

@@ -1,0 +1,92 @@
+name: openclaw-plugin
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version to publish from main (must match package.json)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: packages/openclaw-memory/.node-version
+          package-manager-cache: false
+
+      - uses: ./.github/actions/prepare
+
+      - name: Validate requested release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          bun -e 'import p from "./packages/openclaw-memory/package.json"; if (process.env.RELEASE_VERSION !== p.version) throw new Error("Requested version must match package.json");'
+
+      - name: Check plugin
+        run: |
+          bun run --cwd packages/openclaw-memory check:types
+          bun run --cwd packages/openclaw-memory test
+
+      - name: Install test browser
+        run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
+
+      - name: Package and test the release through real OpenClaw
+        run: bun run --cwd packages/openclaw-memory test:e2e
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: openclaw-memory-package
+          path: packages/openclaw-memory/release/*.tgz
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: publish-openclaw-memory
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: packages/openclaw-memory/.node-version
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: openclaw-memory-package
+          path: release
+
+      - name: Publish the verified artifact
+        # Configure this workflow and the npm environment as the package's trusted
+        # publisher. NPM_TOKEN is only needed to bootstrap a package that does not
+        # yet exist; remove that secret after configuring trusted publishing.
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          artifacts=(release/*.tgz)
+          test "${#artifacts[@]}" -eq 1
+          release_tag=$(node -p 'require("./packages/openclaw-memory/package.json").publishConfig.tag')
+          release_access=$(node -p 'require("./packages/openclaw-memory/package.json").publishConfig.access')
+          npm publish "${artifacts[0]}" --tag "$release_tag" --access "$release_access" --ignore-scripts

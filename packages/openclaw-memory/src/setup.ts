@@ -3,8 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { connect, disconnect, finishAuthorization, status } from './connection';
 import { PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
-import { checkHost, refreshGateway, refreshLocalMemory, verifyRuntime } from './host';
+import { refreshGateway, refreshLocalMemory, verifyRuntime } from './host';
+import { checkHost } from './host-command';
 import { install, uninstall } from './install';
+import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
 import { connectionDirectory, withConnection } from './state';
 import { restoreWorkspace } from './workspace';
 
@@ -19,16 +21,17 @@ context-use-openclaw restore-workspace <backup-directory>
 Authorize reads the pasted redirect URL from a private file or stdin, keeping the code out of process arguments.
 Use the same OpenClaw profile environment for every command.
 
-From the repository: bun install, then bun run --cwd packages/openclaw-memory build.
-Run this helper with Node from packages/openclaw-memory/pkg/dist/setup.js.
-The publishable package is pkg/; it has not been published.
+Install the released package with:
+${OPENCLAW_INSTALL_COMMAND} connect <instance-url> [agent-id=main].
+For local development: bun install, then bun run --cwd packages/openclaw-memory build:plugin.
+Run the checkout helper with Node from packages/openclaw-memory/pkg/dist/setup.js.
 
-Connect installs the local package and configures the memory slot, tools and Active Memory.
+Connect checks the installation and configures the memory slot, tools and Active Memory.
 The owner opens the authorization link on any device, uses their passkey, and sends back
 its final localhost callback address. A failed localhost page is expected; no listener is needed.
 An authorized OpenClaw agent can perform setup itself; only passkey authorization needs the owner.
 After authorize, delete the temporary callback file. Setup requests a gateway refresh automatically.
-Once active, these commands are also available as openclaw context-use <command>.
+After authorization, these commands are also available as openclaw context-use <command>.
 
 This version supports one personal agent and one Context Use account across separate personal conversations.
 Setup preserves your existing conversation/session scope.
@@ -66,7 +69,7 @@ async function main(args: string[]): Promise<void> {
       const result = await connect({ directory, instance: argument, agentId });
       if (result.authorizationUrl) {
         console.log(
-          `Open this URL on your own device and authorize Context Use:\n${result.authorizationUrl}\n\nChoose a client name you have not used for another connection. The final localhost page may fail to load; that is expected. Copy its full address and send it back. Finish with authorize using a private file or stdin. Do not store the link or code as a memory.`,
+          `Open this URL on your own device and authorize Context Use:\n${result.authorizationUrl}\n\nChoose a client name you have not used for another connection. The final localhost page may fail to load; that is expected. Copy its full address and send it back. Finish with ${OPENCLAW_INSTALL_COMMAND} authorize <redirect-url-file|-> using a private file or stdin. Do not store the link or code as a memory.`,
         );
       } else {
         await verifyRuntime();

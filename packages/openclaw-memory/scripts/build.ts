@@ -11,7 +11,12 @@ const output = join(root, 'pkg');
 const dist = join(output, 'dist');
 await rm(output, { recursive: true, force: true });
 const result = await Bun.build({
-  entrypoints: [join(root, 'src/index.ts'), join(root, 'src/setup.ts')],
+  entrypoints: [
+    join(root, 'src/bootstrap.ts'),
+    join(root, 'src/index.ts'),
+    join(root, 'src/setup.ts'),
+    join(root, 'src/setup-prompt.ts'),
+  ],
   outdir: dist,
   target: 'node',
   packages: 'external',
@@ -20,6 +25,7 @@ if (!result.success) {
   throw new AggregateError(result.logs, 'OpenClaw plugin compilation failed');
 }
 await chmod(join(dist, 'setup.js'), EXECUTABLE_MODE);
+await chmod(join(dist, 'bootstrap.js'), EXECUTABLE_MODE);
 await copyFile(resolve(root, '../../LICENSE'), join(output, 'LICENSE'));
 const {
   name,
@@ -33,6 +39,10 @@ const {
   peerDependenciesMeta,
   engines,
   dependencies,
+  repository,
+  homepage,
+  bugs,
+  publishConfig,
 } = metadata;
 const publicBin = Object.fromEntries(
   Object.entries(bin).map(([name, path]) => [name, path.replace('./pkg/', './')]),
@@ -43,7 +53,7 @@ const publicOpenclaw = {
 };
 await Bun.write(
   join(output, 'package.json'),
-  `${JSON.stringify({ name, version, description, type, license, bin: publicBin, openclaw: publicOpenclaw, peerDependencies, peerDependenciesMeta, engines, dependencies }, null, JSON_INDENT)}\n`,
+  `${JSON.stringify({ name, version, description, type, license, bin: publicBin, openclaw: publicOpenclaw, peerDependencies, peerDependenciesMeta, engines, dependencies, repository, homepage, bugs, publishConfig, files: ['dist', 'openclaw.plugin.json', 'LICENSE'], exports: { './setup-prompt': './dist/setup-prompt.js' } }, null, JSON_INDENT)}\n`,
 );
 await Bun.write(
   join(output, 'openclaw.plugin.json'),

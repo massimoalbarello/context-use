@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "bin": {
-    "context-use-openclaw": "./pkg/dist/setup.js"
+    "context-use-openclaw": "./pkg/dist/bootstrap.js"
   },
   "openclaw": {
     "extensions": [
@@ -13,10 +13,11 @@
     ]
   },
   "scripts": {
-    "build": "bun run scripts/build.ts",
     "check:types": "bun run --bun tsc",
     "test": "bun test test",
-    "test:e2e": "bun run build && bun run scripts/e2e.ts"
+    "test:e2e": "bun run pack:release && bun run scripts/e2e.ts",
+    "pack:release": "bun run build:plugin && bun run scripts/pack.ts",
+    "build:plugin": "bun run scripts/build.ts"
   },
   "peerDependencies": {
     "openclaw": ">=2026.9.4"
@@ -45,5 +46,21 @@
     "openclaw": {
       "optional": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/massimoalbarello/context-use.git",
+    "directory": "packages/openclaw-memory"
+  },
+  "homepage": "https://github.com/massimoalbarello/context-use",
+  "bugs": {
+    "url": "https://github.com/massimoalbarello/context-use/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  },
+  "exports": {
+    "./setup-prompt": "./src/setup-prompt.ts"
   }
 }

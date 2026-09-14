@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownerBrowser } from '@repo/browser-testing/owner-browser';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
+import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
 import { LEGACY_AGENTS, LEGACY_USER } from '../test/fixtures/workspace';
 import { availablePort, startApp } from './e2e-app';
 import { startModel } from './e2e-model';
@@ -27,15 +28,22 @@ const env = {
   OPENCLAW_STATE_DIR: stateDir,
   OPENCLAW_CONFIG_PATH: join(stateDir, 'openclaw.json'),
   PATH: `${join(directory, 'bin')}:${dirname(node)}:${process.env.PATH}`,
+  OPENCLAW_EXEC_SHELL_SNAPSHOT: '0',
+  npm_config_cache: join(directory, 'npm-cache'),
 };
 const setup = join(root, 'pkg/dist/setup.js');
-const sdkConfig = 'openclaw/plugin-sdk/config-mutation';
+const sdkConfig = import.meta.resolve('openclaw/plugin-sdk/config-mutation');
+const artifacts = await Array.fromAsync(
+  new Bun.Glob('*.tgz').scan({ cwd: join(root, 'release'), absolute: true }),
+);
+assert.equal(artifacts.length, 1, 'Build exactly one release artifact before testing');
+const artifact = `file:${artifacts[0]!}`;
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
 const gatewayPort = availablePort();
 
 async function command(args: string[]): Promise<string> {
   const process = Bun.spawn(args, {
-    cwd: root,
+    cwd: directory,
     env,
     stdout: 'pipe',
     stderr: 'pipe',
@@ -116,8 +124,33 @@ try {
   await configure(
     `config.session = { dmScope: 'per-channel-peer' }; config.tools = { profile: 'coding' }; config.agents={defaults:{workspace:${JSON.stringify(workspace)}}}; config.gateway={mode:'local',port:${gatewayPort},auth:{mode:'token',token:${JSON.stringify(crypto.randomUUID())}}};`,
   );
+  await configure(`config.agents ??= {}; config.agents.defaults ??= {}; config.agents.defaults.workspace=${JSON.stringify(workspace)};
+config.agents.defaults.model={primary:'fixture/memory-fixture'};
+config.tools={...config.tools,codeMode:{enabled:false},toolSearch:{enabled:false}};
+config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text'],contextWindow:100000,maxTokens:4000}]}}};`);
   const personalGroup = 'agent:main:telegram:group:-100123';
-  await command([node, setup, 'connect', app.origin]);
+  const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
+  const installCommand = `OPENCLAW_STATE_DIR=${quote(stateDir)} OPENCLAW_CONFIG_PATH=${quote(env.OPENCLAW_CONFIG_PATH)} PATH=${quote(env.PATH)} npx --yes ${quote(artifact)}`;
+  model.setup(`${installCommand} connect ${quote(app.origin)}`);
+  const setupPrompt = openclawSetupPrompt(app.origin).replaceAll(
+    OPENCLAW_INSTALL_COMMAND,
+    installCommand,
+  );
+  await command([
+    'openclaw',
+    'agent',
+    '--local',
+    '--agent',
+    'main',
+    '--session-key',
+    `${personalGroup}:topic:1`,
+    '--message',
+    setupPrompt,
+    '--json',
+  ]);
+  assert(model.observations.setupCalls > 1, 'The real agent did not execute installation');
+  console.log('Real OpenClaw agent installed the release artifact and started authorization.');
+
   const pending = await Bun.file(connectionFile).json();
   assert(pending.oauth.pending?.url);
   const before = await configuration();
@@ -135,10 +168,23 @@ try {
   const swapped = new URL(redirectUrl);
   swapped.searchParams.set('state', 'another-connection');
   await writeFile(callback, swapped.href, { mode: PRIVATE_MODE });
-  await assert.rejects(command([node, setup, 'authorize', callback]));
+  await assert.rejects(command(['npx', '--yes', artifact, 'authorize', callback]));
   await writeFile(callback, redirectUrl, { mode: PRIVATE_MODE });
-  await command([node, setup, 'authorize', callback]);
-  await assert.rejects(command([node, setup, 'authorize', callback]));
+  model.setup(`${installCommand} authorize ${quote(callback)}`);
+  await command([
+    'openclaw',
+    'agent',
+    '--local',
+    '--agent',
+    'main',
+    '--session-key',
+    `${personalGroup}:topic:1`,
+    '--message',
+    'Complete authorization using the private callback file.',
+    '--json',
+  ]);
+  model.learn();
+  await assert.rejects(command(['npx', '--yes', artifact, 'authorize', callback]));
   await rm(callback);
   const expired = await Bun.file(connectionFile).json();
   expired.oauth.tokens.access_token = 'expired-test-access-token';
@@ -158,10 +204,6 @@ try {
     `${await Bun.file(join(workspace, 'USER.md')).text()}\nLOCAL_MEMORY_CANARY`,
   );
   await writeFile(join(workspace, 'MEMORY.md'), 'LOCAL_MEMORY_CANARY');
-  await configure(`config.agents ??= {}; config.agents.defaults ??= {}; config.agents.defaults.workspace=${JSON.stringify(workspace)};
-config.agents.defaults.model={primary:'fixture/memory-fixture'};
-config.tools={...config.tools,codeMode:{enabled:false},toolSearch:{enabled:false}};
-config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text'],contextWindow:100000,maxTokens:4000}]}}};`);
   const learn = await command([
     'openclaw',
     'agent',
@@ -293,7 +335,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
 
   // Also accept a tombstone left by older native uninstall paths.
   await configure("config.plugins.entries['context-use']={enabled:false};");
-  await command([node, setup, 'connect', app.origin]);
+  await command(['npx', '--yes', artifact, 'connect', app.origin]);
   console.log('Package reinstalled; authorizing the new connection.');
   const reconnect = await Bun.file(connectionFile).json();
   const newRedirect = await owner.authorize({
@@ -302,7 +344,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     clientName: 'OpenClaw reinstallation',
   });
   await writeFile(callback, newRedirect, { mode: PRIVATE_MODE });
-  await command([node, setup, 'authorize', callback]);
+  await command(['npx', '--yes', artifact, 'authorize', callback]);
   await rm(callback);
   model.recall();
   const reinstalledRecall = await command([
@@ -321,7 +363,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   ]);
   assert(reinstalledRecall.includes('architecture'));
   gateway = Bun.spawn(['openclaw', 'gateway', 'run'], {
-    cwd: root,
+    cwd: directory,
     env,
     stdout: Bun.file(join(directory, 'gateway.log')),
     stderr: Bun.file(join(directory, 'gateway-error.log')),
