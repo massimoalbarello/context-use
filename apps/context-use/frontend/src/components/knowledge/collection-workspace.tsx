@@ -55,7 +55,7 @@ export function CollectionWorkspace({
       <KnowledgeWorkspaceDetail>
         {isDetailRoute ? (
           <>
-            <div className={cn('border-b px-5 py-3', collapsed && 'pl-20')}>
+            <div className={cn('shrink-0 border-b px-5 py-3', collapsed && 'pl-20')}>
               <Link
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
                 to={`/${collection}`}
@@ -89,7 +89,9 @@ export function CollectionWorkspace({
                 },
               }}
             >
-              <Outlet />
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                <Outlet />
+              </div>
             </ResourceNavigation>
           </>
         ) : (
@@ -126,7 +128,7 @@ export function CollectionWorkspace({
           >
             <section className="flex h-full min-h-0 flex-col" aria-label={title}>
               <div
-                className="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-8"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 md:px-8"
                 data-collection-scroll
               >
                 {error && count === 0 ? (
