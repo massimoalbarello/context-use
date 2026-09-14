@@ -1,8 +1,66 @@
 import { expect, test } from 'bun:test';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dir, '..');
 const BUILD_TEST_TIMEOUT_MS = 30_000;
+
+test(
+  'landing build cache changes when shared logo source changes',
+  async () => {
+    const repository = resolve(root, '../..');
+    const fixture = await mkdtemp(resolve(tmpdir(), 'context-use-build-cache-'));
+    try {
+      const files = [
+        'package.json',
+        'bun.lock',
+        'turbo.json',
+        'apps/landing/package.json',
+        'packages/ui/package.json',
+        'packages/build-tools/package.json',
+        'packages/typescript-config/package.json',
+        'packages/ui/src/components/brand/light/quality.ts',
+      ];
+      for (const path of files) {
+        const destination = resolve(fixture, path);
+        await mkdir(resolve(destination, '..'), { recursive: true });
+        await Bun.write(destination, Bun.file(resolve(repository, path)));
+      }
+      const buildHash = async () => {
+        const child = Bun.spawn(
+          [
+            resolve(repository, 'node_modules/.bin/turbo'),
+            'build',
+            '--filter=@repo/landing',
+            '--dry=json',
+          ],
+          { cwd: fixture, stdout: 'pipe', stderr: 'pipe' },
+        );
+        const [code, output, errors] = await Promise.all([
+          child.exited,
+          new Response(child.stdout).text(),
+          new Response(child.stderr).text(),
+        ]);
+        expect(code, errors).toBe(0);
+        const plan: { tasks: { taskId: string; hash: string }[] } = JSON.parse(output);
+        const task = plan.tasks.find((entry) => entry.taskId === '@repo/landing#build');
+        expect(task).toBeDefined();
+        return task!.hash;
+      };
+      const before = await buildHash();
+      expect(await buildHash()).toBe(before);
+      const source = Bun.file(
+        resolve(fixture, 'packages/ui/src/components/brand/light/quality.ts'),
+      );
+      await Bun.write(source, `${await source.text()}\n// Changed shared logo source.\n`);
+      expect(await buildHash()).not.toBe(before);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  },
+  BUILD_TEST_TIMEOUT_MS,
+);
 
 test(
   'runtime bundles preserve instance, demo, and landing isolation',
