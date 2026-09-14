@@ -214,12 +214,6 @@ test(
         expect(await graphHead.text()).toBe('');
         const invalidGraph = await read('/api/map/neighborhoods?anchors=[]');
         expect(invalidGraph.status).toBe(StatusMap['Bad Request']);
-        for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
-          expect(
-            (await fetchDemo(new Request('http://demo.test/api/map/neighborhoods', { method })))
-              .status,
-          ).toBe(StatusMap.Forbidden);
-        }
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')
         ).json()) as Static<typeof KnowledgePageSchema>;
@@ -269,6 +263,7 @@ test(
         expect(await head.text()).toBe('');
         // Try every mutation registered by the reused controllers, plus unmounted surfaces.
         const deniedPaths = [
+          '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',
           '/api/pages/my-work-from-ipod-to-iphone/archive',
