@@ -164,6 +164,7 @@ test('resource navigation opens unselected collections with their own toolbar an
   const app = await renderResourceBrowser();
   const user = userEvent.setup();
   try {
+    await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
     for (const { destination, query, resource, preview, creation, filters } of [
       {
         destination: 'Pages',

@@ -33,6 +33,10 @@ for (const route of ['hypermedia', 'resources']) {
     const user = userEvent.setup();
     const otherRoute = route === 'hypermedia' ? 'resources' : 'hypermedia';
     const view = render(<Workspace route={route} />);
+    expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    await user.click(screen.getByRole('button', { name: 'Open sidebar' }));
     expect(
       screen.getByRole('button', { name: 'Collapse sidebar' }).getAttribute('aria-expanded'),
     ).toBe('true');
@@ -52,8 +56,8 @@ for (const route of ['hypermedia', 'resources']) {
     view.unmount();
 
     render(<Workspace route={route} />);
-    expect(
-      screen.getByRole('button', { name: 'Collapse sidebar' }).getAttribute('aria-expanded'),
-    ).toBe('true');
+    expect(screen.getByRole('button', { name: 'Open sidebar' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
   });
 }

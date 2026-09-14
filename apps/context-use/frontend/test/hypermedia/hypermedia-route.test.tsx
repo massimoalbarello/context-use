@@ -123,6 +123,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
       </QueryClientProvider>,
     );
 
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Open sidebar' }));
     expect(screen.getByRole('link', { name: 'Pages' })).toBeTruthy();
     expect(screen.queryByText('1 entity selected')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Clear selected entities' })).toBeNull();

@@ -1,6 +1,5 @@
 import { cn } from '@repo/ui/class-names';
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { isNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import { WorkspaceSplitLayout } from '../layout/workspace-split-layout';
 
 type KnowledgeWorkspaceContextValue = {
@@ -21,9 +20,7 @@ export function useKnowledgeWorkspace() {
 }
 
 export function KnowledgeWorkspaceProvider({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(
-    () => typeof window !== 'undefined' && isNarrowWorkspace(),
-  );
+  const [collapsed, setCollapsed] = useState(true);
   const context = useMemo(
     () => ({ collapsed, toggleSidebar: () => setCollapsed((value) => !value) }),
     [collapsed],
