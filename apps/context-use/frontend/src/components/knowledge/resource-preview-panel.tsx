@@ -15,6 +15,7 @@ import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { ExternalRecordMarkdown } from '../records/external-record-markdown';
 import { ResourceList } from './resource-list';
+import { ResourceScrollArea } from './resource-scroll-area';
 
 function focusPreviewPanel(panel: HTMLElement | null) {
   panel?.focus({ preventScroll: true });
@@ -66,7 +67,7 @@ function PreviewPanelShell({
           <X aria-hidden="true" />
         </Button>
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">{children}</div>
+      <ResourceScrollArea className="px-5 py-4">{children}</ResourceScrollArea>
     </aside>
   );
 }

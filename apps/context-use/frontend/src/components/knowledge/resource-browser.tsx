@@ -5,7 +5,6 @@ import { ArrowLeft } from 'lucide-react';
 import { type ReactNode, useRef } from 'react';
 import { useNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import {
-  RESOURCE_COLLECTION_PATHS,
   type ResourceSelection,
   resourceSearch,
   selectedResource,
@@ -17,6 +16,7 @@ import { RecordDetail } from '../records/record-detail';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 import { ResourceNavigation } from './resource-navigation';
 import { ResourcePreviewPanel } from './resource-preview-panel';
+import { ResourceScrollArea } from './resource-scroll-area';
 
 function focusExpandedResource(element: HTMLElement | null) {
   element?.focus({ preventScroll: true });
@@ -74,23 +74,12 @@ export function ResourceBrowser({
     );
   }
   function backToBrowsing() {
-    if (!selection) {
-      return;
-    }
-    const to = RESOURCE_COLLECTION_PATHS[selection.kind];
-    if (narrow && to === from) {
+    if (narrow) {
       close();
       return;
     }
     void navigate({
-      to,
-      search: (previous) => ({
-        ...(to === from ? previous : {}),
-        resource: narrow ? undefined : selection.kind,
-        resourceId: narrow ? undefined : selection.readableId,
-        expanded: undefined,
-        view: undefined,
-      }),
+      search: (previous) => ({ ...previous, expanded: undefined }),
       hash: '',
       resetScroll: false,
     });
@@ -123,6 +112,7 @@ export function ResourceBrowser({
           {selection &&
             (expanded ? (
               <section
+                key={`${selection.kind}:${selection.readableId}`}
                 className="absolute inset-0 flex min-h-0 flex-col overflow-clip"
                 aria-label="Expanded resource"
                 tabIndex={-1}
@@ -134,10 +124,7 @@ export function ResourceBrowser({
                     Back to browsing
                   </Button>
                 </div>
-                <div
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-                  key={`${selection.kind}:${selection.readableId}`}
-                >
+                <ResourceScrollArea>
                   {selection.kind === 'entity' && (
                     <EntityDetail id={selection.readableId} onArchived={close} />
                   )}
@@ -159,7 +146,7 @@ export function ResourceBrowser({
                       onViewChange={changeView}
                     />
                   )}
-                </div>
+                </ResourceScrollArea>
               </section>
             ) : (
               <ResourcePreviewPanel

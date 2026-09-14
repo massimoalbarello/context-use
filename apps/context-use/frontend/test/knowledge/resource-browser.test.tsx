@@ -62,7 +62,7 @@ async function renderResourceBrowser(path = '/pages') {
     createdAt: timestamp,
     updatedAt: timestamp,
     markdown:
-      '# Launch plan\n\n[Owner](context-use://entity/owner) uses [chart](context-use://asset/chart) and [research](context-use://record/research). See the [timeline](context-use://page/launch#timeline).\n\n## Timeline\n\n![Chart](context-use://asset/chart)',
+      '# Launch plan\n\n[Owner](context-use://entity/owner) uses [chart](context-use://asset/chart) and [research](context-use://record/research). See the [timeline](context-use://page/launch#timeline).\n\n## Timeline\n\n[Milestones](context-use://page/milestones#delivery)\n\n![Chart](context-use://asset/chart)',
     mentions: [entity],
     recordReferences: [
       {
@@ -104,11 +104,25 @@ async function renderResourceBrowser(path = '/pages') {
   client.setQueryData(profileQueryOptions.queryKey, profile);
   const requests: URL[] = [];
   let failedResource = false;
+  let pendingMilestones: Promise<void> | undefined;
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = new URL(input instanceof Request ? input.url : input);
         requests.push(url);
+        if (
+          url.pathname === '/api/pages/milestones' ||
+          url.pathname === '/api/pages/milestones/preview'
+        ) {
+          return (pendingMilestones ?? Promise.resolve()).then(() =>
+            Response.json({
+              ...page,
+              readableId: 'milestones',
+              title: 'Milestones',
+              markdown: '# Milestones\n\n## Delivery\n\nLaunch delivery details.',
+            }),
+          );
+        }
         if (url.pathname === '/api/records/research' && failedResource) {
           return Promise.resolve(
             Response.json({ error: 'Record temporarily unavailable' }, { status: 503 }),
@@ -160,6 +174,11 @@ async function renderResourceBrowser(path = '/pages') {
   return {
     router,
     requests,
+    deferMilestones: () => {
+      const pending = Promise.withResolvers<void>();
+      pendingMilestones = pending.promise;
+      return pending.resolve;
+    },
     failRecord: (failed: boolean) => {
       failedResource = failed;
     },
@@ -296,7 +315,8 @@ test('narrow screens open expanded detail directly and restore browsing on retur
     expect(await screen.findByRole('heading', { name: 'Owner' })).toBeTruthy();
     expect(app.router.state.location.search.expanded).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
-    expect(await screen.findByRole('searchbox', { name: 'Search entities' })).toBeTruthy();
+    expect(await screen.findByRole('searchbox', { name: 'Search pages' })).toBeTruthy();
+    expect(app.router.state.location.pathname).toBe('/pages');
     expect(app.router.state.location.search.resource).toBeUndefined();
   } finally {
     app.dispose();
@@ -460,13 +480,13 @@ test('page interval and date filters keep the selected resource', async () => {
   }
 });
 
-for (const { link, kind, id, collection } of [
-  { link: 'Owner', kind: 'entity', id: 'owner', collection: 'entities' },
-  { link: 'chart', kind: 'asset', id: 'chart', collection: 'assets' },
-  { link: 'research', kind: 'record', id: 'research', collection: 'records' },
-  { link: 'timeline', kind: 'page', id: 'launch', collection: 'pages' },
+for (const { link, kind, id } of [
+  { link: 'Owner', kind: 'entity', id: 'owner' },
+  { link: 'chart', kind: 'asset', id: 'chart' },
+  { link: 'research', kind: 'record', id: 'research' },
+  { link: 'timeline', kind: 'page', id: 'launch' },
 ]) {
-  test(`expanded links stay expanded and return to the ${collection} collection`, async () => {
+  test(`expanded ${kind} links retain focus and return to the original collection`, async () => {
     const app = await renderResourceBrowser(
       '/pages?interval=without&resource=page&resourceId=launch&expanded=true',
     );
@@ -479,18 +499,20 @@ for (const { link, kind, id, collection } of [
         resourceId: id,
         expanded: true,
       });
-      expect(screen.getByRole('region', { name: 'Expanded resource' })).toBeTruthy();
+      const expanded = screen.getByRole('region', { name: 'Expanded resource' });
+      if (kind !== 'page') {
+        expect(document.activeElement).toBe(expanded);
+      }
       expect(screen.queryByRole('complementary', { name: /preview$/ })).toBeNull();
       expect(screen.queryByRole('searchbox')).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
-      await waitFor(() => expect(app.router.state.location.pathname).toBe(`/${collection}`));
+      await waitFor(() => expect(app.router.state.location.search.expanded).toBeUndefined());
+      expect(app.router.state.location.pathname).toBe('/pages');
       expect(await screen.findByRole('searchbox')).toBeTruthy();
       expect(screen.getByRole('complementary', { name: /preview$/ })).toBeTruthy();
       expect(app.router.state.location.search).toMatchObject({ resource: kind, resourceId: id });
       expect(app.router.state.location.search.expanded).toBeUndefined();
-      expect(app.router.state.location.search.interval).toBe(
-        collection === 'pages' ? 'without' : undefined,
-      );
+      expect(app.router.state.location.search.interval).toBe('without');
       app.router.history.back();
       await waitFor(() => expect(app.router.state.location.search.expanded).toBe(true));
       expect(app.router.state.location.pathname).toBe('/pages');
@@ -501,7 +523,7 @@ for (const { link, kind, id, collection } of [
   });
 }
 
-test('expanded navigation from Map returns to the last selected resource collection', async () => {
+test('expanded navigation from Map returns to Map with its original month', async () => {
   const app = await renderResourceBrowser(
     '/hypermedia?month=2007-08&resource=page&resourceId=launch&expanded=true',
   );
@@ -512,11 +534,39 @@ test('expanded navigation from Map returns to the last selected resource collect
     expect(app.router.state.location.pathname).toBe('/hypermedia');
     expect(app.router.state.location.search.expanded).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
-    expect(await screen.findByRole('searchbox', { name: 'Search entities' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/entities');
-    expect(app.router.state.location.search.month).toBeUndefined();
+    expect(await screen.findByRole('complementary', { name: 'Entity preview' })).toBeTruthy();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(app.router.state.location.pathname).toBe('/hypermedia');
+    expect(app.router.state.location.search.month).toBe('2007-08');
     expect(app.router.state.location.search.resourceId).toBe('owner');
   } finally {
     app.dispose();
   }
 });
+
+for (const expanded of [false, true]) {
+  test(`section links reveal asynchronously loaded content in ${expanded ? 'expanded detail' : 'preview'}`, async () => {
+    const app = await renderResourceBrowser(
+      `/pages?resource=page&resourceId=launch${expanded ? '&expanded=true' : ''}`,
+    );
+    const revealed: HTMLElement[] = [];
+    const scroll = spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      revealed.push(this);
+    });
+    try {
+      const release = app.deferMilestones();
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('link', { name: 'Milestones' }));
+      expect(app.router.state.location.hash).toBe('delivery');
+      expect(screen.queryByRole('heading', { name: 'Delivery' })).toBeNull();
+      release();
+      const section = await screen.findByRole('heading', { name: 'Delivery' });
+      await waitFor(() => expect(revealed).toContain(section));
+    } finally {
+      scroll.mockRestore();
+      app.dispose();
+    }
+  });
+}

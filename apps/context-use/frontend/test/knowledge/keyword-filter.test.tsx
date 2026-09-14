@@ -79,3 +79,24 @@ test('Escape clears applied and draft keywords while preserving focus across que
   expect(keyword.value).toBe('');
   expect(onApply).toHaveBeenLastCalledWith('');
 });
+
+test('Clear search restores focus to the input after removing the query', async () => {
+  const onApply = mock(() => undefined);
+  const user = userEvent.setup();
+  render(
+    <KeywordFilter
+      value=""
+      inputId="keyword"
+      placeholder="Search entities"
+      maxLength={160}
+      onApply={onApply}
+    />,
+  );
+  const input = screen.getByRole('searchbox') as HTMLInputElement;
+  await user.type(input, 'owner');
+  await user.click(screen.getByRole('button', { name: 'Clear search' }));
+  expect(input.value).toBe('');
+  expect(onApply).toHaveBeenLastCalledWith('');
+  expect(document.activeElement).toBe(input);
+  expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull();
+});

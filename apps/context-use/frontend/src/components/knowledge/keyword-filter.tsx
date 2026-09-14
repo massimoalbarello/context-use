@@ -1,4 +1,5 @@
 import { Button } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Input } from '../ui/input';
@@ -28,6 +29,7 @@ export function KeywordFilter({
   function clearSearch() {
     setDraft('');
     onApply('');
+    inputRef.current?.focus({ preventScroll: true });
   }
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export function KeywordFilter({
 
   return (
     <form
-      className="flex min-w-0 flex-1 items-center gap-2"
+      className="@container relative flex min-w-0 flex-1 items-center"
       onSubmit={(event) => {
         event.preventDefault();
         onApply(draft.trim());
@@ -64,37 +66,38 @@ export function KeywordFilter({
       <label className="sr-only" htmlFor={inputId}>
         {placeholder}
       </label>
-      <span className="relative min-w-0 flex-1">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <Input
-          ref={inputRef}
-          id={inputId}
-          className="h-10 pl-9"
-          type="search"
-          aria-keyshortcuts="Meta+K Enter Escape"
-          enterKeyHint="search"
-          placeholder={placeholder}
-          maxLength={maxLength}
-          value={draft}
-          onChange={(event) => setDraft(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
-              event.preventDefault();
-              event.stopPropagation();
-              clearSearch();
-            }
-          }}
-        />
-      </span>
+      <Search
+        className="pointer-events-none absolute top-1/2 left-2.5 @min-[10rem]:block hidden size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <Input
+        ref={inputRef}
+        id={inputId}
+        className={cn(
+          'h-10 @min-[10rem]:pl-9 pl-2.5 [&::-webkit-search-cancel-button]:appearance-none',
+          (draft || value) && 'pr-9',
+        )}
+        type="search"
+        aria-keyshortcuts="Meta+K Enter Escape"
+        enterKeyHint="search"
+        placeholder={placeholder}
+        maxLength={maxLength}
+        value={draft}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            event.stopPropagation();
+            clearSearch();
+          }
+        }}
+      />
       {(draft || value) && (
         <Button
-          className="shrink-0"
+          className="absolute top-1/2 right-1 size-7 -translate-y-1/2"
           aria-label="Clear search"
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
           onClick={clearSearch}
         >
