@@ -44,6 +44,13 @@ try {
         crops: readOnlyStorage(new LocalStorage(join(dataFolder, 'face-crops'))),
         analyzer: {
           model: LOCAL_FACE_MODEL,
+          status: async () => ({
+            state: 'unavailable',
+            downloaded: false,
+            error: 'This read-only demo uses preprocessed images.',
+            checkedAt: null,
+          }),
+          check: () => Promise.reject(new Error('Public demo cannot run face analysis')),
           analyze: () => Promise.reject(new Error('Public demo cannot run face analysis')),
         },
       }),

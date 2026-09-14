@@ -25,7 +25,8 @@ export function AssetFaces({
   const [selected, setSelected] = useState<string | null>(null);
   const result = analysis.data;
   const selectedFace = result?.faces.find((face) => face.readableId === selected);
-  const processing = analyze.isPending || result?.state === 'processing';
+  const processing =
+    analyze.isPending || result?.state === 'processing' || result?.state === 'queued';
   const pending = processing || annotate.isPending;
   const processLabel =
     result?.state === 'ready' || result?.state === 'failed' ? 'Reprocess image' : 'Process image';
@@ -73,7 +74,7 @@ export function AssetFaces({
   );
   const processAction = result?.state !== 'unsupported' && (
     <Button variant="outline" disabled={pending} onClick={() => analyze.mutate(asset.readableId)}>
-      {processing ? 'Processing…' : processLabel}
+      {result?.state === 'queued' ? 'Queued' : processing ? 'Processing…' : processLabel}
     </Button>
   );
   return (
@@ -134,6 +135,11 @@ function FacesStatus({
       {result?.outdated && (
         <p className="text-muted-foreground text-sm">
           A newer face model is available. Process this image again to update automatic matches.
+        </p>
+      )}
+      {result?.state === 'queued' && (
+        <p role="status" className="text-muted-foreground text-sm">
+          Queued for face recognition. Processing continues when you leave this page.
         </p>
       )}
       {result?.state === 'unsupported' && (

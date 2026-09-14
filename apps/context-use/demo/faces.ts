@@ -13,6 +13,9 @@ export function createDemoFaces(faces: AssetFacesServiceContract): AssetFacesSer
     process: deny,
     annotate: deny,
     saveThreshold: deny,
-    retryBatch: deny,
+    enqueue: deny,
+    retryFailed: deny,
+    checkModel: deny,
+    processing: (input) => faces.processing(input),
   };
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { type FaceModel, MAX_FACES_PER_IMAGE } from '#backend/models/faces/model.ts';
+import type { FaceModelStatus } from '#backend/models/faces/processing.ts';
 
 export const MAX_FACE_CROP_BYTES = 262_144;
 const BOX_EDGE_TOLERANCE = 1.000001;
@@ -45,6 +46,8 @@ export type FaceAnalysis = z.infer<typeof FaceAnalysisSchema>;
 export interface FaceAnalyzer {
   /** Fixed for this analyzer's lifetime. Replace the analyzer to change models. */
   readonly model: FaceModel;
+  status(): Promise<FaceModelStatus>;
+  check(signal: AbortSignal): Promise<void>;
   /** Image bytes carry their verified media type; storage paths never cross this boundary. */
   analyze(input: { ownerId: string; image: Blob; signal: AbortSignal }): Promise<FaceAnalysis>;
 }

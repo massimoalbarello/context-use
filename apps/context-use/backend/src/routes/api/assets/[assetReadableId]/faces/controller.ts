@@ -9,10 +9,7 @@ import {
   FaceAnnotationBodySchema,
   FaceParamsSchema,
 } from '#backend/routes/api/face-recognition/model.ts';
-import {
-  type AssetFacesServiceContract,
-  FaceProcessingBusyError,
-} from '#backend/services/assets/faces.ts';
+import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
 
 export function createAssetFacesController({
   auth,
@@ -41,24 +38,17 @@ export function createAssetFacesController({
     .post(
       '/assets/:assetReadableId/faces/analyze',
       async ({ params, user, status }) => {
-        try {
-          const result = await faces.process({
-            ownerId: user.id,
-            readableId: params.assetReadableId,
-          });
-          return result
-            ? assetFacesResponse(result)
-            : status(StatusMap['Not Found'], { error: 'Asset not found' });
-        } catch (error) {
-          if (error instanceof FaceProcessingBusyError) {
-            return status(StatusMap.Conflict, { error: error.message });
-          }
-          throw error;
-        }
+        const result = await faces.enqueue({
+          ownerId: user.id,
+          readableId: params.assetReadableId,
+        });
+        return result
+          ? assetFacesResponse(result)
+          : status(StatusMap['Not Found'], { error: 'Asset not found' });
       },
       {
         params: AssetParamsSchema,
-        response: { 200: AssetFacesSchema, 404: ErrorResponseSchema, 409: ErrorResponseSchema },
+        response: { 200: AssetFacesSchema, 404: ErrorResponseSchema },
         detail: {
           tags: ['Assets'],
           summary: 'Analyze or retry an image without replacing its user annotations',

@@ -40,7 +40,7 @@ export interface FaceView {
 }
 
 export interface AssetFaces {
-  state: 'not_processed' | 'processing' | 'ready' | 'failed' | 'unsupported';
+  state: 'not_processed' | 'queued' | 'processing' | 'ready' | 'failed' | 'unsupported';
   error: string | null;
   outdated: boolean;
   faces: FaceView[];

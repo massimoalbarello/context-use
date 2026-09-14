@@ -7,14 +7,17 @@ import { createLogger } from '#backend/lib/logger.ts';
 import type { Storage } from '#backend/lib/storage/storage.ts';
 import type { StoredAsset } from '#backend/models/assets/model.ts';
 import type { AssetFaces, FaceDecision, FaceObservation } from '#backend/models/faces/model.ts';
+import type { FaceQueueFilter } from '#backend/models/faces/processing.ts';
 import type { AssetsRepositoryContract } from '#backend/repositories/assets/repository.ts';
 import type { EntityRepositoryContract } from '#backend/repositories/entities/repository.ts';
 import type {
   AnalysisAttempt,
   FacesRepositoryContract,
 } from '#backend/repositories/faces/contract.ts';
+import { FaceProcessingWorker } from './processing-worker.ts';
 
 const ANALYSIS_TIMEOUT_MS = 90_000;
+const MODEL_RETRY_MS = 30_000;
 const REMATCH_BATCH_SIZE = 50;
 const DEFAULT_IMAGE_LIMIT = 30;
 const logger = createLogger('face-analysis');
@@ -34,6 +37,9 @@ export class AssetFacesService {
   private readonly storage: Storage;
   private readonly crops: Storage;
   private readonly analyzer: FaceAnalyzer;
+  private readonly worker: FaceProcessingWorker;
+  private modelCheck: Promise<void> | null = null;
+  private modelRetryAt = 0;
   private activeAsset: string | null = null;
   private readonly stopping = new AbortController();
   private readonly operations = new Set<Promise<unknown>>();
@@ -52,6 +58,7 @@ export class AssetFacesService {
     this.storage = input.storage;
     this.crops = input.crops;
     this.analyzer = input.analyzer;
+    this.worker = new FaceProcessingWorker(() => this.processNext());
   }
 
   async detail(input: AssetInput): Promise<AssetFaces | null> {
@@ -64,16 +71,19 @@ export class AssetFacesService {
       assetId: asset.id,
       analysisVersion: this.analyzer.model.analysisVersion,
     });
-    const interrupted = result.state === 'processing' && this.activeAsset !== asset.id;
+    const queued =
+      result.state === 'not_processed' ||
+      result.state === 'processing' ||
+      result.analysisVersion !== this.analyzer.model.analysisVersion;
     return {
       state: !this.supports(asset)
         ? 'unsupported'
         : this.activeAsset === asset.id
           ? 'processing'
-          : interrupted
-            ? 'failed'
+          : queued
+            ? 'queued'
             : result.state,
-      error: interrupted ? 'Analysis was interrupted. Retry this image.' : result.error,
+      error: queued ? null : result.error,
       outdated:
         result.analysisVersion !== null &&
         result.analysisVersion !== this.analyzer.model.analysisVersion,
@@ -155,29 +165,136 @@ export class AssetFacesService {
       if (!published) {
         await this.removeCrops(created);
       }
-      const message =
-        error instanceof FaceAnalysisError
-          ? error.message
-          : 'Face analysis failed. Retry this image.';
-      await this.repository.fail({
-        ...attempt,
-        error: message,
-        updatedAt: new Date().toISOString(),
-      });
+      await this.recordFailure({ attempt, error });
     } finally {
       this.activeAsset = null;
     }
     return this.detail(input);
   }
 
-  /** Saving returns immediately. Busy images stay unprocessed; there is no deferred queue. */
-  processSavedAsset(input: AssetInput): Promise<void> {
-    void this.process(input).catch((error) => {
-      if (!(error instanceof FaceProcessingBusyError)) {
-        logger.error('Could not record image analysis; the saved asset can be retried.');
-      }
+  private async recordFailure({ attempt, error }: { attempt: AnalysisAttempt; error: unknown }) {
+    if (this.stopping.signal.aborted) {
+      return;
+    }
+    await this.repository.fail({
+      ...attempt,
+      updatedAt: new Date().toISOString(),
+      error:
+        error instanceof FaceAnalysisError
+          ? error.message
+          : 'Face analysis failed. Retry this image.',
     });
+  }
+
+  startProcessing(): void {
+    this.worker.start();
+  }
+
+  /** The saved asset itself is durable pending work, including a crash before this wake-up. */
+  processSavedAsset(_input: AssetInput): Promise<void> {
+    this.worker.wake();
     return Promise.resolve();
+  }
+
+  async enqueue(input: AssetInput): Promise<AssetFaces | null> {
+    const asset = await this.assets.find(input);
+    if (!asset || !this.supports(asset)) {
+      return this.detail(input);
+    }
+    if (this.activeAsset !== asset.id) {
+      await this.repository.enqueue({
+        ownerId: input.ownerId,
+        assetId: asset.id,
+        contentHash: asset.contentHash,
+        analysisVersion: this.analyzer.model.analysisVersion,
+        attemptId: Bun.randomUUIDv7(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    this.worker.wake();
+    return this.detail(input);
+  }
+
+  private async processNext(): Promise<boolean> {
+    if (this.activeAsset || this.stopping.signal.aborted || Date.now() < this.modelRetryAt) {
+      return false;
+    }
+    const next = await this.repository.nextPending({
+      analysisVersion: this.analyzer.model.analysisVersion,
+      supportedMediaTypes: this.analyzer.model.supportedMediaTypes,
+    });
+    if (!next || this.activeAsset) {
+      return false;
+    }
+    if ((await this.analyzer.status()).state !== 'ready') {
+      try {
+        await this.ensureModel();
+      } catch {
+        return false;
+      }
+    }
+    if (this.activeAsset || this.stopping.signal.aborted) {
+      return false;
+    }
+    await this.process(next);
+    return true;
+  }
+
+  private ensureModel(): Promise<void> {
+    this.modelCheck ??= this.track(this.analyzer.check(this.stopping.signal))
+      .catch((error) => {
+        this.modelRetryAt = Date.now() + MODEL_RETRY_MS;
+        throw error;
+      })
+      .finally(() => {
+        this.modelCheck = null;
+      });
+    return this.modelCheck;
+  }
+
+  checkModel(): Promise<void> {
+    if (this.activeAsset) {
+      return Promise.resolve();
+    }
+    this.modelRetryAt = 0;
+    void this.ensureModel()
+      .then(() => this.worker.wake())
+      .catch(() => undefined);
+    return Promise.resolve();
+  }
+
+  async processing(input: {
+    ownerId: string;
+    filter: FaceQueueFilter;
+    offset: number;
+    limit: number;
+  }) {
+    const queue = await this.repository.queue({
+      ...input,
+      limit: input.limit + 1,
+      analysisVersion: this.analyzer.model.analysisVersion,
+      supportedMediaTypes: this.analyzer.model.supportedMediaTypes,
+    });
+    const active = this.activeAsset;
+    return {
+      model: { name: this.analyzer.model.name, ...(await this.analyzer.status()) },
+      counts: queue.counts,
+      items: queue.items.slice(0, input.limit).map((item) => ({
+        ...item,
+        state: item.asset.id === active ? ('processing' as const) : item.state,
+      })),
+      nextOffset: queue.items.length > input.limit ? input.offset + input.limit : null,
+    };
+  }
+
+  async retryFailed(input: { ownerId: string }): Promise<void> {
+    await this.repository.retryFailed({
+      ...input,
+      analysisVersion: this.analyzer.model.analysisVersion,
+      updatedAt: new Date().toISOString(),
+    });
+    this.modelRetryAt = 0;
+    this.worker.wake();
   }
 
   preparePortrait(input: AssetInput): Promise<void> {
@@ -195,6 +312,7 @@ export class AssetFacesService {
 
   async close(): Promise<void> {
     this.stopping.abort();
+    await this.worker.close();
     await Promise.allSettled(this.operations);
   }
 
@@ -332,23 +450,6 @@ export class AssetFacesService {
     }
   }
 
-  async retryBatch(input: { ownerId: string; after: string | null }) {
-    // One asset per request lets the browser show progress and stop; no work is queued after disconnect.
-    this.assertIdle();
-    const [asset] = await this.repository.assetBatch({ ...input, limit: 1 });
-    if (!asset) {
-      return { next: null };
-    }
-    const current = await this.detail({ ownerId: input.ownerId, readableId: asset.readableId });
-    if (current?.state === 'processing') {
-      throw new FaceProcessingBusyError();
-    }
-    if (current?.state === 'not_processed' || current?.state === 'failed' || current?.outdated) {
-      await this.process({ ownerId: input.ownerId, readableId: asset.readableId });
-    }
-    return { next: asset.readableId };
-  }
-
   async images(input: {
     ownerId: string;
     entityReadableId: string;
@@ -419,6 +520,9 @@ export type AssetFacesServiceContract = Pick<
   | 'crop'
   | 'settings'
   | 'saveThreshold'
-  | 'retryBatch'
+  | 'enqueue'
+  | 'processing'
+  | 'checkModel'
+  | 'retryFailed'
   | 'images'
 >;

@@ -2,17 +2,18 @@ import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
+import { assetSummaryResponse } from '#backend/routes/api/assets/summary-model.ts';
+import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
 import {
-  type AssetFacesServiceContract,
-  FaceProcessingBusyError,
-} from '#backend/services/assets/faces.ts';
-import {
-  FaceRetryBodySchema,
-  FaceRetryResultSchema,
+  FaceActionAcceptedSchema,
+  FaceProcessingSchema,
+  FaceQueueQuerySchema,
   FaceSettingsSchema,
   faceSettingsResponse,
   UpdateFaceSettingsSchema,
 } from './model.ts';
+
+const DEFAULT_QUEUE_PAGE_SIZE = 20;
 
 export function createFaceRecognitionController({
   auth,
@@ -57,25 +58,36 @@ export function createFaceRecognitionController({
         },
       },
     )
+    .get(
+      '/face-recognition/processing',
+      async ({ user, query }) => {
+        const result = await faces.processing({
+          ownerId: user.id,
+          filter: query.filter ?? 'pending',
+          offset: query.offset ?? 0,
+          limit: query.limit ?? DEFAULT_QUEUE_PAGE_SIZE,
+        });
+        return {
+          ...result,
+          items: result.items.map((item) => ({ ...item, asset: assetSummaryResponse(item.asset) })),
+        };
+      },
+      { query: FaceQueueQuerySchema, response: FaceProcessingSchema },
+    )
     .post(
       '/face-recognition/retry',
-      async ({ user, body, status }) => {
-        try {
-          return await faces.retryBatch({ ownerId: user.id, after: body.after });
-        } catch (error) {
-          if (error instanceof FaceProcessingBusyError) {
-            return status(StatusMap.Conflict, { error: error.message });
-          }
-          throw error;
-        }
+      async ({ user }) => {
+        await faces.retryFailed({ ownerId: user.id });
+        return { accepted: true as const };
       },
-      {
-        body: FaceRetryBodySchema,
-        response: { 200: FaceRetryResultSchema, 409: ErrorResponseSchema },
-        detail: {
-          tags: ['Assets'],
-          summary: 'Retry the next failed or unprocessed image in a resumable scan',
-        },
+      { response: FaceActionAcceptedSchema },
+    )
+    .post(
+      '/face-recognition/model/check',
+      async () => {
+        await faces.checkModel();
+        return { accepted: true as const };
       },
+      { response: FaceActionAcceptedSchema },
     );
 }

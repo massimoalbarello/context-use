@@ -36,6 +36,7 @@ const READ_API_ROUTES = new Set([
   '/api/assets/:assetReadableId/faces',
   '/api/assets/:assetReadableId/faces/:faceReadableId/crop',
   '/api/face-recognition/settings',
+  '/api/face-recognition/processing',
   '/api/records',
   '/api/records/filter-options',
   '/api/records/:recordReadableId',

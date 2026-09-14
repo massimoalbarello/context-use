@@ -76,3 +76,17 @@ export async function prepareFaceModels({
   }
   return paths;
 }
+
+export async function faceModelsDownloaded(directory: string): Promise<boolean> {
+  for (const model of FACE_MODEL_FILES) {
+    const file = Bun.file(join(directory, `${model.sha256}-${model.name}`));
+    if (
+      !(await file.exists()) ||
+      file.size > model.maximumBytes ||
+      (await checksum(file)) !== model.sha256
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
