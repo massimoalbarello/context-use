@@ -129,7 +129,19 @@ async function renderResourceBrowser(path = '/pages') {
           );
         }
         const responses: Record<string, unknown> = {
-          '/api/hypermedia/entities': { anchor: entity, neighbors: [], nextCursor: null },
+          '/api/hypermedia/neighborhoods': {
+            entities: [entity],
+            neighborhoods: [
+              {
+                anchor: { readableId: entity.readableId },
+                available: true,
+                neighbors: [],
+                nextCursor: null,
+              },
+            ],
+            relationships: [],
+            relationshipsTruncated: false,
+          },
           '/api/hypermedia/pages': {
             pages: [],
             nextOffset: null,

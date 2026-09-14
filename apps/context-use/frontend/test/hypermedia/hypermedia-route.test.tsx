@@ -77,19 +77,22 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
     pageParams: [0],
   });
   for (const entity of [profile.selfEntity, colleague]) {
-    client.setQueryData(hypermediaNeighborhoodsQueryOptions([{ anchor: entity }]).queryKey, {
-      entities: [entity],
-      neighborhoods: [
-        {
-          anchor: { readableId: entity.readableId },
-          available: true,
-          neighbors: [],
-          nextCursor: null,
-        },
-      ],
-      relationships: [],
-      relationshipsTruncated: false,
-    });
+    client.setQueryData(
+      hypermediaNeighborhoodsQueryOptions([{ anchor: { readableId: entity.readableId } }]).queryKey,
+      {
+        entities: [entity],
+        neighborhoods: [
+          {
+            anchor: { readableId: entity.readableId },
+            available: true,
+            neighbors: [],
+            nextCursor: null,
+          },
+        ],
+        relationships: [],
+        relationshipsTruncated: false,
+      },
+    );
     client.setQueryData(entityPreviewQueryOptions(entity.readableId).queryKey, {
       ...entity,
       pages: [],
