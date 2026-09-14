@@ -2,7 +2,6 @@ import { expect, spyOn, test } from 'bun:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
 import { cleanup, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import type { Session } from '../src/lib/auth';
 import { ownerRegistrationQueryOptions } from '../src/queries/owner-registration';
 import { type KnowledgeProfile, profileQueryOptions } from '../src/queries/profile';
@@ -83,21 +82,6 @@ async function domainWorld({ signedIn, path }: { signedIn: boolean; path: string
   }
 }
 
-test('custom-domain setup is discoverable before signup', async () => {
-  const world = await domainWorld({ signedIn: false, path: '/login' });
-  try {
-    await screen.findByRole('heading', { name: 'Create the owner account' });
-    const help = screen.getByText('Using a custom domain?');
-    await userEvent.setup().click(help);
-    expect(help.closest('details')?.open).toBe(true);
-    expect(screen.getByText(/before or after creating your account/)).toBeTruthy();
-    expect(screen.getByText('BASE_URL')).toBeTruthy();
-    expect(screen.getByText(/If your browser or passkey provider/)).toBeTruthy();
-  } finally {
-    world.dispose();
-  }
-});
-
 test('signed-in owners can find custom-domain instructions in Settings', async () => {
   const world = await domainWorld({ signedIn: true, path: '/settings/domain' });
   try {
@@ -105,8 +89,8 @@ test('signed-in owners can find custom-domain instructions in Settings', async (
     expect(screen.getByRole('link', { name: 'Custom domain' }).getAttribute('href')).toBe(
       '/settings/domain',
     );
-    expect(screen.getByText(/Keep the same nibrun app/)).toBeTruthy();
-    expect(screen.getByText(/update your MCP clients/)).toBeTruthy();
+    expect(screen.getByText('BASE_URL=https://context.example.com')).toBeTruthy();
+    expect(screen.getByText(/Update your MCP clients/)).toBeTruthy();
   } finally {
     world.dispose();
   }

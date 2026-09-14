@@ -12,8 +12,8 @@ test.each([
   expect(message).toContain('Your browser could not use a passkey on this domain.');
   expect(message).toContain('BASE_URL environment variable');
   expect(message).toContain('full URL of your desired custom domain (including https://)');
-  expect(message).toContain('restart the app');
-  expect(message).toContain('original .nibrun.app address');
+  expect(message).toContain('restart Context Use');
+  expect(message).toContain('original address');
   expect(message).not.toContain(error.message);
 });
 

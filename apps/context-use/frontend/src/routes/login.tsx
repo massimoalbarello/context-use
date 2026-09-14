@@ -1,7 +1,6 @@
 import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
 import { ContextUseBrand } from '@repo/ui/context-use-brand';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { CustomDomainHelp } from '../components/auth/custom-domain-help';
 import { LoginForm } from '../components/auth/login-form';
 import { Eyebrow } from '../components/layout/eyebrow';
 import { internalAppPath } from '../lib/internal-app-path';
@@ -52,12 +51,6 @@ function RouteComponent() {
               redirectTo={search.redirect ?? DEFAULT_REDIRECT}
             />
           </div>
-          <details className="mt-6">
-            <summary className="cursor-pointer font-medium text-sm">Using a custom domain?</summary>
-            <div className="mt-4">
-              <CustomDomainHelp />
-            </div>
-          </details>
         </div>
       </section>
     </main>
