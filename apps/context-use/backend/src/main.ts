@@ -190,11 +190,7 @@ try {
   });
 
   logger.info(`listening on ${server!.url.origin}`);
-  if (Bun.isStandaloneExecutable) {
-    void faceAnalyzer.prepare().catch((error) => {
-      logger.warn('Face models could not be prepared; image processing will retry.', error);
-    });
-  }
+  facesService.startProcessing();
 } catch (error) {
   await faceAnalyzer.close();
   await Promise.all([

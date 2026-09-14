@@ -142,8 +142,90 @@ export class FacesRepository implements FacesRepositoryContract {
     });
   }
 
+  nextPending(input: Input<'nextPending'>) {
+    return this.run(() => {
+      const rows = this.sql.NextPendingFaceImage`
+        /* @notNull ownerId readableId */
+        select asset."owner_id" as "ownerId", asset."readable_id" as "readableId"
+        from "asset" asset
+        left join "asset_face_analysis" analysis on analysis."asset_id" = asset."id"
+          and analysis."owner_id" = asset."owner_id" and analysis."analysis_version" = ${input.analysisVersion}
+        where asset."archived_at" is null
+          and asset."media_type" in (select value from json_each(${JSON.stringify(input.supportedMediaTypes)}))
+          and (analysis."asset_id" is null or analysis."state" = 'processing' or analysis."content_hash" <> asset."content_hash")
+        order by coalesce(analysis."updated_at", asset."created_at"), asset."id" limit 1
+      `;
+      return rows[0] ?? null;
+    });
+  }
+
+  queue(input: Input<'queue'>) {
+    return this.run(() => {
+      const rows = this.sql.FaceProcessingQueue`
+        /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt state */
+        /* @type state 'queued' | 'ready' | 'failed' | 'unsupported' */
+        with images as (
+          select asset."id", asset."readable_id" as "readableId", asset."name", asset."media_type" as "mediaType",
+            asset."extension", asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt", asset."updated_at" as "updatedAt",
+            case when asset."media_type" not in (select value from json_each(${JSON.stringify(input.supportedMediaTypes)})) then 'unsupported'
+              when analysis."asset_id" is null or analysis."state" = 'processing' or analysis."content_hash" <> asset."content_hash" then 'queued'
+              else analysis."state" end as "state", analysis."error"
+          from "asset" asset left join "asset_face_analysis" analysis
+            on analysis."asset_id" = asset."id" and analysis."owner_id" = asset."owner_id" and analysis."analysis_version" = ${input.analysisVersion}
+          where asset."owner_id" = ${input.ownerId} and asset."archived_at" is null and asset."media_type" like 'image/%'
+        )
+        select * from images where ${input.filter} = 'all' or "state" = ${input.filter === 'pending' ? 'queued' : input.filter}
+        order by "createdAt", "readableId" limit ${input.limit} offset ${input.offset}
+      `;
+      const totals = this.sql.FaceProcessingCounts`
+        /* @notNull state count */
+        /* @type state 'queued' | 'ready' | 'failed' | 'unsupported' */
+        select case when asset."media_type" not in (select value from json_each(${JSON.stringify(input.supportedMediaTypes)})) then 'unsupported'
+          when analysis."asset_id" is null or analysis."state" = 'processing' or analysis."content_hash" <> asset."content_hash" then 'queued'
+          else analysis."state" end as "state", count(*) as "count"
+        from "asset" asset left join "asset_face_analysis" analysis
+          on analysis."asset_id" = asset."id" and analysis."owner_id" = asset."owner_id" and analysis."analysis_version" = ${input.analysisVersion}
+        where asset."owner_id" = ${input.ownerId} and asset."archived_at" is null and asset."media_type" like 'image/%'
+        group by 1
+      `;
+      const counts = { queued: 0, ready: 0, failed: 0, unsupported: 0 };
+      for (const row of totals) {
+        counts[row.state] = Number(row.count);
+      }
+      return {
+        counts,
+        items: rows.map(({ state, error, ...asset }) => ({
+          asset: { ...asset, sizeBytes: Number(asset.sizeBytes) },
+          state,
+          error: state === 'failed' ? error : null,
+        })),
+      };
+    });
+  }
+
+  retryFailed(input: Input<'retryFailed'>) {
+    return this.run(() => {
+      this.sql`
+        update "asset_face_analysis" set "state" = 'processing', "error" = null, "updated_at" = ${input.updatedAt}
+        where "owner_id" = ${input.ownerId} and "analysis_version" = ${input.analysisVersion} and "state" = 'failed'
+          and exists(select 1 from "asset" where "id" = "asset_face_analysis"."asset_id" and "owner_id" = ${input.ownerId} and "archived_at" is null)
+      `;
+    });
+  }
+
   observations(input: Input<'observations'>) {
     return this.run(() => readObservations({ database: this.database, ...input }));
+  }
+
+  enqueue(input: Input<'enqueue'>) {
+    return this.run(() => {
+      this.sql`
+        insert into "asset_face_analysis" ("asset_id", "owner_id", "analysis_version", "content_hash", "attempt_id", "state", "error", "updated_at")
+        values (${input.assetId}, ${input.ownerId}, ${input.analysisVersion}, ${input.contentHash}, ${input.attemptId}, 'processing', null, ${input.updatedAt})
+        on conflict ("asset_id", "analysis_version") do update set "content_hash" = excluded."content_hash", "attempt_id" = excluded."attempt_id", "state" = 'processing', "error" = null, "updated_at" = excluded."updated_at"
+        where "asset_face_analysis"."state" <> 'processing'
+      `;
+    });
   }
 
   begin(input: Input<'begin'>) {
@@ -151,7 +233,7 @@ export class FacesRepository implements FacesRepositoryContract {
       this.sql`
         insert into "asset_face_analysis" ("asset_id", "owner_id", "analysis_version", "content_hash", "attempt_id", "state", "error", "updated_at")
         values (${input.assetId}, ${input.ownerId}, ${input.analysisVersion}, ${input.contentHash}, ${input.attemptId}, 'processing', null, ${input.updatedAt})
-        on conflict ("asset_id", "analysis_version") do update set "attempt_id" = excluded."attempt_id", "state" = 'processing', "error" = null, "updated_at" = excluded."updated_at"
+        on conflict ("asset_id", "analysis_version") do update set "content_hash" = excluded."content_hash", "attempt_id" = excluded."attempt_id", "state" = 'processing', "error" = null, "updated_at" = excluded."updated_at"
       `;
     });
   }

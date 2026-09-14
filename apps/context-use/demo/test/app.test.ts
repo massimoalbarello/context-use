@@ -43,6 +43,8 @@ const TEST_TIMEOUT_MS = 30_000;
 
 const unavailableAnalyzer: FaceAnalyzer = {
   model: LOCAL_FACE_MODEL,
+  status: async () => ({ state: 'ready', downloaded: true, error: null, checkedAt: null }),
+  check: async () => {},
   analyze: () => Promise.reject(new Error('Demo inference unavailable')),
 };
 
@@ -140,6 +142,7 @@ test(
           '/api/assets/steve-presenting-iphone/content',
           '/api/assets/steve-presenting-iphone/faces',
           '/api/face-recognition/settings',
+          '/api/face-recognition/processing',
           '/api/records/filter-options',
           '/api/hypermedia/entities?anchor=steve-jobs',
           '/api/hypermedia/pages',
@@ -246,6 +249,7 @@ test(
           '/api/assets/steve-presenting-iphone/faces/face-test/annotation',
           '/api/face-recognition/settings',
           '/api/face-recognition/retry',
+          '/api/face-recognition/model/check',
           '/api/profile',
           '/api/records/batch',
           '/api/syncs',

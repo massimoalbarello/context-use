@@ -252,6 +252,32 @@ export interface IReadAssetFaceViewsResult {
     similarity: number | null;
 }
 
+/** Result of query `NextPendingFaceImage`. */
+export interface INextPendingFaceImageResult {
+    ownerId: string;
+    readableId: string;
+}
+
+/** Result of query `FaceProcessingQueue`. */
+export interface IFaceProcessingQueueResult {
+    id: string;
+    readableId: string;
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
+    createdAt: string;
+    updatedAt: string;
+    state: "queued" | "ready" | "failed" | "unsupported";
+    error: string | null;
+}
+
+/** Result of query `FaceProcessingCounts`. */
+export interface IFaceProcessingCountsResult {
+    state: "queued" | "ready" | "failed" | "unsupported";
+    count: unknown;
+}
+
 /** Result of query `CheckFaceAnalysisAttempt`. */
 export interface ICheckFaceAnalysisAttemptResult {
     assetId: string;
@@ -849,6 +875,9 @@ export interface Queries {
     ReadFaceObservations: IReadFaceObservationsResult;
     ReadFaceAnalysis: IReadFaceAnalysisResult;
     ReadAssetFaceViews: IReadAssetFaceViewsResult;
+    NextPendingFaceImage: INextPendingFaceImageResult;
+    FaceProcessingQueue: IFaceProcessingQueueResult;
+    FaceProcessingCounts: IFaceProcessingCountsResult;
     CheckFaceAnalysisAttempt: ICheckFaceAnalysisAttemptResult;
     ListFaceReferences: IListFaceReferencesResult;
     FindPortraitReferenceCandidates: IFindPortraitReferenceCandidatesResult;

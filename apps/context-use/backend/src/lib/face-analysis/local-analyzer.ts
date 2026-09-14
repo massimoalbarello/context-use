@@ -4,6 +4,7 @@ import type { ReadableStreamDefaultReader } from 'node:stream/web';
 import type { BunFile, Subprocess } from 'bun';
 import { z } from 'zod';
 import { MAX_FACES_PER_IMAGE } from '#backend/models/faces/model.ts';
+import type { FaceModelStatus } from '#backend/models/faces/processing.ts';
 import {
   type AnalyzedFace,
   AnalyzedFaceSchema,
@@ -12,7 +13,7 @@ import {
   type FaceAnalyzer,
   MAX_FACE_CROP_BYTES,
 } from './analyzer.ts';
-import { prepareFaceModels } from './model-files.ts';
+import { faceModelsDownloaded, prepareFaceModels } from './model-files.ts';
 import { LOCAL_FACE_MODEL } from './models.ts';
 
 const MAX_RESPONSE_CHARACTERS = 2_000_000;
@@ -34,6 +35,13 @@ type PreparedRuntime = { binary: string; models: string[] };
 /** An inference-only child per image; release its model memory before the next upload. */
 export class LocalFaceAnalyzer implements FaceAnalyzer {
   readonly model = LOCAL_FACE_MODEL;
+  private health: FaceModelStatus = {
+    state: 'unchecked',
+    downloaded: false,
+    error: null,
+    checkedAt: null,
+  };
+  private inspected = false;
   private readonly directory: string;
   private child: NativeProcess | null = null;
   private reader: ReadableStreamDefaultReader<string> | null = null;
@@ -44,6 +52,58 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
 
   constructor({ dataFolder }: { dataFolder: string }) {
     this.directory = join(dataFolder, 'runtime', 'face-analysis');
+  }
+
+  async status(): Promise<FaceModelStatus> {
+    if (!this.inspected && this.health.state === 'unchecked') {
+      const downloaded = await faceModelsDownloaded(join(this.directory, 'models'));
+      if (!this.inspected && this.health.state === 'unchecked') {
+        this.health = {
+          ...this.health,
+          downloaded,
+          state: downloaded ? 'unchecked' : 'not_downloaded',
+        };
+        this.inspected = true;
+      }
+    }
+    return { ...this.health };
+  }
+
+  async check(signal: AbortSignal): Promise<void> {
+    if (this.busy) {
+      throw new FaceAnalysisError('An image is processing. Check the model after it finishes.');
+    }
+    this.busy = true;
+    this.health = { ...this.health, state: 'checking', error: null };
+    const bounded = AbortSignal.any([
+      signal,
+      this.stopping.signal,
+      AbortSignal.timeout(PREPARATION_TIMEOUT_MS),
+    ]);
+    const interrupted = Promise.withResolvers<never>();
+    const abort = () => {
+      this.child?.kill();
+      interrupted.reject(bounded.reason);
+    };
+    bounded.addEventListener('abort', abort, { once: true });
+    try {
+      // An explicit check revalidates cached bytes before proving the native model handshake.
+      bounded.throwIfAborted();
+      this.health.downloaded = await Promise.race([
+        faceModelsDownloaded(join(this.directory, 'models')),
+        interrupted.promise,
+      ]);
+      this.preparation = null;
+      bounded.throwIfAborted();
+      await Promise.race([this.start(bounded), interrupted.promise]);
+    } catch (error) {
+      this.markUnavailable(error);
+      throw error;
+    } finally {
+      bounded.removeEventListener('abort', abort);
+      await this.stop();
+      this.busy = false;
+    }
   }
 
   async prepare(): Promise<void> {
@@ -67,6 +127,7 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
     }
     this.busy = true;
     let workspace: string | undefined;
+    let started = false;
     const interrupted = Promise.withResolvers<never>();
     const abort = () => {
       this.child?.kill();
@@ -76,6 +137,7 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
     try {
       signal.throwIfAborted();
       await Promise.race([this.start(signal), interrupted.promise]);
+      started = true;
       signal.throwIfAborted();
       const ownerFolder = join(
         this.directory,
@@ -110,6 +172,9 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
       return { model: this.model, faces: result };
     } catch (error) {
       await this.stop();
+      if (!started) {
+        this.markUnavailable(error);
+      }
       if (signal.aborted) {
         throw new FaceAnalysisError(
           'Face analysis timed out. The original asset is saved; you can retry it.',
@@ -124,6 +189,18 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
       }
       this.busy = false;
     }
+  }
+
+  private markUnavailable(error: unknown) {
+    this.health = {
+      ...this.health,
+      state: 'unavailable',
+      error:
+        error instanceof FaceAnalysisError
+          ? error.message
+          : 'The face model could not be loaded. Check the model to retry.',
+      checkedAt: new Date().toISOString(),
+    };
   }
 
   async close(): Promise<void> {
@@ -151,6 +228,8 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
       directory: join(this.directory, 'models'),
       signal,
     });
+    this.inspected = true;
+    this.health = { ...this.health, downloaded: true };
     return { binary, models };
   }
 
@@ -183,6 +262,12 @@ export class LocalFaceAnalyzer implements FaceAnalyzer {
     if (!ready || typeof ready !== 'object' || !('ready' in ready) || ready.ready !== true) {
       throw new FaceAnalysisError('Face analyzer did not become ready.');
     }
+    this.health = {
+      state: 'ready',
+      downloaded: true,
+      error: null,
+      checkedAt: new Date().toISOString(),
+    };
   }
 
   private async binary(): Promise<string> {

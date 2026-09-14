@@ -5,7 +5,7 @@ export function createDemoFaces(faces: AssetFacesServiceContract): AssetFacesSer
   const deny = () => Promise.reject(new Error('Public demo face recognition is read-only'));
   return {
     detail: (input) => faces.detail(input),
-    processSavedAsset: async () => {},
+    notifyAssetSaved: () => {},
     preparePortrait: async () => {},
     images: (input) => faces.images(input),
     crop: (input) => faces.crop(input),
@@ -13,6 +13,9 @@ export function createDemoFaces(faces: AssetFacesServiceContract): AssetFacesSer
     process: deny,
     annotate: deny,
     saveThreshold: deny,
-    retryBatch: deny,
+    enqueue: deny,
+    retryFailed: deny,
+    checkModel: deny,
+    processing: (input) => faces.processing(input),
   };
 }

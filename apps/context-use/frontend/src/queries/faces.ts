@@ -32,7 +32,9 @@ export function assetFacesQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...facesQueryKey, 'asset', readableId],
     refetchInterval: (query) =>
-      query.state.data?.state === 'processing' ? ANALYSIS_POLL_MS : false,
+      query.state.data?.state === 'processing' || query.state.data?.state === 'queued'
+        ? ANALYSIS_POLL_MS
+        : false,
     queryFn: async () => {
       const { data, error } = await assetFacesApi(readableId).get();
       if (error) {
@@ -91,8 +93,42 @@ export async function saveFaceThreshold(input: ThresholdInput) {
   }
   return data;
 }
-export async function retryNextImage(after: string | null) {
-  const { data, error } = await settingsApi.retry.post({ after });
+export type FaceProcessing = NonNullable<
+  Awaited<ReturnType<typeof settingsApi.processing.get>>['data']
+>;
+export type FaceQueueFilter = NonNullable<
+  NonNullable<NonNullable<Parameters<typeof settingsApi.processing.get>[0]>['query']>['filter']
+>;
+export function faceProcessingQueryOptions({
+  filter = 'pending',
+}: {
+  filter?: FaceQueueFilter;
+} = {}) {
+  return infiniteQueryOptions({
+    queryKey: [...facesQueryKey, 'processing', filter],
+    initialPageParam: 0,
+    refetchInterval: ANALYSIS_POLL_MS,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await settingsApi.processing.get({
+        query: { filter, offset: pageParam },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
+  });
+}
+export async function retryFailedImages() {
+  const { data, error } = await settingsApi.retry.post();
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
+  return data;
+}
+export async function checkFaceModel() {
+  const { data, error } = await settingsApi.model.check.post();
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

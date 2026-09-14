@@ -16,6 +16,7 @@ import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { Asset } from '#backend/models/assets/model.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
 import type { FaceModel } from '#backend/models/faces/model.ts';
+import type { FaceModelStatus } from '#backend/models/faces/processing.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { FacesRepository } from '#backend/repositories/faces/repository.ts';
@@ -55,6 +56,7 @@ const EXAMPLE_BOX = [FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT] as const;
 const SECOND_BOX = [SECOND_FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT] as const;
 const SIMILAR_FACE_X = 0.8;
 const SIMILAR_FACE_Y = 0.6;
+const THREE_ANALYSES = 3;
 const PAGE_LIMIT = 10;
 const ANALYSIS_TEST_TIMEOUT_MS = 2000;
 const HIGH_THRESHOLD = 0.99;
@@ -79,6 +81,13 @@ class TestAnalyzer implements FaceAnalyzer {
     defaultThreshold: 0.363,
     supportedMediaTypes: ['image/jpeg'],
   };
+  status = async (): Promise<FaceModelStatus> => ({
+    state: 'ready' as const,
+    downloaded: true,
+    error: null,
+    checkedAt: null,
+  });
+  check = async () => {};
   next = [detectedFace()];
   resultModel: FaceAnalysis['model'] | null = null;
   failure: Error | null = null;
@@ -98,7 +107,7 @@ class TestAnalyzer implements FaceAnalyzer {
   }
 }
 
-async function fixture() {
+async function fixture({ automatic = true } = {}) {
   const folder = await mkdtemp(join(tmpdir(), 'context-use-faces-test-'));
   const database = await createSqliteDatabase({ dataFolder: folder });
   await runMigrations({ db: database });
@@ -123,6 +132,9 @@ async function fixture() {
     analyzer,
   };
   const faces = new AssetFacesService(dependencies);
+  if (automatic) {
+    faces.startProcessing();
+  }
   const assets = new AssetsService({
     assets: assetsRepository,
     storage,
@@ -215,6 +227,9 @@ async function fixture() {
       const result = await assets.create({ ownerId: OWNER, name, file: Bun.file(PHOTO_PATH) });
       if (result.state !== 'created') {
         throw new Error('Test asset creation failed');
+      }
+      if (!automatic) {
+        await faces.process({ ownerId: OWNER, readableId: result.asset.readableId });
       }
       const deadline = Date.now() + ANALYSIS_TEST_TIMEOUT_MS;
       while (Date.now() < deadline) {
@@ -556,8 +571,8 @@ test('saved uploads survive analysis failure, interrupted attempts and model una
   });
   const restarted = new AssetFacesService(context.dependencies);
   expect(await restarted.detail(input)).toMatchObject({
-    state: 'failed',
-    error: expect.stringContaining('interrupted'),
+    state: 'queued',
+    error: null,
   });
   await restarted.process(input);
   expect((await restarted.detail(input))?.state).toBe('ready');
@@ -617,7 +632,7 @@ test('reprocessing retains corrections when detections move or disappear, includ
 });
 
 test('an incompatible embedding space cannot match even with the same dimensions; reprocessing the reference restores matching', async () => {
-  await using context = await fixture();
+  await using context = await fixture({ automatic: false });
   const person = await context.person();
   const portrait = await context.upload('Portrait');
   await context.assignPortrait({
@@ -1110,76 +1125,244 @@ test('face rows and stored links reject invalid decisions, embeddings, and cross
   ).toEqual([]);
 });
 
-test('busy manual processing and scans report a conflict without skipping images or blocking uploads', async () => {
-  await using context = await fixture();
-  const first = await context.upload('A running image');
-  const firstInput = { ownerId: OWNER, readableId: first.readableId };
-  const deferred = Promise.withResolvers<void>();
-  context.analyzer.wait = deferred.promise;
-  const processing = context.faces.process(firstInput);
-  let second: Asset;
-  try {
-    while ((await context.faces.detail(firstInput))?.state !== 'processing') {
-      await Bun.sleep(1);
+async function waitForState({
+  faces,
+  readableId,
+  state,
+}: {
+  faces: AssetFacesService;
+  readableId: string;
+  state: string;
+}) {
+  const deadline = Date.now() + ANALYSIS_TEST_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if ((await faces.detail({ ownerId: OWNER, readableId }))?.state === state) {
+      return;
     }
-    const saved = await context.assets.create({
-      ownerId: OWNER,
-      name: 'B waiting image',
-      file: Bun.file(PHOTO_PATH),
-    });
-    if (saved.state !== 'created') {
-      throw new Error('Busy recognition must not block saving an upload');
-    }
-    second = saved.asset;
-    for (const readableId of [first.readableId, second.readableId]) {
-      const response = await context.request({
-        path: `/assets/${readableId}/faces/analyze`,
-        method: 'POST',
-      });
-      expect(response.status).toBe(StatusMap.Conflict);
-      expect(await response.json()).toEqual({
-        error: 'Image processing is busy. Retry when the current image finishes.',
-      });
-    }
-    for (const after of [null, first.readableId]) {
-      const response = await context.request({
-        path: '/face-recognition/retry',
-        method: 'POST',
-        body: { after },
-      });
-      expect(response.status).toBe(StatusMap.Conflict);
-      expect(await response.json()).not.toHaveProperty('next');
-    }
-    expect(
-      (await context.faces.detail({ ownerId: OWNER, readableId: second.readableId }))?.state,
-    ).toBe('not_processed');
-    expect(
-      (await context.assets.content({ ownerId: OWNER, readableId: second.readableId }))?.blob.size,
-    ).toBe(second.sizeBytes);
-    const foreign = await context.request({
-      path: `/assets/${second.readableId}/faces/analyze`,
-      method: 'POST',
-      owner: OTHER_OWNER,
-    });
-    expect(foreign.status).toBe(StatusMap['Not Found']);
-  } finally {
-    deferred.resolve();
-    await processing;
+    await Bun.sleep(1);
   }
-  const resumed = await context.request({
-    path: '/face-recognition/retry',
-    method: 'POST',
-    body: { after: first.readableId },
+  throw new Error(`Image did not reach ${state}`);
+}
+
+test('busy uploads and repeated analysis requests drain without keeping the browser connected', async () => {
+  await using context = await fixture();
+  const release = Promise.withResolvers<void>();
+  context.analyzer.wait = release.promise;
+  const first = await context.assets.create({
+    ownerId: OWNER,
+    name: 'A running image',
+    file: Bun.file(PHOTO_PATH),
   });
-  expect(resumed.status).toBe(StatusMap.OK);
-  expect(await resumed.json()).toEqual({ next: second.readableId });
+  const second = await context.assets.create({
+    ownerId: OWNER,
+    name: 'B waiting image',
+    file: Bun.file(PHOTO_PATH),
+  });
+  if (first.state !== 'created' || second.state !== 'created') {
+    throw new Error('Upload failed');
+  }
+  try {
+    await waitForState({
+      faces: context.faces,
+      readableId: first.asset.readableId,
+      state: 'processing',
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await context.request({
+        path: `/assets/${second.asset.readableId}/faces/analyze`,
+        method: 'POST',
+      });
+      expect(response.status).toBe(StatusMap.OK);
+      expect(await response.json()).toMatchObject({ state: 'queued' });
+    }
+    const queue = await context.request({ path: '/face-recognition/processing?filter=pending' });
+    const body = await queue.json();
+    expect(body.counts.queued).toBe(2);
+    expect(body.items.map((item: { state: string }) => item.state)).toEqual([
+      'processing',
+      'queued',
+    ]);
+    expectNoInternalResourceIds(body);
+    expect(
+      (
+        await context.request({
+          path: `/assets/${second.asset.readableId}/faces/analyze`,
+          method: 'POST',
+          owner: OTHER_OWNER,
+        })
+      ).status,
+    ).toBe(StatusMap['Not Found']);
+  } finally {
+    release.resolve();
+  }
+  await waitForState({ faces: context.faces, readableId: second.asset.readableId, state: 'ready' });
+  expect(context.analyzer.calls).toBe(2);
+});
+
+test('the worker recovers saved and interrupted images after restart and skips archived assets', async () => {
+  await using context = await fixture({ automatic: false });
+  const saved = await context.assets.create({
+    ownerId: OWNER,
+    name: 'Saved before wake-up',
+    file: Bun.file(PHOTO_PATH),
+  });
+  const interrupted = await context.upload('Interrupted image');
+  const archived = await context.assets.create({
+    ownerId: OWNER,
+    name: 'Archived image',
+    file: Bun.file(PHOTO_PATH),
+  });
+  if (saved.state !== 'created' || archived.state !== 'created') {
+    throw new Error('Upload failed');
+  }
+  await context.assets.archive({ ownerId: OWNER, readableId: archived.asset.readableId });
+  await context.repository.begin({
+    ownerId: OWNER,
+    assetId: interrupted.id,
+    analysisVersion: context.analyzer.model.analysisVersion,
+    contentHash: 'interrupted',
+    attemptId: 'interrupted',
+    updatedAt: new Date().toISOString(),
+  });
+  await context.faces.close();
+  const restarted = new AssetFacesService(context.dependencies);
+  try {
+    restarted.startProcessing();
+    await waitForState({ faces: restarted, readableId: saved.asset.readableId, state: 'ready' });
+    await waitForState({ faces: restarted, readableId: interrupted.readableId, state: 'ready' });
+    expect(context.analyzer.calls).toBe(THREE_ANALYSES);
+  } finally {
+    await restarted.close();
+  }
+});
+
+test('failed images are visible, owner-scoped, and retried explicitly; zero faces is success', async () => {
+  await using context = await fixture();
+  context.analyzer.failure = new Error('bad image');
+  const failed = await context.upload('Failed image');
+  context.analyzer.failure = null;
+  context.analyzer.next = [];
+  await context.upload('Image without faces');
+  const response = await context.request({
+    path: '/face-recognition/processing?filter=failed&limit=1',
+  });
+  const body = await response.json();
+  expect(body.counts).toMatchObject({ failed: 1, ready: 1 });
+  expect(body.items).toHaveLength(1);
+  expect(body.items[0]).toMatchObject({
+    asset: { readableId: failed.readableId },
+    state: 'failed',
+    error: expect.any(String),
+  });
   expect(
-    (await context.faces.detail({ ownerId: OWNER, readableId: second.readableId }))?.state,
-  ).toBe('ready');
-  const complete = await context.request({
-    path: '/face-recognition/retry',
-    method: 'POST',
-    body: { after: second.readableId },
+    (
+      await (
+        await context.request({ path: '/face-recognition/processing', owner: OTHER_OWNER })
+      ).json()
+    ).items,
+  ).toEqual([]);
+  for (const path of [
+    '/face-recognition/processing',
+    '/face-recognition/model/check',
+    '/face-recognition/retry',
+  ]) {
+    expect(
+      (
+        await context.request({
+          path,
+          owner: null,
+          method: path.endsWith('processing') ? 'GET' : 'POST',
+        })
+      ).status,
+    ).toBe(StatusMap.Unauthorized);
+  }
+  await context.request({ path: '/face-recognition/retry', method: 'POST', owner: OTHER_OWNER });
+  expect(
+    (await context.faces.detail({ ownerId: OWNER, readableId: failed.readableId }))?.state,
+  ).toBe('failed');
+  await context.request({ path: '/face-recognition/retry', method: 'POST' });
+  await waitForState({ faces: context.faces, readableId: failed.readableId, state: 'ready' });
+  expect(context.analyzer.calls).toBe(THREE_ANALYSES);
+});
+
+test('images remain queued while the model is unavailable and resume after a successful model check', async () => {
+  await using context = await fixture({ automatic: false });
+  const attempted = Promise.withResolvers<void>();
+  let available = false;
+  context.analyzer.status = async () => ({
+    state: available ? 'ready' : 'unavailable',
+    downloaded: true,
+    error: available ? null : 'Model unavailable',
+    checkedAt: null,
   });
-  expect(await complete.json()).toEqual({ next: null });
+  context.analyzer.check = () => {
+    attempted.resolve();
+    return available ? Promise.resolve() : Promise.reject(new Error('Model unavailable'));
+  };
+  const saved = await context.assets.create({
+    ownerId: OWNER,
+    name: 'Waiting for model',
+    file: Bun.file(PHOTO_PATH),
+  });
+  if (saved.state !== 'created') {
+    throw new Error('Upload failed');
+  }
+  context.faces.startProcessing();
+  await attempted.promise;
+  const response = await context.request({ path: '/face-recognition/processing' });
+  expect(await response.json()).toMatchObject({
+    model: { state: 'unavailable', downloaded: true },
+    counts: { queued: 1, failed: 0 },
+    items: [{ state: 'queued', error: null }],
+  });
+  expect(context.analyzer.calls).toBe(0);
+  available = true;
+  const check = await context.request({ path: '/face-recognition/model/check', method: 'POST' });
+  expect(check.status).toBe(StatusMap.OK);
+  await waitForState({ faces: context.faces, readableId: saved.asset.readableId, state: 'ready' });
+  expect(context.analyzer.calls).toBe(1);
+});
+
+test('a model check excludes direct analysis and keeps queued images pending until it completes', async () => {
+  await using context = await fixture({ automatic: false });
+  const saved = await context.assets.create({
+    ownerId: OWNER,
+    name: 'Waiting for exclusive engine access',
+    file: Bun.file(PHOTO_PATH),
+  });
+  if (saved.state !== 'created') {
+    throw new Error('Upload failed');
+  }
+  const checking = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  context.analyzer.check = async () => {
+    checking.resolve();
+    await release.promise;
+  };
+  const input = { ownerId: OWNER, readableId: saved.asset.readableId };
+  try {
+    await context.faces.checkModel();
+    await checking.promise;
+    context.faces.startProcessing();
+    await expect(context.faces.process(input)).rejects.toThrow('busy');
+    expect(context.analyzer.calls).toBe(0);
+    expect(await context.faces.detail(input)).toMatchObject({ state: 'queued', error: null });
+  } finally {
+    release.resolve();
+  }
+  await waitForState({ faces: context.faces, readableId: saved.asset.readableId, state: 'ready' });
+  expect(context.analyzer.calls).toBe(1);
+});
+
+test('model checks cannot acquire the engine after the face service closes', async () => {
+  await using context = await fixture();
+  let checks = 0;
+  context.analyzer.check = () => {
+    checks++;
+    return Promise.resolve();
+  };
+  await context.faces.close();
+  await context.faces.checkModel();
+  expect(checks).toBe(0);
+  expect(() => context.faces.startProcessing()).toThrow('cannot be restarted');
 });

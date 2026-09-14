@@ -41,8 +41,11 @@ export const unusedAssetFacesService: AssetFacesServiceContract = {
   crop: unexpectedCall,
   settings: unexpectedCall,
   saveThreshold: unexpectedCall,
-  retryBatch: unexpectedCall,
+  enqueue: unexpectedCall,
+  processing: unexpectedCall,
+  checkModel: unexpectedCall,
+  retryFailed: unexpectedCall,
   images: unexpectedCall,
-  processSavedAsset: () => Promise.resolve(),
+  notifyAssetSaved: () => {},
   preparePortrait: () => Promise.resolve(),
 };

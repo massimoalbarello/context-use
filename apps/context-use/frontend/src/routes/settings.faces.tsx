@@ -1,53 +1,56 @@
-import { Button } from '@repo/ui/button';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { FaceModelHealth, FaceProcessingQueue } from '../components/faces/face-processing';
 import { FaceSettingsForm } from '../components/faces/face-settings';
-import { FieldError } from '../components/ui/field';
-import { useRetryNextImage, useSaveFaceThreshold } from '../lib/hooks/use-faces';
-import { faceSettingsQueryOptions } from '../queries/faces';
+import { InfiniteScrollTrigger } from '../components/knowledge/infinite-scroll-trigger';
+import {
+  useAnalyzeAsset,
+  useCheckFaceModel,
+  useRetryFailedImages,
+  useSaveFaceThreshold,
+} from '../lib/hooks/use-faces';
+import {
+  type FaceQueueFilter,
+  faceProcessingQueryOptions,
+  faceSettingsQueryOptions,
+} from '../queries/faces';
 
 export const Route = createFileRoute('/settings/faces')({
-  loader: ({ context }) => context.queryClient.ensureQueryData(faceSettingsQueryOptions),
+  validateSearch: (search: Record<string, unknown>): { filter?: FaceQueueFilter } => ({
+    filter:
+      search.filter === 'failed' ||
+      search.filter === 'ready' ||
+      search.filter === 'unsupported' ||
+      search.filter === 'all'
+        ? search.filter
+        : 'pending',
+  }),
+  loaderDeps: ({ search }) => ({ filter: search.filter }),
+  loader: ({ context, deps }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(faceSettingsQueryOptions),
+      context.queryClient.ensureInfiniteQueryData(faceProcessingQueryOptions(deps)),
+    ]),
   component: FaceSettingsRoute,
 });
 
 function FaceSettingsRoute() {
   const { data } = useSuspenseQuery(faceSettingsQueryOptions);
+  const { filter = 'pending' } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const processing = useSuspenseInfiniteQuery(faceProcessingQueryOptions({ filter }));
+  const latest = processing.data.pages[0]!;
+  const items = [
+    ...new Map(
+      processing.data.pages
+        .flatMap((page) => page.items)
+        .map((item) => [item.asset.readableId, item]),
+    ).values(),
+  ];
   const save = useSaveFaceThreshold();
-  const retry = useRetryNextImage();
-  const continuing = useRef(false);
-  const [scanning, setScanning] = useState(false);
-  const [finished, setFinished] = useState(false);
-  useEffect(
-    () => () => {
-      continuing.current = false;
-    },
-    [],
-  );
-
-  async function retryImages() {
-    continuing.current = true;
-    setScanning(true);
-    setFinished(false);
-    let after: string | null = null;
-    try {
-      while (continuing.current) {
-        const result = await retry.mutateAsync(after);
-        if (result.next === null) {
-          setFinished(true);
-          break;
-        }
-        after = result.next;
-      }
-    } catch {
-      /* The mutation owns its recoverable error. */
-    } finally {
-      continuing.current = false;
-      setScanning(false);
-    }
-  }
-
+  const retry = useRetryFailedImages();
+  const analyze = useAnalyzeAsset();
+  const check = useCheckFaceModel();
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-10 px-5 py-10 md:px-10 md:py-12">
       <header className="grid gap-3">
@@ -57,50 +60,50 @@ function FaceSettingsRoute() {
           Context Use instance.
         </p>
       </header>
-      <FaceSettingsForm
-        key={`${data.model.analysisVersion}/${data.threshold}`}
-        settings={data}
-        pending={save.isPending}
-        error={save.error}
-        onSave={(input) => save.mutate(input)}
-      />
-      {save.isSuccess && (
-        <p role="status" className="text-muted-foreground text-sm">
-          {save.variables.rematch
-            ? 'Threshold saved and automatic matches updated.'
-            : 'Threshold saved.'}
-        </p>
-      )}
-      <section className="grid max-w-2xl gap-4" aria-labelledby="retry-images-heading">
-        <h2 id="retry-images-heading" className="font-semibold text-xl">
-          Process existing images
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          Retry failed or unprocessed images and update images analyzed by an older model. Your
-          originals and corrections are preserved.
-        </p>
-        <div className="flex gap-3">
-          <Button variant="outline" disabled={scanning} onClick={() => void retryImages()}>
-            {scanning ? 'Processing images…' : 'Process images'}
-          </Button>
-          {scanning && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                continuing.current = false;
-              }}
-            >
-              Stop after this image
-            </Button>
-          )}
-        </div>
-        {retry.error && <FieldError>{retry.error.message}</FieldError>}
-        {finished && (
+      <div className="grid max-w-2xl gap-10">
+        <FaceModelHealth
+          model={latest.model}
+          pending={check.isPending}
+          error={check.error}
+          onCheck={() => check.mutate(undefined)}
+        />
+        <FaceProcessingQueue
+          data={{ counts: latest.counts, items }}
+          filter={filter}
+          pending={retry.isPending}
+          retrying={analyze.isPending ? analyze.variables : null}
+          error={
+            retry.error ??
+            analyze.error ??
+            (processing.isFetchNextPageError ? null : processing.error)
+          }
+          onFilter={(value) => void navigate({ search: { filter: value } })}
+          onRetry={(id) => analyze.mutate(id)}
+          onRetryFailed={() => retry.mutate(undefined)}
+        >
+          <InfiniteScrollTrigger
+            hasNextPage={processing.hasNextPage}
+            isFetchingNextPage={processing.isFetchingNextPage}
+            error={processing.isFetchNextPageError ? processing.error : null}
+            loadMore={() => processing.fetchNextPage({ cancelRefetch: false })}
+            idleContent={null}
+          />
+        </FaceProcessingQueue>
+        <FaceSettingsForm
+          key={`${data.model.analysisVersion}/${data.threshold}`}
+          settings={data}
+          pending={save.isPending}
+          error={save.error}
+          onSave={(input) => save.mutate(input)}
+        />
+        {save.isSuccess && (
           <p role="status" className="text-muted-foreground text-sm">
-            Image scan complete. Any images that could not be analyzed remain available to retry.
+            {save.variables.rematch
+              ? 'Threshold saved and automatic matches updated.'
+              : 'Threshold saved.'}
           </p>
         )}
-      </section>
+      </div>
     </div>
   );
 }

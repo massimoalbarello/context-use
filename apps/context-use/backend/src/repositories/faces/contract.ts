@@ -5,6 +5,7 @@ import type {
   FaceModel,
   FaceObservation,
 } from '#backend/models/faces/model.ts';
+import type { FaceQueueFilter, FaceQueueItem } from '#backend/models/faces/processing.ts';
 
 export type FaceAssetInput = { ownerId: string; assetId: string };
 export type AnalysisAttempt = FaceAssetInput & {
@@ -22,7 +23,28 @@ export interface FacesRepositoryContract {
       analysisVersion: string | null;
     }
   >;
+  nextPending(input: {
+    analysisVersion: string;
+    supportedMediaTypes: readonly string[];
+  }): Promise<{ ownerId: string; readableId: string } | null>;
+  queue(input: {
+    ownerId: string;
+    analysisVersion: string;
+    supportedMediaTypes: readonly string[];
+    filter: FaceQueueFilter;
+    offset: number;
+    limit: number;
+  }): Promise<{
+    items: FaceQueueItem[];
+    counts: { queued: number; ready: number; failed: number; unsupported: number };
+  }>;
+  retryFailed(input: {
+    ownerId: string;
+    analysisVersion: string;
+    updatedAt: string;
+  }): Promise<void>;
   observations(input: FaceAssetInput): Promise<StoredFace[]>;
+  enqueue(input: AnalysisAttempt): Promise<void>;
   begin(input: AnalysisAttempt): Promise<void>;
   complete(input: AnalysisAttempt & { faces: FaceObservation[] }): Promise<string[]>;
   fail(input: AnalysisAttempt & { error: string }): Promise<void>;

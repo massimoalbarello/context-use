@@ -56,6 +56,7 @@ async function fixture(fetch: (request: Request) => Response | Promise<Response>
     return {
       analyzer,
       engineStarts,
+      binary,
       reopen: () => new Analyzer({ dataFolder: join(root, 'data') }),
       async close() {
         await analyzer.close();
@@ -158,6 +159,53 @@ test('canceling an image leaves shared preparation running; shutdown cancels the
     expect(await Bun.file(context.engineStarts).exists()).toBe(false);
     await context.analyzer.close();
     expect(await stopped).toBeInstanceOf(Error);
+  } finally {
+    release.resolve();
+    await context.close();
+  }
+});
+
+test('model status distinguishes missing files, download progress, and a usable native engine', async () => {
+  const downloading = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const context = await fixture(async (request) => {
+    downloading.resolve();
+    await release.promise;
+    return new Response(new URL(request.url).pathname === '/0' ? detector : recognizer);
+  });
+  try {
+    expect(await context.analyzer.status()).toMatchObject({
+      state: 'not_downloaded',
+      downloaded: false,
+    });
+    const checking = context.analyzer.check(new AbortController().signal);
+    await downloading.promise;
+    expect(await context.analyzer.status()).toMatchObject({ state: 'checking' });
+    release.resolve();
+    await checking;
+    expect(await context.analyzer.status()).toMatchObject({
+      state: 'ready',
+      downloaded: true,
+      checkedAt: expect.any(String),
+    });
+    const reopened = context.reopen();
+    try {
+      expect(await reopened.status()).toMatchObject({ state: 'unchecked', downloaded: true });
+      await Bun.write(
+        context.binary,
+        `#!${process.execPath}\nconsole.log(JSON.stringify({ ready: false }));`,
+      );
+      await expect(reopened.check(new AbortController().signal)).rejects.toThrow(
+        'did not become ready',
+      );
+      expect(await reopened.status()).toMatchObject({
+        state: 'unavailable',
+        downloaded: true,
+        error: expect.stringContaining('did not become ready'),
+      });
+    } finally {
+      await reopened.close();
+    }
   } finally {
     release.resolve();
     await context.close();

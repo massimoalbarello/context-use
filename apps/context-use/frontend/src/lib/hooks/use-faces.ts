@@ -4,8 +4,9 @@ import { entitiesQueryKey } from '../../queries/entities';
 import {
   analyzeAsset,
   annotateFace,
+  checkFaceModel,
   facesQueryKey,
-  retryNextImage,
+  retryFailedImages,
   saveFaceThreshold,
 } from '../../queries/faces';
 
@@ -31,6 +32,9 @@ export function useAnnotateFace() {
 export function useSaveFaceThreshold() {
   return useFaceMutation(saveFaceThreshold);
 }
-export function useRetryNextImage() {
-  return useFaceMutation(retryNextImage);
+export function useRetryFailedImages() {
+  return useFaceMutation(retryFailedImages);
+}
+export function useCheckFaceModel() {
+  return useFaceMutation(checkFaceModel);
 }
