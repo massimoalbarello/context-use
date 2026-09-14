@@ -32,8 +32,8 @@ export type HypermediaLayout = {
 };
 
 const CANVAS_PADDING = 160;
-const INITIAL_VIEW_WIDTH = 900;
-const INITIAL_VIEW_HEIGHT = 620;
+const INITIAL_VIEW_WIDTH = 1440;
+const INITIAL_VIEW_HEIGHT = 992;
 const ENTITY_MIN_DISTANCE = 150;
 const ENTITY_SPIRAL_STEP = 56;
 const PAGE_SPIRAL_STEP = 76;

@@ -1331,5 +1331,353 @@
       ]
     },
     "path": "records/retail-handoff.md"
+  },
+  {
+    "id": "apple-corps-agreement",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple and Apple Corps settle their trademark dispute",
+      "sourceUrl": "https://www.apple.com/uk/newsroom/2007/02/05Apple-Inc-and-The-Beatles-Apple-Corps-Ltd-Enter-into-New-Agreement/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-02-05",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-02-05T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/apple-corps-agreement.md"
+  },
+  {
+    "id": "iphone-trademark",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Cisco and Apple agree on the iPhone trademark",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/02/21Cisco-and-Apple-Reach-Agreement-on-iPhone-Trademark/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-02-21",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-02-21T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/iphone-trademark.md"
+  },
+  {
+    "id": "apple-tv-shipping",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple TV begins shipping",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/03/21Apple-TV-Now-Shipping/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-03-21",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-03-21T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/apple-tv-shipping.md"
+  },
+  {
+    "id": "complete-my-album",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iTunes introduces Complete My Album",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/03/29iTunes-Introduces-Complete-My-Album/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-03-29",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-03-29T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/complete-my-album.md"
+  },
+  {
+    "id": "emi-drm-announcement",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple announces DRM-free EMI music for May",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/04/02Apple-Unveils-Higher-Quality-DRM-Free-Music-on-the-iTunes-Store/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-04-02",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-04-02T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/emi-drm-announcement.md"
+  },
+  {
+    "id": "macbook-update",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple updates its MacBook notebooks",
+      "sourceUrl": "https://www.apple.com/ie/newsroom/2007/05/15Apple-Updates-Popular-MacBook/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-05-15",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-05-15T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/macbook-update.md"
+  },
+  {
+    "id": "june-quarter-results",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple reports its June quarter and an iPhone sales goal",
+      "sourceUrl": "https://www.apple.com/uk/newsroom/2007/07/25Apple-Reports-Third-Quarter-Results/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-07-25",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-07-25T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/june-quarter-results.md"
+  },
+  {
+    "id": "itunes-three-billion",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iTunes passes three billion song purchases",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/07/31iTunes-Store-Tops-Three-Billion-Songs/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-07-31",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-07-31T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/itunes-three-billion.md"
+  },
+  {
+    "id": "aluminum-imac",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple unveils the aluminum and glass iMac",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/08/07Apple-Unveils-New-iMac/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-08-07",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-08-07T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/aluminum-imac.md"
+  },
+  {
+    "id": "ilife-08",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple introduces iLife ’08",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/08/07Apple-Introduces-iLife-08/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-08-07",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-08-07T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/ilife-08.md"
+  },
+  {
+    "id": "leopard-release-date",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "Apple announces October 26 availability for Leopard",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/10/16Apple-to-Ship-Mac-OS-X-Leopard-on-October-26/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-10-16",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-10-16T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/leopard-release-date.md"
+  },
+  {
+    "id": "itunes-plus-expansion",
+    "provider": "apple-newsroom",
+    "kind": "press-release-summary",
+    "content": {
+      "title": "iTunes Plus expands and drops its price",
+      "sourceUrl": "https://www.apple.com/newsroom/2007/10/17iTunes-Plus-Now-Offers-Over-Two-Million-Tracks-at-Just-99-Cents/",
+      "attributes": {
+        "evidence": "documented",
+        "subjectCoverage": "2007-10-17",
+        "datePrecision": "day",
+        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
+      },
+      "sourceCreatedAt": "2007-10-17T00:00:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "historical-person",
+              "id": "steve-jobs"
+            }
+          ],
+          "roles": ["subject"]
+        }
+      ]
+    },
+    "path": "records/itunes-plus-expansion.md"
   }
 ]

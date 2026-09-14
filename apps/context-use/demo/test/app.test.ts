@@ -17,6 +17,8 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { AssetFaces } from '#backend/models/faces/model.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
+import type { HypermediaPagesSchema } from '#backend/routes/api/hypermedia/model.ts';
+import { MAX_LIST_LIMIT } from '#backend/routes/api/model.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import type {
   KnowledgePageListSchema,
@@ -30,12 +32,12 @@ import { readOnlyStorage } from '../read-only-storage';
 import { createDemoResources } from '../resources';
 import { seedDemoSnapshot } from '../seed';
 
-const EXPECTED_PAGES = 49;
+const EXPECTED_PAGES = 61;
 const EXPECTED_ENTITIES = 30;
 const EXPECTED_PEOPLE = 11;
 const EXPECTED_ORGANIZATIONS = 7;
 const EXPECTED_UNTYPED_ENTITIES = 12;
-const EXPECTED_RECORDS = 39;
+const EXPECTED_RECORDS = 51;
 const EXPECTED_ASSETS = 27;
 const TEST_TIMEOUT_MS = 30_000;
 
@@ -110,12 +112,14 @@ test(
         });
         const read = (path: string) => fetchDemo(new Request(`http://demo.test${path}`));
         for (const [path, count] of [
-          ['/api/pages?limit=50', EXPECTED_PAGES],
+          ['/api/pages?limit=50', MAX_LIST_LIMIT],
+          ['/api/pages?limit=50&offset=50', EXPECTED_PAGES - MAX_LIST_LIMIT],
           ['/api/entities?limit=50', EXPECTED_ENTITIES],
           ['/api/entities?limit=50&entityType=person', EXPECTED_PEOPLE],
           ['/api/entities?limit=50&entityType=organization', EXPECTED_ORGANIZATIONS],
           ['/api/entities?limit=50&entityType=untyped', EXPECTED_UNTYPED_ENTITIES],
-          ['/api/records?limit=50', EXPECTED_RECORDS],
+          ['/api/records?limit=50', MAX_LIST_LIMIT],
+          ['/api/records?limit=50&offset=50', EXPECTED_RECORDS - MAX_LIST_LIMIT],
           ['/api/assets?limit=50', EXPECTED_ASSETS],
         ] as const) {
           const response = await read(path);
@@ -153,6 +157,31 @@ test(
           expect(response.status, path).toBe(StatusMap.OK);
           expect(response.headers.has('set-cookie')).toBe(false);
           await response.arrayBuffer();
+        }
+        // Prove the shared seed produces distinct, discoverable pages each month through
+        // the public demo API, with no month-specific pages leaking into adjacent months.
+        const seenPages = new Set<string>();
+        for (let month = 1; month <= 10; month += 1) {
+          const time = `2007-${String(month).padStart(2, '0')}`;
+          const response = await read(`/api/hypermedia/pages?visible=steve-jobs&time=${time}`);
+          expect(response.status).toBe(StatusMap.OK);
+          const result = (await response.json()) as Static<typeof HypermediaPagesSchema>;
+          expect(result.nextOffset).toBeNull();
+          const datedPages = result.pages.filter((page) => {
+            const coverage = page.temporalCoverage;
+            return coverage !== null && !coverage.includes('/');
+          });
+          expect(
+            datedPages.length,
+            `${time} should visibly change Steve's map`,
+          ).toBeGreaterThanOrEqual(2);
+          for (const page of datedPages) {
+            expect(page.temporalCoverage?.startsWith(time)).toBe(true);
+            expect(seenPages.has(page.readableId)).toBe(false);
+            seenPages.add(page.readableId);
+            expect(page.entities).toContainEqual({ readableId: 'steve-jobs' });
+            expect((await read(`/api/pages/${page.readableId}`)).status).toBe(StatusMap.OK);
+          }
         }
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')

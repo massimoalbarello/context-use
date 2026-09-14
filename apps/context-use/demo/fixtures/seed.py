@@ -12,6 +12,7 @@ APP_URL = os.environ["CONTEXT_USE_APP_URL"]
 EXPECTED_ORIGIN = f"{urlparse(APP_URL).scheme}://{urlparse(APP_URL).netloc}"
 FIXTURE_FOLDER = Path(os.environ["CONTEXT_USE_SEED_FOLDER"])
 UI_TIMEOUT_SECONDS = 30
+RECORD_BATCH_SIZE = 20
 
 
 def read_seed_json(relative_path):
@@ -200,14 +201,20 @@ def create_records(api_key):
             "committedAt": committed_at,
             "content": content,
         })
-    envelope = {"version": 1, "batchId": str(uuid.uuid4()), "records": records}
-    api_request(
-        "POST",
-        "/api/records/batch",
-        envelope,
-        api_key=api_key,
-        headers={"idempotency-key": envelope["batchId"]},
-    )
+    # Keep each browser-harness message below its transport size limit as the seed grows.
+    for start in range(0, len(records), RECORD_BATCH_SIZE):
+        envelope = {
+            "version": 1,
+            "batchId": str(uuid.uuid4()),
+            "records": records[start:start + RECORD_BATCH_SIZE],
+        }
+        api_request(
+            "POST",
+            "/api/records/batch",
+            envelope,
+            api_key=api_key,
+            headers={"idempotency-key": envelope["batchId"]},
+        )
     # Record addresses are allocated by the server and include the sync identity.
     # Resolve from authenticated output rather than duplicating its ID algorithm.
     addresses = {}

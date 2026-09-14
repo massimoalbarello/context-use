@@ -32,10 +32,9 @@ judgment. Do not restate their design, trust, testing, or change-scope guidance 
 1. Run the applicable automated tests and checks required by the repository instructions and the
    changed packages.
 2. Start `bun run dev:isolated:seeded` and exercise the affected behavior in the browser against
-   the disposable seeded application. Use `bun run dev:isolated:seeded --all` when the journey
-   needs fixtures outside the default seed set or the full graph's breadth or volume. Successful
-   startup alone is not validation; test the changed journey and its important failure or boundary
-   states. Stop the isolated process when validation is complete.
+   the disposable seeded application. Successful startup alone is not validation; test the changed
+   journey and its important failure or boundary states. Stop the isolated process when validation
+   is complete.
 3. For a user-visible frontend change, capture clear screenshots of the implemented result after
    browser validation. Include multiple states or viewports when they help the reviewer, and prefer
    a short recording when motion or a multi-step interaction is the behavior under review. Do not
