@@ -155,7 +155,6 @@ export function ResourceBrowser({
             ) : (
               <ResourcePreviewPanel
                 selection={selection}
-                onSelect={select}
                 onClose={close}
                 onExpand={() => {
                   void navigate({

@@ -1,8 +1,7 @@
 import { Button } from '@repo/ui/button';
-import { cn } from '@repo/ui/class-names';
 import { Expand, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useAsset } from '../../lib/hooks/use-assets';
+import { useAssetPreview } from '../../lib/hooks/use-assets';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
 import { useRecord } from '../../lib/hooks/use-records';
@@ -11,11 +10,11 @@ import type { KnowledgePageSummary } from '../../queries/pages';
 import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
 import { EntityAvatar } from '../entities/entity-link';
-import { resourceCardVariants } from '../knowledge/resource-list';
-import { KnowledgePageCardContent, KnowledgePageLink } from '../pages/knowledge-page-link';
+import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { ExternalRecordMarkdown } from '../records/external-record-markdown';
+import { ResourceList } from './resource-list';
 
 function focusPreviewPanel(panel: HTMLElement | null) {
   panel?.focus({ preventScroll: true });
@@ -87,30 +86,18 @@ function PreviewError({ error, retry }: { error: Error; retry: () => Promise<unk
   );
 }
 
-function PreviewPageSection({
-  pages,
-  onSelect,
-}: {
-  pages: KnowledgePageSummary[];
-  onSelect: (selection: ResourceSelection) => void;
-}) {
+function PreviewPageSection({ pages }: { pages: KnowledgePageSummary[] }) {
   return (
     <section className="border-t pt-5">
       <h3 className="font-semibold text-base">Mentioned by knowledge pages</h3>
       {pages.length > 0 ? (
-        <ul className="mt-3 grid gap-2">
+        <ResourceList className="mt-3">
           {pages.map((page) => (
             <li key={page.readableId}>
-              <button
-                type="button"
-                className={cn(resourceCardVariants(), 'h-auto min-h-20 w-full transition')}
-                onClick={() => onSelect({ kind: 'page', readableId: page.readableId })}
-              >
-                <KnowledgePageCardContent page={page} />
-              </button>
+              <KnowledgePageLink page={page} presentation="card" />
             </li>
           ))}
-        </ul>
+        </ResourceList>
       ) : (
         <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
       )}
@@ -122,10 +109,9 @@ type PreviewProps = {
   onExpand: () => void;
   readableId: string;
   onClose: () => void;
-  onSelect: (selection: ResourceSelection) => void;
 };
 
-function PagePreview({ readableId, onClose, onSelect, onExpand }: PreviewProps) {
+function PagePreview({ readableId, onClose, onExpand }: PreviewProps) {
   const { data: page, error, refetch } = usePagePreview(readableId);
   return (
     <PreviewPanelShell
@@ -148,7 +134,6 @@ function PagePreview({ readableId, onClose, onSelect, onExpand }: PreviewProps) 
           markdown={page.markdown}
           mentions={page.mentions}
           recordReferences={page.recordReferences}
-          onSelectResource={onSelect}
         />
       ) : (
         <PreviewStatus>Loading page…</PreviewStatus>
@@ -157,7 +142,7 @@ function PagePreview({ readableId, onClose, onSelect, onExpand }: PreviewProps) 
   );
 }
 
-function EntityPreview({ readableId, onClose, onSelect, onExpand }: PreviewProps) {
+function EntityPreview({ readableId, onClose, onExpand }: PreviewProps) {
   const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
     <PreviewPanelShell label="Entity" onClose={onClose} onExpand={onExpand}>
@@ -170,7 +155,7 @@ function EntityPreview({ readableId, onClose, onSelect, onExpand }: PreviewProps
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
-          <PreviewPageSection pages={entity.pages} onSelect={onSelect} />
+          <PreviewPageSection pages={entity.pages} />
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>
@@ -183,59 +168,24 @@ export function ResourcePreviewPanel({
   selection,
   onExpand,
   onClose,
-  onSelect,
 }: {
   selection: ResourceSelection;
   onExpand: () => void;
   onClose: () => void;
-  onSelect: (selection: ResourceSelection) => void;
 }) {
-  const key = `${selection.kind}:${selection.readableId}`;
-
-  if (selection.kind === 'asset') {
-    return (
-      <AssetPreview
-        key={key}
-        readableId={selection.readableId}
-        onClose={onClose}
-        onExpand={onExpand}
-      />
-    );
-  }
-  if (selection.kind === 'record') {
-    return (
-      <RecordPreview
-        key={key}
-        readableId={selection.readableId}
-        onClose={onClose}
-        onExpand={onExpand}
-      />
-    );
-  }
-  if (selection.kind === 'page') {
-    return (
-      <PagePreview
-        onExpand={onExpand}
-        key={key}
-        readableId={selection.readableId}
-        onClose={onClose}
-        onSelect={onSelect}
-      />
-    );
-  }
+  const Preview = previewComponents[selection.kind];
   return (
-    <EntityPreview
-      onExpand={onExpand}
-      key={key}
+    <Preview
+      key={`${selection.kind}:${selection.readableId}`}
       readableId={selection.readableId}
       onClose={onClose}
-      onSelect={onSelect}
+      onExpand={onExpand}
     />
   );
 }
 
-function AssetPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'onSelect'>) {
-  const { data: asset, error, refetch } = useAsset(readableId);
+function AssetPreview({ readableId, onClose, onExpand }: PreviewProps) {
+  const { data: asset, error, refetch } = useAssetPreview(readableId);
   return (
     <PreviewPanelShell label="Asset" onClose={onClose} onExpand={onExpand}>
       {error ? (
@@ -255,7 +205,7 @@ function AssetPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'onS
   );
 }
 
-function RecordPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'onSelect'>) {
+function RecordPreview({ readableId, onClose, onExpand }: PreviewProps) {
   const { data: record, error, refetch } = useRecord(readableId);
   return (
     <PreviewPanelShell label="Record" onClose={onClose} onExpand={onExpand}>
@@ -271,9 +221,13 @@ function RecordPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'on
           {record.backlinks.length > 0 && (
             <section className="grid gap-2 border-t pt-4">
               <h3 className="font-semibold">Referenced by</h3>
-              {record.backlinks.map((page) => (
-                <KnowledgePageLink key={page.readableId} page={page} presentation="card" />
-              ))}
+              <ResourceList>
+                {record.backlinks.map((page) => (
+                  <li key={page.readableId}>
+                    <KnowledgePageLink page={page} presentation="card" />
+                  </li>
+                ))}
+              </ResourceList>
             </section>
           )}
         </div>
@@ -283,3 +237,10 @@ function RecordPreview({ readableId, onClose, onExpand }: Omit<PreviewProps, 'on
     </PreviewPanelShell>
   );
 }
+
+const previewComponents = {
+  entity: EntityPreview,
+  page: PagePreview,
+  asset: AssetPreview,
+  record: RecordPreview,
+};

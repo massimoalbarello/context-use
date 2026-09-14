@@ -9,6 +9,7 @@ export const ResourceNavigation = createContext<{
 export function useResourceLink(selection: ResourceSelection) {
   const navigation = useContext(ResourceNavigation);
   return {
+    preload: navigation ? (false as const) : undefined,
     selected: navigation
       ? navigation.selection?.kind === selection.kind &&
         navigation.selection?.readableId === selection.readableId

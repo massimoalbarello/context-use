@@ -89,6 +89,7 @@ export function EntityLink({ entity, presentation, active, children, search }: E
     return (
       <Link
         onClick={resourceLink.onClick}
+        preload={resourceLink.preload}
         className="relative mx-0.5 inline-block rounded-full bg-muted py-0.5 pr-2 pl-[2.0625rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
         to="/entities/$id"
         params={{ id: entity.readableId }}
@@ -107,6 +108,7 @@ export function EntityLink({ entity, presentation, active, children, search }: E
   return (
     <Link
       onClick={resourceLink.onClick}
+      preload={resourceLink.preload}
       className={cn(resourceCardVariants(), 'transition')}
       to="/entities/$id"
       params={{ id: entity.readableId }}

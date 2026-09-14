@@ -42,7 +42,7 @@ function AssetFilterControl({ query }: { query: string }) {
       onApply={(nextQuery) => {
         void navigate({
           to: '/assets',
-          search: { q: nextQuery || undefined },
+          search: (previous) => ({ ...previous, q: nextQuery || undefined }),
           replace: true,
         });
       }}

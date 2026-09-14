@@ -49,6 +49,7 @@ export function RecordLink({
     return (
       <Link
         onClick={resourceLink.onClick}
+        preload={resourceLink.preload}
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
         to="/records/$id"
         params={{ id: record.readableId }}
@@ -61,6 +62,7 @@ export function RecordLink({
   return (
     <Link
       onClick={resourceLink.onClick}
+      preload={resourceLink.preload}
       className={`${resourceCardVariants()} h-auto min-h-24`}
       to="/records/$id"
       params={{ id: record.readableId }}

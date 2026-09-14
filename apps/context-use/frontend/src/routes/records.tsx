@@ -70,7 +70,11 @@ function RecordsLayout() {
           search={search}
           options={filterOptions}
           onChange={(next) => {
-            void navigate({ to: '/records', search: next, replace: true });
+            void navigate({
+              to: '/records',
+              search: (previous) => ({ ...next, ...resourceSearch(previous) }),
+              replace: true,
+            });
           }}
         />
       }

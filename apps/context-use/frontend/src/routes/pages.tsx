@@ -56,12 +56,6 @@ function PageFilterControl({ search }: { search: PageSearch }) {
   const navigate = Route.useNavigate();
   const { interval } = search;
   const dateRange = calendarDateRangeFromSearch(search);
-  const commonSearch = {
-    q: search.q,
-    interval,
-    from: dateRange?.from,
-    to: dateRange?.to,
-  };
 
   return (
     <PageFilters
@@ -70,19 +64,19 @@ function PageFilterControl({ search }: { search: PageSearch }) {
       onIntervalChange={(nextInterval) => {
         void navigate({
           to: '/pages',
-          search: {
-            ...commonSearch,
+          search: (previous) => ({
+            ...previous,
             interval: nextInterval,
-            from: nextInterval === 'without' ? undefined : commonSearch.from,
-            to: nextInterval === 'without' ? undefined : commonSearch.to,
-          },
+            from: nextInterval === 'without' ? undefined : previous.from,
+            to: nextInterval === 'without' ? undefined : previous.to,
+          }),
           replace: true,
         });
       }}
       onDateRangeApply={(nextRange) => {
         void navigate({
           to: '/pages',
-          search: { ...commonSearch, from: nextRange?.from, to: nextRange?.to },
+          search: (previous) => ({ ...previous, from: nextRange?.from, to: nextRange?.to }),
           replace: true,
         });
       }}

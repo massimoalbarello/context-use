@@ -11,6 +11,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { ResourceNavigation } from '../../src/components/knowledge/resource-navigation';
 import { ResourcePreviewPanel } from '../../src/components/knowledge/resource-preview-panel';
 import type { ResourceSelection } from '../../src/lib/resource-selection';
 import { type KnowledgePagePreview, pagePreviewQueryOptions } from '../../src/queries/pages';
@@ -32,12 +33,13 @@ async function renderPreview(selection: ResourceSelection): Promise<string> {
   const rootRoute = createRootRoute({
     component: () => (
       <QueryClientProvider client={queryClient}>
-        <ResourcePreviewPanel
-          onExpand={() => undefined}
-          selection={selection}
-          onClose={() => undefined}
-          onSelect={() => undefined}
-        />
+        <ResourceNavigation value={{ selection, onSelect: () => undefined }}>
+          <ResourcePreviewPanel
+            onExpand={() => undefined}
+            selection={selection}
+            onClose={() => undefined}
+          />
+        </ResourceNavigation>
       </QueryClientProvider>
     ),
   });
@@ -81,12 +83,7 @@ async function renderInteractivePreview(onClose: () => void) {
         <button type="button" onClick={() => setSelection(nextSelection)}>
           Select another page
         </button>
-        <ResourcePreviewPanel
-          onExpand={() => undefined}
-          selection={selection}
-          onClose={onClose}
-          onSelect={setSelection}
-        />
+        <ResourcePreviewPanel onExpand={() => undefined} selection={selection} onClose={onClose} />
       </>
     );
   }
@@ -106,13 +103,13 @@ async function renderInteractivePreview(onClose: () => void) {
   render(<RouterProvider router={router} />);
 }
 
-test('page preview content keeps entity navigation inside the Hypermedia overlay', async () => {
+test('page previews reuse resource links and keep unavailable records unlinked', async () => {
   const pageHtml = await renderPreview({ kind: 'page', readableId: 'project-brief' });
 
-  expect(pageHtml).toContain('>launch plan</button>');
-  expect(pageHtml).toContain('>metrics</button>');
-  expect(pageHtml).not.toContain('href="/entities/maya-chen"');
-  expect(pageHtml).not.toContain('href="/pages/launch-plan"');
+  expect(pageHtml).toContain('>launch plan</a>');
+  expect(pageHtml).toContain('href="/assets/rollout-metrics"');
+  expect(pageHtml).toContain('href="/entities/maya-chen"');
+  expect(pageHtml).toContain('href="/pages/launch-plan?');
   expect(pageHtml).toContain('(record unavailable)');
   expect(pageHtml).not.toContain('href="/records/research');
 });

@@ -58,6 +58,7 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
     return (
       <Link
         onClick={resourceLink.onClick}
+        preload={resourceLink.preload}
         className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
         to="/assets/$id"
         params={{ id: asset.readableId }}
@@ -70,6 +71,7 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
   return (
     <Link
       onClick={resourceLink.onClick}
+      preload={resourceLink.preload}
       className={cn(resourceCardVariants(), 'transition')}
       to="/assets/$id"
       params={{ id: asset.readableId }}

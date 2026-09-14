@@ -62,7 +62,7 @@ async function renderResourceBrowser(path = '/pages') {
     createdAt: timestamp,
     updatedAt: timestamp,
     markdown:
-      '# Launch plan\n\n[Owner](context-use://entity/owner) uses [chart](context-use://asset/chart) and [research](context-use://record/research).',
+      '# Launch plan\n\n[Owner](context-use://entity/owner) uses [chart](context-use://asset/chart) and [research](context-use://record/research). See the [timeline](context-use://page/launch#timeline).\n\n## Timeline\n\n![Chart](context-use://asset/chart)',
     mentions: [entity],
     recordReferences: [
       {
@@ -102,17 +102,20 @@ async function renderResourceBrowser(path = '/pages') {
   client.setQueryData(sessionQueryOptions.queryKey, session);
   const profile: KnowledgeProfile = { selfEntity: entity };
   client.setQueryData(profileQueryOptions.queryKey, profile);
+  const requests: URL[] = [];
   let failedResource = false;
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = new URL(input instanceof Request ? input.url : input);
+        requests.push(url);
         if (url.pathname === '/api/records/research' && failedResource) {
           return Promise.resolve(
             Response.json({ error: 'Record temporarily unavailable' }, { status: 503 }),
           );
         }
         const responses: Record<string, unknown> = {
+          '/api/hypermedia/search': { results: [], totalMatches: 0 },
           '/api/pages': { items: [page], total: 1, nextOffset: null },
           '/api/entities': { items: [entity], total: 1, nextOffset: null },
           '/api/assets': { items: [asset], total: 1, nextOffset: null },
@@ -138,6 +141,7 @@ async function renderResourceBrowser(path = '/pages') {
   );
   const router = createRouter({
     routeTree,
+    defaultPreload: 'intent',
     context: { queryClient: client },
     history: createMemoryHistory({ initialEntries: [path] }),
   });
@@ -149,6 +153,7 @@ async function renderResourceBrowser(path = '/pages') {
   );
   return {
     router,
+    requests,
     failRecord: (failed: boolean) => {
       failedResource = failed;
     },
@@ -237,7 +242,7 @@ test('related resources preserve the collection, filters and selection across ex
   try {
     const listLink = await screen.findByRole('link', { name: 'Launch plan Launch overview' });
     await user.click(listLink);
-    await user.click(await screen.findByRole('button', { name: 'Owner' }));
+    await user.click(await screen.findByRole('link', { name: 'Owner' }));
     expect(await screen.findByRole('complementary', { name: 'Entity preview' })).toBeTruthy();
     expect(app.router.state.location.pathname).toBe('/pages');
     expect(app.router.state.location.search).toMatchObject({
@@ -249,11 +254,11 @@ test('related resources preserve the collection, filters and selection across ex
     expect(
       await screen.findByRole('complementary', { name: 'Knowledge page preview' }),
     ).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'chart' }));
+    await user.click(screen.getByRole('link', { name: 'chart' }));
     expect(await screen.findByRole('img', { name: 'Launch chart' })).toBeTruthy();
     expect(app.router.state.location.pathname).toBe('/pages');
     app.router.history.back();
-    await user.click(await screen.findByRole('button', { name: 'research' }));
+    await user.click(await screen.findByRole('link', { name: 'research' }));
     expect(await screen.findByText('Research source content.')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Expand' }));
     expect(await screen.findByRole('tab', { name: 'Metadata' })).toBeTruthy();
@@ -301,7 +306,7 @@ test('preview failures can be retried without leaving the collection', async () 
     const user = userEvent.setup();
     app.failRecord(true);
     await user.click(await screen.findByRole('link', { name: 'Launch plan Launch overview' }));
-    await user.click(await screen.findByRole('button', { name: 'research' }));
+    await user.click(await screen.findByRole('link', { name: 'research' }));
     expect(await screen.findByText('Record temporarily unavailable')).toBeTruthy();
     app.failRecord(false);
     await user.click(screen.getByRole('button', { name: 'Try again' }));
@@ -326,6 +331,125 @@ test('direct detail URLs hide collection controls and keep related previews in t
     expect(await screen.findByRole('heading', { name: 'Launch plan' })).toBeTruthy();
     expect(app.router.state.location.pathname).toBe('/pages/launch');
     expect(screen.queryByRole('searchbox')).toBeNull();
+  } finally {
+    app.dispose();
+  }
+});
+
+test('preview links retain canonical URLs and modifier clicks without leaving the collection', async () => {
+  const app = await renderResourceBrowser('/pages?resource=page&resourceId=launch');
+  const user = userEvent.setup();
+  try {
+    const preview = await screen.findByRole('complementary', { name: 'Knowledge page preview' });
+    for (const [name, path] of [
+      ['Owner', '/entities/owner'],
+      ['chart', '/assets/chart'],
+      ['research', '/records/research'],
+      ['timeline', '/pages/launch'],
+    ] as const) {
+      const link = await within(preview).findByRole('link', { name });
+      expect(link.getAttribute('href')).toStartWith(path);
+      await user.keyboard('{Control>}');
+      await user.click(link);
+      await user.keyboard('{/Control}');
+      expect(app.router.state.location.pathname).toBe('/pages');
+      expect(app.router.state.location.search.resourceId).toBe('launch');
+    }
+    expect(within(preview).getByRole('img', { name: 'Chart' }).getAttribute('src')).toBe(
+      '/api/assets/chart/content',
+    );
+    await user.click(within(preview).getByRole('link', { name: 'timeline' }));
+    expect(app.router.state.location.hash).toBe('timeline');
+    expect(app.router.state.location.search.resourceId).toBe('launch');
+  } finally {
+    app.dispose();
+  }
+});
+
+test('asset previews use bounded relationships and expansion loads the full detail', async () => {
+  const app = await renderResourceBrowser('/assets?resource=asset&resourceId=chart');
+  try {
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { name: 'Launch chart' });
+    expect(
+      app.requests
+        .filter((url) => url.pathname === '/api/assets/chart')
+        .map((url) => url.searchParams.get('relationshipLimit')),
+    ).toEqual(['12']);
+    await user.click(screen.getByRole('button', { name: 'Expand' }));
+    await screen.findByRole('button', { name: 'Edit asset' });
+    expect(
+      app.requests
+        .filter((url) => url.pathname === '/api/assets/chart')
+        .map((url) => url.searchParams.get('relationshipLimit')),
+    ).toEqual(['12', null]);
+  } finally {
+    app.dispose();
+  }
+});
+
+test('searching and clearing an asset query preserves its preview', async () => {
+  const app = await renderResourceBrowser('/assets?resource=asset&resourceId=chart');
+  try {
+    const user = userEvent.setup();
+    const input = await screen.findByRole('searchbox', { name: 'Search assets' });
+    await user.type(input, 'launch{Enter}');
+    await waitFor(() => expect(app.router.state.location.search.q).toBe('launch'));
+    expect(screen.getByRole('complementary', { name: 'Asset preview' })).toBeTruthy();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(app.router.state.location.search.q).toBeUndefined());
+    expect(app.router.state.location.search.resourceId).toBe('chart');
+  } finally {
+    app.dispose();
+  }
+});
+
+for (const { path, filter, reset, key } of [
+  {
+    path: '/entities?entityType=person&resource=page&resourceId=launch',
+    filter: 'Filter entities',
+    reset: 'Reset filters',
+    key: 'entityType',
+  },
+  {
+    path: '/records?provider=notion&resource=page&resourceId=launch',
+    filter: 'Filter and sort records',
+    reset: 'Reset filters and order',
+    key: 'provider',
+  },
+] as const) {
+  test(`${filter} resets only collection criteria and keeps the selected preview`, async () => {
+    const app = await renderResourceBrowser(path);
+    try {
+      const user = userEvent.setup();
+      await screen.findByRole('heading', { name: 'Launch plan' });
+      await user.click(screen.getByRole('button', { name: filter }));
+      await user.click(screen.getByRole('button', { name: reset }));
+      await waitFor(() => expect(app.router.state.location.search[key]).toBeUndefined());
+      expect(app.router.state.location.search.resourceId).toBe('launch');
+    } finally {
+      app.dispose();
+    }
+  });
+}
+
+test('page interval and date filters keep the selected resource', async () => {
+  const app = await renderResourceBrowser(
+    '/pages?from=2026-01-01&to=2026-01-31&resource=page&resourceId=launch',
+  );
+  try {
+    const user = userEvent.setup();
+    await screen.findByRole('heading', { name: 'Launch plan' });
+    await user.click(screen.getByRole('button', { name: 'Filter pages' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Filter by date range: 01/01/2026 – 31/01/2026' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    await waitFor(() => expect(app.router.state.location.search.from).toBeUndefined());
+    expect(app.router.state.location.search.resourceId).toBe('launch');
+    await user.click(screen.getByRole('tab', { name: 'Without' }));
+    await waitFor(() => expect(app.router.state.location.search.interval).toBe('without'));
+    expect(app.router.state.location.search.resourceId).toBe('launch');
   } finally {
     app.dispose();
   }

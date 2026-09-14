@@ -41,7 +41,11 @@ export const Route = createFileRoute('/entities')({
 function EntityFilterControl({ search }: { search: EntitySearch }) {
   const navigate = Route.useNavigate();
   const onChange = (next: EntitySearch) => {
-    void navigate({ to: '/entities', search: next, replace: true });
+    void navigate({
+      to: '/entities',
+      search: (previous) => ({ ...next, ...resourceSearch(previous) }),
+      replace: true,
+    });
   };
   const type = search.entityType ?? 'all';
   return (
