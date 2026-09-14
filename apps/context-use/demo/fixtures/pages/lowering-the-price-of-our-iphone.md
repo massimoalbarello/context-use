@@ -1,5 +1,7 @@
 # Lowering the price of our iPhone
 
-We have [cut the US 8GB iPhone price](context-use://record/iphone-price) to $399 from $599; the 4GB model is available while supplies last. [I](context-use://entity/steve-jobs) am widening the product’s reach after [the launch preparations](context-use://page/opening-our-doors-for-iphone).
+[I](context-use://entity/steve-jobs) approved moving the US 8GB iPhone from $599 to $399 to reach more holiday customers; the 4GB model remains only while supplies last. The [pricing meeting](context-use://record/iphone-price) connects this to the [million-sale goal](context-use://page/setting-our-million-goal), which is still a forecast.
 
-Our release forecasts a million sales by the end of September. I should not record that forecast as an achieved milestone.
+[Ron](context-use://entity/ron-johnson) raised the consequence for people who paid the original price weeks ago. That concern belongs beside the [January price promise](context-use://page/introducing-the-phone-we-built). It also tests the [principle of treating an earlier purchase fairly](context-use://page/completing-the-album).
+
+I assigned [Tim](context-use://entity/tim-cook) execution, [Phil](context-use://entity/phil-schiller) the announcement and Ron the customer reactions. Today's [retail escalation](context-use://record/iphone-price-reaction) says the issue is trust, not whether $399 is attractive. I asked for a concrete credit proposal tomorrow. The lower price is decided; a remedy is not yet approved.

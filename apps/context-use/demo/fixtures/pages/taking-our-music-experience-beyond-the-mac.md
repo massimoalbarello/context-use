@@ -1,3 +1,5 @@
 # Taking our music experience beyond the Mac
 
-Our [first iPod](context-use://page/putting-the-first-ipod-in-my-pocket) takes the [iTunes library](context-use://page/bringing-music-into-the-mac) into a pocket. [I](context-use://entity/steve-jobs) am keeping the hardware, software and demonstration connected, down to the [demo handoff with Tony](context-use://page/walking-the-first-ipod-demo-with-tony). The current experience starts with a Mac.
+[I](context-use://entity/steve-jobs) am building a way to take a collection with you, starting with [iTunes on the Mac](context-use://page/bringing-music-into-the-mac) and the [first iPod](context-use://page/putting-the-first-ipod-in-my-pocket). The [rehearsal](context-use://record/demo-handoff) is my current test of whether the parts behave like one product.
+
+The initial choice is Mac-only. It gives us one library and sync path to make good; it also excludes PC owners. [Tony](context-use://entity/tony-fadell) is keeping Windows requests visible while [Jon](context-use://entity/jon-rubinstein) owns getting the current product ready. I have not yet resolved the reach-versus-control tradeoff.

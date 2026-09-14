@@ -1,5 +1,7 @@
 # Choosing Disney for Pixar’s next chapter
 
-With [Bob Iger](context-use://entity/bob-iger), [I](context-use://entity/steve-jobs) have agreed to bring [Pixar](context-use://entity/pixar) into [Disney](context-use://entity/disney). The [acquisition announcement](context-use://record/pixar-announcement) still requires approvals.
+[I](context-use://entity/steve-jobs) am choosing a shared future with [Disney](context-use://entity/disney) over continuing [Pixar](context-use://entity/pixar) with a distribution arrangement. The [decision meeting with Bob, Ed and John](context-use://record/pixar-call) records the alternatives and my criterion: preserve the people and practices that make the films good.
 
-In our [conference call](context-use://record/pixar-call), I describe the alternative of a distribution arrangement and the attraction of aligning our interests around films and characters. This is a separate corporate decision from [our iTunes television agreement](context-use://page/working-with-bob-to-put-television-in-itunes), even though Bob and I are involved in both.
+The [television work with Bob](context-use://page/working-with-bob-to-put-television-in-itunes) gave me evidence that we can make a concrete agreement work. It does not by itself justify an acquisition. [Ed](context-use://entity/ed-catmull) is concerned about how organizational changes affect candid review; [John](context-use://entity/john-lasseter) wants creative decisions to stay centered on the story.
+
+The [announcement thread](context-use://record/pixar-announcement) distinguishes the agreement from closing. The proposed arrangement puts Ed and John in animation leadership and gives me a Disney board role when approvals are complete. Until then I remain responsible for Pixar. I need to carry the creative agreement forward, not just the transaction terms.

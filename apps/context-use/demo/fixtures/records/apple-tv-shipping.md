@@ -1,7 +1,18 @@
-# Apple TV begins shipping
+# Apple TV: the living-room handoff is part of the product
 
-Research summary, paraphrased for this seed; not the original document.
+Fictional demo · Synced from Slack · 2007-03-21
 
-Apple TV begins shipping for $299 in the US. It plays iTunes media from a Mac or PC on a widescreen television, using local synchronization or streaming. Phil Schiller presents the product in the announcement.
+**Workspace:** Apple\
+**Channel:** #digital-hub
 
-Source: [Apple TV begins shipping](https://www.apple.com/newsroom/2007/03/21Apple-TV-Now-Shipping/).
+### Phil Schiller · 16:00 UTC
+
+Apple TV is shipping at $299. The demonstration starts with iTunes on a Mac or PC and ends with the media on a widescreen television, using sync or streaming.
+
+### Ron Johnson · 16:12 UTC
+
+The store walkthrough needs to include the home network step. If we demonstrate only a television already playing video, we skip the part a customer must set up.
+
+### Steve Jobs · 16:24 UTC
+
+Use the same standard as the iPod demo: start where the collection actually lives. Ron owns the setup explanation; Phil owns the promise. Bring any gap between the two to the next review.

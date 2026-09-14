@@ -1,0 +1,7 @@
+# Making our store part of the music experience
+
+[I](context-use://entity/steve-jobs) have changed [iTunes Plus to 99 cents](context-use://page/lowering-itunes-plus-prices) after [Ron's](context-use://entity/ron-johnson) customer questions connected the [May launch](context-use://page/opening-emi-purchases-beyond-drm) to the [July review](context-use://page/passing-three-billion-songs). The [October thread](context-use://record/itunes-plus-expansion) explains the current offer; the earlier decisions explain why it changed.
+
+The store's path is cumulative: [buy a song](context-use://page/selling-songs-one-at-a-time), [reach PC owners](context-use://page/bringing-our-own-itunes-to-windows), [buy television](context-use://page/working-with-bob-to-put-television-in-itunes), [bring the collection into the living room](context-use://page/taking-itunes-to-the-tv), [make earlier purchases count](context-use://page/completing-the-album), and [remove playback restrictions](context-use://page/opening-music-with-emi). Each step changes what someone can do next with less friction.
+
+I should apply the same fairness test outside the store. The [iPhone credit decision](context-use://page/responding-to-our-early-iphone-customers) shows the cost of not examining what a new offer means to an existing customer. [Phil](context-use://entity/phil-schiller) owns a simple current explanation; I want the previous promises preserved for the next pricing review.

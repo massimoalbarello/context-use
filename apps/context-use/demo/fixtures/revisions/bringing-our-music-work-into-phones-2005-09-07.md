@@ -1,3 +1,5 @@
 # Bringing our music work into phones
 
-Our [Motorola plan](context-use://page/taking-itunes-onto-motorola-phones) has become [the ROKR release](context-use://page/shipping-itunes-on-the-rokr). [I](context-use://entity/steve-jobs) keep its partner boundaries and music capacity explicit alongside [the nano we introduced the same day](context-use://page/putting-a-display-into-the-smaller-nano). These are two different ways to carry music.
+The [Motorola plan](context-use://page/taking-itunes-onto-motorola-phones) has become [ROKR](context-use://page/shipping-itunes-on-the-rokr), later than the first-half-2005 window. The [release email](context-use://record/rokr-launch) names the 100-song limit and the handset/carrier boundaries we still do not own.
+
+[I](context-use://entity/steve-jobs) introduced [nano](context-use://page/putting-a-display-into-the-smaller-nano) on the same day. That gives [Tony](context-use://entity/tony-fadell) a comparison for tomorrow: find music, take a call and return to listening. I want observations before choosing the next direction. The lesson from [Windows iTunes](context-use://page/bringing-our-own-itunes-to-windows) suggests that placing our software in a partner path is not the same as owning the entire experience.

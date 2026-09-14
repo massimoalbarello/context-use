@@ -6,7 +6,10 @@ import type { FaceAnalyzer } from '#backend/lib/face-analysis/analyzer.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { EntityType } from '#backend/models/entities/model.ts';
-import type { DeliveredRecord } from '#backend/models/records/delivery-contract.generated.ts';
+import {
+  type DeliveredRecord,
+  MAX_RECORD_DELIVERY_BATCH_RECORDS,
+} from '#backend/models/records/delivery-contract.generated.ts';
 import { RecordSyncsRepository } from '#backend/repositories/syncs/repository.ts';
 import { RecordSyncsService } from '#backend/services/syncs/service.ts';
 import { DEMO_OWNER_ID } from './identity';
@@ -32,6 +35,7 @@ type RecordFixture = Pick<DeliveredRecord, 'id' | 'provider' | 'kind'> & {
   content: Omit<Extract<DeliveredRecord, { operation: 'added' }>['content'], 'body'>;
 };
 type PageFixture = { readableId: string; path: string; temporalCoverage: string | null };
+type SyncFixture = { provider: string; sourceId: string; name: string };
 
 function fixture(path: string) {
   return Bun.file(join(FIXTURES, path));
@@ -148,44 +152,57 @@ async function seedRecords({
   database: Awaited<ReturnType<typeof createSqliteDatabase>>;
 }) {
   const syncs = new RecordSyncsService({ syncs: new RecordSyncsRepository(database) });
-  const created = await syncs.create({
-    actorId: DEMO_OWNER_ID,
-    name: 'Steve Jobs historical research',
-  });
-  if (created.state !== 'created') {
-    throw new Error(`Demo research sync: ${created.state}`);
-  }
-  const principal = await syncs.authenticate({ apiKey: created.apiKey });
-  if (!principal) {
-    throw new Error('Demo research sync could not be resolved');
-  }
   const fixtures: RecordFixture[] = await fixture('records/index.json').json();
-  const records: DeliveredRecord[] = await Promise.all(
-    fixtures.map(async (record) => {
-      const content = { ...record.content, body: await fixture(record.path).text() };
-      return {
-        eventId: Bun.randomUUIDv7(),
-        provider: record.provider,
-        sourceId: 'steve-jobs-ipod-iphone-2001-2007',
-        kind: record.kind,
-        id: record.id,
-        revision: 1,
-        operation: 'added',
-        contentHash: new Bun.CryptoHasher('sha256').update(canonicalize(content)!).digest('hex'),
-        committedAt: new Date().toISOString(),
-        content,
-      };
-    }),
-  );
-  const result = await resources.recordsService.accept({
-    ownerId: DEMO_OWNER_ID,
-    syncId: principal.syncId,
-    envelope: { version: 1, batchId: Bun.randomUUIDv7(), records },
-  });
-  if (result.state !== 'accepted') {
-    throw new Error(`Demo records: ${result.state}`);
+  const sources: SyncFixture[] = await fixture('syncs/index.json').json();
+  for (const source of sources) {
+    const created = await syncs.create({ actorId: DEMO_OWNER_ID, name: source.name });
+    if (created.state !== 'created') {
+      throw new Error(`Demo sync ${source.name}: ${created.state}`);
+    }
+    try {
+      const principal = await syncs.authenticate({ apiKey: created.apiKey });
+      if (!principal) {
+        throw new Error(`Demo sync ${source.name} could not be resolved`);
+      }
+      const records: DeliveredRecord[] = await Promise.all(
+        fixtures
+          .filter((record) => record.provider === source.provider)
+          .map(async (record) => {
+            const content = { ...record.content, body: await fixture(record.path).text() };
+            return {
+              eventId: Bun.randomUUIDv7(),
+              provider: record.provider,
+              sourceId: source.sourceId,
+              kind: record.kind,
+              id: record.id,
+              revision: 1,
+              operation: 'added',
+              contentHash: new Bun.CryptoHasher('sha256')
+                .update(canonicalize(content)!)
+                .digest('hex'),
+              committedAt: new Date().toISOString(),
+              content,
+            };
+          }),
+      );
+      for (let start = 0; start < records.length; start += MAX_RECORD_DELIVERY_BATCH_RECORDS) {
+        const result = await resources.recordsService.accept({
+          ownerId: DEMO_OWNER_ID,
+          syncId: principal.syncId,
+          envelope: {
+            version: 1,
+            batchId: Bun.randomUUIDv7(),
+            records: records.slice(start, start + MAX_RECORD_DELIVERY_BATCH_RECORDS),
+          },
+        });
+        if (result.state !== 'accepted') {
+          throw new Error(`Demo records from ${source.name}: ${result.state}`);
+        }
+      }
+    } finally {
+      await syncs.revoke({ actorId: DEMO_OWNER_ID, readableId: created.sync.readableId });
+    }
   }
-  await syncs.revoke({ actorId: DEMO_OWNER_ID, readableId: created.sync.readableId });
   const addresses = new Map<string, string>();
   let offset: number | null = 0;
   while (offset !== null) {

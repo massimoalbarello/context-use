@@ -1,5 +1,7 @@
 # Selling songs one at a time
 
-[I](context-use://entity/steve-jobs) am adding a way to buy music to the library we already manage. Our [iTunes Music Store launch](context-use://record/store-launch) offers US Mac customers more than 200,000 songs from BMG, EMI, Sony, Universal and Warner at 99 cents each, without a subscription.
+The [first iPod](context-use://page/putting-the-first-ipod-in-my-pocket) made carrying music simple; it did not make acquiring music simple. [I](context-use://entity/steve-jobs) am closing that gap with the [Music Store](context-use://entity/itunes-store): individual songs at 99 cents, without a subscription requirement.
 
-The [store](context-use://entity/itunes-store) opens inside [iTunes](context-use://entity/itunes). It is a new service alongside [our existing music software](context-use://page/bringing-music-into-the-mac); purchased files have usage restrictions.
+The [launch review](context-use://record/store-launch) ties the purchase to the existing library and sync flow. [Phil](context-use://entity/phil-schiller) must show a bought song becoming a playable song, not stop the demonstration at a receipt. [Tony](context-use://entity/tony-fadell) checks the transfer to the player; I carry the label relationships.
+
+The store launches on the Mac. The [Windows bridge](context-use://page/opening-ipod-to-windows-customers) is now a more consequential gap because the customer needs a purchasing experience as well as a player. Extending our own software is the next decision to resolve.

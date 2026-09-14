@@ -1,5 +1,7 @@
 # Keeping the iPhone name
 
-[Apple](context-use://entity/apple) and Cisco have resolved the dispute over the [iPhone](context-use://entity/iphone) name. Both companies can use it worldwide under our [joint announcement](context-use://record/iphone-trademark).
+[I](context-use://entity/steve-jobs) can close the iPhone naming item after the Cisco agreement. The [email with Phil and Ron](context-use://record/iphone-trademark) confirms that both companies can use the name worldwide and the pending trademark actions are dismissed.
 
-For [me](context-use://entity/steve-jobs), this removes a naming dispute between [introducing our phone](context-use://page/introducing-the-phone-we-built) and getting it into customers’ hands. The agreement also leaves room to explore interoperability.
+This removes a launch blocker; it does not satisfy the [June promise](context-use://page/introducing-the-phone-we-built). [Ron](context-use://entity/ron-johnson) still owns setup and support training, and [Phil](context-use://entity/phil-schiller) keeps the product name consistent in the materials.
+
+I want the same discipline as the [Apple Corps decision](context-use://page/settling-our-apple-name): close the question we actually resolved. Do not let a cleared naming issue make the software, supply or carrier checklist look complete.
