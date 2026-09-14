@@ -20,7 +20,6 @@ export function CollectionWorkspace({
   collection,
   title,
   count,
-  countLabel,
   profile,
   search,
   filters,
@@ -35,7 +34,6 @@ export function CollectionWorkspace({
   collection: KnowledgeCollection;
   title: string;
   count: number;
-  countLabel?: string;
   profile: KnowledgeProfile;
   search: ReactNode;
   filters?: ReactNode;
@@ -104,10 +102,9 @@ export function CollectionWorkspace({
                   collapsed && 'pt-20 md:pt-20',
                 )}
               >
-                <div className="flex shrink-0 items-baseline gap-2 whitespace-nowrap">
-                  <h1 className="font-semibold text-lg tracking-tight sm:text-2xl">{title}</h1>
-                  <span className="text-muted-foreground text-sm">{countLabel ?? count}</span>
-                </div>
+                <h1 className="shrink-0 whitespace-nowrap font-semibold text-lg tracking-tight sm:text-2xl">
+                  {title}
+                </h1>
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   {search}
                   {filters}

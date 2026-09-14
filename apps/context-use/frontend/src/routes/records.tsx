@@ -60,7 +60,6 @@ function RecordsLayout() {
         />
       }
       count={records.length}
-      countLabel={`${records.length}${hasNextPage ? '+' : ''}`}
       profile={profile}
       error={error}
       hasNextPage={hasNextPage}
