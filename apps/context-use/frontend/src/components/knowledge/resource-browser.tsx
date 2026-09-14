@@ -14,6 +14,7 @@ import { EntityDetail } from '../entities/entity-detail';
 import { KnowledgePageDetail } from '../pages/page-detail';
 import { RecordDetail } from '../records/record-detail';
 import { useKnowledgeWorkspace } from './knowledge-workspace';
+import { KnowledgeWorkspaceHeader } from './knowledge-workspace-header';
 import { ResourceNavigation } from './resource-navigation';
 import { ResourcePreviewPanel } from './resource-preview-panel';
 import { ResourceScrollArea } from './resource-scroll-area';
@@ -118,12 +119,12 @@ export function ResourceBrowser({
                 tabIndex={-1}
                 ref={focusExpandedResource}
               >
-                <div className={cn('shrink-0 border-b px-5 py-3', collapsed && 'pl-20')}>
+                <KnowledgeWorkspaceHeader className={cn(collapsed && 'pl-14')}>
                   <Button type="button" variant="ghost" size="sm" onClick={backToBrowsing}>
                     <ArrowLeft aria-hidden="true" />
                     Back to browsing
                   </Button>
-                </div>
+                </KnowledgeWorkspaceHeader>
                 <ResourceScrollArea>
                   {selection.kind === 'entity' && (
                     <EntityDetail id={selection.readableId} onArchived={close} />

@@ -9,6 +9,7 @@ import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { KnowledgeSidebar } from './knowledge-sidebar';
 import { KnowledgeWorkspace, useKnowledgeWorkspace } from './knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from './knowledge-workspace-detail';
+import { KnowledgeWorkspaceHeader } from './knowledge-workspace-header';
 import { ResourceBrowser } from './resource-browser';
 import { ResourceNavigation } from './resource-navigation';
 import { ResourceScrollArea } from './resource-scroll-area';
@@ -53,7 +54,7 @@ export function CollectionWorkspace({
       <KnowledgeWorkspaceDetail>
         {isDetailRoute ? (
           <>
-            <div className={cn('shrink-0 border-b px-5 py-3', collapsed && 'pl-20')}>
+            <KnowledgeWorkspaceHeader className={cn(collapsed && 'pl-14')}>
               <Link
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
                 to={`/${collection}`}
@@ -68,7 +69,7 @@ export function CollectionWorkspace({
                 <ArrowLeft aria-hidden="true" />
                 Back to {title.toLowerCase()}
               </Link>
-            </div>
+            </KnowledgeWorkspaceHeader>
             <ResourceNavigation
               value={{
                 onSelect: (selection) => {
@@ -96,7 +97,7 @@ export function CollectionWorkspace({
           <ResourceBrowser
             from={`/${collection}`}
             toolbar={
-              <header className="flex shrink-0 items-center gap-2 border-b px-3 py-4.5 max-[360px]:gap-1 sm:px-5 md:gap-4 md:px-8 lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]">
+              <KnowledgeWorkspaceHeader className="lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]">
                 <h1
                   className={cn(
                     'shrink-0 whitespace-nowrap font-semibold text-lg tracking-tight max-[360px]:text-base sm:text-2xl',
@@ -120,7 +121,7 @@ export function CollectionWorkspace({
                     </Link>
                   )}
                 </div>
-              </header>
+              </KnowledgeWorkspaceHeader>
             }
           >
             <section className="flex h-full min-h-0 flex-col" aria-label={title}>
