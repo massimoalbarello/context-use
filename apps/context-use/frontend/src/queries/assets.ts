@@ -1,4 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import { getStreamAsArrayBuffer, MaxBufferError } from 'get-stream';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { assetContentUrl } from '../lib/asset-presentation';
@@ -161,35 +162,20 @@ export function assetDocumentQueryOptions(readableId: string) {
       if (!response.ok) {
         throw new Error('Could not load this file.');
       }
-      const reader = response.body?.getReader();
-      if (!reader) {
+      if (!response.body) {
         throw new Error('This file is empty.');
       }
-      const chunks: Uint8Array[] = [];
-      let size = 0;
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          size += value.byteLength;
-          if (size > MAX_DOCUMENT_PREVIEW_BYTES) {
-            throw new Error('This file is too large to preview.');
-          }
-          chunks.push(value);
+        const buffer = await getStreamAsArrayBuffer(response.body, {
+          maxBuffer: MAX_DOCUMENT_PREVIEW_BYTES,
+        });
+        return new Uint8Array(buffer);
+      } catch (error) {
+        if (error instanceof MaxBufferError) {
+          throw new Error('This file is too large to preview.');
         }
-      } finally {
-        await reader.cancel();
-        reader.releaseLock();
+        throw error;
       }
-      const bytes = new Uint8Array(size);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.length;
-      }
-      return bytes;
     },
     staleTime: Infinity,
     retry: false,

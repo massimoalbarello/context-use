@@ -9,6 +9,11 @@ import { defineConfig, normalizePath } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { DEFAULT_BACKEND_PORT, DEFAULT_FRONTEND_PORT } from '#backend/lib/runtime-config.ts';
 
+const require = createRequire(import.meta.url);
+const pdfjsDirectory = dirname(
+  createRequire(require.resolve('react-pdf/package.json')).resolve('pdfjs-dist/package.json'),
+);
+
 const BACKEND_ORIGIN = `http://localhost:${DEFAULT_BACKEND_PORT}`;
 const MCP_TRANSPORT_PROXY_CONTEXT = '^/mcp/?(?:\\?.*)?$';
 const MCP_ASSET_TRANSFERS_PROXY_CONTEXT = '^/mcp/asset-transfers(?:/|\\?|$)';
@@ -39,12 +44,18 @@ export default defineConfig({
   },
   plugins: [
     viteStaticCopy({
-      targets: ['cmaps', 'standard_fonts', 'wasm'].map((folder) => ({
-        src: normalizePath(
-          join(dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json')), folder),
-        ),
-        dest: 'pdfjs',
-      })),
+      targets: [
+        {
+          src: normalizePath(join(pdfjsDirectory, 'build/pdf.worker.min.mjs')),
+          dest: 'pdfjs',
+          rename: { stripBase: true },
+        },
+        ...['cmaps', 'standard_fonts', 'wasm'].map((folder) => ({
+          src: normalizePath(join(pdfjsDirectory, folder)),
+          dest: `pdfjs/${folder}`,
+          rename: { stripBase: true as const },
+        })),
+      ],
     }),
     wgslVitePlugin(),
     tailwindcss(),

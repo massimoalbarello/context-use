@@ -9,7 +9,10 @@ const MAX_TEXT_CHARACTERS = 50_000;
 const MAX_TABLE_ROWS = 100;
 const MAX_TABLE_COLUMNS = 20;
 
-const PdfPreview = lazy(() => import('./pdf-preview'));
+const PdfPreview = lazy(async () => {
+  const { createPdfPreview } = await import('./pdf-preview');
+  return { default: createPdfPreview() };
+});
 
 type PreviewableAsset = {
   readableId: string;
