@@ -10,7 +10,10 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { ENTITY_TYPES, type Entity } from '#backend/models/entities/model.ts';
-import { MAX_HYPERMEDIA_GRAPH_ANCHORS } from '#backend/models/hypermedia-graph/model.ts';
+import {
+  MAX_HYPERMEDIA_GRAPH_ANCHORS,
+  MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES,
+} from '#backend/models/hypermedia-graph/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#backend/models/readable-ids/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
@@ -610,6 +613,18 @@ Every observation changes the next action.`,
       { anchors: ['test-owner'] },
       { anchors: [{ ...anchors[0], cursor: 'not-a-cursor' }] },
       { anchors: [{ ...anchors[0], cursor: Buffer.from('null').toString('base64url') }] },
+      ...[
+        [],
+        'cursor',
+        { version: 2, sharedPageCount: 1, readableId: 'topic' },
+        { version: 1, sharedPageCount: 0, readableId: 'topic' },
+        { version: 1, sharedPageCount: 1.5, readableId: 'topic' },
+        { version: 1, sharedPageCount: 1, readableId: 'INVALID' },
+      ].map((payload) => ({
+        anchors: [
+          { ...anchors[0], cursor: Buffer.from(JSON.stringify(payload)).toString('base64url') },
+        ],
+      })),
     ]) {
       expect(
         (await app.handle(jsonRequest({ method: 'GET', path: mapNeighborhoodsPath(query) })))
@@ -623,6 +638,20 @@ Every observation changes the next action.`,
         (await app.handle(jsonRequest({ method: 'GET', path: `/map/neighborhoods?${query}` })))
           .status,
       ).toBe(StatusMap['Bad Request']);
+    }
+
+    for (const query of [
+      'limit=1.5',
+      'offset=0.5',
+      'offset=-1',
+      'visible=INVALID',
+      `visible=${[...Array(MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES + 1).keys()].map((index) => `topic-${index}`).join(',')}`,
+    ]) {
+      const response = await app.handle(
+        jsonRequest({ method: 'GET', path: `/map/pages?${query}` }),
+      );
+      expect(response.status).toBe(StatusMap['Bad Request']);
+      expect(await response.json()).toHaveProperty('error');
     }
 
     const withoutIntervalResponse = await app.handle(
@@ -712,7 +741,7 @@ Every observation changes the next action.`,
     const viewportMapResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/map/pages?time=2025&visible=temporal-subject,test-owner',
+        path: '/map/pages?time=2025&visible=temporal-subject,test-owner,temporal-subject',
       }),
     );
     const viewportMap = (await viewportMapResponse.json()) as {

@@ -11,8 +11,11 @@ export type HypermediaEntityContinuation = {
 export const MAX_HYPERMEDIA_GRAPH_ANCHORS = 8;
 export const MAX_HYPERMEDIA_NEIGHBOR_LIMIT = 24;
 export const MAX_HYPERMEDIA_EXTRA_RELATIONSHIPS = 512;
+export const MAX_HYPERMEDIA_PAGE_LIMIT = 32;
+export const MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES = 24;
 
 export class InvalidHypermediaNeighborhoodsError extends Error {}
+export class InvalidHypermediaPagesError extends Error {}
 
 export type HypermediaAnchorRequest = {
   anchor: HypermediaEntityReference;

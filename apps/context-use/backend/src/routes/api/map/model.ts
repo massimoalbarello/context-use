@@ -8,11 +8,13 @@ import type {
 import {
   MAX_HYPERMEDIA_GRAPH_ANCHORS,
   MAX_HYPERMEDIA_NEIGHBOR_LIMIT,
+  MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES,
+  MAX_HYPERMEDIA_PAGE_LIMIT,
 } from '#backend/models/hypermedia-graph/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
-import { MAX_READABLE_ID_LENGTH, READABLE_ID_PATTERN } from '#backend/models/readable-ids/model.ts';
+import { isReadableId, MAX_READABLE_ID_LENGTH } from '#backend/models/readable-ids/model.ts';
 import { EntitySchema, entityResponse } from '#backend/routes/api/entities/model.ts';
-import { PaginationQuerySchema, ReadableIdSchema } from '#backend/routes/api/model.ts';
+import { ReadableIdSchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
@@ -20,10 +22,8 @@ import {
 
 export const DEFAULT_MAP_ENTITY_LIMIT = 16;
 export const DEFAULT_MAP_PAGE_LIMIT = 32;
-export const MAX_MAP_PAGE_LIMIT = 32;
-export const MAX_MAP_PAGE_FOCUS_ENTITIES = 24;
 const MAX_MAP_CURSOR_LENGTH = 512;
-const MAX_MAP_FOCUS_LENGTH = MAX_MAP_PAGE_FOCUS_ENTITIES * (MAX_READABLE_ID_LENGTH + 1);
+const MAX_MAP_FOCUS_LENGTH = MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES * (MAX_READABLE_ID_LENGTH + 1);
 
 const MapEntityReferenceSchema = t.Object({
   readableId: ReadableIdSchema,
@@ -77,13 +77,13 @@ export const MapPagesQuerySchema = t.Object({
     }),
   ),
   limit: t.Optional(
-    t.Numeric({
+    t.Integer({
       minimum: 1,
-      maximum: MAX_MAP_PAGE_LIMIT,
+      maximum: MAX_HYPERMEDIA_PAGE_LIMIT,
       default: DEFAULT_MAP_PAGE_LIMIT,
     }),
   ),
-  offset: PaginationQuerySchema.properties.offset,
+  offset: t.Optional(t.Integer({ minimum: 0, default: 0 })),
   time: t.Optional(
     t.String({
       minLength: 1,
@@ -104,83 +104,63 @@ export const MapPagesSchema = t.Object({
   entityReferencesTruncated: t.Boolean(),
 });
 
-export function parseMapEntityReference(value: string): HypermediaEntityReference | null {
-  return validReadableId(value) ? { readableId: value } : null;
-}
-
 export function parseMapEntities(value?: string): HypermediaEntityReference[] | null {
   if (value === undefined) {
     return [];
   }
-  const references = value.split(',').map(parseMapEntityReference);
-  if (
-    references.length === 0 ||
-    references.length > MAX_MAP_PAGE_FOCUS_ENTITIES ||
-    references.some((reference) => reference === null)
-  ) {
-    return null;
-  }
-  const unique = new Map(references.map((reference) => [reference!.readableId, reference!]));
-  return [...unique.values()];
-}
-
-function encodedCursor(value: object | null): string | null {
-  return value
-    ? Buffer.from(JSON.stringify({ version: 1, ...value }), 'utf8').toString('base64url')
-    : null;
-}
-
-function cursorPayload(value: string | undefined): Record<string, unknown> | null | undefined {
-  if (!value) {
-    return undefined;
-  }
-  try {
-    const decoded = Buffer.from(value, 'base64url');
-    if (decoded.toString('base64url') !== value) {
+  const references: HypermediaEntityReference[] = [];
+  for (const readableId of value.split(',')) {
+    if (!isReadableId(readableId)) {
       return null;
     }
-    const payload = JSON.parse(decoded.toString('utf8')) as Record<string, unknown>;
-    return payload.version === 1 ? payload : null;
-  } catch {
-    return null;
+    references.push({ readableId });
   }
-}
-
-function validReadableId(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.length <= MAX_READABLE_ID_LENGTH &&
-    READABLE_ID_PATTERN.test(value)
-  );
+  return references;
 }
 
 export function encodeMapEntityCursor(cursor: HypermediaEntityContinuation | null): string | null {
-  return encodedCursor(cursor);
+  return cursor
+    ? Buffer.from(JSON.stringify({ version: 1, ...cursor }), 'utf8').toString('base64url')
+    : null;
 }
 
 export function decodeMapEntityCursor(
   value: string | undefined,
 ): { state: 'valid'; cursor?: HypermediaEntityContinuation } | { state: 'invalid' } {
-  const payload = cursorPayload(value);
-  if (payload === undefined) {
+  if (value === undefined) {
     return { state: 'valid' };
   }
-  if (
-    !payload ||
-    typeof payload.sharedPageCount !== 'number' ||
-    !Number.isSafeInteger(payload.sharedPageCount) ||
-    payload.sharedPageCount < 1 ||
-    !validReadableId(payload.readableId)
-  ) {
+  try {
+    const decoded = Buffer.from(value, 'base64url');
+    if (decoded.toString('base64url') !== value) {
+      return { state: 'invalid' };
+    }
+    const payload: unknown = JSON.parse(decoded.toString('utf8'));
+    if (
+      typeof payload !== 'object' ||
+      payload === null ||
+      !('version' in payload) ||
+      payload.version !== 1 ||
+      !('sharedPageCount' in payload) ||
+      typeof payload.sharedPageCount !== 'number' ||
+      !Number.isSafeInteger(payload.sharedPageCount) ||
+      payload.sharedPageCount < 1 ||
+      !('readableId' in payload) ||
+      typeof payload.readableId !== 'string' ||
+      !isReadableId(payload.readableId)
+    ) {
+      return { state: 'invalid' };
+    }
+    return {
+      state: 'valid',
+      cursor: {
+        sharedPageCount: payload.sharedPageCount,
+        readableId: payload.readableId,
+      },
+    };
+  } catch {
     return { state: 'invalid' };
   }
-  return {
-    state: 'valid',
-    cursor: {
-      sharedPageCount: payload.sharedPageCount,
-      readableId: payload.readableId,
-    },
-  };
 }
 
 export function mapNeighborhoodsResponse(result: HypermediaNeighborhoods) {

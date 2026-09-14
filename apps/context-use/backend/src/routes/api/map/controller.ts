@@ -5,10 +5,10 @@ import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import {
   type HypermediaAnchorRequest,
   InvalidHypermediaNeighborhoodsError,
+  InvalidHypermediaPagesError,
 } from '#backend/models/hypermedia-graph/model.ts';
 import {
   InvalidTemporalCoverageError,
-  type TemporalBounds,
   temporalBoundsFrom,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import {
@@ -78,26 +78,27 @@ export function createMapController({
       '/pages',
       async ({ query, user, status }) => {
         const visibleEntities = parseMapEntities(query.visible);
-        let temporalBounds: TemporalBounds | undefined;
+        if (!visibleEntities) {
+          return status(StatusMap['Bad Request'], { error: 'Invalid map pages query' });
+        }
         try {
-          temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
+          const pages = await graphService.pages({
+            ownerId: user.id,
+            visibleEntities,
+            limit: query.limit ?? DEFAULT_MAP_PAGE_LIMIT,
+            offset: query.offset ?? 0,
+            temporalBounds: query.time ? temporalBoundsFrom(query.time) : undefined,
+          });
+          return status(StatusMap.OK, mapPagesResponse(pages));
         } catch (error) {
-          if (error instanceof InvalidTemporalCoverageError) {
+          if (
+            error instanceof InvalidTemporalCoverageError ||
+            error instanceof InvalidHypermediaPagesError
+          ) {
             return status(StatusMap['Bad Request'], { error: error.message });
           }
           throw error;
         }
-        if (!visibleEntities) {
-          return status(StatusMap['Bad Request'], { error: 'Invalid map pages query' });
-        }
-        const pages = await graphService.pages({
-          ownerId: user.id,
-          visibleEntities,
-          limit: query.limit ?? DEFAULT_MAP_PAGE_LIMIT,
-          offset: query.offset ?? 0,
-          temporalBounds,
-        });
-        return status(StatusMap.OK, mapPagesResponse(pages));
       },
       {
         detail: { tags: ['Map'], summary: 'Read a bounded topic map page view' },
