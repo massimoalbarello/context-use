@@ -86,7 +86,7 @@ export function DemoNoticeDialog({
         }
       }}
     >
-      <AlertDialogContent finalFocus={() => returnFocus ?? false}>
+      <AlertDialogContent className="demo-surface" finalFocus={() => returnFocus ?? false}>
         <AlertDialogTitle>This is a read-only demo</AlertDialogTitle>
         <AlertDialogDescription>
           Changes and account actions cannot be saved here. Deploy your own instance and connect

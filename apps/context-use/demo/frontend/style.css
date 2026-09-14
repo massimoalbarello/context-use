@@ -1,2 +1,7 @@
 @import "../../frontend/src/styles.css";
 @source "./";
+
+.demo-surface {
+  --background: color-mix(in oklab, var(--card) 90%, #fbbf24);
+  --border: color-mix(in oklab, var(--foreground) 12%, var(--background));
+}
