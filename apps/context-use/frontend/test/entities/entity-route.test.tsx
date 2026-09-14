@@ -121,7 +121,7 @@ test('entity filters survive navigation, self stays a person, and other types ca
     expect(router.state.location.search.entityType).toBe('person');
     await user.click(screen.getByRole('button', { name: 'Close preview' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search entities' }), 'research');
-    await user.click(screen.getByRole('button', { name: 'Search' }));
+    await user.keyboard('{Enter}');
     await waitFor(() =>
       expect(router.state.location.search).toMatchObject({ q: 'research', entityType: 'person' }),
     );
@@ -132,7 +132,8 @@ test('entity filters survive navigation, self stays a person, and other types ca
           url.searchParams.get('entityType') === 'person',
       ),
     ).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(document.activeElement).toBe(screen.getByRole('searchbox', { name: 'Search entities' }));
+    await user.keyboard('{Escape}');
     await waitFor(() => expect(router.state.location.search.q).toBeUndefined());
     expect(router.state.location.search.entityType).toBe('person');
     await user.click(screen.getByRole('link', { name: /alice You Person Research colleague/ }));

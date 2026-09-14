@@ -46,7 +46,6 @@ function RecordsLayout() {
       title="Records"
       search={
         <KeywordFilter
-          key={search.q ?? ''}
           inputId="record-keyword"
           value={search.q ?? ''}
           placeholder="Search records"

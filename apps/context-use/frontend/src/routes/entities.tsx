@@ -92,7 +92,6 @@ function EntitiesLayout() {
       title="Entities"
       search={
         <KeywordFilter
-          key={q}
           inputId="entity-keyword"
           value={q}
           placeholder="Search entities"

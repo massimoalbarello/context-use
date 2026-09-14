@@ -35,7 +35,6 @@ function AssetFilterControl({ query }: { query: string }) {
   const navigate = Route.useNavigate();
   return (
     <KeywordFilter
-      key={query}
       value={query}
       inputId="asset-keyword"
       placeholder="Search assets"

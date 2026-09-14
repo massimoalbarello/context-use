@@ -106,7 +106,6 @@ function PagesLayout() {
       title="Pages"
       search={
         <KeywordFilter
-          key={search.q ?? ''}
           inputId="page-keyword"
           value={search.q ?? ''}
           placeholder="Search pages"
