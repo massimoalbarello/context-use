@@ -1,9 +1,7 @@
 export function passkeyRegistrationErrorMessage({
   error,
-  origin,
 }: {
   error: { code?: string; message?: string };
-  origin: string;
 }): string {
   if (
     error.code === 'ERROR_INVALID_RP_ID' ||
@@ -11,8 +9,7 @@ export function passkeyRegistrationErrorMessage({
   ) {
     return [
       'Passkeys are configured for a different domain.',
-      'If you are setting up a custom domain, set the app’s BASE_URL environment variable to:',
-      origin,
+      'If you are setting up a custom domain, set the app’s BASE_URL environment variable to the full URL of your desired custom domain (including https://).',
       'Then restart the app and try creating your account again.',
     ].join('\n\n');
   }

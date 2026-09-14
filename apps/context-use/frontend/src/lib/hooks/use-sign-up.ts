@@ -14,7 +14,7 @@ export function useSignUp(): UseMutationResult<void, Error, void> {
         name: 'Primary passkey',
       });
       if (error) {
-        throw new Error(passkeyRegistrationErrorMessage({ error, origin: window.location.origin }));
+        throw new Error(passkeyRegistrationErrorMessage({ error }));
       }
     },
     onSuccess: async () => {
