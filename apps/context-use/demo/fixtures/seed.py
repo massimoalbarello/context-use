@@ -32,7 +32,7 @@ ENTITIES = [
 ]
 ASSETS = read_seed_json("assets/index.json")
 RECORDS = read_seed_json("records/index.json")
-SYNC = read_seed_json("syncs/steve-jobs-research.json")
+SYNCS = read_seed_json("syncs/index.json")
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -179,12 +179,14 @@ def update_page(readable_id, expected_revision_number, markdown, temporal_covera
         raise RuntimeError("Updated page did not create the expected revision")
 
 
-def create_records(api_key):
+def create_records(api_key, source):
     committed_at = datetime.now(timezone.utc).isoformat()
     records = []
     for record in RECORDS:
+        if record["provider"] != source["provider"]:
+            continue
         content = {**record["content"], "body": read_seed_text(record["path"])}
-        # The fixtures contain only strings, integer-free metadata, objects and arrays;
+        # The fixtures contain only strings, booleans, small integers, objects and arrays;
         # sorted compact UTF-8 JSON is canonical for this deliberately narrow content.
         canonical = json.dumps(
             content, sort_keys=True, ensure_ascii=False, separators=(",", ":")
@@ -192,7 +194,7 @@ def create_records(api_key):
         records.append({
             "eventId": str(uuid.uuid4()),
             "provider": record["provider"],
-            "sourceId": "steve-jobs-ipod-iphone-2001-2007",
+            "sourceId": source["sourceId"],
             "kind": record["kind"],
             "id": record["id"],
             "revision": 1,
@@ -215,6 +217,9 @@ def create_records(api_key):
             api_key=api_key,
             headers={"idempotency-key": envelope["batchId"]},
         )
+
+
+def resolve_record_addresses():
     # Record addresses are allocated by the server and include the sync identity.
     # Resolve from authenticated output rather than duplicating its ID algorithm.
     addresses = {}
@@ -304,19 +309,21 @@ def seed_isolated_data():
         create_asset(asset)
         if asset.get("entityReadableId"):
             assign_entity_image(asset)
-    sync = api_request("POST", "/api/syncs", SYNC)
-    try:
-        record_addresses = create_records(sync["apiKey"])
-    finally:
-        api_request("PUT", f"/api/syncs/{sync['sync']['readableId']}/revoke")
+    for source in SYNCS:
+        sync = api_request("POST", "/api/syncs", {"name": source["name"]})
+        try:
+            create_records(sync["apiKey"], source)
+        finally:
+            api_request("PUT", f"/api/syncs/{sync['sync']['readableId']}/revoke")
+    record_addresses = resolve_record_addresses()
     page_count = seed_pages(record_addresses)
 
     # Use a document navigation so the new app instance reads the seeded profile instead of
     # retaining the setup route's pre-seed query cache.
-    goto_url(f"{APP_URL}/hypermedia")
+    goto_url(f"{APP_URL}/map")
     wait_for_load()
     wait_until(
-        lambda: urlparse(page_info()["url"]).path == "/hypermedia",
+        lambda: urlparse(page_info()["url"]).path == "/map",
         "Seeded profile did not open the workspace",
     )
     print(

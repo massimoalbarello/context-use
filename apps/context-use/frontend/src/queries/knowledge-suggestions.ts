@@ -1,10 +1,11 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { AssetSummary } from './assets';
 import type { EntitySummary } from './entities';
-import { hypermediaQueryKey } from './hypermedia';
 import { searchHypermedia } from './hypermedia-search';
 import type { KnowledgePageSummary } from './pages';
 import type { ExternalRecordSummary } from './records';
+
+export const knowledgeSuggestionsQueryKey = ['knowledge-suggestions'] as const;
 
 export type KnowledgeSuggestion =
   | { kind: 'entity'; entity: EntitySummary }
@@ -21,7 +22,7 @@ type KnowledgeSuggestions = {
 export function knowledgeSuggestionsQueryOptions(query: string) {
   const normalizedQuery = query.trim();
   return queryOptions({
-    queryKey: [...hypermediaQueryKey, 'suggestions', normalizedQuery],
+    queryKey: [...knowledgeSuggestionsQueryKey, normalizedQuery],
     enabled: normalizedQuery.length > 0,
     queryFn: async ({ signal }): Promise<KnowledgeSuggestions> => {
       const result = await searchHypermedia({ query: normalizedQuery, signal });

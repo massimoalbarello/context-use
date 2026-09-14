@@ -7,8 +7,8 @@ import { createAuthController } from '#backend/routes/api/auth/controller.ts';
 import { createEntityReadableIdController } from '#backend/routes/api/entities/[entityReadableId]/controller.ts';
 import { createEntitiesController } from '#backend/routes/api/entities/controller.ts';
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
-import { createHypermediaController } from '#backend/routes/api/hypermedia/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
+import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createMcpClientsController } from '#backend/routes/api/mcp/clients/controller.ts';
 import { createOwnerRegistrationController } from '#backend/routes/api/owner-registration/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
@@ -20,7 +20,7 @@ import { createRecordSyncsController } from '#backend/routes/api/syncs/controlle
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
-import type { HypermediaServiceContract } from '#backend/services/hypermedia/service.ts';
+import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
@@ -38,7 +38,7 @@ export function createApiController({
   assetsService,
   entitiesService,
   healthService,
-  hypermediaService,
+  graphService,
   retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
@@ -52,7 +52,7 @@ export function createApiController({
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
-  hypermediaService: HypermediaServiceContract;
+  graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
@@ -80,7 +80,7 @@ export function createApiController({
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
-    .use(createHypermediaController({ auth, hypermediaService }))
+    .use(createMapController({ auth, graphService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
     .use(createRecordsController({ auth, recordsService }))

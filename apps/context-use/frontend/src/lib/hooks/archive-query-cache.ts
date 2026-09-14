@@ -16,7 +16,8 @@ import {
   entityPreviewsQueryKey,
   entityQueryOptions,
 } from '../../queries/entities';
-import { hypermediaQueryKey } from '../../queries/hypermedia';
+import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
+import { mapQueryKey } from '../../queries/map';
 import {
   type ArchivePageResult,
   pageDetailsQueryKey,
@@ -47,7 +48,8 @@ export function settleArchivedAssetQueries({
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: assetsListQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetSuggestionsQueryKey });
-  void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
+  void queryClient.invalidateQueries({ queryKey: mapQueryKey });
+  void queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey });
 }
 
 export function settleArchivedEntityQueries({
@@ -70,7 +72,8 @@ export function settleArchivedEntityQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: entitiesListQueryKey });
-  void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
+  void queryClient.invalidateQueries({ queryKey: mapQueryKey });
+  void queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey });
 }
 
 export function settleArchivedPageQueries({
@@ -93,7 +96,8 @@ export function settleArchivedPageQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: pagesListQueryKey });
-  void queryClient.invalidateQueries({ queryKey: hypermediaQueryKey });
+  void queryClient.invalidateQueries({ queryKey: mapQueryKey });
+  void queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey });
   void queryClient.invalidateQueries({
     queryKey: pageDetailsQueryKey,
     predicate: (query) => query.queryKey[2] !== readableId,

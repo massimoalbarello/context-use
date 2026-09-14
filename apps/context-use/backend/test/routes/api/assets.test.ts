@@ -12,7 +12,7 @@ import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
-import { HypermediaRepository } from '#backend/repositories/hypermedia/repository.ts';
+import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
@@ -20,7 +20,7 @@ import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
-import { HypermediaService } from '#backend/services/hypermedia/service.ts';
+import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
@@ -117,8 +117,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      hypermediaService: new HypermediaService({
-        hypermedia: new HypermediaRepository(database),
+      graphService: new HypermediaGraphService({
+        graph: new HypermediaGraphRepository(database),
       }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
@@ -345,26 +345,38 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const assetNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/entities?anchor=asset:quarterly-chart&limit=1'),
+      new Request(
+        `http://localhost/api/map/neighborhoods?${new URLSearchParams({
+          anchors: JSON.stringify([{ anchor: { readableId: 'asset:quarterly-chart' } }]),
+        })}`,
+      ),
     );
     expect(assetNeighborhoodResponse.status).toBe(StatusMap['Bad Request']);
     const assetViewportResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages?visible=asset:quarterly-chart'),
+      new Request('http://localhost/api/map/pages?visible=asset:quarterly-chart'),
     );
     expect(assetViewportResponse.status).toBe(StatusMap['Bad Request']);
 
     const entityNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/entities?anchor=luca-bianchi'),
+      new Request(
+        `http://localhost/api/map/neighborhoods?${new URLSearchParams({
+          anchors: JSON.stringify([{ anchor: { readableId: 'luca-bianchi' } }]),
+        })}`,
+      ),
     );
     expect(entityNeighborhoodResponse.status).toBe(StatusMap.OK);
     expect(await entityNeighborhoodResponse.json()).toMatchObject({
-      anchor: { readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } },
-      neighbors: [],
-      nextCursor: null,
+      entities: [{ readableId: 'luca-bianchi', image: { readableId: 'quarterly-chart' } }],
+      neighborhoods: [
+        {
+          anchor: { readableId: 'luca-bianchi' },
+          available: true,
+          neighbors: [],
+          nextCursor: null,
+        },
+      ],
     });
-    const graphPagesResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages'),
-    );
+    const graphPagesResponse = await app.handle(new Request('http://localhost/api/map/pages'));
     expect(graphPagesResponse.status).toBe(StatusMap.OK);
     const graphPages = await graphPagesResponse.json();
     expectNoInternalResourceIds(graphPages);

@@ -1,5 +1,7 @@
 # Renewing our creative tools
 
-[Apple](context-use://entity/apple) is renewing the creative software on the [Mac](context-use://entity/mac). Our [iLife ’08 announcement](context-use://record/ilife-08) introduces photo organization through Events and a rebuilt iMovie, with sharing through .Mac Web Gallery.
+[I](context-use://entity/steve-jobs) asked for an imperfect photo collection in the [iLife rehearsal thread](context-use://record/ilife-08). Events, the rebuilt iMovie and Web Gallery should help someone organize and share their own material; a prepared gallery conceals that work.
 
-[I](context-use://entity/steve-jobs) put these tools alongside [the new iMac](context-use://page/remaking-our-desktop-mac): making the machine better also means making it easier to organize photographs and create movies.
+This is the software half of [today's iMac story](context-use://page/remaking-our-desktop-mac). It also returns to the [opening-weekend question from 2001](context-use://page/welcoming-our-first-store-customers): how do I repeat this with my own collection?
+
+[Phil](context-use://entity/phil-schiller) owns the demonstration and [Ron](context-use://entity/ron-johnson) the task a visitor can take over. I want the same standard across music, photos and movies: start with something the person actually has, then show the useful change.

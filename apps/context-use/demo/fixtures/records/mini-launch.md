@@ -1,7 +1,15 @@
-# iPod mini announcement and original schedule
+# iPod mini review: smaller must mean easier to carry
 
-Research summary, paraphrased for this seed; not the original document.
+Fictional demo · Synced from Granola · 2004-01-06
 
-The 4GB iPod mini is announced at $249 in five aluminum colors with a Click Wheel. US availability is planned for February, international availability for April.
+**Attendees:** Steve Jobs, Jony Ive, Tony Fadell, Tim Cook, Phil Schiller\
+**Time:** 09:00–09:45 UTC
 
-Source: [iPod mini announcement and original schedule](https://www.apple.com/newsroom/2004/01/06Apple-Introduces-iPod-mini/).
+## Product decision
+The aluminum mini offers 4GB at $249. Jony’s argument is about something people can comfortably wear and carry, not winning a capacity comparison. Phil will show the product in a hand before discussing the specification.
+
+## Commitment
+US availability is planned for February; international availability is expected in April. Tim owns the supply assumptions behind those dates. Steve asked that demand and component availability be reviewed together before repeating the international date.
+
+## Next review
+Tony and Jony will compare the daily use of mini with the larger iPod. Tim will escalate a schedule change early enough for Phil and Ron to give customers one consistent answer.

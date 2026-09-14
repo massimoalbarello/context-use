@@ -21,7 +21,7 @@ import type { AssetsServiceContract } from '#backend/services/assets/service.ts'
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
-import type { HypermediaServiceContract } from '#backend/services/hypermedia/service.ts';
+import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
@@ -47,7 +47,7 @@ export function createApp({
   frontendAssetsService,
   entitiesService,
   healthService,
-  hypermediaService,
+  graphService,
   retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
@@ -64,7 +64,7 @@ export function createApp({
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
-  hypermediaService: HypermediaServiceContract;
+  graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
@@ -161,7 +161,7 @@ export function createApp({
         assetsService,
         entitiesService,
         healthService,
-        hypermediaService,
+        graphService,
         retrievalService,
         mcpClientAuthorizationsService,
         mcpServerUrl,

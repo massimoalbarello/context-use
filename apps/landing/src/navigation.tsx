@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 
 const GITHUB_URL = 'https://github.com/massimoalbarello/context-use';
-const DEMO_URL = 'https://demo.context-use.com/hypermedia';
+const DEMO_URL = 'https://demo.context-use.com/map';
 const DEPLOY_URL =
   'https://app.nibrun.com/deploy?name=context-use&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fnibrun-latest%2Fcontext-use&port=3000&minimal';
 

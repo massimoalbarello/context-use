@@ -1,5 +1,7 @@
 # Opening our doors for iPhone
 
-We have scheduled US iPhone sales for June 29 at 6 p.m. local time. Our [retail announcement](context-use://record/iphone-retail) gives [Ron](context-use://entity/ron-johnson) a clear customer promise: demonstrations, workshops and Genius Bar help across our stores.
+Tomorrow's 6 p.m. opening turns the [January promise](context-use://page/introducing-the-phone-we-built) into a customer encounter. The [June 28 launch checklist](context-use://record/iphone-retail) covers 164 US stores, demonstrations, workshops and Genius Bar help.
 
-[I](context-use://entity/steve-jobs) connect [the retail experience we began in 2001](context-use://page/giving-customers-a-place-to-try-our-products) with [the product we are readying](context-use://page/improving-iphone-before-customers-get-it). The [message rehearsal with Ron](context-use://page/preparing-the-first-customer-hour-with-ron) is fictional; the public opening arrangements are documented.
+The consequential change from [Ron's June 27 thread](context-use://page/preparing-the-first-customer-hour-with-ron) is an explicit Apple/AT&T help handoff. [Scott](context-use://entity/scott-forstall) has checked the first call, song sync and web page on the launch software state.
+
+[I](context-use://entity/steve-jobs) assigned [Ron](context-use://entity/ron-johnson) the first customer reports and Scott the software follow-up. On June 30 I want to know which task stopped and who took responsibility. The checklist is a promise about the experience; the debrief will tell us whether we kept it.

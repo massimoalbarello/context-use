@@ -1,5 +1,7 @@
 # Shipping iTunes on the ROKR
 
-[I](context-use://entity/steve-jobs) introduced [Motorola ROKR](context-use://entity/motorola-rokr) with [Motorola](context-use://entity/motorola) and Cingular, our partner later called [AT&T](context-use://entity/at-t). The [launch release](context-use://record/rokr-launch) describes USB transfer from iTunes, a 100-song limit and a $249.99 US price with a two-year contract.
+The [Motorola plan](context-use://page/taking-itunes-onto-motorola-phones) has become [ROKR](context-use://entity/motorola-rokr), later than our original first-half-2005 window. The [release email](context-use://record/rokr-launch) keeps that schedule change and the 100-song limit visible.
 
-This September release follows the [earlier first-half target](context-use://page/taking-itunes-onto-motorola-phones). The device can pause music for a call, but it remains Motorola’s phone with our player software.
+Music transfers from Mac or PC iTunes over USB. Cingular, later [AT&T](context-use://entity/at-t), supplies the US carrier offer. We can put iTunes on the phone; that does not establish that the whole experience works.
+
+[I](context-use://entity/steve-jobs) asked [Tony](context-use://entity/tony-fadell) to bring tomorrow's comparison with [nano](context-use://page/putting-a-display-into-the-smaller-nano). I want to see finding music, taking a call and returning to the song. The next decision must come from that sequence, not from the fact that a partnership shipped.

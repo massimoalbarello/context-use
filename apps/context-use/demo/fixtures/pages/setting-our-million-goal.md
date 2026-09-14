@@ -1,5 +1,7 @@
 # Setting our million goal
 
-In [Apple’s](context-use://entity/apple) [quarterly report](context-use://record/june-quarter-results), [I](context-use://entity/steve-jobs) set a goal: sell our millionth [iPhone](context-use://entity/iphone) by the end of its first full quarter of sales. It is a target, not a result we have reached today.
+[I](context-use://entity/steve-jobs) set a goal of selling the millionth iPhone by the end of its first full quarter. The [July operating-review email](context-use://record/june-quarter-results) keeps that future target separate from completed Mac and iPod quarterly results.
 
-The report also records our highest quarterly [Mac](context-use://entity/mac) shipments. Our computer business is growing as we begin learning from phone customers; the millionth sale will be a separate milestone.
+The goal follows the [June launch](context-use://page/opening-our-doors-for-iphone), but sales alone will not tell me whether we delivered the first-hour experience. [Ron's first-weekend debrief](context-use://record/iphone-first-weekend) still needs its own follow-through.
+
+[Tim](context-use://entity/tim-cook) owns confirming the milestone; [Phil](context-use://entity/phil-schiller) keeps it labeled as a goal until then. If we change holiday pricing, I want that decision connected to this target without letting a forecast become a claimed achievement.

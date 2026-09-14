@@ -312,6 +312,12 @@
     "temporalCoverage": "2004-07-26/2007-06-29"
   },
   {
+    "readableId": "opening-our-doors-for-iphone",
+    "path": "revisions/opening-our-doors-for-iphone-2007-06-30.md",
+    "asOf": "2007-06-30",
+    "temporalCoverage": "2007-06-29/2007-06-30"
+  },
+  {
     "readableId": "setting-our-million-goal",
     "path": "pages/setting-our-million-goal.md",
     "asOf": "2007-07-25",
@@ -384,6 +390,12 @@
     "temporalCoverage": "2004-07-26/2007-10-17"
   },
   {
+    "readableId": "lowering-itunes-plus-prices",
+    "path": "pages/lowering-itunes-plus-prices.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": "2007-10-17"
+  },
+  {
     "readableId": "the-people-i-build-with",
     "path": "pages/the-people-i-build-with.md",
     "asOf": "2007-10-17",
@@ -432,9 +444,9 @@
     "temporalCoverage": "2001-01-09/2007-10-17"
   },
   {
-    "readableId": "lowering-itunes-plus-prices",
-    "path": "pages/lowering-itunes-plus-prices.md",
+    "readableId": "making-our-store-part-of-the-music-experience",
+    "path": "revisions/making-our-store-part-of-the-music-experience-2007-10-17.md",
     "asOf": "2007-10-17",
-    "temporalCoverage": "2007-10-17"
+    "temporalCoverage": "2003-04-28/2007-10-17"
   }
 ]

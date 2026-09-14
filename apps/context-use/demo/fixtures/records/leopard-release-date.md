@@ -1,7 +1,27 @@
-# Apple announces October 26 availability for Leopard
+# Leopard: October 26 is the next delivery commitment
 
-Research summary, paraphrased for this seed; not the original document.
+Fictional demo · Synced from Gmail · 2007-10-16
 
-On October 16, Apple announces that Mac OS X Leopard will go on sale October 26 at 6 p.m. and opens pre-orders. Announced features include Quick Look, Spaces and Time Machine. The release is still a future commitment on the announcement date.
+**Mailbox:** steve.jobs@apple.example.invalid\
+**Label:** Mac
 
-Source: [Apple announces October 26 availability for Leopard](https://www.apple.com/newsroom/2007/10/16Apple-to-Ship-Mac-OS-X-Leopard-on-October-26/).
+### Phil Schiller · 13:00 UTC
+
+**From:** phil.schiller@apple.example.invalid\
+**To:** tim.cook@apple.example.invalid, steve.jobs@apple.example.invalid
+
+We have announced Leopard for October 26 at 6 p.m., with pre-orders open. The demonstration will connect Quick Look, Spaces and Time Machine to tasks customers recognize.
+
+### Tim Cook · 13:12 UTC
+
+**From:** tim.cook@apple.example.invalid\
+**To:** phil.schiller@apple.example.invalid, steve.jobs@apple.example.invalid
+
+I am keeping Mac delivery and support readiness visible beside the SDK planning discussion. Those are different commitments with different dates, even if they draw on overlapping attention.
+
+### Steve Jobs · 13:24 UTC
+
+**From:** steve.jobs@apple.example.invalid\
+**To:** phil.schiller@apple.example.invalid, tim.cook@apple.example.invalid
+
+The announcement is not shipment. Keep October 26 on the commitment list and ask Ron to verify the upgrade-help handoff. We have spent six years learning that the first successful use is part of what we deliver.

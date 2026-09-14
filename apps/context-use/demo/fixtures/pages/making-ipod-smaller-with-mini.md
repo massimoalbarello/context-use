@@ -1,5 +1,7 @@
 # Making iPod smaller with mini
 
-[I](context-use://entity/steve-jobs) introduced [iPod mini](context-use://entity/ipod-mini), with a 4GB drive, aluminum enclosure and Click Wheel combining navigation and buttons. Our [announcement](context-use://record/mini-launch) sets a $249 US price, February US availability and April international availability as the plan.
+[I](context-use://entity/steve-jobs) chose a smaller aluminum [iPod mini](context-use://entity/ipod-mini) because carrying it should feel different, not because 4GB at $249 wins a specifications comparison. The [product review with Jony, Tony and Tim](context-use://record/mini-launch) keeps that distinction clear.
 
-This gives our [portable-music work](context-use://page/taking-our-music-experience-beyond-the-mac) a different size and feel. Those dates describe our initial schedule.
+It extends the [original pocket promise](context-use://page/putting-the-first-ipod-in-my-pocket) while preserving album selection on the device. [Jony](context-use://entity/jony-ive) owns the feel; [Tony](context-use://entity/tony-fadell) tests the daily use against the larger player.
+
+The current plan is US availability in February and international availability in April. [Tim](context-use://entity/tim-cook) owns the supply assumptions behind those promises. I asked him to escalate changes early enough that [Phil](context-use://entity/phil-schiller) and [Ron](context-use://entity/ron-johnson) can give customers the same answer.

@@ -1,5 +1,5 @@
 # Settling our Apple name
 
-[I](context-use://entity/steve-jobs) can put our name dispute with Apple Corps behind us. [Apple](context-use://entity/apple) will own the Apple trademarks and license certain rights back, while continuing to use our name and logos on [iTunes](context-use://entity/itunes).
+[I](context-use://entity/steve-jobs) can close the Apple Corps trademark dispute. In the [name-agreement email](context-use://record/apple-corps-agreement), [Phil](context-use://entity/phil-schiller) confirms that Apple Inc. owns the Apple trademarks, licenses certain rights back and continues using the name on iTunes.
 
-The [agreement](context-use://record/apple-corps-agreement) settles the trademark question. It does not announce Beatles music for our store.
+I asked him to keep this separate from music-catalog commitments. The [store experience](context-use://page/selling-songs-one-at-a-time) depends on tracks we can actually offer; a name agreement does not put new music in the catalog. My next label conversation should start from that boundary, not from an assumption that every music issue was settled together.

@@ -17,14 +17,14 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { AssetFaces } from '#backend/models/faces/model.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
-import type { HypermediaPagesSchema } from '#backend/routes/api/hypermedia/model.ts';
+import type { MapPagesSchema } from '#backend/routes/api/map/model.ts';
 import { MAX_LIST_LIMIT } from '#backend/routes/api/model.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import type {
   KnowledgePageListSchema,
   KnowledgePageSchema,
 } from '#backend/routes/api/pages/model.ts';
-import type { RecordListSchema } from '#backend/routes/api/records/model.ts';
+import type { RecordListSchema, RecordSchema } from '#backend/routes/api/records/model.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { createDemoApp } from '../app';
 import { DEMO_OWNER_ID } from '../identity';
@@ -37,7 +37,8 @@ const EXPECTED_ENTITIES = 30;
 const EXPECTED_PEOPLE = 11;
 const EXPECTED_ORGANIZATIONS = 7;
 const EXPECTED_UNTYPED_ENTITIES = 12;
-const EXPECTED_RECORDS = 51;
+const EXPECTED_RECORDS = 55;
+const EXPECTED_SYNCS = 3;
 const EXPECTED_ASSETS = 33;
 const TEST_TIMEOUT_MS = 30_000;
 
@@ -85,6 +86,55 @@ async function fingerprint(folder: string) {
   }
   return hashes;
 }
+
+test('the story is connected and each checkpoint cites only sources already available then', async () => {
+  const fixtures = resolve(import.meta.dir, '../fixtures');
+  const records: { id: string; content: { sourceUpdatedAt: string } }[] = await Bun.file(
+    join(fixtures, 'records/index.json'),
+  ).json();
+  const snapshots: { readableId: string; path: string; asOf: string }[] = await Bun.file(
+    join(fixtures, 'pages/index.json'),
+  ).json();
+  const recordDates = new Map(
+    records.map(({ id, content }) => [id, content.sourceUpdatedAt.slice(0, 'YYYY-MM-DD'.length)]),
+  );
+  const latestLinks = new Map<string, string[]>();
+  const citedRecords = new Set<string>();
+  for (const snapshot of snapshots) {
+    const markdown = await Bun.file(join(fixtures, snapshot.path)).text();
+    const pageLinks = Array.from(
+      markdown.matchAll(/context-use:\/\/page\/([a-z0-9-]+)/g),
+      ([, id]) => id!,
+    );
+    for (const id of pageLinks) {
+      expect(latestLinks.has(id), `${snapshot.path} refers to a page not yet created: ${id}`).toBe(
+        true,
+      );
+    }
+    latestLinks.set(snapshot.readableId, pageLinks);
+    for (const [, id] of markdown.matchAll(/context-use:\/\/record\/([a-z0-9-]+)/g)) {
+      const sourceDate = recordDates.get(id!);
+      expect(sourceDate, `${snapshot.path} has an unresolved source: ${id}`).toBeDefined();
+      expect(sourceDate! <= snapshot.asOf, `${snapshot.path} cites a future source: ${id}`).toBe(
+        true,
+      );
+      citedRecords.add(id!);
+    }
+  }
+  expect(citedRecords).toEqual(new Set(recordDates.keys()));
+
+  const visited = new Set<string>();
+  const pending = ['my-work-from-ipod-to-iphone'];
+  while (pending.length > 0) {
+    const id = pending.pop()!;
+    if (visited.has(id)) {
+      continue;
+    }
+    visited.add(id);
+    pending.push(...latestLinks.get(id)!);
+  }
+  expect([...visited].sort()).toEqual([...latestLinks.keys()].sort());
+});
 
 test(
   'anonymous demo browsing and rejected requests leave the entire snapshot unchanged',
@@ -144,10 +194,9 @@ test(
           '/api/face-recognition/settings',
           '/api/face-recognition/processing',
           '/api/records/filter-options',
-          '/api/hypermedia/entities?anchor=steve-jobs',
-          '/api/hypermedia/pages',
+          '/api/map/pages',
           '/api/hypermedia/search?query=iPhone',
-          '/hypermedia',
+          '/map',
           '/pages/new',
           '/entities/new',
           '/assets/new',
@@ -166,9 +215,9 @@ test(
         const seenPages = new Set<string>();
         for (let month = 1; month <= 10; month += 1) {
           const time = `2007-${String(month).padStart(2, '0')}`;
-          const response = await read(`/api/hypermedia/pages?visible=steve-jobs&time=${time}`);
+          const response = await read(`/api/map/pages?visible=steve-jobs&time=${time}`);
           expect(response.status).toBe(StatusMap.OK);
-          const result = (await response.json()) as Static<typeof HypermediaPagesSchema>;
+          const result = (await response.json()) as Static<typeof MapPagesSchema>;
           expect(result.nextOffset).toBeNull();
           const datedPages = result.pages.filter((page) => {
             const coverage = page.temporalCoverage;
@@ -186,6 +235,35 @@ test(
             expect((await read(`/api/pages/${page.readableId}`)).status).toBe(StatusMap.OK);
           }
         }
+        const graphQuery = new URLSearchParams({
+          anchors: JSON.stringify([
+            { anchor: { readableId: 'steve-jobs' } },
+            { anchor: { readableId: 'iphone' } },
+          ]),
+          limit: '2',
+        });
+        const graphPath = `/api/map/neighborhoods?${graphQuery}`;
+        const graph = await read(graphPath);
+        expect(graph.status).toBe(StatusMap.OK);
+        expect(graph.headers.get('cache-control')).toBe('no-store');
+        expect(graph.headers.has('set-cookie')).toBe(false);
+        expect(await graph.json()).toMatchObject({
+          entities: expect.arrayContaining([
+            expect.objectContaining({ readableId: 'steve-jobs' }),
+            expect.objectContaining({ readableId: 'iphone' }),
+          ]),
+          neighborhoods: [
+            { anchor: { readableId: 'steve-jobs' }, available: true, neighbors: expect.any(Array) },
+            { anchor: { readableId: 'iphone' }, available: true, neighbors: expect.any(Array) },
+          ],
+        });
+        const graphHead = await fetchDemo(
+          new Request(`http://demo.test${graphPath}`, { method: 'HEAD' }),
+        );
+        expect(graphHead.status).toBe(StatusMap.OK);
+        expect(await graphHead.text()).toBe('');
+        const invalidGraph = await read('/api/map/neighborhoods?anchors=[]');
+        expect(invalidGraph.status).toBe(StatusMap['Bad Request']);
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')
         ).json()) as Static<typeof KnowledgePageSchema>;
@@ -225,9 +303,73 @@ test(
         const records = (await (await read('/api/records?limit=50')).json()) as Static<
           typeof RecordListSchema
         >;
-        for (const record of records.items) {
-          expect((await read(`/api/records/${record.readableId}`)).status).toBe(StatusMap.OK);
+        expect(records.filterOptions).toEqual({
+          providers: ['gmail', 'granola', 'slack'],
+          kinds: ['meeting', 'thread'],
+        });
+        const syncIds = new Set<string>();
+        for (const [provider, kind, syncName] of [
+          ['gmail', 'thread', 'Gmail · Steve’s inbox'],
+          ['slack', 'thread', 'Slack · Apple workspace'],
+          ['granola', 'meeting', 'Granola · Steve’s meetings'],
+        ]) {
+          const result = (await (
+            await read(`/api/records?limit=50&provider=${provider}`)
+          ).json()) as Static<typeof RecordListSchema>;
+          expect(result.items.length).toBeGreaterThan(0);
+          expect(result.nextOffset).toBeNull();
+          for (const record of result.items) {
+            expect(record).toMatchObject({ provider, kind, sync: { name: syncName } });
+            syncIds.add(record.sync.readableId);
+            const detail = (await (
+              await read(`/api/records/${record.readableId}`)
+            ).json()) as Static<typeof RecordSchema>;
+            expect(detail.participantNames).toContain('Steve Jobs');
+            expect(detail.participantNames.length).toBeGreaterThan(1);
+            expect(detail.backlinks.length, record.recordId).toBeGreaterThan(0);
+          }
         }
+        expect(syncIds.size).toBe(EXPECTED_SYNCS);
+
+        // Follow one decision across services, then back to the explanation that cites it.
+        const credit = (await (
+          await read('/api/pages/responding-to-our-early-iphone-customers')
+        ).json()) as Static<typeof KnowledgePageSchema>;
+        expect(credit.references.map(({ page }) => page.readableId)).toEqual(
+          expect.arrayContaining([
+            'lowering-the-price-of-our-iphone',
+            'introducing-the-phone-we-built',
+            'completing-the-album',
+          ]),
+        );
+        expect(credit.recordReferences).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ provider: 'gmail', available: true }),
+            expect.objectContaining({ provider: 'slack', available: true }),
+          ]),
+        );
+        for (const source of credit.recordReferences) {
+          const detail = (await (await read(`/api/records/${source.readableId}`)).json()) as Static<
+            typeof RecordSchema
+          >;
+          expect(detail.backlinks).toContainEqual(
+            expect.objectContaining({ readableId: credit.readableId }),
+          );
+        }
+        const sdk = (await (
+          await read('/api/pages/committing-to-native-applications-for-iphone')
+        ).json()) as Static<typeof KnowledgePageSchema>;
+        expect(sdk.recordReferences.map(({ provider }) => provider).sort()).toEqual([
+          'gmail',
+          'granola',
+          'slack',
+        ]);
+        expect(sdk.recordReferences.every(({ available }) => available)).toBe(true);
+        expect(sdk.references).toContainEqual(
+          expect.objectContaining({
+            page: expect.objectContaining({ readableId: 'asking-developers-to-build-for-the-web' }),
+          }),
+        );
         const head = await fetchDemo(
           new Request('http://demo.test/api/profile', { method: 'HEAD' }),
         );
@@ -235,6 +377,7 @@ test(
         expect(await head.text()).toBe('');
         // Try every mutation registered by the reused controllers, plus unmounted surfaces.
         const deniedPaths = [
+          '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',
           '/api/pages/my-work-from-ipod-to-iphone/archive',

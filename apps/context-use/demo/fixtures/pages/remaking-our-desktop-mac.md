@@ -1,5 +1,7 @@
 # Remaking our desktop Mac
 
-[I](context-use://entity/steve-jobs) am introducing a new desktop [Mac](context-use://entity/mac), with aluminum and glass around the 20-inch and 24-inch displays. [Apple’s release](context-use://record/aluminum-imac) pairs the enclosure with a thinner keyboard and faster processors.
+[I](context-use://entity/steve-jobs) want the new aluminum-and-glass [iMac](context-use://entity/mac) to recede behind what a person can make with it. The [August product review](context-use://record/aluminum-imac) connects [Jony's](context-use://entity/jony-ive) enclosure work with an iLife demonstration instead of ending at the hardware reveal.
 
-It ships with our new creative software. The hardware and the things people do with it belong in the same product story.
+The 20-inch and 24-inch models are available today. The [MacBook review](context-use://page/refreshing-our-macbook) already made the capacity question clear: Mac work must remain visible while we prepare portable-product launches.
+
+[Phil](context-use://entity/phil-schiller) and [Ron](context-use://entity/ron-johnson) will show an ordinary collection becoming something shareable. I am applying the [first iPod rehearsal standard](context-use://page/walking-the-first-ipod-demo-with-tony) to a desktop: make the transformation visible, not just the polished result.

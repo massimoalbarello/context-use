@@ -1,5 +1,7 @@
 # Giving our iPod a video screen
 
-[I](context-use://entity/steve-jobs) introduced a new [iPod](context-use://entity/ipod) with a 2.5-inch color screen and video playback. Our [hardware announcement](context-use://record/video-ipod) lists 30GB at $299 and 60GB at $399, with shipping planned for the following week.
+[I](context-use://entity/steve-jobs) am extending the [purchase-to-pocket journey](context-use://page/selling-songs-one-at-a-time) from songs to video. The [hardware launch thread](context-use://record/video-ipod) connects the new 2.5-inch screen to a real task: buy an episode and watch it on the player.
 
-It extends the player beyond the music workflow, while [our smaller nano](context-use://page/putting-a-display-into-the-smaller-nano) serves a different physical tradeoff.
+The [television agreement with Bob](context-use://record/itunes-video) supplies something worth demonstrating. [Tony](context-use://entity/tony-fadell) owns playback through the ordinary transfer flow; [Phil](context-use://entity/phil-schiller) presents the content and device as one experience. The 30GB/$299 and 60GB/$399 players are planned to ship next week.
+
+My check remains the one from the [first iPod rehearsal](context-use://page/walking-the-first-ipod-demo-with-tony): do not begin with the hard work already done or end before the customer gets the benefit.
