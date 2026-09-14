@@ -228,10 +228,46 @@
     "temporalCoverage": "2004-07-26/2007-01-09"
   },
   {
+    "readableId": "settling-our-apple-name",
+    "path": "pages/settling-our-apple-name.md",
+    "asOf": "2007-02-05",
+    "temporalCoverage": "2007-02-05"
+  },
+  {
+    "readableId": "keeping-the-iphone-name",
+    "path": "pages/keeping-the-iphone-name.md",
+    "asOf": "2007-02-21",
+    "temporalCoverage": "2007-02-21"
+  },
+  {
+    "readableId": "taking-itunes-to-the-tv",
+    "path": "pages/taking-itunes-to-the-tv.md",
+    "asOf": "2007-03-21",
+    "temporalCoverage": "2007-03-21"
+  },
+  {
+    "readableId": "completing-the-album",
+    "path": "pages/completing-the-album.md",
+    "asOf": "2007-03-29",
+    "temporalCoverage": "2007-03-29"
+  },
+  {
+    "readableId": "opening-music-with-emi",
+    "path": "pages/opening-music-with-emi.md",
+    "asOf": "2007-04-02",
+    "temporalCoverage": "2007-04-02"
+  },
+  {
     "readableId": "reaching-one-hundred-million-ipods",
     "path": "pages/reaching-one-hundred-million-ipods.md",
     "asOf": "2007-04-09",
     "temporalCoverage": "2007-04-09"
+  },
+  {
+    "readableId": "refreshing-our-macbook",
+    "path": "pages/refreshing-our-macbook.md",
+    "asOf": "2007-05-15",
+    "temporalCoverage": "2007-05-15"
   },
   {
     "readableId": "opening-emi-purchases-beyond-drm",
@@ -276,6 +312,30 @@
     "temporalCoverage": "2004-07-26/2007-06-29"
   },
   {
+    "readableId": "setting-our-million-goal",
+    "path": "pages/setting-our-million-goal.md",
+    "asOf": "2007-07-25",
+    "temporalCoverage": "2007-07-25"
+  },
+  {
+    "readableId": "passing-three-billion-songs",
+    "path": "pages/passing-three-billion-songs.md",
+    "asOf": "2007-07-31",
+    "temporalCoverage": "2007-07-31"
+  },
+  {
+    "readableId": "remaking-our-desktop-mac",
+    "path": "pages/remaking-our-desktop-mac.md",
+    "asOf": "2007-08-07",
+    "temporalCoverage": "2007-08-07"
+  },
+  {
+    "readableId": "renewing-our-creative-tools",
+    "path": "pages/renewing-our-creative-tools.md",
+    "asOf": "2007-08-07",
+    "temporalCoverage": "2007-08-07"
+  },
+  {
     "readableId": "bringing-the-phones-interface-back-to-ipod",
     "path": "pages/bringing-the-phones-interface-back-to-ipod.md",
     "asOf": "2007-09-05",
@@ -304,6 +364,12 @@
     "path": "pages/passing-our-first-million-iphone-sales.md",
     "asOf": "2007-09-10",
     "temporalCoverage": "2007-09-09"
+  },
+  {
+    "readableId": "setting-leopards-date",
+    "path": "pages/setting-leopards-date.md",
+    "asOf": "2007-10-16",
+    "temporalCoverage": "2007-10-16"
   },
   {
     "readableId": "committing-to-native-applications-for-iphone",
@@ -364,5 +430,11 @@
     "path": "pages/my-work-from-ipod-to-iphone.md",
     "asOf": "2007-10-17",
     "temporalCoverage": "2001-01-09/2007-10-17"
+  },
+  {
+    "readableId": "lowering-itunes-plus-prices",
+    "path": "pages/lowering-itunes-plus-prices.md",
+    "asOf": "2007-10-17",
+    "temporalCoverage": "2007-10-17"
   }
 ]
