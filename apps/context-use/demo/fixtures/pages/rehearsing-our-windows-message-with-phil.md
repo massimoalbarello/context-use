@@ -1,5 +1,7 @@
 # Rehearsing our Windows message with Phil
 
-**Synthetic scenario — invented wording, date and attendance.**
+[I](context-use://entity/steve-jobs) asked [Phil](context-use://entity/phil-schiller) to change the opening. We have supported Windows iPods since 2002; tomorrow's news is our own software joining the store, library and sync on the PC.
 
-[I](context-use://entity/steve-jobs) ask [Phil](context-use://entity/phil-schiller) to explain the new software without implying that we have never served Windows iPod customers before. Our [fictional rehearsal](context-use://record/windows-handoff) starts with the [earlier Musicmatch arrangement](context-use://page/opening-ipod-to-windows-customers) so the distinction stays clear.
+The [launch rehearsal](context-use://record/windows-handoff) makes the distinction concrete with a purchase-to-pocket demonstration. It closes the gap I accepted in the [Musicmatch decision](context-use://page/opening-ipod-to-windows-customers), made more urgent by the [Music Store](context-use://page/selling-songs-one-at-a-time).
+
+[Tony](context-use://entity/tony-fadell) is testing the existing-customer transition as well as the clean install. I want the migration instructions available to retail staff. A better destination can still make a poor first impression if we forget how people get there.

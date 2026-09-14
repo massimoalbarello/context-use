@@ -1,3 +1,5 @@
 # Giving customers a place to try our products
 
-With [Ron Johnson](context-use://entity/ron-johnson), [I](context-use://entity/steve-jobs) am building places where people can try [Apple](context-use://entity/apple) products and ask for help. We have moved from our [opening plan](context-use://record/stores-plan) to the [first weekend with customers](context-use://page/welcoming-our-first-store-customers). Demonstration and support are part of the product experience.
+[I](context-use://entity/steve-jobs) opened stores to let people accomplish something with our products. The [first weekend](context-use://page/welcoming-our-first-store-customers) gave me evidence beyond the visitor count: people needed a next step for their own CDs.
+
+The [original review](context-use://record/stores-plan) asked whether helpful demonstrations would survive a crowded store. The [Slack debrief](context-use://record/stores-weekend) now assigns [Phil](context-use://entity/phil-schiller) a take-home sequence and [Ron](context-use://entity/ron-johnson) continuing customer observation. I want the questions to change the demonstration, not disappear into a launch report. This extends the [iTunes library principle](context-use://page/bringing-music-into-the-mac) into how we help people.

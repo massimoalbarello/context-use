@@ -1,1205 +1,116 @@
 [
   {
     "id": "itunes-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "gmail",
+    "kind": "thread",
     "content": {
-      "title": "iTunes turns the Mac into a music library",
-      "sourceUrl": "https://www.apple.com/newsroom/2001/01/09Apple-Introduces-iTunes-Worlds-Best-and-Easiest-To-Use-Jukebox-Software/",
+      "title": "iTunes: the library has to be the starting point",
+      "sourceCreatedAt": "2001-01-09T13:00:00Z",
+      "sourceUpdatedAt": "2001-01-09T13:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
+        },
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jon.rubinstein@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
         }
       ],
       "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2001-01-09",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2001-01-09T00:00:00Z"
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Digital hub"]
+      }
     },
     "path": "records/itunes-launch.md"
   },
   {
     "id": "stores-plan",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "granola",
+    "kind": "meeting",
     "content": {
-      "title": "First physical stores and 25-store plan",
-      "sourceUrl": "https://www.apple.com/newsroom/2001/05/15Apple-to-Open-25-Retail-Stores-in-2001/",
+      "title": "Retail review: sell the first successful experience",
+      "sourceCreatedAt": "2001-05-15T09:00:00Z",
+      "sourceUpdatedAt": "2001-05-15T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
-        }
-      ],
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2001-05-15",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2001-05-15T00:00:00Z"
-    },
-    "path": "records/stores-plan.md"
-  },
-  {
-    "id": "stores-weekend",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "First stores opening-weekend results",
-      "sourceUrl": "https://www.apple.com/newsroom/2001/05/21Apple-Retail-Stores-Welcome-Over-7700-People-in-First-Two-Days/",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ],
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2001-05-19/2001-05-20",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2001-05-21T00:00:00Z"
-    },
-    "path": "records/stores-weekend.md"
-  },
-  {
-    "id": "ipod-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Original iPod announcement and planned availability",
-      "sourceUrl": "https://www.apple.com/newsroom/2001/10/23Apple-Presents-iPod/",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ],
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2001-10-23",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2001-10-23T00:00:00Z"
-    },
-    "path": "records/ipod-launch.md"
-  },
-  {
-    "id": "rubinstein-history",
-    "provider": "computer-history-museum",
-    "kind": "oral-history-summary",
-    "content": {
-      "title": "Rubinstein recalls the first iPod team",
-      "sourceUrl": "https://archive.computerhistory.org/resources/access/text/2020/02/102717908-05-01-acc.pdf",
-      "participants": [
-        {
-          "name": "Jon Rubinstein",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "jon-rubinstein"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Tony Fadell",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "tony-fadell"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Jonathan Ive",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "jonathan-ive"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ],
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2001",
-        "datePrecision": "unknown"
-      }
-    },
-    "path": "records/rubinstein-history.md"
-  },
-  {
-    "id": "fadell-history",
-    "provider": "computer-history-museum",
-    "kind": "interview-summary",
-    "content": {
-      "title": "Fadell on joining Apple in 2001",
-      "sourceUrl": "https://computerhistory.org/blog/computing-for-the-whole-world-a-conversation-with-ipod-iphone-inventor-tony-fadell/",
-      "participants": [
-        {
-          "name": "Tony Fadell",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "tony-fadell"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ],
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2001",
-        "datePrecision": "unknown",
-        "interviewDate": "2017-05-10"
-      }
-    },
-    "path": "records/fadell-history.md"
-  },
-  {
-    "id": "ipod-windows",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPod expands to Windows",
-      "sourceUrl": "https://www.apple.com/newsroom/2002/07/17Apple-Unveils-New-iPods/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2002-07-17",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2002-07-17T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/ipod-windows.md"
-  },
-  {
-    "id": "store-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Music Store opens on the Mac",
-      "sourceUrl": "https://www.apple.com/newsroom/2003/04/28Apple-Launches-the-iTunes-Music-Store/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2003-04-28",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2003-04-28T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/store-launch.md"
-  },
-  {
-    "id": "itunes-windows",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iTunes arrives on Windows",
-      "sourceUrl": "https://www.apple.com/newsroom/2003/10/16Apple-Launches-iTunes-for-Windows/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2003-10-16",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2003-10-16T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/itunes-windows.md"
-  },
-  {
-    "id": "mini-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPod mini announcement and original schedule",
-      "sourceUrl": "https://www.apple.com/newsroom/2004/01/06Apple-Introduces-iPod-mini/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2004-01-06",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2004-01-06T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/mini-launch.md"
-  },
-  {
-    "id": "mini-international",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Revised international iPod mini availability",
-      "sourceUrl": "https://www.apple.com/uk/newsroom/2004/07/07Apple-iPod-mini-International-Availability-Set-for-July-24/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2004-07-07",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2004-07-07T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/mini-international.md"
-  },
-  {
-    "id": "motorola-plan",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Motorola and Apple announce mobile iTunes partnership",
-      "sourceUrl": "https://www.apple.com/uk/newsroom/2004/07/26Motorola-and-Apple-Bring-iTunes-Music-Player-to-Motorolas-Next-Generation-Mobile-Phones/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2004-07-26",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2004-07-26T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/motorola-plan.md"
-  },
-  {
-    "id": "shuffle-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Flash storage and AutoFill in iPod shuffle",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/01/11Apple-Introduces-iPod-shuffle/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-01-11",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-01-11T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/shuffle-launch.md"
-  },
-  {
-    "id": "intel-plan",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Mac Intel transition announced",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/06/06Apple-to-Use-Intel-Microprocessors-Beginning-in-2006/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-06-06",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-06-06T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/intel-plan.md"
-  },
-  {
-    "id": "nano-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPod nano announcement",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/09/07Apple-Introduces-iPod-nano/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-09-07",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-09-07T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/nano-launch.md"
-  },
-  {
-    "id": "rokr-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Motorola ROKR launches with iTunes",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/09/07Apple-Motorola-Cingular-Launch-Worlds-First-Mobile-Phone-with-iTunes/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-09-07",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-09-07T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/rokr-launch.md"
-  },
-  {
-    "id": "video-ipod",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Video comes to iPod hardware",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/10/12Apple-Unveils-the-New-iPod/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-10-12",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-10-12T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/video-ipod.md"
-  },
-  {
-    "id": "itunes-video",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Disney television and Pixar shorts arrive in iTunes",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/10/12Apple-Announces-iTunes-6-With-2-000-Music-Videos-Pixar-Short-Films-Hit-TV-Shows/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-10-12",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-10-12T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Bob Iger",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "bob-iger"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/itunes-video.md"
-  },
-  {
-    "id": "leadership",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Cook promotion and iPod succession plan",
-      "sourceUrl": "https://www.apple.com/newsroom/2005/10/14Tim-Cook-Named-COO-of-Apple/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2005-10-14",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2005-10-14T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Tim Cook",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "tim-cook"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Jon Rubinstein",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "jon-rubinstein"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Tony Fadell",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "tony-fadell"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/leadership.md"
-  },
-  {
-    "id": "pixar-announcement",
-    "provider": "disney-investor-relations",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Disney agrees to acquire Pixar",
-      "sourceUrl": "https://thewaltdisneycompany.com/press-releases/disney-to-acquire-pixar/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2006-01-24",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2006-01-24T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Bob Iger",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "bob-iger"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Ed Catmull",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "ed-catmull"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "John Lasseter",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "john-lasseter"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/pixar-announcement.md"
-  },
-  {
-    "id": "pixar-call",
-    "provider": "disney-investor-relations",
-    "kind": "conference-call-summary",
-    "content": {
-      "title": "Jobs and Iger discuss Pixar’s alternatives",
-      "sourceUrl": "https://thewaltdisneycompany.com/app/uploads/ir/2006/events/pixar-2006-0124-transcript.pdf",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2006-01-24",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2006-01-24T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Bob Iger",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "bob-iger"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/pixar-call.md"
-  },
-  {
-    "id": "pixar-close",
-    "provider": "disney-investor-relations",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "Disney completes Pixar acquisition",
-      "sourceUrl": "https://thewaltdisneycompany.com/press-releases/disney-completes-pixar-acquisition/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2006-05-05",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2006-05-05T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Bob Iger",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "bob-iger"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Ed Catmull",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "ed-catmull"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "John Lasseter",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "john-lasseter"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/pixar-close.md"
-  },
-  {
-    "id": "forstall-history",
-    "provider": "computer-history-museum",
-    "kind": "oral-history-summary",
-    "content": {
-      "title": "Forstall and the original iPhone engineers look back",
-      "sourceUrl": "https://computerhistory.org/blog/creating-magic-a-conversation-with-original-iphone-engineers-software-team-lead-scott-forstall/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "before 2007-01-09; precise dates not established",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2017-06-22T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        },
-        {
-          "name": "Scott Forstall",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "scott-forstall"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/forstall-history.md"
-  },
-  {
-    "id": "iphone-unveiling",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPhone announcement and US launch plan",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/01/09Apple-Reinvents-the-Phone-with-iPhone/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-01-09",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-01-09T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/iphone-unveiling.md"
-  },
-  {
-    "id": "ipod-100m",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "One hundred million iPods sold",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/04/09100-Million-iPods-Sold/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-04-09",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-04-09T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/ipod-100m.md"
-  },
-  {
-    "id": "itunes-plus",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "EMI catalog launches in iTunes Plus",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/05/30Apple-Launches-iTunes-Plus/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-05-30",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-05-30T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/itunes-plus.md"
-  },
-  {
-    "id": "web-apps",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "The initial third-party iPhone application offer",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/06/11iPhone-to-Support-Third-Party-Web-2-0-Applications/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-06-11",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-06-11T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/web-apps.md"
-  },
-  {
-    "id": "iphone-glass",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPhone specifications revised before sale",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/06/18iPhone-Delivers-Up-to-Eight-Hours-of-Talk-Time/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-06-18",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-06-18T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/iphone-glass.md"
-  },
-  {
-    "id": "iphone-retail",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPhone retail launch arrangements",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/06/28iPhone-Premieres-This-Friday-Night-at-Apple-Retail-Stores/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-06-28",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-06-28T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
+          "roles": ["attendee"]
         },
         {
           "name": "Ron Johnson",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "ron-johnson"
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/iphone-retail.md"
-  },
-  {
-    "id": "iphone-price",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPhone price reduction",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/09/05Apple-Sets-iPhone-Price-at-399-for-this-Holiday-Season/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-09-05",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-09-05T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/iphone-price.md"
-  },
-  {
-    "id": "touch-launch",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "iPod touch brings multi-touch and Wi-Fi",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/09/05Apple-Unveils-iPod-touch/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-09-05",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-09-05T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/touch-launch.md"
-  },
-  {
-    "id": "iphone-credit",
-    "provider": "macrumors",
-    "kind": "contemporary-report-summary",
-    "content": {
-      "title": "Jobs responds to early iPhone customers",
-      "sourceUrl": "https://www.macrumors.com/2007/09/06/steve-jobs-open-letter-to-iphone-owners/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-09-06",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-09-06T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/iphone-credit.md"
-  },
-  {
-    "id": "iphone-million",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
-    "content": {
-      "title": "First million iPhones reported",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/09/10Apple-Sells-One-Millionth-iPhone/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-09-09",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-09-10T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/iphone-million.md"
-  },
-  {
-    "id": "native-sdk",
-    "provider": "jobs-public-letter",
-    "kind": "reproduced-letter-summary",
-    "content": {
-      "title": "Jobs commits to a native iPhone SDK",
-      "sourceUrl": "https://tidbits.com/2007/10/17/steve-jobss-iphone-sdk-letter/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-10-17",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-10-17T00:00:00Z",
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["subject"]
-        }
-      ]
-    },
-    "path": "records/native-sdk.md"
-  },
-  {
-    "id": "demo-handoff",
-    "provider": "synthetic-workspace",
-    "kind": "meeting",
-    "content": {
-      "title": "[Synthetic] Steve and Tony prepare the iPod demo",
-      "sourceCreatedAt": "2001-10-22T00:00:00Z",
-      "attributes": {
-        "evidence": "synthetic",
-        "subjectCoverage": "2001-10-22",
-        "datePrecision": "invented day",
-        "timestampNote": "Wording, date and attendance invented for the demo."
-      },
-      "participants": [
-        {
-          "name": "Steve Jobs",
-          "identities": [
-            {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
-            }
-          ],
-          "roles": ["participant"]
+          "roles": ["attendee"]
         },
         {
-          "name": "Tony Fadell",
+          "name": "Phil Schiller",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "tony-fadell"
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
             }
           ],
-          "roles": ["participant"]
+          "roles": ["attendee"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
     },
-    "path": "records/demo-handoff.md"
+    "path": "records/stores-plan.md"
   },
   {
-    "id": "windows-handoff",
-    "provider": "synthetic-workspace",
-    "kind": "meeting",
+    "id": "stores-weekend",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "[Synthetic] Steve and Phil rehearse the Windows story",
-      "sourceCreatedAt": "2003-10-15T00:00:00Z",
-      "attributes": {
-        "evidence": "synthetic",
-        "subjectCoverage": "2003-10-15",
-        "datePrecision": "invented day",
-        "timestampNote": "Wording, date and attendance invented for the demo."
-      },
+      "title": "Opening weekend: visitors need a next step",
+      "sourceCreatedAt": "2001-05-21T16:00:00Z",
+      "sourceUpdatedAt": "2001-05-21T16:24:00Z",
       "participants": [
         {
-          "name": "Steve Jobs",
+          "name": "Ron Johnson",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
@@ -1208,36 +119,232 @@
           "name": "Phil Schiller",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "phil-schiller"
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "retail-experience"
+      }
     },
-    "path": "records/windows-handoff.md"
+    "path": "records/stores-weekend.md"
   },
   {
-    "id": "rokr-debrief",
-    "provider": "synthetic-workspace",
-    "kind": "conversation",
+    "id": "ipod-team-charter",
+    "provider": "granola",
+    "kind": "meeting",
     "content": {
-      "title": "[Synthetic] Steve and Tony compare two music experiences",
-      "sourceCreatedAt": "2005-09-08T00:00:00Z",
-      "attributes": {
-        "evidence": "synthetic",
-        "subjectCoverage": "2005-09-08",
-        "datePrecision": "invented day",
-        "timestampNote": "Wording, date and attendance invented for the demo."
-      },
+      "title": "iPod team review: one owner for every handoff",
+      "sourceCreatedAt": "2001-10-19T09:00:00Z",
+      "sourceUpdatedAt": "2001-10-19T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jon.rubinstein@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/ipod-team-charter.md"
+  },
+  {
+    "id": "ipod-product-review",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "iPod rehearsal prep: the empty-library test",
+      "sourceCreatedAt": "2001-10-21T16:00:00Z",
+      "sourceUpdatedAt": "2001-10-21T16:24:00Z",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "ipod"
+      }
+    },
+    "path": "records/ipod-product-review.md"
+  },
+  {
+    "id": "demo-handoff",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "iPod rehearsal: from an empty player to one album",
+      "sourceCreatedAt": "2001-10-22T09:00:00Z",
+      "sourceUpdatedAt": "2001-10-22T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/demo-handoff.md"
+  },
+  {
+    "id": "ipod-launch",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "After the iPod introduction: finish the journey before November 10",
+      "sourceCreatedAt": "2001-10-23T13:00:00Z",
+      "sourceUpdatedAt": "2001-10-23T13:24:00Z",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
@@ -1246,74 +353,1107 @@
           "name": "Tony Fadell",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "tony-fadell"
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "iPod"]
+      }
     },
-    "path": "records/rokr-debrief.md"
+    "path": "records/ipod-launch.md"
   },
   {
-    "id": "iphone-rehearsal",
-    "provider": "synthetic-workspace",
+    "id": "ipod-windows",
+    "provider": "granola",
     "kind": "meeting",
     "content": {
-      "title": "[Synthetic] Steve and Scott walk the iPhone demo",
-      "sourceCreatedAt": "2007-01-08T00:00:00Z",
-      "attributes": {
-        "evidence": "synthetic",
-        "subjectCoverage": "2007-01-08",
-        "datePrecision": "invented day",
-        "timestampNote": "Wording, date and attendance invented for the demo."
-      },
+      "title": "Windows iPod: accept a bridge, keep the experience gap visible",
+      "sourceCreatedAt": "2002-07-17T09:00:00Z",
+      "sourceUpdatedAt": "2002-07-17T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/ipod-windows.md"
+  },
+  {
+    "id": "store-launch",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Music Store review: make buying easier than managing files",
+      "sourceCreatedAt": "2003-04-28T09:00:00Z",
+      "sourceUpdatedAt": "2003-04-28T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/store-launch.md"
+  },
+  {
+    "id": "windows-handoff",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Windows launch rehearsal: close the Musicmatch gap",
+      "sourceCreatedAt": "2003-10-15T09:00:00Z",
+      "sourceUpdatedAt": "2003-10-15T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/windows-handoff.md"
+  },
+  {
+    "id": "itunes-windows",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "iTunes for Windows is out; watch existing customers first",
+      "sourceCreatedAt": "2003-10-16T13:00:00Z",
+      "sourceUpdatedAt": "2003-10-16T13:24:00Z",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
         },
         {
-          "name": "Scott Forstall",
+          "name": "Tony Fadell",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "scott-forstall"
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Digital hub"]
+      }
     },
-    "path": "records/iphone-rehearsal.md"
+    "path": "records/itunes-windows.md"
   },
   {
-    "id": "retail-handoff",
-    "provider": "synthetic-workspace",
-    "kind": "message",
+    "id": "mini-launch",
+    "provider": "granola",
+    "kind": "meeting",
     "content": {
-      "title": "[Synthetic] Steve asks Ron about the first customer hour",
-      "sourceCreatedAt": "2007-06-27T00:00:00Z",
-      "attributes": {
-        "evidence": "synthetic",
-        "subjectCoverage": "2007-06-27",
-        "datePrecision": "invented day",
-        "timestampNote": "Wording, date and attendance invented for the demo."
-      },
+      "title": "iPod mini review: smaller must mean easier to carry",
+      "sourceCreatedAt": "2004-01-06T09:00:00Z",
+      "sourceUpdatedAt": "2004-01-06T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/mini-launch.md"
+  },
+  {
+    "id": "mini-international",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "International mini: replace the April promise with July 24",
+      "sourceCreatedAt": "2004-07-07T13:00:00Z",
+      "sourceUpdatedAt": "2004-07-07T13:24:00Z",
+      "participants": [
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "iPod"]
+      }
+    },
+    "path": "records/mini-international.md"
+  },
+  {
+    "id": "motorola-plan",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Motorola music phone: write down who owns the seams",
+      "sourceCreatedAt": "2004-07-26T13:00:00Z",
+      "sourceUpdatedAt": "2004-07-26T13:24:00Z",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Music on phones"]
+      }
+    },
+    "path": "records/motorola-plan.md"
+  },
+  {
+    "id": "shuffle-launch",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Shuffle review: remove the screen, move the burden carefully",
+      "sourceCreatedAt": "2005-01-11T09:00:00Z",
+      "sourceUpdatedAt": "2005-01-11T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/shuffle-launch.md"
+  },
+  {
+    "id": "intel-plan",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Mac transition: change the processor without losing the customer",
+      "sourceCreatedAt": "2005-06-06T09:00:00Z",
+      "sourceUpdatedAt": "2005-06-06T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/intel-plan.md"
+  },
+  {
+    "id": "nano-launch",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "Nano is live: make the size tangible",
+      "sourceCreatedAt": "2005-09-07T16:00:00Z",
+      "sourceUpdatedAt": "2005-09-07T16:24:00Z",
+      "participants": [
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "ipod"
+      }
+    },
+    "path": "records/nano-launch.md"
+  },
+  {
+    "id": "rokr-launch",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "ROKR release: the 100-song boundary must be explicit",
+      "sourceCreatedAt": "2005-09-07T13:00:00Z",
+      "sourceUpdatedAt": "2005-09-07T13:24:00Z",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Music on phones"]
+      }
+    },
+    "path": "records/rokr-launch.md"
+  },
+  {
+    "id": "rokr-debrief",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Nano and ROKR debrief: a music feature is not a phone experience",
+      "sourceCreatedAt": "2005-09-08T09:00:00Z",
+      "sourceUpdatedAt": "2005-09-08T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/rokr-debrief.md"
+  },
+  {
+    "id": "video-ipod",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "Video iPod: do not let the demo end at the download",
+      "sourceCreatedAt": "2005-10-12T16:00:00Z",
+      "sourceUpdatedAt": "2005-10-12T16:24:00Z",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "ipod"
+      }
+    },
+    "path": "records/video-ipod.md"
+  },
+  {
+    "id": "itunes-video",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Bob / Steve: television is a test of how we work together",
+      "sourceCreatedAt": "2005-10-12T13:00:00Z",
+      "sourceUpdatedAt": "2005-10-12T13:24:00Z",
+      "participants": [
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "bob.iger@disney.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Disney and Pixar"]
+      }
+    },
+    "path": "records/itunes-video.md"
+  },
+  {
+    "id": "leadership",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Leadership handoff: make capacity and ownership explicit",
+      "sourceCreatedAt": "2005-10-14T09:00:00Z",
+      "sourceUpdatedAt": "2005-10-14T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jon Rubinstein",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jon.rubinstein@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/leadership.md"
+  },
+  {
+    "id": "pixar-call",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Pixar / Disney: distribution agreement or shared future?",
+      "sourceCreatedAt": "2006-01-24T09:00:00Z",
+      "sourceUpdatedAt": "2006-01-24T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "bob.iger@disney.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ed.catmull@pixar.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "John Lasseter",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "john.lasseter@pixar.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/pixar-call.md"
+  },
+  {
+    "id": "pixar-announcement",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Pixar announcement: what we have agreed, what waits for closing",
+      "sourceCreatedAt": "2006-01-24T13:00:00Z",
+      "sourceUpdatedAt": "2006-01-24T13:24:00Z",
+      "participants": [
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "bob.iger@disney.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ed.catmull@pixar.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Disney and Pixar"]
+      }
+    },
+    "path": "records/pixar-announcement.md"
+  },
+  {
+    "id": "pixar-close",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Pixar closing: carry the creative agreement into the new roles",
+      "sourceCreatedAt": "2006-05-05T13:00:00Z",
+      "sourceUpdatedAt": "2006-05-05T13:24:00Z",
+      "participants": [
+        {
+          "name": "Bob Iger",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "bob.iger@disney.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ed Catmull",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ed.catmull@pixar.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Disney and Pixar"]
+      }
+    },
+    "path": "records/pixar-close.md"
+  },
+  {
+    "id": "touch-interface-review",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "iPhone interaction review: fingers, software and the whole sequence",
+      "sourceCreatedAt": "2007-01-07T09:00:00Z",
+      "sourceUpdatedAt": "2007-01-07T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/touch-interface-review.md"
+  },
+  {
+    "id": "iphone-rehearsal",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Macworld rehearsal: one device, three familiar needs",
+      "sourceCreatedAt": "2007-01-08T09:00:00Z",
+      "sourceUpdatedAt": "2007-01-08T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/iphone-rehearsal.md"
+  },
+  {
+    "id": "iphone-unveiling",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "After Macworld: the June promise now has owners",
+      "sourceCreatedAt": "2007-01-09T13:00:00Z",
+      "sourceUpdatedAt": "2007-01-09T13:24:00Z",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
@@ -1322,361 +1462,1349 @@
           "name": "Ron Johnson",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "ron-johnson"
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
             }
           ],
           "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "iPhone launch"]
+      }
     },
-    "path": "records/retail-handoff.md"
+    "path": "records/iphone-unveiling.md"
   },
   {
     "id": "apple-corps-agreement",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "gmail",
+    "kind": "thread",
     "content": {
-      "title": "Apple and Apple Corps settle their trademark dispute",
-      "sourceUrl": "https://www.apple.com/uk/newsroom/2007/02/05Apple-Inc-and-The-Beatles-Apple-Corps-Ltd-Enter-into-New-Agreement/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-02-05",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-02-05T00:00:00Z",
+      "title": "Apple name agreement: clear the blocker, keep catalog promises separate",
+      "sourceCreatedAt": "2007-02-05T13:00:00Z",
+      "sourceUpdatedAt": "2007-02-05T13:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Music Store"]
+      }
     },
     "path": "records/apple-corps-agreement.md"
   },
   {
     "id": "iphone-trademark",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "gmail",
+    "kind": "thread",
     "content": {
-      "title": "Cisco and Apple agree on the iPhone trademark",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/02/21Cisco-and-Apple-Reach-Agreement-on-iPhone-Trademark/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-02-21",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-02-21T00:00:00Z",
+      "title": "iPhone naming resolved; launch work still stands",
+      "sourceCreatedAt": "2007-02-21T13:00:00Z",
+      "sourceUpdatedAt": "2007-02-21T13:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "iPhone launch"]
+      }
     },
     "path": "records/iphone-trademark.md"
   },
   {
     "id": "apple-tv-shipping",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "Apple TV begins shipping",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/03/21Apple-TV-Now-Shipping/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-03-21",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-03-21T00:00:00Z",
+      "title": "Apple TV: the living-room handoff is part of the product",
+      "sourceCreatedAt": "2007-03-21T16:00:00Z",
+      "sourceUpdatedAt": "2007-03-21T16:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "digital-hub"
+      }
     },
     "path": "records/apple-tv-shipping.md"
   },
   {
     "id": "complete-my-album",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "iTunes introduces Complete My Album",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/03/29iTunes-Introduces-Complete-My-Album/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-03-29",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-03-29T00:00:00Z",
+      "title": "Complete My Album: do not charge twice for the first step",
+      "sourceCreatedAt": "2007-03-29T16:00:00Z",
+      "sourceUpdatedAt": "2007-03-29T16:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "music-store"
+      }
     },
     "path": "records/complete-my-album.md"
   },
   {
     "id": "emi-drm-announcement",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "gmail",
+    "kind": "thread",
     "content": {
-      "title": "Apple announces DRM-free EMI music for May",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/04/02Apple-Unveils-Higher-Quality-DRM-Free-Music-on-the-iTunes-Store/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-04-02",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-04-02T00:00:00Z",
+      "title": "EMI agreement: a useful opening, with a precise boundary",
+      "sourceCreatedAt": "2007-04-02T13:00:00Z",
+      "sourceUpdatedAt": "2007-04-02T13:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Music Store"]
+      }
     },
     "path": "records/emi-drm-announcement.md"
   },
   {
-    "id": "macbook-update",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "id": "ipod-100m",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "Apple updates its MacBook notebooks",
-      "sourceUrl": "https://www.apple.com/ie/newsroom/2007/05/15Apple-Updates-Popular-MacBook/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-05-15",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-05-15T00:00:00Z",
+      "title": "100 million iPods: use the milestone to inspect the handoffs",
+      "sourceCreatedAt": "2007-04-09T16:00:00Z",
+      "sourceUpdatedAt": "2007-04-09T16:24:00Z",
       "participants": [
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "ipod"
+      }
+    },
+    "path": "records/ipod-100m.md"
+  },
+  {
+    "id": "macbook-update",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "MacBook refresh: the library still needs a home",
+      "sourceCreatedAt": "2007-05-15T16:00:00Z",
+      "sourceUpdatedAt": "2007-05-15T16:24:00Z",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "mac"
+      }
     },
     "path": "records/macbook-update.md"
   },
   {
-    "id": "june-quarter-results",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "id": "itunes-plus",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "Apple reports its June quarter and an iPhone sales goal",
-      "sourceUrl": "https://www.apple.com/uk/newsroom/2007/07/25Apple-Reports-Third-Quarter-Results/",
+      "title": "iTunes Plus launch: test what “DRM-free” means to a customer",
+      "sourceCreatedAt": "2007-05-30T16:00:00Z",
+      "sourceUpdatedAt": "2007-05-30T16:24:00Z",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
       "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-07-25",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-07-25T00:00:00Z",
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "music-store"
+      }
+    },
+    "path": "records/itunes-plus.md"
+  },
+  {
+    "id": "web-apps",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "WWDC applications review: web at launch, native questions open",
+      "sourceCreatedAt": "2007-06-11T09:00:00Z",
+      "sourceUpdatedAt": "2007-06-11T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/web-apps.md"
+  },
+  {
+    "id": "iphone-glass",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "iPhone readiness: update the promise and the training together",
+      "sourceCreatedAt": "2007-06-18T09:00:00Z",
+      "sourceUpdatedAt": "2007-06-18T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/iphone-glass.md"
+  },
+  {
+    "id": "retail-handoff",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Ron / Steve: who helps when the first hour stops working?",
+      "sourceCreatedAt": "2007-06-27T13:00:00Z",
+      "sourceUpdatedAt": "2007-06-27T13:24:00Z",
+      "participants": [
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "iPhone launch"]
+      }
+    },
+    "path": "records/retail-handoff.md"
+  },
+  {
+    "id": "iphone-retail",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "June 29 launch checklist: first call, first sync, clear help",
+      "sourceCreatedAt": "2007-06-28T16:00:00Z",
+      "sourceUpdatedAt": "2007-06-28T16:24:00Z",
+      "participants": [
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "iphone-launch"
+      }
+    },
+    "path": "records/iphone-retail.md"
+  },
+  {
+    "id": "iphone-first-weekend",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "Launch debrief: keep a person with the stalled activation",
+      "sourceCreatedAt": "2007-06-30T16:00:00Z",
+      "sourceUpdatedAt": "2007-06-30T16:24:00Z",
+      "participants": [
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "iphone-launch"
+      }
+    },
+    "path": "records/iphone-first-weekend.md"
+  },
+  {
+    "id": "developer-feedback",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "Developer follow-up: web apps leave concrete gaps",
+      "sourceCreatedAt": "2007-07-12T16:00:00Z",
+      "sourceUpdatedAt": "2007-07-12T16:24:00Z",
+      "participants": [
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "iphone-software"
+      }
+    },
+    "path": "records/developer-feedback.md"
+  },
+  {
+    "id": "june-quarter-results",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Quarterly review: one million iPhones is a target, not a result",
+      "sourceCreatedAt": "2007-07-25T13:00:00Z",
+      "sourceUpdatedAt": "2007-07-25T13:24:00Z",
+      "participants": [
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Operating review"]
+      }
     },
     "path": "records/june-quarter-results.md"
   },
   {
     "id": "itunes-three-billion",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "iTunes passes three billion song purchases",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/07/31iTunes-Store-Tops-Three-Billion-Songs/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-07-31",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-07-31T00:00:00Z",
+      "title": "Three billion songs: volume is not the whole store experience",
+      "sourceCreatedAt": "2007-07-31T16:00:00Z",
+      "sourceUpdatedAt": "2007-07-31T16:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "music-store"
+      }
     },
     "path": "records/itunes-three-billion.md"
   },
   {
     "id": "aluminum-imac",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "granola",
+    "kind": "meeting",
     "content": {
-      "title": "Apple unveils the aluminum and glass iMac",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/08/07Apple-Unveils-New-iMac/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-08-07",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-08-07T00:00:00Z",
+      "title": "iMac review: the computer should recede behind the work",
+      "sourceCreatedAt": "2007-08-07T09:00:00Z",
+      "sourceUpdatedAt": "2007-08-07T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Jony Ive",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "jony.ive@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
     },
     "path": "records/aluminum-imac.md"
   },
   {
     "id": "ilife-08",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "Apple introduces iLife ’08",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/08/07Apple-Introduces-iLife-08/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-08-07",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-08-07T00:00:00Z",
+      "title": "iLife demo: start with the messy photo collection",
+      "sourceCreatedAt": "2007-08-07T16:00:00Z",
+      "sourceUpdatedAt": "2007-08-07T16:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "mac"
+      }
     },
     "path": "records/ilife-08.md"
   },
   {
-    "id": "leopard-release-date",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "id": "iphone-price",
+    "provider": "granola",
+    "kind": "meeting",
     "content": {
-      "title": "Apple announces October 26 availability for Leopard",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/10/16Apple-to-Ship-Mac-OS-X-Leopard-on-October-26/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-10-16",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-10-16T00:00:00Z",
+      "title": "Holiday iPhone pricing: widen access, account for early buyers",
+      "sourceCreatedAt": "2007-09-05T09:00:00Z",
+      "sourceUpdatedAt": "2007-09-05T09:45:00Z",
       "participants": [
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/iphone-price.md"
+  },
+  {
+    "id": "iphone-price-reaction",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "Price-cut escalation: early buyers feel punished for trusting us",
+      "sourceCreatedAt": "2007-09-05T16:00:00Z",
+      "sourceUpdatedAt": "2007-09-05T16:24:00Z",
+      "participants": [
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "retail-experience"
+      }
+    },
+    "path": "records/iphone-price-reaction.md"
+  },
+  {
+    "id": "iphone-credit",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Early iPhone customers: approve a $100 store credit",
+      "sourceCreatedAt": "2007-09-06T13:00:00Z",
+      "sourceUpdatedAt": "2007-09-06T13:24:00Z",
+      "participants": [
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Customer trust"]
+      }
+    },
+    "path": "records/iphone-credit.md"
+  },
+  {
+    "id": "touch-launch",
+    "provider": "slack",
+    "kind": "thread",
+    "content": {
+      "title": "iPod touch: reuse the interaction, state the difference clearly",
+      "sourceCreatedAt": "2007-09-05T16:00:00Z",
+      "sourceUpdatedAt": "2007-09-05T16:24:00Z",
+      "participants": [
+        {
+          "name": "Tony Fadell",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tony.fadell@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "ipod"
+      }
+    },
+    "path": "records/touch-launch.md"
+  },
+  {
+    "id": "iphone-million",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Millionth iPhone confirmed; keep the trust follow-up open",
+      "sourceCreatedAt": "2007-09-10T13:00:00Z",
+      "sourceUpdatedAt": "2007-09-10T13:24:00Z",
+      "participants": [
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Operating review"]
+      }
+    },
+    "path": "records/iphone-million.md"
+  },
+  {
+    "id": "native-sdk-preflight",
+    "provider": "granola",
+    "kind": "meeting",
+    "content": {
+      "title": "Native SDK decision review: answer the gaps without promising a finished platform",
+      "sourceCreatedAt": "2007-10-16T09:00:00Z",
+      "sourceUpdatedAt": "2007-10-16T09:45:00Z",
+      "participants": [
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["attendee"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "organizer": "steve.jobs@apple.example.invalid",
+        "calendar": "Product and leadership reviews",
+        "durationMinutes": 45
+      }
+    },
+    "path": "records/native-sdk-preflight.md"
+  },
+  {
+    "id": "native-sdk",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Native SDK: February commitment, owners and unanswered questions",
+      "sourceCreatedAt": "2007-10-17T13:00:00Z",
+      "sourceUpdatedAt": "2007-10-17T13:24:00Z",
+      "participants": [
+        {
+          "name": "Scott Forstall",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "scott.forstall@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "iPhone software"]
+      }
+    },
+    "path": "records/native-sdk.md"
+  },
+  {
+    "id": "leopard-release-date",
+    "provider": "gmail",
+    "kind": "thread",
+    "content": {
+      "title": "Leopard: October 26 is the next delivery commitment",
+      "sourceCreatedAt": "2007-10-16T13:00:00Z",
+      "sourceUpdatedAt": "2007-10-16T13:24:00Z",
+      "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Tim Cook",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "tim.cook@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Steve Jobs",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        }
+      ],
+      "attributes": {
+        "fictional": true,
+        "mailbox": "steve.jobs@apple.example.invalid",
+        "labels": ["Inbox", "Mac"]
+      }
     },
     "path": "records/leopard-release-date.md"
   },
   {
     "id": "itunes-plus-expansion",
-    "provider": "apple-newsroom",
-    "kind": "press-release-summary",
+    "provider": "slack",
+    "kind": "thread",
     "content": {
-      "title": "iTunes Plus expands and drops its price",
-      "sourceUrl": "https://www.apple.com/newsroom/2007/10/17iTunes-Plus-Now-Offers-Over-Two-Million-Tracks-at-Just-99-Cents/",
-      "attributes": {
-        "evidence": "documented",
-        "subjectCoverage": "2007-10-17",
-        "datePrecision": "day",
-        "timestampNote": "Publication day; midnight UTC is a transport convention, not an observed publication time."
-      },
-      "sourceCreatedAt": "2007-10-17T00:00:00Z",
+      "title": "iTunes Plus: remove the price fork, keep the catalog boundary",
+      "sourceCreatedAt": "2007-10-17T16:00:00Z",
+      "sourceUpdatedAt": "2007-10-17T16:24:00Z",
       "participants": [
+        {
+          "name": "Phil Schiller",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "phil.schiller@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
+        {
+          "name": "Ron Johnson",
+          "identities": [
+            {
+              "namespace": "email",
+              "id": "ron.johnson@apple.example.invalid"
+            }
+          ],
+          "roles": ["participant"]
+        },
         {
           "name": "Steve Jobs",
           "identities": [
             {
-              "namespace": "historical-person",
-              "id": "steve-jobs"
+              "namespace": "email",
+              "id": "steve.jobs@apple.example.invalid"
             }
           ],
-          "roles": ["subject"]
+          "roles": ["participant"]
         }
-      ]
+      ],
+      "attributes": {
+        "fictional": true,
+        "workspace": "Apple",
+        "channelName": "music-store"
+      }
     },
     "path": "records/itunes-plus-expansion.md"
   }

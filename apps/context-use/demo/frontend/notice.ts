@@ -32,7 +32,7 @@ export function demoNotice(): Plugin {
         tag: 'aside',
         attrs: { id: 'demo-notice', class: 'demo-surface', 'aria-label': 'Read-only demo' },
         children:
-          '<strong>Read-only demo</strong> · Explore Steve Jobs’ context, 2001–2007. Changes and account actions cannot be saved.',
+          '<strong>Read-only demo</strong> · Steve Jobs’ fictional second brain, 2001–2007. Conversations and notes are invented. Changes cannot be saved.',
         injectTo: 'body-prepend',
       },
     ],

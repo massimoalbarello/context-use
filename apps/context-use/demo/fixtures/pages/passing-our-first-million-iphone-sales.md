@@ -1,5 +1,7 @@
 # Passing our first million iPhone sales
 
-We reported on September 10 that our millionth [iPhone](context-use://entity/iphone) sold on **September 9**, 74 days after June 29. Our [sales release](context-use://record/iphone-million) is evidence of an achieved result, unlike [the earlier month-end forecast](context-use://page/lowering-the-price-of-our-iphone).
+[Tim](context-use://entity/tim-cook) confirmed that the millionth iPhone sold on September 9, 74 days after launch. The [September 10 email](context-use://record/iphone-million) closes the [July target](context-use://page/setting-our-million-goal) with a measured result. September 10 is the reporting date, not the sale date.
 
-[I](context-use://entity/steve-jobs) keep the sales milestone separate from [our response to early customers](context-use://page/responding-to-our-early-iphone-customers).
+[I](context-use://entity/steve-jobs) asked [Phil](context-use://entity/phil-schiller) to update the milestone while keeping the [early-customer credit](context-use://page/responding-to-our-early-iphone-customers) open separately. The [price reduction](context-use://page/lowering-the-price-of-our-iphone) and the reactions it caused are part of the same product history as the sales success.
+
+I need to remember both facts when reviewing the next launch. A target can be met while a customer commitment still needs work.

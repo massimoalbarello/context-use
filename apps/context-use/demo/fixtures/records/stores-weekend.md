@@ -1,7 +1,18 @@
-# First stores opening-weekend results
+# Opening weekend: visitors need a next step
 
-Research summary, paraphrased for this seed; not the original document.
+Fictional demo · Synced from Slack · 2001-05-21
 
-The two stores together welcomed over 7,700 visitors and sold $599,000 of merchandise during May 19–20. Apple reported the combined result on May 21, not on opening day. The 25-store rollout was still a plan.
+**Workspace:** Apple\
+**Channel:** #retail-experience
 
-Source: [First stores opening-weekend results](https://www.apple.com/newsroom/2001/05/21Apple-Retail-Stores-Welcome-Over-7700-People-in-First-Two-Days/).
+### Ron Johnson · 16:00 UTC
+
+The first two stores welcomed more than 7,700 people over the weekend. A recurring question at the music station was “how do I do this with my own CDs?” Our demo is clear; the handoff to someone’s own collection needs work.
+
+### Phil Schiller · 16:12 UTC
+
+I will replace the feature recap with a three-step take-home card: bring in a CD, find a song, make a mix. The station and the card should use the same words.
+
+### Steve Jobs · 16:24 UTC
+
+Keep the visitor count, but bring the questions to our next review too. Traffic tells us people are curious. A task they can repeat at home tells us the store helped. Ron owns that follow-through.
