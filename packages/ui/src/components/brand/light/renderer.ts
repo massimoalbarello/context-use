@@ -74,6 +74,9 @@ export function createRenderer({
     let inFlight = false;
     let visible = true;
     let hasRendered = false;
+    let healthReady = false;
+    let completedSinceTick = false;
+    let previousTick: number | undefined;
     let pointer: Point | undefined;
     let light: Point = INITIAL_LIGHT;
     let previousTime = 0;
@@ -81,7 +84,7 @@ export function createRenderer({
     let currentDpr = window.devicePixelRatio;
 
     const schedule = () => {
-      if (!disposed && !animationFrame && !inFlight && !document.hidden && visible) {
+      if (!disposed && !animationFrame && !document.hidden && visible) {
         animationFrame = requestAnimationFrame(tick);
       }
     };
@@ -104,6 +107,8 @@ export function createRenderer({
       });
       canvas.dataset.lightQuality = quality.current.name;
       quality.reset();
+      healthReady = false;
+      completedSinceTick = false;
       sceneChanged = true;
       needsResize = false;
       currentDpr = window.devicePixelRatio;
@@ -123,23 +128,13 @@ export function createRenderer({
         ? INITIAL_LIGHT
         : [light[0] + (target[0] - light[0]) * follow, light[1] + (target[1] - light[1]) * follow];
       previousTime = now;
+      if (sceneChanged) {
+        healthReady = false;
+      }
       pipeline.render({ light, sceneChanged });
       sceneChanged = false;
     };
-    const updateQuality = () => {
-      if (motion.matches || document.hidden || !visible) {
-        quality.reset();
-        return;
-      }
-      if (quality.sample(performance.now())) {
-        needsResize = true;
-      }
-    };
-    function tick(now: number) {
-      animationFrame = 0;
-      if (disposed || document.hidden || !visible) {
-        return;
-      }
+    const submit = (now: number) => {
       inFlight = true;
       try {
         draw(now);
@@ -150,11 +145,12 @@ export function createRenderer({
             if (disposed) {
               return;
             }
+            completedSinceTick = true;
+            healthReady = true;
             if (!hasRendered) {
               hasRendered = true;
               onStatus('ready');
             }
-            updateQuality();
             if (!motion.matches || sceneChanged || needsResize) {
               schedule();
             }
@@ -162,6 +158,34 @@ export function createRenderer({
           .catch(fail);
       } catch (error) {
         fail(error);
+      }
+    };
+    const measure = (now: number) => {
+      const deltaMs = previousTick === undefined ? 0 : now - previousTick;
+      previousTick = now;
+      // Observe the display cadence even while a submitted GPU frame is unfinished.
+      if (
+        quality.sample({
+          deltaMs,
+          active: healthReady && !motion.matches && !needsResize && !sceneChanged,
+          rendered: completedSinceTick,
+        })
+      ) {
+        needsResize = true;
+      }
+      completedSinceTick = false;
+    };
+    function tick(now: number) {
+      animationFrame = 0;
+      if (disposed || document.hidden || !visible) {
+        return;
+      }
+      measure(now);
+      if (!inFlight) {
+        submit(now);
+      }
+      if (!motion.matches || sceneChanged || needsResize) {
+        schedule();
       }
     }
 
@@ -178,6 +202,7 @@ export function createRenderer({
     cleanups.push(() => observer.disconnect());
     const resume = () => {
       quality.reset();
+      previousTick = undefined;
       sceneChanged = true;
       schedule();
     };
@@ -211,6 +236,7 @@ export function createRenderer({
     void gpu.gpu.lost.then(() => fail(new Error('WebGPU device lost')));
     const visibility = new IntersectionObserver(([entry]) => {
       quality.reset();
+      previousTick = undefined;
       visible = Boolean(entry?.isIntersecting);
       if (visible) {
         schedule();
