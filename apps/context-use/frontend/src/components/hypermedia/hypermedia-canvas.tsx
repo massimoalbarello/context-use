@@ -177,7 +177,7 @@ function HypermediaExplorationCue({
 }) {
   return (
     <div
-      className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
+      className="pointer-events-none absolute right-36 bottom-4 left-4 z-10 flex justify-center"
       role="status"
     >
       {error ? (
@@ -185,14 +185,14 @@ function HypermediaExplorationCue({
           type="button"
           variant="outline"
           size="sm"
-          className="pointer-events-auto rounded-full bg-card/92 shadow-sm backdrop-blur"
+          className="pointer-events-auto h-auto max-w-full whitespace-normal rounded-full bg-card/92 py-2 shadow-sm backdrop-blur"
           onClick={onRetry}
         >
           Retry loading nearby entities
         </Button>
       ) : (
-        <p className="flex items-center gap-2 whitespace-nowrap rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
-          <Move className="size-3.5" aria-hidden="true" />
+        <p className="flex items-center gap-2 rounded-full border bg-card/92 px-3 py-2 text-muted-foreground text-xs shadow-sm backdrop-blur">
+          <Move className="size-3.5 shrink-0" aria-hidden="true" />
           Drag to move, pinch to zoom, and scroll through time.
         </p>
       )}
@@ -484,7 +484,7 @@ export function HypermediaCanvas({
 
       {isInitialLoading && (
         <div
-          className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
+          className="absolute right-4 bottom-40 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
           aria-live="polite"
         >
           Loading nearby entities…

@@ -42,7 +42,7 @@ export function HypermediaIntervalIndicator({
   const options = useMemo(() => monthOptions(month), [month]);
 
   return (
-    <nav className="absolute right-4 bottom-16 z-10 w-25 select-none" aria-label="Time navigation">
+    <nav className="absolute right-4 bottom-4 z-10 w-25 select-none" aria-label="Time navigation">
       <WheelPicker
         label="Selected month"
         options={options}
