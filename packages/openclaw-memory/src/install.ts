@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { readConfigFileSnapshotForWrite } from 'openclaw/plugin-sdk/config-mutation';
+import {
+  mutateConfigFile,
+  readConfigFileSnapshotForWrite,
+} from 'openclaw/plugin-sdk/config-mutation';
 import { z } from 'zod';
 import packageJson from '../package.json';
 import { PLUGIN_ID } from './contract';
@@ -14,18 +17,47 @@ import { openclaw } from './host';
 const execute = promisify(execFile);
 const INSTALL_TIMEOUT_MS = 120_000;
 
+async function installedPlugin() {
+  const inventory = z
+    .object({
+      plugins: z.array(
+        z.object({
+          id: z.string(),
+          packageName: z.string().optional(),
+          packageVersion: z.string().optional(),
+        }),
+      ),
+    })
+    .parse(JSON.parse(await openclaw(['plugins', 'list', '--json'])));
+  return inventory.plugins.find((plugin) => plugin.id === PLUGIN_ID);
+}
+
+export async function uninstall(): Promise<void> {
+  if (await installedPlugin()) {
+    console.log(await openclaw(['plugins', 'uninstall', PLUGIN_ID, '--force']));
+  }
+  // Native uninstall may retain an enabled:false entry. It belongs to the
+  // removed plugin, and must not make the next install look already complete.
+  await mutateConfigFile({
+    writeOptions: { allowConfigSizeDrop: true },
+    mutate: (config) => {
+      if (config.plugins?.entries) {
+        delete config.plugins.entries[PLUGIN_ID];
+      }
+    },
+  });
+}
+
 export async function install(): Promise<void> {
   const { snapshot } = await readConfigFileSnapshotForWrite();
   if (!snapshot.valid) {
     throw new ConnectionError('OpenClaw configuration is invalid. Run openclaw doctor first.');
   }
-  if (snapshot.config.plugins?.entries?.[PLUGIN_ID]) {
-    const info = z
-      .object({ plugin: z.object({ packageName: z.string(), packageVersion: z.string() }) })
-      .parse(JSON.parse(await openclaw(['plugins', 'info', PLUGIN_ID, '--json'])));
+  const existing = await installedPlugin();
+  if (existing) {
     if (
-      info.plugin.packageName !== packageJson.name ||
-      info.plugin.packageVersion !== packageJson.version
+      existing.packageName !== packageJson.name ||
+      existing.packageVersion !== packageJson.version
     ) {
       throw new ConnectionError(
         'A different Context Use plugin version is installed. Remove it before installing this package.',

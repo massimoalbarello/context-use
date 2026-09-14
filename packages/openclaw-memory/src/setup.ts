@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
 import { connect, disconnect, finishAuthorization, status } from './connection';
-import { PLUGIN_ID, PluginConfigSchema } from './contract';
+import { PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
-import { checkHost, openclaw, verifyRuntime } from './host';
-import { install } from './install';
-import { connectionDirectory } from './state';
+import { checkHost, refreshGateway, refreshLocalMemory, verifyRuntime } from './host';
+import { install, uninstall } from './install';
+import { connectionDirectory, withConnection } from './state';
+import { restoreWorkspace } from './workspace';
 
 const usage = `context-use-openclaw connect <instance-url> [agent-id=main]
 context-use-openclaw authorize <redirect-url-file|->
 context-use-openclaw status
 context-use-openclaw disconnect
 context-use-openclaw remove
+context-use-openclaw refresh
+context-use-openclaw restore-workspace <backup-directory>
 
 Authorize reads the pasted redirect URL from a private file or stdin, keeping the code out of process arguments.
 Use the same OpenClaw profile environment for every command.
@@ -24,7 +27,7 @@ Connect installs the local package and configures the memory slot, tools and Act
 The owner opens the authorization link on any device, uses their passkey, and sends back
 its final localhost callback address. A failed localhost page is expected; no listener is needed.
 An authorized OpenClaw agent can perform setup itself; only passkey authorization needs the owner.
-After authorize, delete the temporary callback file and restart the OpenClaw gateway.
+After authorize, delete the temporary callback file. Setup requests a gateway refresh automatically.
 Once active, these commands are also available as openclaw context-use <command>.
 
 This version supports one personal agent and one Context Use account across separate personal conversations.
@@ -33,7 +36,12 @@ Memory works across the agent's direct chats, groups, channels and forum topics.
 Access to connected chats is managed through OpenClaw's channel configuration.
 Disconnect restores setup-owned settings while preserving later edits and remote memories.
 Use remove for credential cleanup and uninstall; native disable alone retains connection state.
-Restart the gateway after disconnect/remove. Existing memory import is outside this version.
+Connect and removal retire recognized obsolete provider instructions from workspace startup files.
+Private recovery backups live outside the active workspace and survive uninstall. Removal does not
+reactivate obsolete instructions. restore-workspace explicitly recovers a backup, preserving later edits.
+Historical conversations and ordinary project notes are preserved. Existing chats retain their history;
+start a new conversation to test the restored memory provider without earlier discussion of Context Use.
+Removal rebuilds local memory's index and requests a gateway refresh. Existing memory import is outside this version.
 
 Development checks: test, check:types, and test:e2e in this package.
 The e2e test needs Chrome and OPENCLAW_TEST_NODE pointing to supported Node. It creates a
@@ -58,13 +66,12 @@ async function main(args: string[]): Promise<void> {
       const result = await connect({ directory, instance: argument, agentId });
       if (result.authorizationUrl) {
         console.log(
-          `Open this URL on your own device and authorize Context Use:\n${result.authorizationUrl}\n\nThe final localhost page may fail to load; that is expected. Copy its full address and send it back. Finish with authorize using a private file or stdin. Do not store the link or code as a memory.`,
+          `Open this URL on your own device and authorize Context Use:\n${result.authorizationUrl}\n\nChoose a client name you have not used for another connection. The final localhost page may fail to load; that is expected. Copy its full address and send it back. Finish with authorize using a private file or stdin. Do not store the link or code as a memory.`,
         );
       } else {
         await verifyRuntime();
-        console.log(
-          'Context Use connected. Restart the OpenClaw gateway to apply the memory configuration.',
-        );
+        console.log('Context Use connected.');
+        await refreshGateway();
       }
       return;
     }
@@ -77,9 +84,8 @@ async function main(args: string[]): Promise<void> {
       ).trim();
       await finishAuthorization({ directory, redirectUrl });
       await verifyRuntime();
-      console.log(
-        'Context Use connected. Restart the OpenClaw gateway to apply the memory configuration.',
-      );
+      console.log('Context Use connected.');
+      await refreshGateway();
       return;
     }
     case 'status': {
@@ -92,14 +98,28 @@ async function main(args: string[]): Promise<void> {
     }
     case 'disconnect':
     case 'remove': {
-      const preserved = await disconnect(directory);
+      const { preserved, agentId } = await disconnect(directory);
       console.log(
         `Disconnected. Remote memories are preserved.${preserved.length ? ` Kept user edits: ${preserved.join(', ')}.` : ''}`,
       );
       if (command === 'remove') {
-        console.log(await openclaw(['plugins', 'uninstall', PLUGIN_ID, '--force']));
+        await uninstall();
       }
-      console.log('Restart the OpenClaw gateway to apply restored settings.');
+      await refreshLocalMemory(agentId);
+      await refreshGateway();
+      return;
+    }
+    case 'refresh':
+      await refreshGateway();
+      return;
+    case 'restore-workspace': {
+      if (!argument) {
+        throw new ConnectionError(usage);
+      }
+      const preserved = await withConnection({ directory, run: () => restoreWorkspace(argument) });
+      console.log(
+        `Workspace backup restored.${preserved.length ? ` Kept later edits: ${preserved.join(', ')}.` : ''}`,
+      );
       return;
     }
     default:

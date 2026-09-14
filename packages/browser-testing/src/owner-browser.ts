@@ -8,7 +8,7 @@ export async function ownerBrowser(origin: string) {
     return {
       page: browser.page,
       close: browser.close,
-      authorize: (input: { authorizationUrl: string; callbackUrl: string }) =>
+      authorize: (input: Omit<Parameters<typeof authorizeMcp>[0], 'page'>) =>
         authorizeMcp({ ...input, page: browser.page }),
     };
   } catch (error) {

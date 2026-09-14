@@ -28,12 +28,22 @@ export async function authorizeMcp(input: {
   page: Page;
   authorizationUrl: string;
   callbackUrl: string;
+  clientName: string;
 }): Promise<string> {
   await input.page.goto(input.authorizationUrl, { waitUntil: 'domcontentloaded' });
+  await input.page
+    .getByRole('textbox', { name: 'Client name', exact: true })
+    .fill(input.clientName);
   const redirect = input.page
-    .waitForRequest((request) => request.url().startsWith(`${input.callbackUrl}?`), {
-      timeout: AUTHORIZATION_TIMEOUT_MS,
-    })
+    .waitForRequest(
+      (request) =>
+        request.isNavigationRequest() &&
+        request.frame() === input.page.mainFrame() &&
+        request.url().startsWith(`${input.callbackUrl}?`),
+      {
+        timeout: AUTHORIZATION_TIMEOUT_MS,
+      },
+    )
     .then(
       (request) => ({ url: request.url() }),
       (error: unknown) => ({ error }),

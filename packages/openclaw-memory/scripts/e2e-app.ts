@@ -4,7 +4,7 @@ const START_TIMEOUT_MS = 90_000;
 const PROBE_TIMEOUT_MS = 1_000;
 const PROBE_INTERVAL_MS = 200;
 
-function availablePort(): number {
+export function availablePort(): number {
   const server = Bun.serve({ port: 0, fetch: () => new Response() });
   const port = server.port!;
   server.stop(true);

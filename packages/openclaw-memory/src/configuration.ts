@@ -129,9 +129,13 @@ function applyPlan(input: {
       );
     }
     if (!existing) {
-      input.state.changes.push({ path, before, applied: value });
+      input.state.changes.push({
+        path,
+        before: structuredClone(before),
+        applied: structuredClone(value),
+      });
     } else {
-      existing.applied = value;
+      existing.applied = structuredClone(value);
     }
     writePath({ config, path, value });
   }
@@ -155,11 +159,44 @@ export function restoreConfiguration(input: {
     const current = readPath({ config: input.config, path: change.path });
     if (isDeepStrictEqual(current, change.applied)) {
       writePath({ config: input.config, path: change.path, value: change.before });
+    } else if (
+      Array.isArray(current) &&
+      Array.isArray(change.applied) &&
+      (change.before === undefined || Array.isArray(change.before)) &&
+      ['allow', 'alsoAllow'].includes(change.path.at(-1) ?? '')
+    ) {
+      const added = change.applied.filter(
+        (value) => !(change.before as unknown[] | undefined)?.includes(value),
+      );
+      writePath({
+        config: input.config,
+        path: change.path,
+        value: current.filter((value) => !added.includes(value)),
+      });
     } else if (!isDeepStrictEqual(current, change.before)) {
       preserved.push(change.path.join('.'));
     }
   }
   return preserved;
+}
+
+/** These grants name this plugin exclusively, including manual tool-name repairs. */
+export function removeToolGrants(config: OpenClawConfig): void {
+  function clean(policy: { allow?: string[]; alsoAllow?: string[] } | undefined): void {
+    for (const key of ['allow', 'alsoAllow'] as const) {
+      if (policy?.[key]) {
+        policy[key] = policy[key].filter(
+          (name) => name !== PLUGIN_ID && !name.startsWith('context_use_'),
+        );
+      }
+    }
+  }
+  clean(config.tools);
+  Object.values(config.tools?.byProvider ?? {}).forEach(clean);
+  for (const agent of Object.values(config.agents?.entries ?? {})) {
+    clean(agent.tools);
+    Object.values(agent.tools?.byProvider ?? {}).forEach(clean);
+  }
 }
 
 export function configMatches(input: { actual: unknown; expected: PluginConfig }): boolean {

@@ -24,8 +24,14 @@ const ToolPayloadSchema = z.object({ guide_version: z.string().optional() }).pas
 
 /** Only the external model is scripted: OpenClaw, OAuth, MCP and persistence stay real. */
 export function startModel() {
-  const observations = { recallCalls: 0, mainCalls: 0, prompt: '', tools: new Set<string>() };
-  let phase: 'learn' | 'recall' = 'learn';
+  const observations = {
+    recallCalls: 0,
+    mainCalls: 0,
+    removedCalls: 0,
+    prompt: '',
+    tools: new Set<string>(),
+  };
+  let phase: 'learn' | 'recall' | 'removed' = 'learn';
   let guideVersion: string | undefined;
   let mainStep = 0;
   let recallStep = 0;
@@ -122,6 +128,47 @@ export function startModel() {
 
     return { call, answer: 'Mira studies architecture.' };
   }
+  function removedReply(input: ModelInput): Reply {
+    const names = input.tools.map((tool) => tool.function.name);
+    const prompt = JSON.stringify(input.messages);
+    assert(
+      !names.some((name) => name.startsWith('context_use_')),
+      'Removed plugin still exposes tools',
+    );
+    assert(names.includes('memory_search'), 'Native memory was not restored');
+    assert(
+      !prompt.includes('sole durable personal memory'),
+      'Stale provider policy reached a fresh chat',
+    );
+    assert(
+      !prompt.includes('context_use_'),
+      'Stale provider tool instructions reached a fresh chat',
+    );
+    assert(
+      prompt.includes('Rowan is building Context Use'),
+      'Removal erased ordinary project facts',
+    );
+    assert(prompt.includes('Keep my later style edit'), 'Removal erased later user edits');
+    observations.removedCalls += 1;
+    return { answer: 'Local memory is available. You are Rowan and like architecture.' };
+  }
+  function reply(input: ModelInput): Reply {
+    if (phase === 'removed') {
+      return removedReply(input);
+    }
+    const names = input.tools.map((tool) => tool.function.name);
+    assert(
+      !names.includes('memory_search') && !names.includes('memory_get'),
+      'A competing memory provider is available',
+    );
+    assert(
+      !JSON.stringify(input.messages).includes('LOCAL_MEMORY_CANARY'),
+      'Local personal memory reached the model',
+    );
+    return names.includes('context_use_create_knowledge_page')
+      ? mainReply(input)
+      : recallReply(input);
+  }
   const server = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
@@ -133,15 +180,7 @@ export function startModel() {
     async fetch(request) {
       const input = RequestSchema.parse(await request.json());
       const names = input.tools.map((tool) => tool.function.name);
-      assert(
-        !names.includes('memory_search') && !names.includes('memory_get'),
-        'A competing memory provider is available',
-      );
-      const prompt = JSON.stringify(input.messages);
-      assert(!prompt.includes('LOCAL_MEMORY_CANARY'), 'Local personal memory reached the model');
-      const { call, answer } = names.includes('context_use_create_knowledge_page')
-        ? mainReply(input)
-        : recallReply(input);
+      const { call, answer } = reply(input);
       const toolName = call ? `context_use_${call.name}` : undefined;
       if (toolName) {
         assert(names.includes(toolName), `Native tool ${toolName} is unavailable`);
@@ -195,6 +234,9 @@ export function startModel() {
     recall: () => {
       phase = 'recall';
       recallStep = 0;
+    },
+    removed: () => {
+      phase = 'removed';
     },
     stop: () => server.stop(true),
   };
