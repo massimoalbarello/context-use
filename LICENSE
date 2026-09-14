@@ -3,7 +3,8 @@ MIT License
 Copyright (c) [year] [fullname]
 
 The Radiance Cascades shader portions in packages/ui/src/components/brand/light/shaders
-(radiance-cascade.wgsl, rc-directions.wgsl, and sdf-sample.wgsl):
+(radiance-cascade.wgsl, rc-directions.wgsl, and sdf-sample.wgsl), and the frame-health
+monitor in packages/ui/src/components/brand/light/frame-health.ts:
 Copyright (c) 2025 Vercel, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

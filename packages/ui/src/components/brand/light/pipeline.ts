@@ -1,6 +1,7 @@
 /// <reference types="@vgpu/wgsl/wgsl-types" />
 import { effect, frame, type Gpu, type Surface, sampler, storage, target } from 'vgpu';
 import { type Point, packShapes, type Shape } from './logo';
+import type { Quality } from './quality';
 import blurShader from './shaders/blur.wgsl';
 import compositeShader from './shaders/composite.wgsl';
 import emitterShader from './shaders/emitter.wgsl';
@@ -13,7 +14,6 @@ import rimShader from './shaders/rim.wgsl';
 const CASCADE_COUNT = 6;
 const CASCADE_ALIGNMENT = 2 ** (CASCADE_COUNT - 1);
 const ATLAS_SCALE = 2;
-const MAX_FIELD_DIMENSION = 768;
 const FLOATS_PER_SHAPE = 8;
 const HDR_FORMAT = 'rgba16float';
 const BLUR_STEP = 1;
@@ -78,10 +78,15 @@ export function createPipeline({
     ]);
 
   let pixelRatio = 1;
-  const resize = ({ size, ratio }: { size: Point; ratio: number }) => {
+  const resize = ({ size, ratio, quality }: { size: Point; ratio: number; quality: Quality }) => {
     pixelRatio = ratio;
     output.resize(size);
-    const scale = Math.min(1, MAX_FIELD_DIMENSION / Math.max(...size));
+    const maxFieldDimension = Math.min(
+      quality.effectDimension,
+      Math.floor(gpu.gpu.limits.maxTextureDimension2D / ATLAS_SCALE / CASCADE_ALIGNMENT) *
+        CASCADE_ALIGNMENT,
+    );
+    const scale = Math.min(1, maxFieldDimension / Math.max(...size));
     const fieldSize: Point = [
       Math.max(1, Math.round(size[0] * scale)),
       Math.max(1, Math.round(size[1] * scale)),
@@ -121,7 +126,11 @@ export function createPipeline({
       linear_sampler: linearSampler,
       rays_texture: rays,
     });
-    shaders.rays.set({ blurred_rim: blurVertical, linear_sampler: linearSampler });
+    shaders.rays.set({
+      blurred_rim: blurVertical,
+      linear_sampler: linearSampler,
+      quality: { samples: quality.raySamples },
+    });
   };
 
   const render = ({ light, sceneChanged }: { light: Point; sceneChanged: boolean }) => {
