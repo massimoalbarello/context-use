@@ -1,6 +1,5 @@
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { ArrowRight } from 'lucide-react';
 import {
   type CalendarMonth,
   calendarMonthLabel,
@@ -36,19 +35,15 @@ export function HypermediaIntervalIndicator({
   onMonthChange: (month?: CalendarMonth) => void;
 }) {
   return (
-    <nav className="absolute top-4 right-4 z-10 h-40 w-36 select-none" aria-label="Time navigation">
-      <ArrowRight
-        className="pointer-events-none absolute top-1/2 left-1 size-3.5 -translate-y-1/2"
-        aria-hidden="true"
-      />
+    <nav className="absolute top-4 right-4 z-10 h-40 w-30 select-none" aria-label="Time navigation">
       {visibleMonths(month).map(({ month: visibleMonth, offset }) => (
         <Button
           key={visibleMonth ?? 'undated'}
           type="button"
-          variant="ghost"
+          variant={offset === 0 ? 'outline' : 'ghost'}
           size="sm"
           className={cn(
-            'absolute top-16 left-6 h-8 w-30 justify-start px-2 text-sm tabular-nums transition-transform duration-150 ease-out motion-reduce:transition-none',
+            'absolute top-16 left-0 h-8 w-30 justify-start px-2 text-sm tabular-nums transition-transform duration-150 ease-out motion-reduce:transition-none',
             offset === 0 ? 'font-medium' : 'font-normal text-muted-foreground',
             Math.abs(offset) === NEIGHBOR_MONTH_COUNT && 'opacity-60',
           )}
