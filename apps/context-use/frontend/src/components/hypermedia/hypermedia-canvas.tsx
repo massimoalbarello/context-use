@@ -177,7 +177,7 @@ function HypermediaExplorationCue({
 }) {
   return (
     <div
-      className="pointer-events-none absolute right-36 bottom-4 left-4 z-10 flex justify-center"
+      className="pointer-events-none absolute right-4 bottom-4 left-4 z-10 flex justify-center"
       role="status"
     >
       {error ? (
@@ -484,7 +484,7 @@ export function HypermediaCanvas({
 
       {isInitialLoading && (
         <div
-          className="absolute right-4 bottom-40 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
+          className="absolute right-4 bottom-4 rounded-full border bg-card/92 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur"
           aria-live="polite"
         >
           Loading nearby entities…

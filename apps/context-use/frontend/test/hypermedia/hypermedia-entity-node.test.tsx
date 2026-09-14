@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from 'bun:test';
+import { afterEach, expect, mock, spyOn, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
@@ -223,6 +223,56 @@ test('The month wheel stops at Undated and follows external month changes', asyn
   expectSelectedMonth('1999-01');
   await user.keyboard('{ArrowDown}');
   await waitFor(() => expectSelectedMonth('1998-12'));
+});
+
+test('On phones the month wheel opens from a compact control and stays synchronized with the map', async () => {
+  const matchMedia = spyOn(window, 'matchMedia').mockImplementation((query) => ({
+    matches: query === '(max-width: 767px)',
+    media: query,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => true,
+  }));
+  try {
+    const user = userEvent.setup();
+    const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+    const { rerender } = render(
+      <HypermediaMapFixture onMonthChange={onMonthChange} month="2025-01" />,
+    );
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Change month: January 2025' }));
+    const picker = await screen.findByRole('spinbutton', { name: 'Selected month' });
+    await waitFor(() => expect(document.activeElement).toBe(picker));
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('spinbutton')).toBeNull());
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Change month: December 2024' }),
+    );
+
+    const canvas = screen.getByLabelText('Interactive map');
+    fireEvent.wheel(canvas, { deltaY: 120 });
+    fireEvent.wheel(canvas, { deltaY: 40 });
+    await settleIntervalScroll();
+    await user.click(screen.getByRole('button', { name: 'Change month: November 2024' }));
+    expectSelectedMonth('2024-11');
+    rerender(
+      <HypermediaMapFixture
+        onMonthChange={onMonthChange}
+        month="2024-11"
+        selectedKey="entity:grace-hopper"
+      />,
+    );
+    expect(screen.queryByRole('navigation', { name: 'Time navigation' })).toBeNull();
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+  } finally {
+    cleanup();
+    matchMedia.mockRestore();
+  }
 });
 
 test.each(['Interactive map', 'Selected month'])(
