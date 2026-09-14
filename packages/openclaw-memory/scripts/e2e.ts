@@ -107,7 +107,9 @@ async function waitGateway(): Promise<void> {
       return;
     }
     if (gateway?.exitCode !== null) {
-      throw new Error('Disposable gateway exited before becoming ready.');
+      throw new Error(
+        `Disposable gateway exited before becoming ready:\n${await Bun.file(join(directory, 'gateway.log')).text()}\n${await Bun.file(join(directory, 'gateway-error.log')).text()}`,
+      );
     }
     await Bun.sleep(pollIntervalMs);
   }
@@ -369,6 +371,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     stderr: Bun.file(join(directory, 'gateway-error.log')),
   });
   await waitGateway();
+  console.log('Disposable gateway is ready; removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
   await command(['openclaw', 'context-use', 'remove']);
   assert(!(await Bun.file(connectionFile).exists()));
