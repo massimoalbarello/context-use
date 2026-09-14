@@ -59,7 +59,7 @@ export function AssetFaces({
               }}
               onClick={() => setSelected(face.readableId)}
             >
-              <span className="absolute top-full left-0 max-w-40 truncate rounded-b-sm bg-background px-1.5 py-0.5 text-foreground text-xs shadow-sm">
+              <span className="absolute top-full left-1/2 mt-1 w-max max-w-40 -translate-x-1/2 truncate rounded-full bg-background px-2 py-0.5 text-foreground text-xs shadow-sm">
                 {face.decision === 'dismissed' ? 'Dismissed' : (face.entity?.name ?? 'Unknown')}
               </span>
             </button>
