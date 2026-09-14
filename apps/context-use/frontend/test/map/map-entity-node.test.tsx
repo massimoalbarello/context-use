@@ -4,12 +4,14 @@ import userEvent from '@testing-library/user-event';
 import { KnowledgeWorkspaceProvider } from '../../src/components/knowledge/knowledge-workspace';
 import { MapCanvas } from '../../src/components/map/map-canvas';
 import type { MapLayoutEntity } from '../../src/components/map/map-layout';
+import type { MapSelection } from '../../src/components/map/map-selection';
 import {
   type CalendarMonth,
   calendarMonthLabel,
   currentCalendarMonth,
   shiftCalendarMonth,
 } from '../../src/lib/calendar-month';
+import type { MapPage } from '../../src/queries/map';
 
 afterEach(cleanup);
 
@@ -95,21 +97,25 @@ function MapFixture({
   onIntervalScrollingChange = () => undefined,
   month,
   selectedKey,
+  pages = [],
+  onSelect = () => undefined,
 }: {
   onMonthChange: (month?: `${number}-${string}`) => void;
   onIntervalScrollingChange?: (scrolling: boolean) => void;
   month?: CalendarMonth;
   selectedKey?: string;
+  pages?: MapPage[];
+  onSelect?: (selection: MapSelection) => void;
 }) {
   return (
     <KnowledgeWorkspaceProvider>
       <div />
       <MapCanvas
         entities={entities}
-        pages={[]}
+        pages={pages}
         selectedKey={selectedKey}
         month={month}
-        onSelect={() => undefined}
+        onSelect={onSelect}
         onViewportSettled={() => undefined}
         onMonthChange={onMonthChange}
         onIntervalScrollingChange={onIntervalScrollingChange}
@@ -121,6 +127,101 @@ function MapFixture({
     </KnowledgeWorkspaceProvider>
   );
 }
+
+test('Page hover temporarily emphasizes its members and preserves selection over entities', async () => {
+  const user = userEvent.setup();
+  const pages: MapPage[] = entities.map(({ entity }) => ({
+    readableId: `${entity.readableId}-biography`,
+    title: `${entity.name} biography`,
+    excerpt: entity.description,
+    temporalCoverage: null,
+    revisionNumber: 1,
+    createdAt,
+    updatedAt: createdAt,
+    entities: [{ readableId: entity.readableId }],
+  }));
+  const onSelect = mock<(selection: MapSelection) => void>(() => undefined);
+  const props = { pages, onSelect, onMonthChange: () => undefined };
+  const { rerender } = render(<MapFixture {...props} />);
+  const grace = screen.getByRole('link', { name: 'Open entity Grace Hopper' });
+  const ada = screen.getByRole('link', { name: 'Open entity Ada Lovelace' });
+  const gracePage = screen.getByRole('link', {
+    name: 'Open knowledge page Grace Hopper biography',
+  });
+  const adaCloud = screen.getByRole('link', {
+    name: 'Open knowledge page region Ada Lovelace biography',
+  });
+  const expectEmphasis = (opacities: string[]) => {
+    expect([getComputedStyle(grace).opacity, getComputedStyle(ada).opacity]).toEqual(opacities);
+  };
+
+  expectEmphasis(['1', '1']);
+  await user.hover(gracePage);
+  expectEmphasis(['1', '0.5']);
+  expect(getComputedStyle(ada).filter).toBe('grayscale(1)');
+  await user.unhover(gracePage);
+  expectEmphasis(['1', '1']);
+
+  await user.click(gracePage);
+  expect(onSelect).toHaveBeenLastCalledWith({ kind: 'page', readableId: pages[0]!.readableId });
+  rerender(<MapFixture {...props} selectedKey={`page:${pages[0]!.readableId}`} />);
+  await user.unhover(gracePage);
+  expectEmphasis(['1', '0.5']);
+  await user.hover(adaCloud);
+  expectEmphasis(['0.5', '1']);
+  await user.unhover(adaCloud);
+  expectEmphasis(['1', '0.5']);
+
+  await user.hover(ada);
+  expectEmphasis(['1', '0.5']);
+  await user.click(ada);
+  expect(onSelect).toHaveBeenLastCalledWith({ kind: 'entity', readableId: 'ada-lovelace' });
+  rerender(<MapFixture {...props} selectedKey="entity:ada-lovelace" />);
+  expectEmphasis(['1', '1']);
+  rerender(<MapFixture {...props} selectedKey={`page:${pages[0]!.readableId}`} />);
+  expectEmphasis(['1', '0.5']);
+  rerender(<MapFixture {...props} />);
+  expectEmphasis(['1', '1']);
+});
+
+test('Keyboard page focus emphasizes shared members and restores an unloaded selection', async () => {
+  const user = userEvent.setup();
+  const page: MapPage = {
+    readableId: 'pioneers',
+    title: 'Computing pioneers',
+    excerpt: 'Shared history.',
+    temporalCoverage: null,
+    revisionNumber: 1,
+    createdAt,
+    updatedAt: createdAt,
+    entities: entities.map(({ entity }) => ({ readableId: entity.readableId })),
+  };
+  const props = { onMonthChange: () => undefined, selectedKey: 'page:unloaded-page' };
+  const { rerender } = render(<MapFixture {...props} pages={[page]} />);
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole('link', { name: 'Open knowledge page Computing pioneers' }),
+  );
+  for (const name of ['Grace Hopper', 'Ada Lovelace']) {
+    expect(
+      getComputedStyle(screen.getByRole('link', { name: `Open entity ${name}` })).opacity,
+    ).toBe('1');
+  }
+  await user.tab();
+  rerender(<MapFixture {...props} pages={[{ ...page, entities: [] }]} />);
+  await user.tab({ shift: true });
+  for (const name of ['Grace Hopper', 'Ada Lovelace']) {
+    expect(
+      getComputedStyle(screen.getByRole('link', { name: `Open entity ${name}` })).opacity,
+    ).toBe('0.5');
+  }
+  await user.tab();
+  for (const name of ['Grace Hopper', 'Ada Lovelace']) {
+    expect(
+      getComputedStyle(screen.getByRole('link', { name: `Open entity ${name}` })).opacity,
+    ).toBe('1');
+  }
+});
 
 test('Map distinguishes entity identities and retains partial progress between months', async () => {
   const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
