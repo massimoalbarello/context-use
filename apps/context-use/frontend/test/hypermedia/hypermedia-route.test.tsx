@@ -134,12 +134,14 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
     await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Time navigation' })).toBeTruthy();
     const user = userEvent.setup();
     const pageRequestCount = requests.length;
     for (const name of ['Owner', 'Colleague', 'Colleague']) {
       await user.click(screen.getByRole('link', { name: `Open entity ${name}` }));
       expect(await screen.findByRole('heading', { name })).toBeTruthy();
       expect(screen.getAllByRole('complementary', { name: 'Entity preview' })).toHaveLength(1);
+      expect(screen.queryByRole('navigation', { name: 'Time navigation' })).toBeNull();
       expect(screen.getByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
       expect(router.state.location.search).toEqual({
         month: '2026-01',
@@ -150,10 +152,12 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
     await user.click(screen.getByRole('complementary', { name: 'Entity preview' }));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('complementary', { name: 'Entity preview' })).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Time navigation' })).toBeTruthy();
     expect(router.state.location.search).toEqual({ month: '2026-01' });
     await user.click(screen.getByRole('link', { name: 'Open entity Owner' }));
     await user.click(await screen.findByRole('button', { name: 'Close preview' }));
     expect(screen.queryByRole('complementary', { name: 'Entity preview' })).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Time navigation' })).toBeTruthy();
     expect(router.state.location.search).toEqual({ month: '2026-01' });
     expect(requests).toHaveLength(pageRequestCount);
     expect(requests.every((url) => url.searchParams.get('time') === '2026-01')).toBe(true);

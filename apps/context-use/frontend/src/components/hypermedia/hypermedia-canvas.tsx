@@ -236,6 +236,7 @@ export function HypermediaCanvas({
   const layout = useMemo(() => buildHypermediaLayout(entities, pages), [pages, entities]);
   const viewBoxRef = useRef(viewBox);
   const canvasRef = useRef<SVGSVGElement | null>(null);
+  const surfaceRef = useRef<HTMLElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalScroll = useHypermediaIntervalScroll({
     month,
@@ -352,12 +353,12 @@ export function HypermediaCanvas({
   });
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
+    const surface = surfaceRef.current;
+    if (!surface) {
       return;
     }
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', handleWheel);
+    surface.addEventListener('wheel', handleWheel, { passive: false });
+    return () => surface.removeEventListener('wheel', handleWheel);
   }, []);
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
@@ -437,6 +438,7 @@ export function HypermediaCanvas({
 
   return (
     <section
+      ref={surfaceRef}
       className="relative size-full min-h-[28rem] overflow-hidden overscroll-none bg-card"
       aria-label={`Map with ${visibleLayout.pages.length} visible knowledge pages and ${visibleLayout.entities.length} visible entities`}
     >
@@ -467,7 +469,7 @@ export function HypermediaCanvas({
       {!selectedKey && (
         <HypermediaIntervalIndicator
           month={intervalScroll.displayedMonth}
-          scrollProgress={intervalScroll.progress}
+          onMonthChange={intervalScroll.selectMonth}
         />
       )}
 

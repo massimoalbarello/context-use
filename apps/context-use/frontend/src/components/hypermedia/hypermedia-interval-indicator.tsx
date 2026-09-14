@@ -1,123 +1,68 @@
-import type { CSSProperties } from 'react';
+import { Button } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
+import { ArrowRight } from 'lucide-react';
 import {
   type CalendarMonth,
   calendarMonthLabel,
-  currentCalendarMonth,
+  calendarMonthShortLabel,
   mapMonthAfterScroll,
 } from '../../lib/calendar-month';
 import { calendarNow } from '../../lib/calendar-now';
 
-const MONTH_POSITION_DISTANCE = 6;
-const PRESENT_POSITION = 130;
-const MIN_POSITION = 3;
-const PAST_POSITION = 94;
-const MAX_MONTH_POSITION = 14;
-const MONTHS_PER_YEAR = 12;
-const NOW_LABEL_FADE_DISTANCE = 0.3;
+const NEIGHBOR_MONTH_COUNT = 2;
+const MONTH_ROW_HEIGHT = 32;
 
-function monthOrdinal(value: CalendarMonth): number {
-  const [year = 0, month = 1] = value.split('-').map(Number);
-  return year * MONTHS_PER_YEAR + month - 1;
-}
-
-function intervalPosition({ month, now }: { month?: CalendarMonth; now: Date }): number {
-  if (!month) {
-    return -1;
-  }
-  const present = currentCalendarMonth(now);
-  const selectedDistance = Math.max(0, monthOrdinal(present) - monthOrdinal(month));
-  return Math.min(MAX_MONTH_POSITION, selectedDistance);
-}
-
-function scrollPosition({
-  month,
-  scrollProgress,
-  now,
-}: {
-  month?: CalendarMonth;
-  scrollProgress: number;
-  now: Date;
-}): number {
-  const currentPosition = intervalPosition({ month, now });
-  if (scrollProgress === 0) {
-    return currentPosition;
-  }
-  const direction = scrollProgress > 0 ? 'older' : 'newer';
-  const adjacentMonth = mapMonthAfterScroll({ month, direction, now });
-  if (adjacentMonth === month) {
-    return currentPosition;
-  }
-  const adjacentPosition = intervalPosition({ month: adjacentMonth, now });
-  return (
-    currentPosition + (adjacentPosition - currentPosition) * Math.min(1, Math.abs(scrollProgress))
-  );
-}
-
-function intervalPositionStyle(position: number): string {
-  if (position < 0) {
-    const progressFromTop = position + 1;
-    if (progressFromTop <= 0) {
-      return `${MIN_POSITION}%`;
+function visibleMonths(month?: CalendarMonth) {
+  const now = calendarNow();
+  const months = [{ month, offset: 0 }];
+  let newer = month;
+  let older = month;
+  for (let distance = 1; distance <= NEIGHBOR_MONTH_COUNT; distance += 1) {
+    if (newer !== undefined) {
+      newer = mapMonthAfterScroll({ month: newer, direction: 'newer', now });
+      months.unshift({ month: newer, offset: -distance });
     }
-    const percentagePosition = (1 - progressFromTop) * MIN_POSITION;
-    const pixelPosition = progressFromTop * PRESENT_POSITION;
-    return `clamp(${MIN_POSITION}%, calc(${percentagePosition}% + ${pixelPosition}px), ${PAST_POSITION}%)`;
+    older = mapMonthAfterScroll({ month: older, direction: 'older', now });
+    months.push({ month: older, offset: distance });
   }
-  const distance = position * MONTH_POSITION_DISTANCE;
-  return `clamp(${MIN_POSITION}%, calc(${PRESENT_POSITION}px + ${distance}%), ${PAST_POSITION}%)`;
-}
-
-function nowLabelOpacity(position: number): number {
-  return position < 0 ? Math.min(1, -position / NOW_LABEL_FADE_DISTANCE) : 1;
+  return months;
 }
 
 export function HypermediaIntervalIndicator({
   month,
-  scrollProgress = 0,
+  onMonthChange,
 }: {
   month?: CalendarMonth;
-  scrollProgress?: number;
+  onMonthChange: (month?: CalendarMonth) => void;
 }) {
-  const now = calendarNow();
-  const present = currentCalendarMonth(now);
-  const label = calendarMonthLabel(month);
-  const position = scrollPosition({ month, scrollProgress, now });
-  const selectedIsPresent = month === present;
-
   return (
-    <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-40 select-none">
-      <span className="absolute inset-y-0 right-3 w-px bg-border/80" aria-hidden="true" />
-      {!selectedIsPresent && (
-        <span
-          className="absolute right-7 -translate-y-1/2 text-muted-foreground text-xs transition-opacity duration-100 ease-out motion-reduce:transition-none"
-          style={{ top: PRESENT_POSITION, opacity: nowLabelOpacity(position) }}
+    <nav className="absolute top-4 right-4 z-10 h-40 w-36 select-none" aria-label="Time navigation">
+      <ArrowRight
+        className="pointer-events-none absolute top-1/2 left-1 size-3.5 -translate-y-1/2"
+        aria-hidden="true"
+      />
+      {visibleMonths(month).map(({ month: visibleMonth, offset }) => (
+        <Button
+          key={visibleMonth ?? 'undated'}
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(
+            'absolute top-16 left-6 h-8 w-30 justify-start px-2 text-sm tabular-nums transition-transform duration-150 ease-out motion-reduce:transition-none',
+            offset === 0 ? 'font-medium' : 'font-normal text-muted-foreground',
+            Math.abs(offset) === NEIGHBOR_MONTH_COUNT && 'opacity-60',
+          )}
+          style={{ transform: `translateY(${offset * MONTH_ROW_HEIGHT}px)` }}
+          aria-label={calendarMonthLabel(visibleMonth)}
+          aria-current={offset === 0 ? 'true' : undefined}
+          onClick={() => onMonthChange(visibleMonth)}
         >
-          Now
-        </span>
-      )}
-      <span className="absolute right-7 bottom-[2%] text-muted-foreground text-xs">Past</span>
-      <div
-        className="absolute inset-x-0 -translate-y-1/2"
-        style={
-          {
-            '--interval-position': intervalPositionStyle(position),
-            top: 'var(--interval-position)',
-          } as CSSProperties
-        }
-        role="img"
-        aria-label={month ? `Selected interval: ${label}` : 'Pages without a time interval'}
-      >
-        <span
-          className="absolute top-0 right-3 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground ring-4 ring-card/85"
-          aria-hidden="true"
-        />
-        <span
-          className="absolute top-0 right-7 -translate-y-1/2 whitespace-nowrap rounded-full border bg-card/92 px-2.5 py-1 font-medium text-xs tabular-nums shadow-sm backdrop-blur"
-          aria-live="polite"
-        >
-          {label}
-        </span>
-      </div>
-    </div>
+          {calendarMonthShortLabel(visibleMonth)}
+        </Button>
+      ))}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        Selected interval: {calendarMonthLabel(month)}
+      </span>
+    </nav>
   );
 }

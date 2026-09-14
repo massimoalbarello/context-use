@@ -45,6 +45,17 @@ export function shiftCalendarMonth({
   return calendarMonthFromUtcDate(date);
 }
 
+export function calendarMonthShortLabel(value?: CalendarMonth): string {
+  if (value) {
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(dateFromCalendarMonth(value));
+  }
+  return calendarMonthLabel(value);
+}
+
 export function calendarMonthLabel(value?: CalendarMonth): string {
   return value ? temporalCoverageLabel({ expression: value }) : 'Undated';
 }
