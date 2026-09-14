@@ -20,8 +20,9 @@ function connection(): ConnectionState {
 }
 
 describe('exclusive memory configuration', () => {
-  test('connect is repeatable and disconnect restores the original values', () => {
+  test('connect preserves separate conversations and disconnect restores the original values', () => {
     const original: OpenClawConfig = {
+      session: { dmScope: 'per-channel-peer' },
       plugins: { slots: { memory: 'memory-core' }, allow: ['memory-core'] },
       agents: { entries: { main: { tools: { allow: ['read'] } } } },
     };
@@ -32,6 +33,7 @@ describe('exclusive memory configuration', () => {
     prepareConfiguration({ config, state });
     expect(config).toEqual(connected);
     expect(config.plugins?.slots?.memory).toBe('context-use');
+    expect(config.session?.dmScope).toBe('per-channel-peer');
     expect(config.agents?.entries?.main?.tools?.allow).toEqual(['read', 'context-use']);
     expect(config.plugins?.entries?.['active-memory']?.config?.toolsAllow).toEqual([
       'context_use_search_hypermedia',

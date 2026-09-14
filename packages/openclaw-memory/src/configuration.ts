@@ -182,10 +182,4 @@ export function assertPersonalConfiguration(input: {
       'This version supports one personal agent per OpenClaw installation.',
     );
   }
-  const scope = config.session?.dmScope;
-  if (scope && scope !== 'main') {
-    throw new ConnectionError(
-      'This version requires a personal OpenClaw installation with main DM scope.',
-    );
-  }
 }

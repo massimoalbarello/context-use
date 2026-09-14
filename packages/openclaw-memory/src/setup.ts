@@ -27,7 +27,8 @@ An authorized OpenClaw agent can perform setup itself; only passkey authorizatio
 After authorize, delete the temporary callback file and restart the OpenClaw gateway.
 Once active, these commands are also available as openclaw context-use <command>.
 
-This version supports one personal agent, one Context Use account and main DM scope.
+This version supports one personal agent and one Context Use account across separate personal conversations.
+Setup preserves your existing conversation/session scope.
 Disconnect restores setup-owned settings while preserving later edits and remote memories.
 Use remove for credential cleanup and uninstall; native disable alone retains connection state.
 Restart the gateway after disconnect/remove. Existing memory import is outside this version.

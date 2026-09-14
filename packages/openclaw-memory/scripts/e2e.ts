@@ -81,6 +81,7 @@ try {
   app = await startApp({ repo, directory, node });
   owner = await ownerBrowser(app.origin);
   console.log('Owner registered through virtual passkey.');
+  await configure("config.session = { dmScope: 'per-channel-peer' };");
   await command([node, setup, 'connect', app.origin]);
   const pending = await Bun.file(connectionFile).json();
   assert(pending.oauth.pending?.url);
@@ -107,6 +108,7 @@ try {
   expired.oauth.tokens.access_token = 'expired-test-access-token';
   await writeFile(connectionFile, JSON.stringify(expired), { mode: PRIVATE_MODE });
   const connected = await configuration();
+  assert.equal(connected.session.dmScope, 'per-channel-peer');
   assert.equal(connected.plugins.slots.memory, PLUGIN_ID);
   assert.equal(connected.plugins.entries['active-memory'].config.mode, 'always');
   assert((await command(['openclaw', 'context-use', 'status'])).includes('"connected": true'));
@@ -125,11 +127,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'agent',
     '--local',
     '--channel',
-    'webchat',
+    'telegram',
     '--agent',
     'main',
     '--session-key',
-    'agent:main:main',
+    'agent:main:telegram:direct:owner',
     '--message',
     "I'm Rowan. My sister Mira is studying architecture.",
     '--json',
@@ -153,7 +155,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--agent',
     'main',
     '--session-key',
-    'agent:main:second',
+    'agent:main:webchat:direct:owner',
     '--message',
     'What does my sister study?',
     '--json',
@@ -165,12 +167,13 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'Recall never followed a typed page address',
   );
   console.log(
-    'Real OpenClaw agent learned remotely and recalled in a fresh session; local bootstrap memory was excluded.',
+    'Real OpenClaw agent learned in a Telegram session and recalled in a separate webchat session; local bootstrap memory was excluded.',
   );
 
   await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");
   await command([node, setup, 'disconnect']);
   const removed = await configuration();
+  assert.equal(removed.session.dmScope, 'per-channel-peer');
   assert.equal(removed.plugins.entries['active-memory'].config.timeoutMs, USER_TIMEOUT_MS);
   assert.notEqual(removed.plugins.slots?.memory, PLUGIN_ID);
   assert(!(await Bun.file(connectionFile).exists()), 'Credentials survived disconnect');

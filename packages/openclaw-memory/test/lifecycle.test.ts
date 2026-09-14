@@ -35,20 +35,31 @@ test('personal memory allows owner and background runs but excludes other sender
   expect(canUseMemory({ agentId: 'main', context: { ...context, senderIsOwner: false } })).toBe(
     true,
   );
-  expect(
-    canUseMemory({
-      agentId: 'main',
-      context: { ...context, requesterSenderId: 'owner', senderIsOwner: true },
-    }),
-  ).toBe(true);
-  expect(
-    canUseMemory({ agentId: 'main', context: { ...context, requesterSenderId: 'visitor' } }),
-  ).toBe(false);
-  expect(
-    canUseMemory({
-      agentId: 'main',
-      context: { ...context, sessionKey: 'agent:main:telegram:group:123' },
-    }),
-  ).toBe(false);
+  for (const sessionKey of [
+    'agent:main:main',
+    'agent:main:telegram:direct:owner',
+    'agent:main:webchat:direct:owner',
+  ]) {
+    expect(
+      canUseMemory({
+        agentId: 'main',
+        context: { ...context, sessionKey, requesterSenderId: 'owner', senderIsOwner: true },
+      }),
+    ).toBe(true);
+    expect(
+      canUseMemory({
+        agentId: 'main',
+        context: { ...context, sessionKey, requesterSenderId: 'visitor' },
+      }),
+    ).toBe(false);
+  }
+  for (const sessionKey of ['agent:main:telegram:group:123', 'agent:main:slack:channel:123']) {
+    expect(
+      canUseMemory({
+        agentId: 'main',
+        context: { ...context, sessionKey, requesterSenderId: 'owner', senderIsOwner: true },
+      }),
+    ).toBe(false);
+  }
   expect(canUseMemory({ agentId: 'other', context })).toBe(false);
 });
