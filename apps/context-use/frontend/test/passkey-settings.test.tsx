@@ -48,8 +48,16 @@ async function passkeyWorld({ signedIn, path }: { signedIn: boolean; path: strin
   client.setQueryData(ownerRegistrationQueryOptions.queryKey, { ownerRegistered: false });
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
-      () => {
-        throw new Error('Passkey help must not require an API call');
+      (input: RequestInfo | URL) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.pathname === '/.well-known/webauthn') {
+          return Promise.resolve(
+            Response.json({
+              origins: ['https://original.example.com', 'https://custom.example.org'],
+            }),
+          );
+        }
+        throw new Error(`Unexpected request: ${url.pathname}`);
       },
       { preconnect: globalThis.fetch.preconnect },
     ),
@@ -91,6 +99,9 @@ test('signed-in owners can find passkey settings for custom domains', async () =
     );
     expect(screen.getByText('BASE_URL=https://context.example.com')).toBeTruthy();
     expect(screen.getByText(/only if you set a custom domain/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Known origins' })).toBeTruthy();
+    expect(screen.getByText('https://original.example.com')).toBeTruthy();
+    expect(screen.getByText('https://custom.example.org')).toBeTruthy();
   } finally {
     world.dispose();
   }
