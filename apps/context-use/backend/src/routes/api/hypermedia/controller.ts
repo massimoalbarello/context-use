@@ -63,7 +63,6 @@ export function createHypermediaController({
     .get(
       '/pages',
       async ({ query, user, status }) => {
-        const entities = parseHypermediaEntities(query.entities);
         const visibleEntities = parseHypermediaEntities(query.visible);
         let temporalBounds: TemporalBounds | undefined;
         try {
@@ -74,12 +73,11 @@ export function createHypermediaController({
           }
           throw error;
         }
-        if (!entities || !visibleEntities) {
+        if (!visibleEntities) {
           return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
         }
         const pages = await hypermediaService.pages({
           ownerId: user.id,
-          entities,
           visibleEntities,
           limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
           offset: query.offset ?? 0,

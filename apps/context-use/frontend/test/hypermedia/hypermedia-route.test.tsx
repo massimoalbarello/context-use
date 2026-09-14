@@ -4,7 +4,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Session } from '../../src/lib/auth';
-import { entitiesQueryOptions } from '../../src/queries/entities';
+import { entitiesQueryOptions, entityPreviewQueryOptions } from '../../src/queries/entities';
 import {
   type HypermediaPages,
   hypermediaEntityNeighborhoodQueryOptions,
@@ -13,7 +13,7 @@ import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/pr
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
 
-test('Hypermedia ignores keyword URL state and recovers from page failures without search', async () => {
+test('Hypermedia previews entities without filtering pages and recovers from page failures', async () => {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const profile: KnowledgeProfile = {
     selfEntity: {
@@ -26,6 +26,12 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
       createdAt: timestamp,
       updatedAt: timestamp,
     },
+  };
+  const colleague = {
+    ...profile.selfEntity,
+    readableId: 'colleague',
+    name: 'Colleague',
+    isSelf: false,
   };
   const session: Session = {
     session: {
@@ -67,21 +73,29 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
   client.setQueryData(sessionQueryOptions.queryKey, session);
   client.setQueryData(profileQueryOptions.queryKey, profile);
   client.setQueryData(entitiesQueryOptions().queryKey, {
-    pages: [{ items: [profile.selfEntity], total: 1, nextOffset: null }],
+    pages: [{ items: [profile.selfEntity, colleague], total: 2, nextOffset: null }],
     pageParams: [0],
   });
-  client.setQueryData(
-    hypermediaEntityNeighborhoodQueryOptions({
-      anchor: { readableId: 'owner' },
-    }).queryKey,
-    { anchor: profile.selfEntity, neighbors: [], nextCursor: null },
-  );
+  for (const entity of [profile.selfEntity, colleague]) {
+    client.setQueryData(hypermediaEntityNeighborhoodQueryOptions({ anchor: entity }).queryKey, {
+      anchor: entity,
+      neighbors: [],
+      nextCursor: null,
+    });
+    client.setQueryData(entityPreviewQueryOptions(entity.readableId).queryKey, {
+      ...entity,
+      pages: [],
+    });
+  }
+  const requests: URL[] = [];
   let unavailable = true;
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = new URL(input instanceof Request ? input.url : input);
+        requests.push(url);
         expect(url.searchParams.has('query')).toBe(false);
+        expect(url.searchParams.has('entities')).toBe(false);
         if (url.pathname !== '/api/hypermedia/pages') {
           throw new Error(`Unexpected request: ${url.pathname}`);
         }
@@ -99,7 +113,7 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
       routeTree,
       context: { queryClient: client },
       history: createMemoryHistory({
-        initialEntries: ['/hypermedia?q=nonexistent-keyword&focus=entity%3Aowner'],
+        initialEntries: ['/hypermedia?month=2026-01&q=nonexistent-keyword&focus=entity%3Aowner'],
       }),
     });
     await router.load();
@@ -111,7 +125,8 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
 
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Open sidebar' }));
     expect(screen.getByRole('link', { name: 'Browse resources' })).toBeTruthy();
-    expect(screen.getByText('1 entity selected')).toBeTruthy();
+    expect(screen.queryByText('1 entity selected')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear selected entities' })).toBeNull();
     expect(screen.queryByRole('searchbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull();
     expect((await screen.findByRole('alert')).textContent).toContain('Couldn’t load pages.');
@@ -119,9 +134,29 @@ test('Hypermedia ignores keyword URL state and recovers from page failures witho
     await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Clear selected entities' }));
-    expect(screen.queryByRole('button', { name: 'Clear selected entities' })).toBeNull();
-    expect(router.state.location.search).not.toHaveProperty('focus');
+    const user = userEvent.setup();
+    const pageRequestCount = requests.length;
+    for (const name of ['Owner', 'Colleague', 'Colleague']) {
+      await user.click(screen.getByRole('link', { name: `Open entity ${name}` }));
+      expect(await screen.findByRole('heading', { name })).toBeTruthy();
+      expect(screen.getAllByRole('complementary', { name: 'Entity preview' })).toHaveLength(1);
+      expect(screen.getByRole('link', { name: 'Open knowledge page Planning' })).toBeTruthy();
+      expect(router.state.location.search).toEqual({
+        month: '2026-01',
+        kind: 'entity',
+        id: name.toLowerCase(),
+      });
+    }
+    await user.click(screen.getByRole('complementary', { name: 'Entity preview' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('complementary', { name: 'Entity preview' })).toBeNull();
+    expect(router.state.location.search).toEqual({ month: '2026-01' });
+    await user.click(screen.getByRole('link', { name: 'Open entity Owner' }));
+    await user.click(await screen.findByRole('button', { name: 'Close preview' }));
+    expect(screen.queryByRole('complementary', { name: 'Entity preview' })).toBeNull();
+    expect(router.state.location.search).toEqual({ month: '2026-01' });
+    expect(requests).toHaveLength(pageRequestCount);
+    expect(requests.every((url) => url.searchParams.get('time') === '2026-01')).toBe(true);
   } finally {
     cleanup();
     client.clear();

@@ -49,7 +49,6 @@ export interface HypermediaRepositoryContract {
   }): Promise<HypermediaEntityNeighborhood | null>;
   pages(input: {
     ownerId: string;
-    entities: HypermediaEntityReference[];
     visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;
@@ -173,35 +172,24 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
 
   async pages({
     ownerId,
-    entities,
     visibleEntities,
     limit,
     offset,
     temporalBounds,
   }: {
     ownerId: string;
-    entities: HypermediaEntityReference[];
     visibleEntities: HypermediaEntityReference[];
     limit: number;
     offset: number;
     temporalBounds?: TemporalBounds;
   }): Promise<HypermediaPages> {
-    const selectedEntityKeys = JSON.stringify(entities.map(({ readableId }) => readableId));
     const visibleEntityKeys = JSON.stringify(visibleEntities.map(({ readableId }) => readableId));
-    const scopedEntities = new Map(
-      [...entities, ...visibleEntities].map((entity) => [entity.readableId, entity]),
-    );
-    const scopedEntityKeys = JSON.stringify([...scopedEntities.keys()]);
-    const selectedEntityCount = entities.length;
     const visibleEntityCount = visibleEntities.length;
-    const visibleScopedEntityCount = scopedEntities.size;
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
     const rowLimit = limit + 1;
     const pageRows = await this.matchingPageRows({
       ownerId,
-      selectedEntityKeys,
-      selectedEntityCount,
       visibleEntityKeys,
       visibleEntityCount,
       filterStart,
@@ -221,12 +209,12 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       };
     }
     const selectedPageIds = JSON.stringify(selectedPageRows.map(({ id }) => id));
-    const maximumScopedEntityReferences = visibleScopedEntityCount * selectedPageRows.length;
+    const maximumVisibleEntityReferences = visibleEntityCount * selectedPageRows.length;
     const referenceLimit =
-      MAX_HYPERMEDIA_PAGE_ENTITY_REFERENCES + maximumScopedEntityReferences + 1;
+      MAX_HYPERMEDIA_PAGE_ENTITY_REFERENCES + maximumVisibleEntityReferences + 1;
     const referenceRows = await this.pageEntityRows({
       ownerId,
-      entityKeys: scopedEntityKeys,
+      entityKeys: visibleEntityKeys,
       selectedPageIds,
       referenceLimit,
     });
@@ -246,8 +234,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
 
   private matchingPageRows({
     ownerId,
-    selectedEntityKeys,
-    selectedEntityCount,
     visibleEntityKeys,
     visibleEntityCount,
     filterStart,
@@ -256,8 +242,6 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     offset,
   }: {
     ownerId: string;
-    selectedEntityKeys: string;
-    selectedEntityCount: number;
     visibleEntityKeys: string;
     visibleEntityCount: number;
     filterStart: number | null;
@@ -268,9 +252,7 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
     return this.sql.ListHypermediaPages`
       /* @notNull id readableId revisionNumber title excerpt ongoingSort createdAt updatedAt */
       /* @type ongoingSort number */
-      with selected_key as (
-        select value as "key" from json_each(${selectedEntityKeys})
-      ), visible_key as (
+      with visible_key as (
         select value as "key" from json_each(${visibleEntityKeys})
       ), active_entity_reference as (
         select mention."source_revision_id" as "revisionId",
@@ -282,13 +264,9 @@ export class HypermediaRepository implements HypermediaRepositoryContract {
       ), entity_matched_revision as (
         select reference."revisionId"
         from active_entity_reference reference
-        left join selected_key selected on selected."key" = reference."key"
         left join visible_key visible on visible."key" = reference."key"
         group by reference."revisionId"
-        having (
-          ${selectedEntityCount} = 0
-          or count(distinct selected."key") = ${selectedEntityCount}
-        ) and (${visibleEntityCount} = 0 or count(distinct visible."key") > 0)
+        having ${visibleEntityCount} = 0 or count(distinct visible."key") > 0
       ), filtered_page as (
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",

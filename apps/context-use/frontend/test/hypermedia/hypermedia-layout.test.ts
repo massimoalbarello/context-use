@@ -101,7 +101,7 @@ describe('entity-first hypermedia layout', () => {
     expect(expanded.find(({ key }) => key === 'entity:diagram')?.point).toEqual(initial[0]?.point);
   });
 
-  test('focus follows the viewport while retaining a selected entity', () => {
+  test('focus follows only the viewport', () => {
     const entities = buildStableEntities([
       neighborhood(entity('self', true), [entity('alpha'), entity('beta')]),
     ]);
@@ -110,9 +110,6 @@ describe('entity-first hypermedia layout', () => {
 
     expect(focusedEntities({ entities, viewport })[0]).toEqual({
       readableId: 'beta',
-    });
-    expect(focusedEntities({ entities, viewport, selectedKey: 'entity:self' })[0]).toEqual({
-      readableId: 'self',
     });
     expect(focusedEntities({ entities, viewport })).toHaveLength(1);
   });
@@ -140,25 +137,14 @@ describe('entity-first hypermedia layout', () => {
     ).toBe(true);
   });
 
-  test('viewport culling cannot remove the selected page or entity', () => {
+  test('viewport culling removes off-screen pages and entities', () => {
     const entities = buildStableEntities([neighborhood(entity('self', true), [entity('alpha')])]);
-    const layout = buildHypermediaLayout(entities, [page('selected-page')]);
-    const hiddenViewport = { x: 10_000, y: 10_000, width: 100, height: 100 };
+    const layout = buildHypermediaLayout(entities, [page('off-screen-page')]);
+    const viewport = { x: 10_000, y: 10_000, width: 100, height: 100 };
+    const visibleLayout = hypermediaLayoutInViewport({ layout, viewport });
 
-    expect(
-      hypermediaLayoutInViewport({
-        layout,
-        viewport: hiddenViewport,
-        selectedKey: 'page:selected-page',
-      }).pages.map(({ page: item }) => item.readableId),
-    ).toEqual(['selected-page']);
-    expect(
-      hypermediaLayoutInViewport({
-        layout,
-        viewport: hiddenViewport,
-        selectedKey: 'entity:self',
-      }).entities.map(({ key }) => key),
-    ).toEqual(['entity:self']);
+    expect(visibleLayout.pages).toEqual([]);
+    expect(visibleLayout.entities).toEqual([]);
   });
 
   test('keeps a page cloud while one of its connected entities remains visible', () => {

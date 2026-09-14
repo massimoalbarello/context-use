@@ -22,14 +22,12 @@ function PreviewPanelShell({
   context,
   openLink,
   onClose,
-  onEscape,
   children,
 }: {
   label: string;
   context?: ReactNode;
   openLink: ReactNode;
   onClose: () => void;
-  onEscape: () => void;
   children: ReactNode;
 }) {
   return (
@@ -43,7 +41,7 @@ function PreviewPanelShell({
           return;
         }
         event.preventDefault();
-        onEscape();
+        onClose();
       }}
     >
       <header className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
@@ -82,26 +80,19 @@ function PreviewError({ error, retry }: { error: Error; retry: () => Promise<unk
   );
 }
 
-type PreviewPageItem = {
-  page: KnowledgePageSummary;
-  context?: string;
-};
-
 function PreviewPageSection({
-  title,
-  items,
+  pages,
   onSelect,
 }: {
-  title: string;
-  items: PreviewPageItem[];
+  pages: KnowledgePageSummary[];
   onSelect: (selection: HypermediaSelection) => void;
 }) {
   return (
     <section className="border-t pt-5">
-      <h3 className="font-semibold text-base">{title}</h3>
-      {items.length > 0 ? (
+      <h3 className="font-semibold text-base">Mentioned by knowledge pages</h3>
+      {pages.length > 0 ? (
         <ul className="mt-3 grid gap-2">
-          {items.map(({ page, context }) => (
+          {pages.map((page) => (
             <li key={page.readableId}>
               <button
                 type="button"
@@ -109,9 +100,6 @@ function PreviewPageSection({
                 onClick={() => onSelect({ kind: 'page', readableId: page.readableId })}
               >
                 <KnowledgePageCardContent page={page} />
-                {context && (
-                  <small className="shrink-0 text-muted-foreground text-xs">{context}</small>
-                )}
               </button>
             </li>
           ))}
@@ -126,11 +114,10 @@ function PreviewPageSection({
 type PreviewProps = {
   readableId: string;
   onClose: () => void;
-  onEscape: () => void;
   onSelect: (selection: HypermediaSelection) => void;
 };
 
-function PagePreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) {
+function PagePreview({ readableId, onClose, onSelect }: PreviewProps) {
   const { data: page, error, refetch } = usePagePreview(readableId);
   return (
     <PreviewPanelShell
@@ -144,7 +131,6 @@ function PagePreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) 
         ) : null
       }
       onClose={onClose}
-      onEscape={onEscape}
       openLink={
         <Link
           className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -173,13 +159,12 @@ function PagePreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) 
   );
 }
 
-function EntityPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps) {
+function EntityPreview({ readableId, onClose, onSelect }: PreviewProps) {
   const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
     <PreviewPanelShell
       label="Entity"
       onClose={onClose}
-      onEscape={onEscape}
       openLink={
         <Link
           className={buttonVariants({ variant: 'ghost', size: 'sm' })}
@@ -200,11 +185,7 @@ function EntityPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
-          <PreviewPageSection
-            title="Mentioned by knowledge pages"
-            items={entity.pages.map((page) => ({ page }))}
-            onSelect={onSelect}
-          />
+          <PreviewPageSection pages={entity.pages} onSelect={onSelect} />
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>
@@ -216,12 +197,10 @@ function EntityPreview({ readableId, onClose, onEscape, onSelect }: PreviewProps
 export function HypermediaPreviewPanel({
   selection,
   onClose,
-  onEscape,
   onSelect,
 }: {
   selection: HypermediaSelection;
   onClose: () => void;
-  onEscape: () => void;
   onSelect: (selection: HypermediaSelection) => void;
 }) {
   const key = hypermediaSelectionKey(selection);
@@ -232,7 +211,6 @@ export function HypermediaPreviewPanel({
         key={key}
         readableId={selection.readableId}
         onClose={onClose}
-        onEscape={onEscape}
         onSelect={onSelect}
       />
     );
@@ -242,7 +220,6 @@ export function HypermediaPreviewPanel({
       key={key}
       readableId={selection.readableId}
       onClose={onClose}
-      onEscape={onEscape}
       onSelect={onSelect}
     />
   );
