@@ -58,6 +58,7 @@ async function insertSync({
 function ownerAuth(): Auth {
   const timestamp = new Date(NOW);
   return {
+    passkeyOrigins: [],
     handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
     getSession: async () => ({
       user: {

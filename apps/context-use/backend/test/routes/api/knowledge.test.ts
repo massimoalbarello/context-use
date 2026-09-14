@@ -59,6 +59,7 @@ const frontendAssetsService: FrontendAssetsServiceContract = {
 function ownerAuth(): Auth {
   const createdAt = new Date('2026-01-01T00:00:00.000Z');
   return {
+    passkeyOrigins: [],
     handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
     getSession: async () => ({
       user: {

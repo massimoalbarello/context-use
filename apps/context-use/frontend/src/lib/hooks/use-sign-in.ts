@@ -2,6 +2,7 @@ import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/r
 import { useRouter } from '@tanstack/react-router';
 import { authClient } from '../auth';
 import { clearRememberedKnowledgeResources } from '../knowledge-navigation';
+import { passkeyErrorMessage } from '../passkey-error';
 
 export function useSignIn(): UseMutationResult<void, Error, void> {
   const queryClient = useQueryClient();
@@ -11,7 +12,9 @@ export function useSignIn(): UseMutationResult<void, Error, void> {
     mutationFn: async () => {
       const { error } = await authClient.signIn.passkey();
       if (error) {
-        throw new Error(error.message ?? 'Could not sign in with your passkey.');
+        throw new Error(
+          passkeyErrorMessage({ error, fallback: 'Could not sign in with your passkey.' }),
+        );
       }
     },
     onSuccess: async () => {

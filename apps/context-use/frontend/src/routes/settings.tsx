@@ -1,7 +1,7 @@
 import { buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router';
-import { ArrowLeft, Bot, RefreshCw, ScanFace } from 'lucide-react';
+import { ArrowLeft, Bot, KeyRound, RefreshCw, ScanFace } from 'lucide-react';
 import { WorkspaceSplitLayout } from '../components/layout/workspace-split-layout';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 
@@ -29,6 +29,17 @@ function SettingsLayout() {
           <strong className="px-2 font-semibold text-xl tracking-tight">Settings</strong>
         </div>
         <nav aria-label="Settings" className="grid gap-1">
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/settings/passkeys"
+          >
+            <KeyRound aria-hidden="true" />
+            Passkeys
+          </Link>
           <Link
             className={cn(
               buttonVariants({ variant: 'ghost' }),

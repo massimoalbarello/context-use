@@ -32,6 +32,7 @@ import { Route as RecordsIndexRouteImport } from './routes/records.index'
 import { Route as RecordsIdRouteImport } from './routes/records.$id'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsFacesRouteImport } from './routes/settings.faces'
+import { Route as SettingsPasskeysRouteImport } from './routes/settings.passkeys'
 import { Route as SettingsSyncsRouteImport } from './routes/settings.syncs'
 
 const IndexRoute = IndexRouteImport.update({
@@ -149,6 +150,11 @@ const SettingsFacesRoute = SettingsFacesRouteImport.update({
   path: '/faces',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsPasskeysRoute = SettingsPasskeysRouteImport.update({
+  id: '/passkeys',
+  path: '/passkeys',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsSyncsRoute = SettingsSyncsRouteImport.update({
   id: '/syncs',
   path: '/syncs',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/pages/new': typeof PagesNewRoute
   '/records/$id': typeof RecordsIdRoute
   '/settings/faces': typeof SettingsFacesRoute
+  '/settings/passkeys': typeof SettingsPasskeysRoute
   '/settings/syncs': typeof SettingsSyncsRoute
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/pages/new': typeof PagesNewRoute
   '/records/$id': typeof RecordsIdRoute
   '/settings/faces': typeof SettingsFacesRoute
+  '/settings/passkeys': typeof SettingsPasskeysRoute
   '/settings/syncs': typeof SettingsSyncsRoute
   '/assets': typeof AssetsIndexRoute
   '/entities': typeof EntitiesIndexRoute
@@ -222,6 +230,7 @@ export interface FileRoutesById {
   '/pages/new': typeof PagesNewRoute
   '/records/$id': typeof RecordsIdRoute
   '/settings/faces': typeof SettingsFacesRoute
+  '/settings/passkeys': typeof SettingsPasskeysRoute
   '/settings/syncs': typeof SettingsSyncsRoute
   '/assets/': typeof AssetsIndexRoute
   '/entities/': typeof EntitiesIndexRoute
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/pages/new'
     | '/records/$id'
     | '/settings/faces'
+    | '/settings/passkeys'
     | '/settings/syncs'
     | '/assets/'
     | '/entities/'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/pages/new'
     | '/records/$id'
     | '/settings/faces'
+    | '/settings/passkeys'
     | '/settings/syncs'
     | '/assets'
     | '/entities'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/pages/new'
     | '/records/$id'
     | '/settings/faces'
+    | '/settings/passkeys'
     | '/settings/syncs'
     | '/assets/'
     | '/entities/'
@@ -481,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsFacesRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/passkeys': {
+      id: '/settings/passkeys'
+      path: '/passkeys'
+      fullPath: '/settings/passkeys'
+      preLoaderRoute: typeof SettingsPasskeysRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/syncs': {
       id: '/settings/syncs'
       path: '/syncs'
@@ -551,12 +570,14 @@ const RecordsRouteWithChildren =
 
 interface SettingsRouteChildren {
   SettingsFacesRoute: typeof SettingsFacesRoute
+  SettingsPasskeysRoute: typeof SettingsPasskeysRoute
   SettingsSyncsRoute: typeof SettingsSyncsRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsFacesRoute: SettingsFacesRoute,
+  SettingsPasskeysRoute: SettingsPasskeysRoute,
   SettingsSyncsRoute: SettingsSyncsRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }

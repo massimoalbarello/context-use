@@ -51,29 +51,35 @@ function ownerRegistrationApiError(error: unknown): never {
 export function createAuthOptions({
   database,
   baseUrl,
+  nibrunHostname,
   secret,
   fetchClientMetadataResource,
 }: {
   database: SQL;
   baseUrl: URL;
+  nibrunHostname?: string;
   secret: string;
   fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
-}): BetterAuthOptions {
+}) {
   const mcpResource = mcpServerUrl({ baseUrl });
+  // The RP ID is part of every stored credential. Keep nibrun's original identity when the
+  // public URL changes, and explicitly authorize the configured custom origin on both sides.
+  const relyingPartyUrl = nibrunHostname ? new URL(`https://${nibrunHostname}`) : baseUrl;
+  const trustedOrigins = [...new Set([relyingPartyUrl.origin, baseUrl.origin])];
   return {
     database: bunSqlAdapter({ sql: database, tablesPrefix: BETTER_AUTH_TABLES_PREFIX }),
     // The origin, never the href: better-auth drops `basePath` entirely when the base URL already
-    // carries a path, so a `BASE_URL` with one would silently move every auth route. Its origin is
-    // trusted automatically, which is why no `trustedOrigins` is needed.
+    // carries a path, so a `BASE_URL` with one would silently move every auth route.
     baseURL: baseUrl.origin,
+    trustedOrigins,
     basePath: BETTER_AUTH_API_BASE_PATH,
     secret,
     plugins: [
       jwt(),
       passkey({
-        rpID: baseUrl.hostname,
+        rpID: relyingPartyUrl.hostname,
         rpName: PASSKEY_RELYING_PARTY_NAME,
-        origin: baseUrl.origin,
+        origin: trustedOrigins,
         authenticatorSelection: {
           residentKey: 'required',
           userVerification: 'required',
@@ -155,19 +161,22 @@ export function createAuthOptions({
         generateId: () => Bun.randomUUIDv7(),
       },
     },
-  };
+  } satisfies BetterAuthOptions;
 }
 
 export function createAuth(input: {
   database: SQL;
   baseUrl: URL;
+  nibrunHostname?: string;
   secret: string;
   fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
 }) {
   const mcpResource = mcpServerUrl({ baseUrl: input.baseUrl });
-  const auth = betterAuth(createAuthOptions(input));
+  const options = createAuthOptions(input);
+  const auth = betterAuth(options);
 
   return {
+    passkeyOrigins: options.trustedOrigins,
     handler(request: Request) {
       return auth.handler(request);
     },

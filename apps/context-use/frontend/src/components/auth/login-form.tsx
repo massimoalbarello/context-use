@@ -36,7 +36,11 @@ export function LoginForm({
             <FieldError>Passkeys require a supported browser in a secure context.</FieldError>
           )}
 
-          {error && <FieldError>{error.message}</FieldError>}
+          {error && (
+            <FieldError className="wrap-anywhere whitespace-pre-line leading-relaxed">
+              {error.message}
+            </FieldError>
+          )}
         </FieldGroup>
       )}
 

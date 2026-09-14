@@ -26,6 +26,7 @@ export function createDemoIdentity(): Auth {
   };
   return {
     getSession: () => Promise.resolve(session),
+    passkeyOrigins: [],
     handler: () => Promise.resolve(new Response(null, { status: 403 })),
     protectMcpRequest: () => () => Promise.resolve(new Response(null, { status: 403 })),
   };

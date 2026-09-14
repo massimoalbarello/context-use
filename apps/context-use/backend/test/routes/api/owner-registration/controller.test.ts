@@ -41,6 +41,7 @@ function unexpectedCall(): never {
 }
 
 const auth: Auth = {
+  passkeyOrigins: [],
   handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
   getSession: async () => null,
   protectMcpRequest: unusedMcpProtection,

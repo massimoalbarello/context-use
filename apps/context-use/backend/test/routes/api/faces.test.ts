@@ -135,6 +135,7 @@ async function fixture() {
     onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
   });
   const auth: Auth = {
+    passkeyOrigins: [],
     handler: () => Promise.resolve(new Response(null, { status: 404 })),
     getSession: ({ headers }) => {
       const owner = headers.get('x-test-owner');
