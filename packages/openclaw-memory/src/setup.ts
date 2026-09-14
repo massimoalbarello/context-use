@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
+import { parseArgs } from 'node:util';
 import { connect, disconnect, finishAuthorization, status } from './connection';
 import { PLUGIN_ID, PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
@@ -7,7 +8,7 @@ import { checkHost, openclaw, verifyRuntime } from './host';
 import { install } from './install';
 import { connectionDirectory } from './state';
 
-const usage = `context-use-openclaw connect <instance-url> [agent-id=main]
+const usage = `context-use-openclaw connect <instance-url> [agent-id=main] [--personal-group <session-key>]...
 context-use-openclaw authorize <redirect-url-file|->
 context-use-openclaw status
 context-use-openclaw disconnect
@@ -29,6 +30,10 @@ Once active, these commands are also available as openclaw context-use <command>
 
 This version supports one personal agent and one Context Use account across separate personal conversations.
 Setup preserves your existing conversation/session scope.
+Direct conversations work automatically. For a private group used only by the owner and agent,
+pass --personal-group with its base session key (all topics), or its exact topic session key.
+An agent performing setup can use its current session key; only include groups the owner has
+confirmed are personal. Group members can see recalled information. Other groups stay excluded.
 Disconnect restores setup-owned settings while preserving later edits and remote memories.
 Use remove for credential cleanup and uninstall; native disable alone retains connection state.
 Restart the gateway after disconnect/remove. Existing memory import is outside this version.
@@ -39,8 +44,16 @@ fresh app and OpenClaw profile, uses a virtual passkey and real MCP, and scripts
 responses. It checks integration, not live-model memory quality. No personal account is used.`;
 
 async function main(args: string[]): Promise<void> {
-  const [command, argument, agentId = 'main'] = args;
-  if (!command || command === '--help') {
+  const { positionals, values } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      'personal-group': { type: 'string', multiple: true },
+      help: { type: 'boolean' },
+    },
+  });
+  const [command, argument, agentId = 'main'] = positionals;
+  if (!command || values.help) {
     console.log(usage);
     return;
   }
@@ -52,8 +65,16 @@ async function main(args: string[]): Promise<void> {
         throw new ConnectionError(usage);
       }
       PluginConfigSchema.shape.agentId.parse(agentId);
+      const personalGroupSessions = PluginConfigSchema.shape.personalGroupSessions.parse(
+        values['personal-group'],
+      );
       await install();
-      const result = await connect({ directory, instance: argument, agentId });
+      const result = await connect({
+        directory,
+        instance: argument,
+        agentId,
+        personalGroupSessions,
+      });
       if (result.authorizationUrl) {
         console.log(
           `Open this URL on your own device and authorize Context Use:\n${result.authorizationUrl}\n\nThe final localhost page may fail to load; that is expected. Copy its full address and send it back. Finish with authorize using a private file or stdin. Do not store the link or code as a memory.`,

@@ -55,21 +55,29 @@ export function memoryCapability(agentId: string): MemoryPluginCapability {
   };
 }
 
-export function personalSession(input: { agentId: string; sessionKey?: string }): boolean {
+export function personalSession(input: {
+  agentId: string;
+  sessionKey?: string;
+  personalGroupSessions?: string[];
+}): boolean {
   return (
     input.sessionKey?.startsWith(`agent:${input.agentId}:`) === true &&
-    !/:(group|channel):/.test(input.sessionKey)
+    (!/:(group|channel):/.test(input.sessionKey) ||
+      input.personalGroupSessions?.some(
+        (allowed) => input.sessionKey === allowed || input.sessionKey?.startsWith(`${allowed}:`),
+      ) === true)
   );
 }
 
 export function canUseMemory(input: {
   agentId: string;
+  personalGroupSessions?: string[];
   context: OpenClawPluginToolContext;
 }): boolean {
   const context = input.context;
   return (
     context.agentId === input.agentId &&
-    personalSession({ agentId: input.agentId, sessionKey: context.sessionKey }) &&
+    personalSession({ ...input, sessionKey: context.sessionKey }) &&
     (!context.requesterSenderId || context.senderIsOwner === true)
   );
 }

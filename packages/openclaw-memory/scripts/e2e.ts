@@ -81,8 +81,11 @@ try {
   app = await startApp({ repo, directory, node });
   owner = await ownerBrowser(app.origin);
   console.log('Owner registered through virtual passkey.');
-  await configure("config.session = { dmScope: 'per-channel-peer' };");
-  await command([node, setup, 'connect', app.origin]);
+  await configure(
+    "config.session = { dmScope: 'per-channel-peer' }; config.tools = { profile: 'coding' };",
+  );
+  const personalGroup = 'agent:main:telegram:group:-100123';
+  await command([node, setup, 'connect', app.origin, '--personal-group', personalGroup]);
   const pending = await Bun.file(connectionFile).json();
   assert(pending.oauth.pending?.url);
   const before = await configuration();
@@ -111,6 +114,7 @@ try {
   assert.equal(connected.session.dmScope, 'per-channel-peer');
   assert.equal(connected.plugins.slots.memory, PLUGIN_ID);
   assert.equal(connected.plugins.entries['active-memory'].config.mode, 'always');
+  assert(connected.plugins.entries['active-memory'].config.allowedChatTypes.includes('group'));
   assert((await command(['openclaw', 'context-use', 'status'])).includes('"connected": true'));
   console.log('Native installation and pasted callback authorization passed.');
 
@@ -120,7 +124,7 @@ try {
   await writeFile(join(workspace, 'MEMORY.md'), 'LOCAL_MEMORY_CANARY');
   await configure(`config.agents ??= {}; config.agents.defaults ??= {}; config.agents.defaults.workspace=${JSON.stringify(workspace)};
 config.agents.defaults.model={primary:'fixture/memory-fixture'};
-config.tools={codeMode:{enabled:false},toolSearch:{enabled:false}};
+config.tools={...config.tools,codeMode:{enabled:false},toolSearch:{enabled:false}};
 config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text'],contextWindow:100000,maxTokens:4000}]}}};`);
   const learn = await command([
     'openclaw',
@@ -131,7 +135,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--agent',
     'main',
     '--session-key',
-    'agent:main:telegram:direct:owner',
+    `${personalGroup}:topic:1`,
     '--message',
     "I'm Rowan. My sister Mira is studying architecture.",
     '--json',
@@ -151,11 +155,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'agent',
     '--local',
     '--channel',
-    'webchat',
+    'telegram',
     '--agent',
     'main',
     '--session-key',
-    'agent:main:webchat:direct:owner',
+    `${personalGroup}:topic:2`,
     '--message',
     'What does my sister study?',
     '--json',
@@ -167,7 +171,49 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'Recall never followed a typed page address',
   );
   console.log(
-    'Real OpenClaw agent learned in a Telegram session and recalled in a separate webchat session; local bootstrap memory was excluded.',
+    'Real OpenClaw agent learned in one personal Telegram forum topic and recalled in another under the coding tool profile; local bootstrap memory was excluded.',
+  );
+
+  model.recall();
+  const directRecall = await command([
+    'openclaw',
+    'agent',
+    '--local',
+    '--channel',
+    'webchat',
+    '--agent',
+    'main',
+    '--session-key',
+    'agent:main:webchat:direct:owner',
+    '--message',
+    'What does my sister study?',
+    '--json',
+  ]);
+  assert(directRecall.includes('architecture'));
+  const recallCalls = model.observations.recallCalls;
+  model.exclude();
+  const excluded = await command([
+    'openclaw',
+    'agent',
+    '--local',
+    '--channel',
+    'telegram',
+    '--agent',
+    'main',
+    '--session-key',
+    'agent:main:telegram:group:-100999:topic:1',
+    '--message',
+    'What does my sister study?',
+    '--json',
+  ]);
+  assert(excluded.includes('Personal memory is unavailable'));
+  assert.equal(
+    model.observations.recallCalls,
+    recallCalls,
+    'Excluded group triggered personal recall',
+  );
+  console.log(
+    'Separate direct conversations retain memory; other groups receive no Context Use tools or recall.',
   );
 
   await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");

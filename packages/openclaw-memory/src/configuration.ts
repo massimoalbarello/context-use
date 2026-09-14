@@ -60,7 +60,16 @@ export function configurationPlan(state: ConnectionState): { path: string[]; val
     { path: [...active, 'config', 'enabled'], value: true },
     { path: [...active, 'config', 'agents'], value: [state.config.agentId] },
     { path: [...active, 'config', 'mode'], value: 'always' },
-    { path: [...active, 'config', 'allowedChatTypes'], value: ['direct', 'explicit'] },
+    {
+      path: [...active, 'config', 'allowedChatTypes'],
+      value: [
+        'direct',
+        'explicit',
+        ...['group', 'channel'].filter((type) =>
+          state.config.personalGroupSessions?.some((key) => key.includes(`:${type}:`)),
+        ),
+      ],
+    },
     { path: [...active, 'config', 'queryMode'], value: 'recent' },
     {
       path: [...active, 'config', 'toolsAllow'],
@@ -168,6 +177,13 @@ export function assertPersonalConfiguration(input: {
   state: ConnectionState;
 }): void {
   const config = input.config;
+  if (
+    input.state.config.personalGroupSessions?.some(
+      (key) => !key.startsWith(`agent:${input.state.config.agentId}:`),
+    )
+  ) {
+    throw new ConnectionError('Personal group sessions must belong to the selected agent.');
+  }
   if (
     config.plugins?.enabled === false ||
     config.plugins?.deny?.some((id) => id === PLUGIN_ID || id === 'active-memory')

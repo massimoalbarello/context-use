@@ -120,7 +120,7 @@ export default definePluginEntry({
     }
     api.registerTool(
       (context) => {
-        if (!canUseMemory({ agentId: config.agentId, context })) {
+        if (!canUseMemory({ ...config, context })) {
           return null;
         }
         return state.tools.map((tool) => {

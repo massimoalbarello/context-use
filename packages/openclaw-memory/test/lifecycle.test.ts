@@ -63,3 +63,33 @@ test('personal memory allows owner and background runs but excludes other sender
   }
   expect(canUseMemory({ agentId: 'other', context })).toBe(false);
 });
+
+test('personal forums allow owner turns and recall helpers without opening other groups', () => {
+  const group = 'agent:main:telegram:group:-100123';
+  const input = { agentId: 'main', personalGroupSessions: [group] };
+  const context = { agentId: 'main', requesterSenderId: 'owner', senderIsOwner: true };
+  for (const sessionKey of [group, `${group}:topic:1`, `${group}:topic:1:active-memory:abc`]) {
+    expect(canUseMemory({ ...input, context: { ...context, sessionKey } })).toBe(true);
+    expect(
+      canUseMemory({ ...input, context: { ...context, sessionKey, senderIsOwner: false } }),
+    ).toBe(false);
+  }
+  expect(
+    canUseMemory({
+      ...input,
+      context: { agentId: 'main', sessionKey: `${group}:active-memory:abc` },
+    }),
+  ).toBe(true);
+  for (const sessionKey of [
+    `${group}4:topic:1`,
+    'agent:main:telegram:group:-100999:topic:1',
+    'agent:main:slack:channel:-100123',
+    'agent:other:telegram:group:-100123',
+  ]) {
+    expect(canUseMemory({ ...input, context: { ...context, sessionKey } })).toBe(false);
+  }
+  const topicOnly = { ...input, personalGroupSessions: [`${group}:topic:1`] };
+  expect(
+    canUseMemory({ ...topicOnly, context: { ...context, sessionKey: `${group}:topic:12` } }),
+  ).toBe(false);
+});

@@ -14,6 +14,15 @@ export const toolName = (name: string) => `context_use_${name}`;
 export const PluginConfigSchema = z.strictObject({
   agentId: z.string().regex(/^[a-z0-9][a-z0-9_-]*$/),
   serverUrl: z.url(),
+  personalGroupSessions: z
+    .array(
+      z
+        .string()
+        .regex(
+          /^agent:[a-z0-9][a-z0-9_-]*:[a-z0-9_-]+:(group|channel):[^:*\s]+(?::(?:topic|thread):[^:*\s]+)?$/,
+        ),
+    )
+    .optional(),
 });
 export type PluginConfig = z.infer<typeof PluginConfigSchema>;
 
