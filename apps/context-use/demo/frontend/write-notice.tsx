@@ -1,4 +1,6 @@
-import { Button } from '@repo/ui/button';
+import { Button, buttonVariants } from '@repo/ui/button';
+import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
+import { ArrowUpRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   AlertDialog,
@@ -84,14 +86,24 @@ export function DemoNoticeDialog({
         }
       }}
     >
-      <AlertDialogContent className="demo-surface" finalFocus={() => returnFocus ?? false}>
+      <AlertDialogContent finalFocus={() => returnFocus ?? false}>
         <AlertDialogTitle>This is a read-only demo</AlertDialogTitle>
         <AlertDialogDescription>
-          Changes and account actions are disabled in this shared demo. You can keep exploring
-          Steve’s context and trying the controls.
+          Changes and account actions cannot be saved here. Deploy your own instance and connect
+          your agents via MCP so you can all share and curate the same context.
         </AlertDialogDescription>
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button>OK</Button>} />
+          <AlertDialogClose render={<Button variant="outline">Keep exploring</Button>} />
+          <a
+            href={CONTEXT_USE_DEPLOY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants()}
+          >
+            Deploy your own
+            <ArrowUpRight aria-hidden="true" />
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
