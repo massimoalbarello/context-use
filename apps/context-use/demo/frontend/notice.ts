@@ -1,3 +1,5 @@
+import { buttonVariants } from '@repo/ui/button';
+import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
 import type { Plugin } from 'vite';
 
 /** Build-only chrome outside React: the personal app and its controls stay unchanged. */
@@ -11,28 +13,27 @@ export function demoNotice(): Plugin {
           body { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; }
           #app { min-height: 0; }
           #app > div { height: 100%; }
-          .demo-surface {
-            --background: #fffbeb;
-            --foreground: #78350f;
-            --muted-foreground: #92400e;
-            --border: #fde68a;
-            --primary: #fcd34d;
-            --primary-foreground: #451a03;
-            --ring: #d97706;
-          }
-          #demo-notice {
-            padding: 0.625rem 1rem; border-bottom: 1px solid var(--border);
-            background: var(--background); color: var(--foreground);
-            font-size: 0.8125rem; line-height: 1.5; text-align: center;
-          }
         `,
         injectTo: 'head',
       },
       {
         tag: 'aside',
-        attrs: { id: 'demo-notice', class: 'demo-surface', 'aria-label': 'Read-only demo' },
-        children:
-          '<strong>Read-only demo</strong> · Steve Jobs’ fictional second brain, 2001–2007. Conversations and notes are invented. Changes cannot be saved.',
+        attrs: {
+          id: 'demo-notice',
+          class:
+            'demo-surface flex flex-col items-start justify-between gap-3 border-b border-border bg-background px-4 py-3 text-foreground sm:flex-row sm:items-center sm:gap-6 sm:px-6',
+          'aria-label': 'Read-only demo',
+        },
+        children: `
+          <div class="min-w-0 flex-1 text-sm">
+            <p class="text-xs text-muted-foreground">Steve Jobs’ fictional context, 2001–2007 · Invented conversations and notes · Read-only demo</p>
+            <p class="mt-1">Deploy your own instance and connect your agents via MCP to share and curate the same context.</p>
+          </div>
+          <a href="${CONTEXT_USE_DEPLOY_URL.replaceAll('&', '&amp;')}" target="_blank" rel="noopener noreferrer" class="${buttonVariants({ className: 'sm:self-center' })}">
+            Deploy your own <span aria-hidden="true">↗</span>
+            <span class="sr-only">(opens in a new tab)</span>
+          </a>
+        `,
         injectTo: 'body-prepend',
       },
     ],

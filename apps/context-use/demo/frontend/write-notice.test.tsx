@@ -5,7 +5,7 @@ import { DEMO_WRITE_DENIED_EVENT, DemoWriteNotice, demoFetch } from './write-not
 
 const FORBIDDEN = 403;
 
-test('the notice requires OK and returns focus to the attempted action', async () => {
+test('the notice keeps exploration available and returns focus to the attempted action', async () => {
   const events = new EventTarget();
   const user = userEvent.setup();
   try {
@@ -27,10 +27,10 @@ test('the notice requires OK and returns focus to the attempted action', async (
     const save = screen.getByRole('button', { name: 'Save' });
     await user.click(save);
     expect(screen.getByRole('alertdialog').textContent).toContain('This is a read-only demo');
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'OK' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep exploring' }));
     await user.keyboard('{Escape}');
     expect(screen.getByRole('alertdialog')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'OK' }));
+    await user.click(screen.getByRole('button', { name: 'Keep exploring' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(save));
   } finally {

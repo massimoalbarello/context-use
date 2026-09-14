@@ -1,12 +1,11 @@
 import { MarkGithubIcon } from '@primer/octicons-react';
 import { Button, buttonVariants } from '@repo/ui/button';
+import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 
 const GITHUB_URL = 'https://github.com/massimoalbarello/context-use';
 const DEMO_URL = 'https://demo.context-use.com/map';
-const DEPLOY_URL =
-  'https://app.nibrun.com/deploy?name=context-use&binary=https%3A%2F%2Fgithub.com%2Fmassimoalbarello%2Fcontext-use%2Freleases%2Fdownload%2Fnibrun-latest%2Fcontext-use&port=3000&minimal';
 
 function NavigationLinks() {
   return (
@@ -31,7 +30,7 @@ function NavigationLinks() {
         <ArrowUpRight aria-hidden="true" />
         <span className="sr-only"> (opens in a new tab)</span>
       </a>
-      <a href={DEPLOY_URL} className={buttonVariants({ size: 'lg' })}>
+      <a href={CONTEXT_USE_DEPLOY_URL} className={buttonVariants({ size: 'lg' })}>
         Deploy your own
         <ArrowUpRight aria-hidden="true" />
       </a>
