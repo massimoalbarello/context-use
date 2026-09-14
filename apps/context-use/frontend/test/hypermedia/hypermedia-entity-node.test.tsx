@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, test } from 'bun:test';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
 import type { HypermediaLayoutEntity } from '../../src/components/hypermedia/hypermedia-layout';
@@ -23,8 +23,8 @@ async function settleIntervalScroll() {
 
 function expectSelectedMonth(month?: CalendarMonth) {
   expect(
-    screen.getByRole('button', { name: calendarMonthLabel(month) }).getAttribute('aria-current'),
-  ).toBe('true');
+    screen.getByRole('spinbutton', { name: 'Selected month' }).getAttribute('aria-valuetext'),
+  ).toBe(calendarMonthLabel(month));
 }
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
@@ -138,12 +138,6 @@ test('Map distinguishes entity identities and retains partial progress between m
   expectSelectedMonth();
   const present = currentCalendarMonth();
   const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
-  const wheel = screen.getByRole('navigation', { name: 'Time navigation' });
-  expect(
-    within(wheel)
-      .getAllByRole('button')
-      .map((button) => button.getAttribute('aria-label')),
-  ).toEqual(['Undated', calendarMonthLabel(present), calendarMonthLabel(previousMonth)]);
 
   fireEvent.wheel(canvas, { deltaY: 40 });
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
@@ -160,8 +154,8 @@ test('Map distinguishes entity identities and retains partial progress between m
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(present);
 
-  fireEvent.wheel(wheel, { deltaY: 120 });
-  fireEvent.wheel(wheel, { deltaY: 40 });
+  fireEvent.wheel(canvas, { deltaY: 120 });
+  fireEvent.wheel(canvas, { deltaY: 40 });
   expectSelectedMonth(previousMonth);
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
@@ -176,50 +170,74 @@ test('Map distinguishes entity identities and retains partial progress between m
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
 
-  fireEvent.wheel(wheel, { deltaY: -120 });
+  fireEvent.wheel(canvas, { deltaY: -120 });
   await settleIntervalScroll();
   expectSelectedMonth();
   expect(onMonthChange.mock.calls).toEqual([[present], [previousMonth], [present], [undefined]]);
 });
 
-test('The month wheel navigates across year boundaries and resets a pending scroll on selection', async () => {
-  const onMonthChange = mock(() => undefined);
+test('The month wheel navigates across year boundaries and resets pending canvas scrolling', async () => {
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
   const user = userEvent.setup();
   render(<HypermediaMapFixture onMonthChange={onMonthChange} month="2025-01" />);
 
-  const wheel = screen.getByRole('navigation', { name: 'Time navigation' });
-  expect(
-    within(wheel)
-      .getAllByRole('button')
-      .map((button) => button.getAttribute('aria-label')),
-  ).toEqual(['March 2025', 'February 2025', 'January 2025', 'December 2024', 'November 2024']);
-  fireEvent.wheel(wheel, { deltaY: 120 });
-  await user.click(within(wheel).getByRole('button', { name: 'December 2024' }));
-  expectSelectedMonth('2024-12');
-  expect(onMonthChange).toHaveBeenLastCalledWith('2024-12');
-  await settleIntervalScroll();
-  expect(onMonthChange).toHaveBeenCalledTimes(1);
-
-  fireEvent.wheel(wheel, { deltaY: 40 });
-  await settleIntervalScroll();
-  expectSelectedMonth('2024-12');
-  expect(onMonthChange).toHaveBeenCalledTimes(1);
-  fireEvent.wheel(wheel, { deltaY: 120 });
-  await settleIntervalScroll();
-  expectSelectedMonth('2024-11');
-  expect(onMonthChange).toHaveBeenLastCalledWith('2024-11');
-});
-
-test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
-  const onMonthChange = mock(() => undefined);
-  render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
   const canvas = screen.getByLabelText('Interactive map');
-  const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
-  const pinch = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -80 });
-  Object.defineProperty(pinch, 'ctrlKey', { value: true });
+  const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
+  fireEvent.wheel(canvas, { deltaY: 120 });
+  picker.focus();
+  await user.keyboard('{ArrowDown}');
+  await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
+  expect(onMonthChange).toHaveBeenLastCalledWith('2024-12');
+  expect(onMonthChange).toHaveBeenCalledTimes(1);
 
-  expect(fireEvent(canvas, pinch)).toBe(false);
-  expect(onMonthChange).not.toHaveBeenCalled();
-  const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
-  expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
+  fireEvent.wheel(canvas, { deltaY: 40 });
+  await settleIntervalScroll();
+  expectSelectedMonth('2024-12');
+  expect(onMonthChange).toHaveBeenCalledTimes(1);
+
+  fireEvent.wheel(picker, { deltaY: 80 });
+  await waitFor(() => expectSelectedMonth('2024-11'));
+  await settleIntervalScroll();
+  expect(onMonthChange.mock.calls).toEqual([['2024-12'], ['2024-11']]);
+
+  await user.keyboard('{ArrowUp}');
+  await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
 });
+
+test('The month wheel stops at Undated and follows external month changes', async () => {
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+  const user = userEvent.setup();
+  const { rerender } = render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
+  const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
+  picker.focus();
+  await user.keyboard('{ArrowUp}');
+  expectSelectedMonth();
+  expect(onMonthChange).not.toHaveBeenCalled();
+
+  await user.keyboard('{ArrowDown}');
+  await waitFor(() => expectSelectedMonth(currentCalendarMonth()));
+  await user.keyboard('{ArrowUp}');
+  await waitFor(() => expectSelectedMonth());
+
+  rerender(<HypermediaMapFixture onMonthChange={onMonthChange} month="1999-01" />);
+  expectSelectedMonth('1999-01');
+  await user.keyboard('{ArrowDown}');
+  await waitFor(() => expectSelectedMonth('1998-12'));
+});
+
+test.each(['Interactive map', 'Selected month'])(
+  'Map consumes pinch zoom over %s before the browser can zoom the dashboard',
+  (targetLabel) => {
+    const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+    render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
+    const canvas = screen.getByLabelText('Interactive map');
+    const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+    const pinch = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -80 });
+    Object.defineProperty(pinch, 'ctrlKey', { value: true });
+
+    expect(fireEvent(screen.getByLabelText(targetLabel), pinch)).toBe(false);
+    expect(onMonthChange).not.toHaveBeenCalled();
+    const zoomedWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
+    expect(zoomedWidth / initialWidth).toBeLessThan(MAX_RESPONSIVE_PINCH_WIDTH_RATIO);
+  },
+);

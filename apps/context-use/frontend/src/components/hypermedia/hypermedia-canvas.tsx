@@ -343,11 +343,16 @@ export function HypermediaCanvas({
   }
 
   const handleWheel = useEffectEvent((event: globalThis.WheelEvent) => {
-    event.preventDefault();
     if (event.ctrlKey) {
+      event.preventDefault();
+      event.stopPropagation();
       handlePinchZoom(event);
       return;
     }
+    if (event.target instanceof Element && event.target.closest('[data-rwp]')) {
+      return;
+    }
+    event.preventDefault();
     intervalScroll.handleWheel({ event, viewportHeight: canvasRef.current?.clientHeight ?? 1 });
     setShowExplorationHint(false);
   });
@@ -357,8 +362,8 @@ export function HypermediaCanvas({
     if (!surface) {
       return;
     }
-    surface.addEventListener('wheel', handleWheel, { passive: false });
-    return () => surface.removeEventListener('wheel', handleWheel);
+    surface.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    return () => surface.removeEventListener('wheel', handleWheel, { capture: true });
   }, []);
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
