@@ -2,22 +2,22 @@
 // biome-ignore-all lint/style/noMagicNumbers: Viewport values document the production density thresholds under test.
 
 import { describe, expect, test } from 'bun:test';
-import type { HypermediaLayoutNeighborhood } from '../../src/components/hypermedia/hypermedia-graph-data';
+import type { MapLayoutNeighborhood } from '../../src/components/map/map-graph-data';
 import {
-  buildHypermediaLayout,
+  buildMapLayout,
   buildStableEntities,
-  zoomedHypermediaViewBox,
-} from '../../src/components/hypermedia/hypermedia-layout';
+  zoomedMapViewBox,
+} from '../../src/components/map/map-layout';
 import {
   focusedEntities,
-  hypermediaLayoutInViewport,
+  mapLayoutInViewport,
   viewportNeedsEntityDiscovery,
-} from '../../src/components/hypermedia/hypermedia-visibility';
-import type { HypermediaEntity, HypermediaPage } from '../../src/queries/hypermedia';
+} from '../../src/components/map/map-visibility';
+import type { MapEntity, MapPage } from '../../src/queries/map';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
-function entity(readableId: string, isSelf = false): HypermediaEntity {
+function entity(readableId: string, isSelf = false): MapEntity {
   return {
     readableId,
     name: readableId,
@@ -30,17 +30,14 @@ function entity(readableId: string, isSelf = false): HypermediaEntity {
   };
 }
 
-function neighborhood(
-  anchor: HypermediaEntity,
-  neighbors: HypermediaEntity[],
-): HypermediaLayoutNeighborhood {
+function neighborhood(anchor: MapEntity, neighbors: MapEntity[]): MapLayoutNeighborhood {
   return {
     anchor,
     neighbors: neighbors.map((entity) => ({ entity, sharedPageCount: 1 })),
   };
 }
 
-function page(readableId: string): HypermediaPage {
+function page(readableId: string): MapPage {
   return {
     readableId,
     title: readableId,
@@ -53,7 +50,7 @@ function page(readableId: string): HypermediaPage {
   };
 }
 
-describe('entity-first hypermedia layout', () => {
+describe('entity-first map layout', () => {
   test('places a new entity between its known connected entities without moving either one', () => {
     const left = entity('left');
     const right = entity('right');
@@ -156,9 +153,9 @@ describe('entity-first hypermedia layout', () => {
 
   test('viewport culling removes off-screen pages and entities', () => {
     const entities = buildStableEntities([neighborhood(entity('self', true), [entity('alpha')])]);
-    const layout = buildHypermediaLayout(entities, [page('off-screen-page')]);
+    const layout = buildMapLayout(entities, [page('off-screen-page')]);
     const viewport = { x: 10_000, y: 10_000, width: 100, height: 100 };
-    const visibleLayout = hypermediaLayoutInViewport({ layout, viewport });
+    const visibleLayout = mapLayoutInViewport({ layout, viewport });
 
     expect(visibleLayout.pages).toEqual([]);
     expect(visibleLayout.entities).toEqual([]);
@@ -166,7 +163,7 @@ describe('entity-first hypermedia layout', () => {
 
   test('keeps a page cloud while one of its connected entities remains visible', () => {
     const entities = buildStableEntities([neighborhood(entity('self', true), [])]);
-    const layout = buildHypermediaLayout(entities, [page('connected-page')]);
+    const layout = buildMapLayout(entities, [page('connected-page')]);
     const connectedPage = layout.pages[0]!;
     const viewport = { x: -50, y: -50, width: 100, height: 100 };
     const displacedLayout = {
@@ -175,7 +172,7 @@ describe('entity-first hypermedia layout', () => {
     };
 
     expect(
-      hypermediaLayoutInViewport({ layout: displacedLayout, viewport }).pages.map(
+      mapLayoutInViewport({ layout: displacedLayout, viewport }).pages.map(
         ({ page: item }) => item.readableId,
       ),
     ).toEqual(['connected-page']);
@@ -185,7 +182,7 @@ describe('entity-first hypermedia layout', () => {
     const current = { x: -1200, y: -800, width: 2400, height: 1600 };
 
     expect(
-      zoomedHypermediaViewBox({
+      zoomedMapViewBox({
         current,
         factor: 1.1,
         anchor: { x: 0.9, y: 0.1 },

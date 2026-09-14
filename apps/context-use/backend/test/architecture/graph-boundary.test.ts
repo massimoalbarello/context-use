@@ -50,11 +50,11 @@ test.each([
     source: "import type { X } from '../../repositories/hypermedia-graph/contract.ts';",
   },
   {
-    file: 'src/routes/api/hypermedia/controller.ts',
+    file: 'src/routes/api/map/controller.ts',
     source: `import { X } from '${GRAPH_REPOSITORY}';`,
   },
   {
-    file: 'src/routes/api/hypermedia/model.ts',
+    file: 'src/routes/api/map/model.ts',
     source: `import type { X } from '${GRAPH_CONTRACT}';`,
   },
   { file: 'src/models/entities/model.ts', source: `import type { X } from '${GRAPH_CONTRACT}';` },
@@ -90,7 +90,7 @@ test.each([
     source: "import type { X } from './contract.ts';",
   },
   {
-    file: 'src/routes/api/hypermedia/controller.ts',
+    file: 'src/routes/api/map/controller.ts',
     source: `import type { X } from '${GRAPH_SERVICE}';`,
   },
   {

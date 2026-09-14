@@ -128,11 +128,11 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   expect(healthChecks).toBe(1);
 
   const graphResponse = await app.handle(
-    new Request('http://localhost/api/hypermedia/neighborhoods', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ anchors: [{ anchor: { readableId: 'owner' } }] }),
-    }),
+    new Request(
+      `http://localhost/api/map/neighborhoods?${new URLSearchParams({
+        anchors: JSON.stringify([{ anchor: { readableId: 'owner' } }]),
+      })}`,
+    ),
   );
   expect(graphResponse.status).toBe(StatusMap.Unauthorized);
 
@@ -174,6 +174,10 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     paths?: Record<
       string,
       {
+        get?: {
+          parameters?: Array<{ in?: string; name?: string; required?: boolean }>;
+          requestBody?: unknown;
+        };
         post?: {
           parameters?: Array<{ in?: string; name?: string; required?: boolean }>;
           requestBody?: {
@@ -189,6 +193,16 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       }
     >;
   };
+  const mapNeighborhoods = openApi.paths?.['/api/map/neighborhoods'];
+  expect(mapNeighborhoods?.get?.parameters).toContainEqual(
+    expect.objectContaining({ in: 'query', name: 'anchors', required: true }),
+  );
+  expect(mapNeighborhoods?.get?.requestBody).toBeUndefined();
+  expect(mapNeighborhoods?.post).toBeUndefined();
+  expect(openApi.paths?.['/api/map/pages']?.get).toBeDefined();
+  expect(openApi.paths?.['/api/hypermedia/neighborhoods']).toBeUndefined();
+  expect(openApi.paths?.['/api/hypermedia/pages']).toBeUndefined();
+  expect(openApi.paths?.['/api/hypermedia/search']?.get).toBeDefined();
   expect(openApi.components?.securitySchemes?.[RECORD_SYNC_SECURITY_SCHEME]).toMatchObject({
     type: 'http',
     scheme: 'bearer',

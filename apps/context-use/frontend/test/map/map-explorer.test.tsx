@@ -1,7 +1,7 @@
 import { afterEach, expect, mock, test } from 'bun:test';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { HypermediaPageStatus } from '../../src/components/hypermedia/hypermedia-explorer';
+import { MapPageStatus } from '../../src/components/map/map-explorer';
 
 afterEach(cleanup);
 
@@ -9,7 +9,7 @@ test('Map exposes the next page batch without hiding incomplete connections', as
   const onLoadMore = mock(() => undefined);
   const user = userEvent.setup();
   render(
-    <HypermediaPageStatus
+    <MapPageStatus
       pageCount={32}
       loading={false}
       suppressed={false}
@@ -30,7 +30,7 @@ test('Map exposes the next page batch without hiding incomplete connections', as
 
 test('Interval navigation suppresses stale page status until the next query settles', () => {
   render(
-    <HypermediaPageStatus
+    <MapPageStatus
       pageCount={0}
       loading={false}
       suppressed={true}

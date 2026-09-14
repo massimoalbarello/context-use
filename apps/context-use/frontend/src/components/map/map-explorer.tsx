@@ -6,23 +6,23 @@ import type { CalendarMonth } from '../../lib/calendar-month';
 import { useEntities } from '../../lib/hooks/use-entities';
 import type { ResourceSelection } from '../../lib/resource-selection';
 import {
-  type HypermediaEntityReference,
-  type HypermediaNeighborhoodRequest,
-  type HypermediaPage,
-  hypermediaEntityKey,
-  hypermediaNeighborhoodsQueryOptions,
-} from '../../queries/hypermedia';
-import { HypermediaCanvas } from './hypermedia-canvas';
+  type MapEntityReference,
+  type MapNeighborhoodRequest,
+  type MapPage,
+  mapEntityKey,
+  mapNeighborhoodsQueryOptions,
+} from '../../queries/map';
+import { MapCanvas } from './map-canvas';
 import {
   appendNeighborhoodRequests,
-  HYPERMEDIA_EXPANSION_BATCH_SIZE,
-  mergeHypermediaNeighborhoods,
-} from './hypermedia-graph-data';
-import { buildStableEntities } from './hypermedia-layout';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
-import type { SettledHypermediaViewport } from './hypermedia-visibility';
+  MAP_EXPANSION_BATCH_SIZE,
+  mergeMapNeighborhoods,
+} from './map-graph-data';
+import { buildStableEntities } from './map-layout';
+import { type MapSelection, mapSelectionKey } from './map-selection';
+import type { SettledMapViewport } from './map-visibility';
 
-export function HypermediaExplorer({
+export function MapExplorer({
   selfReadableId,
   selection,
   pages,
@@ -40,28 +40,27 @@ export function HypermediaExplorer({
 }: {
   selfReadableId: string;
   selection?: ResourceSelection;
-  pages: HypermediaPage[];
+  pages: MapPage[];
   month?: CalendarMonth;
   pagesLoading: boolean;
   pagesTransitioning: boolean;
   pagesError: Error | null;
   hasNextPage: boolean;
   pageReferencesTruncated: boolean;
-  onSelect: (selection: HypermediaSelection) => void;
+  onSelect: (selection: MapSelection) => void;
   onMonthChange: (month?: CalendarMonth) => void;
-  onVisibleEntitiesChange: (entities: HypermediaEntityReference[]) => void;
+  onVisibleEntitiesChange: (entities: MapEntityReference[]) => void;
   onRetryPages: () => void;
   onDiscoverMorePages: () => void;
 }) {
-  const [neighborhoodRequests, setNeighborhoodRequests] = useState<
-    HypermediaNeighborhoodRequest[][]
-  >(() => [[{ anchor: { readableId: selfReadableId } }]]);
+  const [neighborhoodRequests, setNeighborhoodRequests] = useState<MapNeighborhoodRequest[][]>(
+    () => [[{ anchor: { readableId: selfReadableId } }]],
+  );
   const neighborhoodQueries = useQueries({
-    queries: neighborhoodRequests.map(hypermediaNeighborhoodsQueryOptions),
+    queries: neighborhoodRequests.map(mapNeighborhoodsQueryOptions),
   });
   const neighborhoods = useMemo(
-    () =>
-      mergeHypermediaNeighborhoods(neighborhoodQueries.flatMap(({ data }) => (data ? [data] : []))),
+    () => mergeMapNeighborhoods(neighborhoodQueries.flatMap(({ data }) => (data ? [data] : []))),
     [neighborhoodQueries],
   );
   const {
@@ -85,7 +84,7 @@ export function HypermediaExplorer({
   }, [listedEntities, neighborhoods]);
 
   const handleViewportSettled = useCallback(
-    ({ focus, discoverMoreEntities, boundaryAnchor }: SettledHypermediaViewport) => {
+    ({ focus, discoverMoreEntities, boundaryAnchor }: SettledMapViewport) => {
       onVisibleEntitiesChange(focus);
       if (discoverMoreEntities && hasNextEntityPage && !isFetchingNextEntityPage) {
         void fetchNextEntityPage();
@@ -95,25 +94,23 @@ export function HypermediaExplorer({
       }
       const candidates = [
         boundaryAnchor,
-        ...focus.filter(
-          (entity) => hypermediaEntityKey(entity) !== hypermediaEntityKey(boundaryAnchor),
-        ),
+        ...focus.filter((entity) => mapEntityKey(entity) !== mapEntityKey(boundaryAnchor)),
       ];
       const next = candidates
         .flatMap((anchor) => {
-          const key = hypermediaEntityKey(anchor);
+          const key = mapEntityKey(anchor);
           const lastBatchIndex = neighborhoodRequests.findLastIndex((batch) =>
-            batch.some((request) => hypermediaEntityKey(request.anchor) === key),
+            batch.some((request) => mapEntityKey(request.anchor) === key),
           );
           if (lastBatchIndex === -1) {
             return [{ anchor }];
           }
           const result = neighborhoodQueries[lastBatchIndex]?.data?.neighborhoods.find(
-            (neighborhood) => hypermediaEntityKey(neighborhood.anchor) === key,
+            (neighborhood) => mapEntityKey(neighborhood.anchor) === key,
           );
           return result?.nextCursor ? [{ anchor, cursor: result.nextCursor }] : [];
         })
-        .slice(0, HYPERMEDIA_EXPANSION_BATCH_SIZE);
+        .slice(0, MAP_EXPANSION_BATCH_SIZE);
       setNeighborhoodRequests((current) => appendNeighborhoodRequests({ current, requests: next }));
     },
     [
@@ -127,15 +124,15 @@ export function HypermediaExplorer({
   );
 
   const neighborhoodError = neighborhoodQueries.find(({ error }) => error)?.error ?? entityError;
-  const selectedKey = selection ? hypermediaSelectionKey(selection) : undefined;
+  const selectedKey = selection ? mapSelectionKey(selection) : undefined;
   const requestedAnchorKeys = new Set(
-    neighborhoodRequests.flat().map(({ anchor }) => hypermediaEntityKey(anchor)),
+    neighborhoodRequests.flat().map(({ anchor }) => mapEntityKey(anchor)),
   );
   const latestNeighborhoods = new Map(
     neighborhoodQueries.flatMap(
       ({ data }) =>
         data?.neighborhoods.map(
-          (neighborhood) => [hypermediaEntityKey(neighborhood.anchor), neighborhood] as const,
+          (neighborhood) => [mapEntityKey(neighborhood.anchor), neighborhood] as const,
         ) ?? [],
     ),
   );
@@ -145,7 +142,7 @@ export function HypermediaExplorer({
     entities.some(({ key }) => !requestedAnchorKeys.has(key));
   return (
     <div className="relative size-full min-h-[28rem]">
-      <HypermediaCanvas
+      <MapCanvas
         entities={entities}
         pages={pages}
         month={month}
@@ -171,7 +168,7 @@ export function HypermediaExplorer({
           }
         }}
       />
-      <HypermediaPageStatus
+      <MapPageStatus
         pageCount={pages.length}
         loading={pagesLoading}
         suppressed={intervalScrolling || pagesTransitioning}
@@ -185,7 +182,7 @@ export function HypermediaExplorer({
   );
 }
 
-export function HypermediaPageStatus({
+export function MapPageStatus({
   pageCount,
   loading,
   suppressed,

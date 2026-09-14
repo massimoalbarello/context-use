@@ -1,7 +1,8 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { entitiesQueryKey, type UpdateEntityVariables, updateEntity } from '../../queries/entities';
 import { facesQueryKey } from '../../queries/faces';
-import { hypermediaQueryKey } from '../../queries/hypermedia';
+import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
+import { mapQueryKey } from '../../queries/map';
 import { pagesQueryKey } from '../../queries/pages';
 import { profileQueryKey } from '../../queries/profile';
 
@@ -14,7 +15,8 @@ export function useUpdateEntity(): UseMutationResult<void, Error, UpdateEntityVa
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: facesQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
-        queryClient.invalidateQueries({ queryKey: hypermediaQueryKey }),
+        queryClient.invalidateQueries({ queryKey: mapQueryKey }),
+        queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
         queryClient.invalidateQueries({ queryKey: profileQueryKey }),
       ]);

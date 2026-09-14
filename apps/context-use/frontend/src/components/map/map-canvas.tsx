@@ -15,34 +15,34 @@ import {
   useState,
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
-import { type HypermediaPage, hypermediaEntityReference } from '../../queries/hypermedia';
-import { HypermediaIntervalIndicator } from './hypermedia-interval-indicator';
+import { type MapPage, mapEntityReference } from '../../queries/map';
+import { MapIntervalIndicator } from './map-interval-indicator';
 import {
-  buildHypermediaLayout,
+  buildMapLayout,
   type CanvasBounds,
-  type HypermediaLayout,
-  type HypermediaLayoutEntity,
-  initialHypermediaViewBox,
-  zoomedHypermediaViewBox,
-} from './hypermedia-layout';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+  initialMapViewBox,
+  type MapLayout,
+  type MapLayoutEntity,
+  zoomedMapViewBox,
+} from './map-layout';
+import { type MapSelection, mapSelectionKey } from './map-selection';
 import {
-  HypermediaEntityNode,
-  HypermediaHoverPreview,
-  HypermediaPageCloud,
-  HypermediaPageLabel,
-  HypermediaPageLink,
-  type HypermediaPreview,
-  hypermediaPreviewKey,
-} from './hypermedia-view';
+  MapEntityNode,
+  MapHoverPreview,
+  MapPageCloud,
+  MapPageLabel,
+  MapPageLink,
+  type MapPreview,
+  mapPreviewKey,
+} from './map-view';
 import {
   focusedEntities,
-  hypermediaLayoutInViewport,
+  mapLayoutInViewport,
   nearestBoundaryEntity,
-  type SettledHypermediaViewport,
+  type SettledMapViewport,
   viewportNeedsEntityDiscovery,
-} from './hypermedia-visibility';
-import { useHypermediaIntervalScroll } from './use-hypermedia-interval-scroll';
+} from './map-visibility';
+import { useMapIntervalScroll } from './use-map-interval-scroll';
 
 type ViewBox = CanvasBounds;
 
@@ -57,20 +57,20 @@ function EntityDot({
   onPreview,
   onPreviewEnd,
 }: {
-  entity: HypermediaLayoutEntity;
+  entity: MapLayoutEntity;
   active: boolean;
   onActivate: () => void;
   onPreview: () => void;
   onPreviewEnd: () => void;
 }) {
   const label = entity.entity.name;
-  const reference = hypermediaEntityReference(entity.entity);
+  const reference = mapEntityReference(entity.entity);
   const href = `/entities/${encodeURIComponent(reference.readableId)}`;
 
   return (
     <a
       href={href}
-      data-hypermedia-item
+      data-map-item
       aria-label={`Open entity ${label}`}
       className="cursor-pointer outline-none"
       onPointerEnter={onPreview}
@@ -83,12 +83,12 @@ function EntityDot({
         onActivate();
       }}
     >
-      <HypermediaEntityNode entity={entity} active={active} />
+      <MapEntityNode entity={entity} active={active} />
     </a>
   );
 }
 
-const HypermediaScene = memo(function HypermediaScene({
+const MapScene = memo(function MapScene({
   layout,
   activeKey,
   suppressNextCloudClick,
@@ -96,25 +96,25 @@ const HypermediaScene = memo(function HypermediaScene({
   onPreview,
   onPreviewEnd,
 }: {
-  layout: HypermediaLayout;
+  layout: MapLayout;
   activeKey: string | undefined;
   suppressNextCloudClick: { current: boolean };
-  onSelect: (selection: HypermediaSelection) => void;
-  onPreview: (preview: HypermediaPreview) => void;
+  onSelect: (selection: MapSelection) => void;
+  onPreview: (preview: MapPreview) => void;
   onPreviewEnd: (key: string) => void;
 }) {
   return (
     <>
       {layout.pages.map((item) => {
-        const key = hypermediaSelectionKey({ kind: 'page', readableId: item.page.readableId });
+        const key = mapSelectionKey({ kind: 'page', readableId: item.page.readableId });
         const active = activeKey === key;
         return (
-          <HypermediaPageLink
+          <MapPageLink
             key={item.page.readableId}
             page={item.page}
             tabIndex={-1}
             aria-label={`Open knowledge page region ${item.page.title}`}
-            data-hypermedia-cloud={item.page.readableId}
+            data-map-cloud={item.page.readableId}
             onSelect={onSelect}
             shouldSelect={() => {
               if (suppressNextCloudClick.current) {
@@ -126,26 +126,26 @@ const HypermediaScene = memo(function HypermediaScene({
             onPreview={onPreview}
             onPreviewEnd={onPreviewEnd}
           >
-            <HypermediaPageCloud path={item.cloudPath} active={active} />
-          </HypermediaPageLink>
+            <MapPageCloud path={item.cloudPath} active={active} />
+          </MapPageLink>
         );
       })}
 
       {layout.pages.map((item) => {
-        const key = hypermediaSelectionKey({ kind: 'page', readableId: item.page.readableId });
+        const key = mapSelectionKey({ kind: 'page', readableId: item.page.readableId });
         const active = activeKey === key;
         return (
-          <HypermediaPageLink
+          <MapPageLink
             key={item.page.readableId}
             page={item.page}
-            data-hypermedia-item
+            data-map-item
             aria-label={`Open knowledge page ${item.page.title}`}
             onSelect={onSelect}
             onPreview={onPreview}
             onPreviewEnd={onPreviewEnd}
           >
-            <HypermediaPageLabel page={item.page} point={item.point} active={active} />
-          </HypermediaPageLink>
+            <MapPageLabel page={item.page} point={item.point} active={active} />
+          </MapPageLink>
         );
       })}
 
@@ -158,9 +158,7 @@ const HypermediaScene = memo(function HypermediaScene({
             active={activeKey === entity.key}
             onPreview={() => onPreview(preview)}
             onPreviewEnd={() => onPreviewEnd(entity.key)}
-            onActivate={() =>
-              onSelect({ kind: 'entity', ...hypermediaEntityReference(entity.entity) })
-            }
+            onActivate={() => onSelect({ kind: 'entity', ...mapEntityReference(entity.entity) })}
           />
         );
       })}
@@ -168,13 +166,7 @@ const HypermediaScene = memo(function HypermediaScene({
   );
 });
 
-function HypermediaExplorationCue({
-  error,
-  onRetry,
-}: {
-  error: Error | null;
-  onRetry: () => void;
-}) {
+function MapExplorationCue({ error, onRetry }: { error: Error | null; onRetry: () => void }) {
   return (
     <div
       className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
@@ -200,7 +192,7 @@ function HypermediaExplorationCue({
   );
 }
 
-export function HypermediaCanvas({
+export function MapCanvas({
   entities,
   pages,
   month,
@@ -214,11 +206,11 @@ export function HypermediaCanvas({
   neighborhoodError,
   onRetryNeighborhood,
 }: {
-  entities: HypermediaLayoutEntity[];
-  pages: HypermediaPage[];
+  entities: MapLayoutEntity[];
+  pages: MapPage[];
   selectedKey?: string;
-  onSelect: (selection: HypermediaSelection) => void;
-  onViewportSettled: (viewport: SettledHypermediaViewport) => void;
+  onSelect: (selection: MapSelection) => void;
+  onViewportSettled: (viewport: SettledMapViewport) => void;
   canExplore: boolean;
   isInitialLoading: boolean;
   neighborhoodError: Error | null;
@@ -227,17 +219,17 @@ export function HypermediaCanvas({
   onMonthChange: (month?: CalendarMonth) => void;
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
-  const [viewBox, setViewBox] = useState<ViewBox>(() => initialHypermediaViewBox(entities));
-  const [preview, setPreview] = useState<HypermediaPreview | null>(null);
-  const activeKey = preview ? hypermediaPreviewKey(preview) : selectedKey;
+  const [viewBox, setViewBox] = useState<ViewBox>(() => initialMapViewBox(entities));
+  const [preview, setPreview] = useState<MapPreview | null>(null);
+  const activeKey = preview ? mapPreviewKey(preview) : selectedKey;
   const clearPreview = useCallback((key: string) => {
-    setPreview((current) => (current && hypermediaPreviewKey(current) === key ? null : current));
+    setPreview((current) => (current && mapPreviewKey(current) === key ? null : current));
   }, []);
-  const layout = useMemo(() => buildHypermediaLayout(entities, pages), [pages, entities]);
+  const layout = useMemo(() => buildMapLayout(entities, pages), [pages, entities]);
   const viewBoxRef = useRef(viewBox);
   const canvasRef = useRef<SVGSVGElement | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const intervalScroll = useHypermediaIntervalScroll({
+  const intervalScroll = useMapIntervalScroll({
     month,
     onMonthChange,
     onIntervalScrollingChange,
@@ -255,7 +247,7 @@ export function HypermediaCanvas({
     cloudReadableId?: string;
   } | null>(null);
   const visibleLayout = useMemo(
-    () => hypermediaLayoutInViewport({ layout, viewport: viewBox }),
+    () => mapLayoutInViewport({ layout, viewport: viewBox }),
     [layout, viewBox],
   );
   const updateViewBox = useCallback((nextViewBox: ViewBox) => {
@@ -311,7 +303,7 @@ export function HypermediaCanvas({
     const current = viewBoxRef.current;
     const minimumWidth = 260;
     const maximumWidth = Math.max(2400, layout.entityBounds.width * 2.5);
-    const nextViewBox = zoomedHypermediaViewBox({
+    const nextViewBox = zoomedMapViewBox({
       current,
       factor,
       anchor,
@@ -361,13 +353,13 @@ export function HypermediaCanvas({
   }, []);
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
-    if (event.button !== 0 || (event.target as Element).closest('[data-hypermedia-item]')) {
+    if (event.button !== 0 || (event.target as Element).closest('[data-map-item]')) {
       return;
     }
     suppressNextCloudClick.current = false;
     const cloudReadableId = (event.target as Element)
-      .closest('[data-hypermedia-cloud]')
-      ?.getAttribute('data-hypermedia-cloud');
+      .closest('[data-map-cloud]')
+      ?.getAttribute('data-map-cloud');
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = {
       pointerId: event.pointerId,
@@ -454,7 +446,7 @@ export function HypermediaCanvas({
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
       >
-        <HypermediaScene
+        <MapScene
           layout={visibleLayout}
           activeKey={activeKey}
           suppressNextCloudClick={suppressNextCloudClick}
@@ -465,14 +457,14 @@ export function HypermediaCanvas({
       </svg>
 
       {!selectedKey && (
-        <HypermediaIntervalIndicator
+        <MapIntervalIndicator
           month={intervalScroll.displayedMonth}
           scrollProgress={intervalScroll.progress}
         />
       )}
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
-        <HypermediaExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
+        <MapExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
       )}
 
       {isInitialLoading && (
@@ -484,7 +476,7 @@ export function HypermediaCanvas({
         </div>
       )}
 
-      <HypermediaHoverPreview preview={preview} selectedKey={selectedKey} />
+      <MapHoverPreview preview={preview} selectedKey={selectedKey} />
     </section>
   );
 }

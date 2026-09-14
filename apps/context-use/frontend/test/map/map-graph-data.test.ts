@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
 import {
   appendNeighborhoodRequests,
-  HYPERMEDIA_EXPANSION_BATCH_SIZE,
-  mergeHypermediaNeighborhoods,
-} from '../../src/components/hypermedia/hypermedia-graph-data';
-import { buildStableEntities } from '../../src/components/hypermedia/hypermedia-layout';
-import type { HypermediaEntity, HypermediaNeighborhoods } from '../../src/queries/hypermedia';
+  MAP_EXPANSION_BATCH_SIZE,
+  mergeMapNeighborhoods,
+} from '../../src/components/map/map-graph-data';
+import { buildStableEntities } from '../../src/components/map/map-layout';
+import type { MapEntity, MapNeighborhoods } from '../../src/queries/map';
 
-function entity(readableId: string): HypermediaEntity {
+function entity(readableId: string): MapEntity {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   return {
     readableId,
@@ -25,12 +25,12 @@ test('new batches do not regroup completed requests and repeated discovery is de
   const self = { anchor: { readableId: 'self' } };
   const initial = appendNeighborhoodRequests({ current: [], requests: [self, self] });
   expect(initial).toEqual([[self]]);
-  const requests = [...Array(HYPERMEDIA_EXPANSION_BATCH_SIZE + 1).keys()].map((index) => ({
+  const requests = [...Array(MAP_EXPANSION_BATCH_SIZE + 1).keys()].map((index) => ({
     anchor: { readableId: `entity-${index}` },
   }));
   const expanded = appendNeighborhoodRequests({ current: initial, requests: [self, ...requests] });
   expect(expanded[0]).toBe(initial[0]);
-  expect(expanded[1]).toHaveLength(HYPERMEDIA_EXPANSION_BATCH_SIZE);
+  expect(expanded[1]).toHaveLength(MAP_EXPANSION_BATCH_SIZE);
   expect(expanded[2]).toHaveLength(1);
   expect(appendNeighborhoodRequests({ current: expanded, requests })).toBe(expanded);
   const next = { ...self, cursor: 'next-self-page' };
@@ -39,7 +39,7 @@ test('new batches do not regroup completed requests and repeated discovery is de
 });
 
 test('overlapping responses merge identities and undirected edges without adding their counts', () => {
-  const first: HypermediaNeighborhoods = {
+  const first: MapNeighborhoods = {
     entities: [entity('self'), entity('alpha'), entity('beta')],
     neighborhoods: [
       {
@@ -55,7 +55,7 @@ test('overlapping responses merge identities and undirected edges without adding
     ],
     relationshipsTruncated: false,
   };
-  const second: HypermediaNeighborhoods = {
+  const second: MapNeighborhoods = {
     entities: [entity('alpha'), entity('beta')],
     neighborhoods: [
       { anchor: { readableId: 'alpha' }, available: true, neighbors: [], nextCursor: null },
@@ -66,13 +66,13 @@ test('overlapping responses merge identities and undirected edges without adding
     ],
     relationshipsTruncated: false,
   };
-  const merged = mergeHypermediaNeighborhoods([first, second]);
+  const merged = mergeMapNeighborhoods([first, second]);
   expect(merged.map(({ anchor }) => anchor.readableId)).toEqual(['self', 'alpha', 'beta']);
   expect(merged.find(({ anchor }) => anchor.readableId === 'alpha')?.neighbors).toEqual([
     { entity: second.entities[1]!, sharedPageCount: 2 },
     { entity: first.entities[0]!, sharedPageCount: 1 },
   ]);
-  const initial = buildStableEntities(mergeHypermediaNeighborhoods([first]));
+  const initial = buildStableEntities(mergeMapNeighborhoods([first]));
   const expanded = buildStableEntities(merged, [], initial);
   for (const placed of initial) {
     expect(expanded.find(({ key }) => key === placed.key)?.point).toEqual(placed.point);

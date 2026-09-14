@@ -46,7 +46,7 @@ function intervalWheelDelta({
   return Math.max(-MAX_WHEEL_INTERVAL_DELTA, Math.min(MAX_WHEEL_INTERVAL_DELTA, pixelDelta));
 }
 
-export function useHypermediaIntervalScroll({
+export function useMapIntervalScroll({
   month,
   onMonthChange,
   onIntervalScrollingChange,

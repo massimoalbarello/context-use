@@ -1,30 +1,30 @@
-// biome-ignore-all lint/style/noMagicNumbers: The deterministic Hypermedia geometry is defined by visual constants.
+// biome-ignore-all lint/style/noMagicNumbers: The deterministic map geometry is defined by visual constants.
 // biome-ignore-all lint/complexity/useMaxParams: Geometry helpers read more clearly with point pairs and collection indexes.
 
-import type { HypermediaEntity, HypermediaPage } from '../../queries/hypermedia';
-import { hypermediaEntityKey, hypermediaEntityReference } from '../../queries/hypermedia';
-import type { HypermediaLayoutNeighborhood } from './hypermedia-graph-data';
-import { hypermediaSelectionKey } from './hypermedia-selection';
+import type { MapEntity, MapPage } from '../../queries/map';
+import { mapEntityKey, mapEntityReference } from '../../queries/map';
+import type { MapLayoutNeighborhood } from './map-graph-data';
+import { mapSelectionKey } from './map-selection';
 
 export type CanvasPoint = { x: number; y: number };
 export type CanvasBounds = CanvasPoint & { width: number; height: number };
 
-export type HypermediaLayoutEntity = {
-  entity: HypermediaEntity;
+export type MapLayoutEntity = {
+  entity: MapEntity;
   key: string;
   point: CanvasPoint;
 };
 
-type HypermediaPageLayout = {
-  page: HypermediaPage;
+type MapPageLayout = {
+  page: MapPage;
   point: CanvasPoint;
   cloudPath: string;
   entityKeys: string[];
 };
 
-export type HypermediaLayout = {
-  entities: HypermediaLayoutEntity[];
-  pages: HypermediaPageLayout[];
+export type MapLayout = {
+  entities: MapLayoutEntity[];
+  pages: MapPageLayout[];
   entityBounds: CanvasBounds;
 };
 
@@ -40,7 +40,7 @@ const PAGE_LABEL_CHARACTER_WIDTH = 9;
 const PAGE_LABEL_HORIZONTAL_PADDING = 56;
 const PAGE_LABEL_RESERVED_HEIGHT = 72;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-export const HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS = 28;
+export const MAP_PAGE_LABEL_MAX_CHARACTERS = 28;
 
 type CanvasArea = {
   point: CanvasPoint;
@@ -101,7 +101,7 @@ function areasOverlap(first: CanvasArea, second: CanvasArea): boolean {
   );
 }
 
-function entityArea(entity: HypermediaLayoutEntity): CanvasArea {
+function entityArea(entity: MapLayoutEntity): CanvasArea {
   return {
     point: entity.point,
     halfWidth: ENTITY_RESERVED_WIDTH / 2,
@@ -110,7 +110,7 @@ function entityArea(entity: HypermediaLayoutEntity): CanvasArea {
 }
 
 function pageLabelArea(title: string, point: CanvasPoint): CanvasArea {
-  const visibleCharacters = Math.min(title.length, HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS);
+  const visibleCharacters = Math.min(title.length, MAP_PAGE_LABEL_MAX_CHARACTERS);
   return {
     point,
     halfWidth: (visibleCharacters * PAGE_LABEL_CHARACTER_WIDTH + PAGE_LABEL_HORIZONTAL_PADDING) / 2,
@@ -118,15 +118,12 @@ function pageLabelArea(title: string, point: CanvasPoint): CanvasArea {
   };
 }
 
-function entityAt(entity: HypermediaEntity, point: CanvasPoint): HypermediaLayoutEntity {
-  const key = hypermediaEntityKey(hypermediaEntityReference(entity));
+function entityAt(entity: MapEntity, point: CanvasPoint): MapLayoutEntity {
+  const key = mapEntityKey(mapEntityReference(entity));
   return { entity, key, point };
 }
 
-function samePositionedEntity(
-  first: HypermediaLayoutEntity,
-  second: HypermediaLayoutEntity,
-): boolean {
+function samePositionedEntity(first: MapLayoutEntity, second: MapLayoutEntity): boolean {
   if (
     first.key !== second.key ||
     first.point.x !== second.point.x ||
@@ -141,11 +138,11 @@ function connectedEntityCenter({
   neighbors,
   entities,
 }: {
-  neighbors: HypermediaLayoutNeighborhood['neighbors'] | undefined;
-  entities: Map<string, HypermediaLayoutEntity>;
+  neighbors: MapLayoutNeighborhood['neighbors'] | undefined;
+  entities: Map<string, MapLayoutEntity>;
 }): CanvasPoint | undefined {
   const connected = (neighbors ?? []).flatMap(({ entity, sharedPageCount }) => {
-    const placedEntity = entities.get(hypermediaEntityKey(entity));
+    const placedEntity = entities.get(mapEntityKey(entity));
     return placedEntity ? [{ point: placedEntity.point, weight: sharedPageCount }] : [];
   });
   if (connected.length < 2) {
@@ -159,27 +156,25 @@ function connectedEntityCenter({
 }
 
 export function buildStableEntities(
-  neighborhoods: HypermediaLayoutNeighborhood[],
-  standaloneEntities: HypermediaEntity[] = [],
-  previousEntities: HypermediaLayoutEntity[] = [],
-): HypermediaLayoutEntity[] {
-  const entities = new Map<string, HypermediaLayoutEntity>();
+  neighborhoods: MapLayoutNeighborhood[],
+  standaloneEntities: MapEntity[] = [],
+  previousEntities: MapLayoutEntity[] = [],
+): MapLayoutEntity[] {
+  const entities = new Map<string, MapLayoutEntity>();
   const placed: CanvasPoint[] = [];
   const neighborCountByAnchor = new Map<string, number>();
   const neighborsByEntity = new Map(
-    neighborhoods.map(({ anchor, neighbors }) => [hypermediaEntityKey(anchor), neighbors]),
+    neighborhoods.map(({ anchor, neighbors }) => [mapEntityKey(anchor), neighbors]),
   );
 
   const availableKeys = new Set(
     neighborhoods.flatMap((neighborhood) => [
-      hypermediaEntityKey(hypermediaEntityReference(neighborhood.anchor)),
-      ...neighborhood.neighbors.map(({ entity }) =>
-        hypermediaEntityKey(hypermediaEntityReference(entity)),
-      ),
+      mapEntityKey(mapEntityReference(neighborhood.anchor)),
+      ...neighborhood.neighbors.map(({ entity }) => mapEntityKey(mapEntityReference(entity))),
     ]),
   );
   for (const entity of standaloneEntities) {
-    availableKeys.add(hypermediaEntityKey(hypermediaEntityReference(entity)));
+    availableKeys.add(mapEntityKey(mapEntityReference(entity)));
   }
   for (const entity of previousEntities) {
     if (availableKeys.has(entity.key)) {
@@ -188,8 +183,8 @@ export function buildStableEntities(
     }
   }
 
-  function addAnchor(entity: HypermediaEntity): HypermediaLayoutEntity {
-    const key = hypermediaEntityKey(hypermediaEntityReference(entity));
+  function addAnchor(entity: MapEntity): MapLayoutEntity {
+    const key = mapEntityKey(mapEntityReference(entity));
     const existing = entities.get(key);
     if (existing) {
       const refreshed = entityAt(entity, existing.point);
@@ -221,7 +216,7 @@ export function buildStableEntities(
     const anchor = addAnchor(neighborhood.anchor);
     const anchorOffset = neighborCountByAnchor.get(anchor.key) ?? 0;
     for (const [index, neighbor] of neighborhood.neighbors.entries()) {
-      const key = hypermediaEntityKey(hypermediaEntityReference(neighbor.entity));
+      const key = mapEntityKey(mapEntityReference(neighbor.entity));
       if (entities.has(key)) {
         continue;
       }
@@ -311,14 +306,11 @@ function cloudPath(points: CanvasPoint[]): string {
   return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} ${curves.join(' ')} Z`;
 }
 
-function pageLayouts(
-  entities: HypermediaLayoutEntity[],
-  pages: HypermediaPage[],
-): HypermediaPageLayout[] {
+function pageLayouts(entities: MapLayoutEntity[], pages: MapPage[]): MapPageLayout[] {
   const pointsByKey = new Map(entities.map((entity) => [entity.key, entity.point]));
   const occupiedAreas = entities.map(entityArea);
   return pages.map((page, index) => {
-    const entityKeys = page.entities.map(hypermediaEntityKey);
+    const entityKeys = page.entities.map(mapEntityKey);
     const connectedPoints = entityKeys.flatMap((key) => {
       const point = pointsByKey.get(key);
       return point ? [point] : [];
@@ -331,7 +323,7 @@ function pageLayouts(
             y: Math.sin(index * GOLDEN_ANGLE) * 220 * Math.sqrt(index + 1),
           };
     const point = openPoint({
-      key: hypermediaSelectionKey({ kind: 'page', readableId: page.readableId }),
+      key: mapSelectionKey({ kind: 'page', readableId: page.readableId }),
       preferred,
       step: PAGE_SPIRAL_STEP,
       isAvailable: (candidate) => {
@@ -349,10 +341,7 @@ function pageLayouts(
   });
 }
 
-export function buildHypermediaLayout(
-  entities: HypermediaLayoutEntity[],
-  pages: HypermediaPage[],
-): HypermediaLayout {
+export function buildMapLayout(entities: MapLayoutEntity[], pages: MapPage[]): MapLayout {
   const laidOutPages = pageLayouts(entities, pages);
   const boundedEntityPoints = (entities.length > 0 ? entities : laidOutPages).map(
     ({ point }) => point,
@@ -361,7 +350,7 @@ export function buildHypermediaLayout(
     return {
       entities,
       pages: laidOutPages,
-      entityBounds: initialHypermediaViewBox(entities),
+      entityBounds: initialMapViewBox(entities),
     };
   }
   const entityMinX = Math.min(...boundedEntityPoints.map(({ x }) => x)) - CANVAS_PADDING;
@@ -380,7 +369,7 @@ export function buildHypermediaLayout(
   };
 }
 
-export function initialHypermediaViewBox(entities: HypermediaLayoutEntity[]): CanvasBounds {
+export function initialMapViewBox(entities: MapLayoutEntity[]): CanvasBounds {
   const focus = entities[0]?.point ?? { x: 0, y: 0 };
   return {
     x: focus.x - INITIAL_VIEW_WIDTH / 2,
@@ -390,7 +379,7 @@ export function initialHypermediaViewBox(entities: HypermediaLayoutEntity[]): Ca
   };
 }
 
-export function zoomedHypermediaViewBox({
+export function zoomedMapViewBox({
   current,
   factor,
   anchor,

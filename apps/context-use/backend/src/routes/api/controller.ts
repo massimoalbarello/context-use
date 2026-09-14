@@ -7,8 +7,8 @@ import { createAuthController } from '#backend/routes/api/auth/controller.ts';
 import { createEntityReadableIdController } from '#backend/routes/api/entities/[entityReadableId]/controller.ts';
 import { createEntitiesController } from '#backend/routes/api/entities/controller.ts';
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
-import { createHypermediaController } from '#backend/routes/api/hypermedia/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
+import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createMcpClientsController } from '#backend/routes/api/mcp/clients/controller.ts';
 import { createOwnerRegistrationController } from '#backend/routes/api/owner-registration/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
@@ -80,7 +80,7 @@ export function createApiController({
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
-    .use(createHypermediaController({ auth, graphService }))
+    .use(createMapController({ auth, graphService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))
     .use(createRecordsController({ auth, recordsService }))

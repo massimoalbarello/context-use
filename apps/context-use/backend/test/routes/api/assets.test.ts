@@ -345,24 +345,24 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(page.mentions[0]?.image?.readableId).toBe('quarterly-chart');
 
     const assetNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/neighborhoods', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ anchors: [{ anchor: { readableId: 'asset:quarterly-chart' } }] }),
-      }),
+      new Request(
+        `http://localhost/api/map/neighborhoods?${new URLSearchParams({
+          anchors: JSON.stringify([{ anchor: { readableId: 'asset:quarterly-chart' } }]),
+        })}`,
+      ),
     );
     expect(assetNeighborhoodResponse.status).toBe(StatusMap['Bad Request']);
     const assetViewportResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages?visible=asset:quarterly-chart'),
+      new Request('http://localhost/api/map/pages?visible=asset:quarterly-chart'),
     );
     expect(assetViewportResponse.status).toBe(StatusMap['Bad Request']);
 
     const entityNeighborhoodResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/neighborhoods', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ anchors: [{ anchor: { readableId: 'luca-bianchi' } }] }),
-      }),
+      new Request(
+        `http://localhost/api/map/neighborhoods?${new URLSearchParams({
+          anchors: JSON.stringify([{ anchor: { readableId: 'luca-bianchi' } }]),
+        })}`,
+      ),
     );
     expect(entityNeighborhoodResponse.status).toBe(StatusMap.OK);
     expect(await entityNeighborhoodResponse.json()).toMatchObject({
@@ -376,9 +376,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         },
       ],
     });
-    const graphPagesResponse = await app.handle(
-      new Request('http://localhost/api/hypermedia/pages'),
-    );
+    const graphPagesResponse = await app.handle(new Request('http://localhost/api/map/pages'));
     expect(graphPagesResponse.status).toBe(StatusMap.OK);
     const graphPages = await graphPagesResponse.json();
     expectNoInternalResourceIds(graphPages);

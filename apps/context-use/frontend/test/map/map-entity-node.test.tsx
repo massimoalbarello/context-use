@@ -1,8 +1,8 @@
 import { afterEach, expect, mock, test } from 'bun:test';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { HypermediaCanvas } from '../../src/components/hypermedia/hypermedia-canvas';
-import type { HypermediaLayoutEntity } from '../../src/components/hypermedia/hypermedia-layout';
 import { KnowledgeWorkspaceProvider } from '../../src/components/knowledge/knowledge-workspace';
+import { MapCanvas } from '../../src/components/map/map-canvas';
+import type { MapLayoutEntity } from '../../src/components/map/map-layout';
 import {
   type CalendarMonth,
   calendarMonthLabel,
@@ -34,7 +34,7 @@ const portrait = {
   createdAt,
   updatedAt: createdAt,
 };
-const entities: HypermediaLayoutEntity[] = [
+const entities: MapLayoutEntity[] = [
   {
     key: 'entity:grace-hopper',
     entity: {
@@ -67,7 +67,7 @@ const entities: HypermediaLayoutEntity[] = [
 
 function entityMark(name: string): SVGGElement {
   const interactive = screen.getByRole('link', { name: `Open entity ${name}` });
-  const mark = interactive.querySelector<SVGGElement>('[data-hypermedia-entity-mark]');
+  const mark = interactive.querySelector<SVGGElement>('[data-map-entity-mark]');
   expect(mark).toBeTruthy();
   return mark!;
 }
@@ -87,7 +87,7 @@ function expectEntityIdentities() {
   expect(ada.textContent).toContain('A');
 }
 
-function HypermediaMapFixture({
+function MapFixture({
   onMonthChange,
   onIntervalScrollingChange = () => undefined,
   month,
@@ -101,7 +101,7 @@ function HypermediaMapFixture({
   return (
     <KnowledgeWorkspaceProvider>
       <div />
-      <HypermediaCanvas
+      <MapCanvas
         entities={entities}
         pages={[]}
         selectedKey={selectedKey}
@@ -123,7 +123,7 @@ test('Map distinguishes entity identities and retains partial progress between m
   const onMonthChange = mock(() => undefined);
   const onIntervalScrollingChange = mock(() => undefined);
   render(
-    <HypermediaMapFixture
+    <MapFixture
       onMonthChange={onMonthChange}
       onIntervalScrollingChange={onIntervalScrollingChange}
     />,
@@ -207,7 +207,7 @@ test('Map distinguishes entity identities and retains partial progress between m
 test('Map keeps the indicator at Past while older month labels continue changing', async () => {
   const onMonthChange = mock(() => undefined);
   const oldMonth = shiftCalendarMonth({ value: currentCalendarMonth(), offset: -24 });
-  render(<HypermediaMapFixture onMonthChange={onMonthChange} month={oldMonth} />);
+  render(<MapFixture onMonthChange={onMonthChange} month={oldMonth} />);
 
   const canvas = screen.getByLabelText('Interactive map');
   const oldPosition = intervalIndicatorPosition(
@@ -230,7 +230,7 @@ test('Map keeps the indicator at Past while older month labels continue changing
 test('Map hides the interval indicator while a detail card is open', () => {
   const present = currentCalendarMonth();
   render(
-    <HypermediaMapFixture
+    <MapFixture
       onMonthChange={() => undefined}
       month={present}
       selectedKey="entity:grace-hopper"
@@ -245,7 +245,7 @@ test('Map hides the interval indicator while a detail card is open', () => {
 
 test('Map consumes pinch zoom before the browser can zoom the dashboard', () => {
   const onMonthChange = mock(() => undefined);
-  render(<HypermediaMapFixture onMonthChange={onMonthChange} />);
+  render(<MapFixture onMonthChange={onMonthChange} />);
   const canvas = screen.getByLabelText('Interactive map');
   const initialWidth = Number(canvas.getAttribute('viewBox')?.split(' ')[2]);
   const pinch = new WheelEvent('wheel', { cancelable: true, deltaY: -80 });

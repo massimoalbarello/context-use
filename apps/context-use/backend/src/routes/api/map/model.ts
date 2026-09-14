@@ -18,38 +18,41 @@ import {
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
 
-export const DEFAULT_HYPERMEDIA_ENTITY_LIMIT = 16;
-export const DEFAULT_HYPERMEDIA_PAGE_LIMIT = 32;
-export const MAX_HYPERMEDIA_PAGE_LIMIT = 32;
-export const MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES = 24;
-const MAX_HYPERMEDIA_CURSOR_LENGTH = 512;
-const MAX_HYPERMEDIA_FOCUS_LENGTH =
-  MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES * (MAX_READABLE_ID_LENGTH + 1);
+export const DEFAULT_MAP_ENTITY_LIMIT = 16;
+export const DEFAULT_MAP_PAGE_LIMIT = 32;
+export const MAX_MAP_PAGE_LIMIT = 32;
+export const MAX_MAP_PAGE_FOCUS_ENTITIES = 24;
+const MAX_MAP_CURSOR_LENGTH = 512;
+const MAX_MAP_FOCUS_LENGTH = MAX_MAP_PAGE_FOCUS_ENTITIES * (MAX_READABLE_ID_LENGTH + 1);
 
-const HypermediaEntityReferenceSchema = t.Object({
+const MapEntityReferenceSchema = t.Object({
   readableId: ReadableIdSchema,
 });
 
-export const HypermediaNeighborhoodsQuerySchema = t.Object({
-  anchors: t.Array(
+export const MapNeighborhoodsQuerySchema = t.Object({
+  anchors: t.ArrayString(
     t.Object({
-      anchor: HypermediaEntityReferenceSchema,
-      cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_CURSOR_LENGTH })),
+      anchor: MapEntityReferenceSchema,
+      cursor: t.Optional(t.String({ minLength: 1, maxLength: MAX_MAP_CURSOR_LENGTH })),
     }),
-    { minItems: 1, maxItems: MAX_HYPERMEDIA_GRAPH_ANCHORS },
+    {
+      minItems: 1,
+      maxItems: MAX_HYPERMEDIA_GRAPH_ANCHORS,
+      description: 'JSON-encoded array of entity anchors and their optional pagination cursors.',
+    },
   ),
   limit: t.Optional(t.Integer({ minimum: 1, maximum: MAX_HYPERMEDIA_NEIGHBOR_LIMIT })),
 });
 
-export const HypermediaNeighborhoodsSchema = t.Object({
+export const MapNeighborhoodsSchema = t.Object({
   entities: t.Array(EntitySchema),
   neighborhoods: t.Array(
     t.Object({
-      anchor: HypermediaEntityReferenceSchema,
+      anchor: MapEntityReferenceSchema,
       available: t.Boolean(),
       neighbors: t.Array(
         t.Object({
-          entity: HypermediaEntityReferenceSchema,
+          entity: MapEntityReferenceSchema,
           sharedPageCount: t.Integer({ minimum: 1 }),
         }),
       ),
@@ -58,26 +61,26 @@ export const HypermediaNeighborhoodsSchema = t.Object({
   ),
   relationships: t.Array(
     t.Object({
-      source: HypermediaEntityReferenceSchema,
-      target: HypermediaEntityReferenceSchema,
+      source: MapEntityReferenceSchema,
+      target: MapEntityReferenceSchema,
       sharedPageCount: t.Integer({ minimum: 1 }),
     }),
   ),
   relationshipsTruncated: t.Boolean(),
 });
 
-export const HypermediaPagesQuerySchema = t.Object({
+export const MapPagesQuerySchema = t.Object({
   visible: t.Optional(
     t.String({
       minLength: 1,
-      maxLength: MAX_HYPERMEDIA_FOCUS_LENGTH,
+      maxLength: MAX_MAP_FOCUS_LENGTH,
     }),
   ),
   limit: t.Optional(
     t.Numeric({
       minimum: 1,
-      maximum: MAX_HYPERMEDIA_PAGE_LIMIT,
-      default: DEFAULT_HYPERMEDIA_PAGE_LIMIT,
+      maximum: MAX_MAP_PAGE_LIMIT,
+      default: DEFAULT_MAP_PAGE_LIMIT,
     }),
   ),
   offset: PaginationQuerySchema.properties.offset,
@@ -90,29 +93,29 @@ export const HypermediaPagesQuerySchema = t.Object({
   ),
 });
 
-const HypermediaPageSchema = t.Object({
+const MapPageSchema = t.Object({
   ...KnowledgePageSummarySchema.properties,
-  entities: t.Array(HypermediaEntityReferenceSchema),
+  entities: t.Array(MapEntityReferenceSchema),
 });
 
-export const HypermediaPagesSchema = t.Object({
-  pages: t.Array(HypermediaPageSchema),
+export const MapPagesSchema = t.Object({
+  pages: t.Array(MapPageSchema),
   nextOffset: t.Nullable(t.Integer({ minimum: 0 })),
   entityReferencesTruncated: t.Boolean(),
 });
 
-export function parseHypermediaEntityReference(value: string): HypermediaEntityReference | null {
+export function parseMapEntityReference(value: string): HypermediaEntityReference | null {
   return validReadableId(value) ? { readableId: value } : null;
 }
 
-export function parseHypermediaEntities(value?: string): HypermediaEntityReference[] | null {
+export function parseMapEntities(value?: string): HypermediaEntityReference[] | null {
   if (value === undefined) {
     return [];
   }
-  const references = value.split(',').map(parseHypermediaEntityReference);
+  const references = value.split(',').map(parseMapEntityReference);
   if (
     references.length === 0 ||
-    references.length > MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES ||
+    references.length > MAX_MAP_PAGE_FOCUS_ENTITIES ||
     references.some((reference) => reference === null)
   ) {
     return null;
@@ -151,13 +154,11 @@ function validReadableId(value: unknown): value is string {
   );
 }
 
-export function encodeHypermediaEntityCursor(
-  cursor: HypermediaEntityContinuation | null,
-): string | null {
+export function encodeMapEntityCursor(cursor: HypermediaEntityContinuation | null): string | null {
   return encodedCursor(cursor);
 }
 
-export function decodeHypermediaEntityCursor(
+export function decodeMapEntityCursor(
   value: string | undefined,
 ): { state: 'valid'; cursor?: HypermediaEntityContinuation } | { state: 'invalid' } {
   const payload = cursorPayload(value);
@@ -182,21 +183,21 @@ export function decodeHypermediaEntityCursor(
   };
 }
 
-export function hypermediaNeighborhoodsResponse(result: HypermediaNeighborhoods) {
+export function mapNeighborhoodsResponse(result: HypermediaNeighborhoods) {
   return {
     entities: result.entities.map(entityResponse),
     neighborhoods: result.neighborhoods.map(({ anchor, available, neighbors, nextPage }) => ({
       anchor,
       available,
       neighbors,
-      nextCursor: encodeHypermediaEntityCursor(nextPage),
+      nextCursor: encodeMapEntityCursor(nextPage),
     })),
     relationships: result.relationships,
     relationshipsTruncated: result.relationshipsTruncated,
   };
 }
 
-export function hypermediaPagesResponse(result: HypermediaPages) {
+export function mapPagesResponse(result: HypermediaPages) {
   return {
     pages: result.pages.map((page) => ({
       ...pageSummaryResponse(page),

@@ -5,15 +5,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Session } from '../../src/lib/auth';
 import { entitiesQueryOptions, entityPreviewQueryOptions } from '../../src/queries/entities';
-import {
-  type HypermediaPages,
-  hypermediaNeighborhoodsQueryOptions,
-} from '../../src/queries/hypermedia';
+import { type MapPages, mapNeighborhoodsQueryOptions } from '../../src/queries/map';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
 
-test('Hypermedia previews entities without filtering pages and recovers from page failures', async () => {
+test('Map previews entities without filtering pages and recovers from page failures', async () => {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const profile: KnowledgeProfile = {
     selfEntity: {
@@ -51,7 +48,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
       updatedAt: timestamp,
     },
   };
-  const response: HypermediaPages = {
+  const response: MapPages = {
     pages: [
       {
         readableId: 'planning',
@@ -78,7 +75,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
   });
   for (const entity of [profile.selfEntity, colleague]) {
     client.setQueryData(
-      hypermediaNeighborhoodsQueryOptions([{ anchor: { readableId: entity.readableId } }]).queryKey,
+      mapNeighborhoodsQueryOptions([{ anchor: { readableId: entity.readableId } }]).queryKey,
       {
         entities: [entity],
         neighborhoods: [
@@ -107,7 +104,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
         requests.push(url);
         expect(url.searchParams.has('query')).toBe(false);
         expect(url.searchParams.has('entities')).toBe(false);
-        if (url.pathname !== '/api/hypermedia/pages') {
+        if (url.pathname !== '/api/map/pages') {
           throw new Error(`Unexpected request: ${url.pathname}`);
         }
         return Promise.resolve(
@@ -124,7 +121,7 @@ test('Hypermedia previews entities without filtering pages and recovers from pag
       routeTree,
       context: { queryClient: client },
       history: createMemoryHistory({
-        initialEntries: ['/hypermedia?month=2026-01'],
+        initialEntries: ['/map?month=2026-01'],
       }),
     });
     await router.load();

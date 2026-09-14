@@ -1,15 +1,12 @@
 import { cn } from '@repo/ui/class-names';
 import { type ComponentProps, type ReactNode, useId } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
-import type { HypermediaEntity, HypermediaPage } from '../../queries/hypermedia';
+import type { MapEntity, MapPage } from '../../queries/map';
 import { EntityCardContent, entityInitial } from '../entities/entity-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
-import {
-  HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
-  type HypermediaLayoutEntity,
-} from './hypermedia-layout';
-import { type HypermediaSelection, hypermediaSelectionKey } from './hypermedia-selection';
+import { MAP_PAGE_LABEL_MAX_CHARACTERS, type MapLayoutEntity } from './map-layout';
+import { type MapSelection, mapSelectionKey } from './map-selection';
 
 const PAGE_LABEL_Y_OFFSET = 4;
 const ACTIVE_CLOUD_FILL_OPACITY = 0.24;
@@ -18,34 +15,32 @@ const ACTIVE_CLOUD_STROKE_OPACITY = 0.9;
 const INACTIVE_CLOUD_STROKE_OPACITY = 0.48;
 const ACTIVE_CLOUD_STROKE_WIDTH = 3;
 const INACTIVE_CLOUD_STROKE_WIDTH = 1.5;
-const HYPERMEDIA_ENTITY_NODE_RADIUS = 25;
-const HYPERMEDIA_ENTITY_LABEL_WIDTH = 120;
-const HYPERMEDIA_ENTITY_LABEL_HEIGHT = 42;
-const HYPERMEDIA_ENTITY_INITIAL_BASELINE_OFFSET = 6;
-const HYPERMEDIA_ENTITY_LABEL_MAX_CHARACTERS = 20;
+const MAP_ENTITY_NODE_RADIUS = 25;
+const MAP_ENTITY_LABEL_WIDTH = 120;
+const MAP_ENTITY_LABEL_HEIGHT = 42;
+const MAP_ENTITY_INITIAL_BASELINE_OFFSET = 6;
+const MAP_ENTITY_LABEL_MAX_CHARACTERS = 20;
 
-function hypermediaEntityNodeEmphasis(active: boolean): {
+function mapEntityNodeEmphasis(active: boolean): {
   sizeOffset: number;
   strokeWidth: number;
 } {
   return active ? { sizeOffset: 5, strokeWidth: 5 } : { sizeOffset: 1, strokeWidth: 2 };
 }
 
-type HypermediaEntityNodeIdentity = {
+type MapEntityNodeIdentity = {
   label: string;
   imageUrl?: string;
 };
 
-function hypermediaEntityNodeIdentity(
-  entity: HypermediaLayoutEntity,
-): HypermediaEntityNodeIdentity {
+function mapEntityNodeIdentity(entity: MapLayoutEntity): MapEntityNodeIdentity {
   return {
     label: entity.entity.name,
     imageUrl: entity.entity.image ? assetContentUrl(entity.entity.image.readableId) : undefined,
   };
 }
 
-function HypermediaEntityShape({
+function MapEntityShape({
   point,
   sizeOffset = 0,
   className,
@@ -56,7 +51,7 @@ function HypermediaEntityShape({
   className?: string;
   strokeWidth?: number;
 }) {
-  const radius = HYPERMEDIA_ENTITY_NODE_RADIUS + sizeOffset;
+  const radius = MAP_ENTITY_NODE_RADIUS + sizeOffset;
   return (
     <circle
       cx={point.x}
@@ -69,20 +64,20 @@ function HypermediaEntityShape({
   );
 }
 
-function HypermediaEntityMark({
+function MapEntityMark({
   identity,
   point,
   active,
 }: {
-  identity: HypermediaEntityNodeIdentity;
+  identity: MapEntityNodeIdentity;
   point: { x: number; y: number };
   active: boolean;
 }) {
-  const clipPathId = `hypermedia-entity-${useId().replaceAll(':', '')}`;
-  const emphasis = hypermediaEntityNodeEmphasis(active);
+  const clipPathId = `map-entity-${useId().replaceAll(':', '')}`;
+  const emphasis = mapEntityNodeEmphasis(active);
   return (
-    <g data-hypermedia-entity-mark>
-      <HypermediaEntityShape
+    <g data-map-entity-mark>
+      <MapEntityShape
         point={point}
         sizeOffset={emphasis.sizeOffset}
         className={cn(
@@ -91,10 +86,10 @@ function HypermediaEntityMark({
         )}
         strokeWidth={emphasis.strokeWidth}
       />
-      <HypermediaEntityShape point={point} className="fill-card" />
+      <MapEntityShape point={point} className="fill-card" />
       <text
         x={point.x}
-        y={point.y + HYPERMEDIA_ENTITY_INITIAL_BASELINE_OFFSET}
+        y={point.y + MAP_ENTITY_INITIAL_BASELINE_OFFSET}
         textAnchor="middle"
         className="fill-foreground font-semibold text-lg uppercase"
       >
@@ -104,15 +99,15 @@ function HypermediaEntityMark({
         <>
           <defs>
             <clipPath id={clipPathId}>
-              <HypermediaEntityShape point={point} />
+              <MapEntityShape point={point} />
             </clipPath>
           </defs>
           <image
             href={identity.imageUrl}
-            x={point.x - HYPERMEDIA_ENTITY_NODE_RADIUS}
-            y={point.y - HYPERMEDIA_ENTITY_NODE_RADIUS}
-            width={HYPERMEDIA_ENTITY_NODE_RADIUS * 2}
-            height={HYPERMEDIA_ENTITY_NODE_RADIUS * 2}
+            x={point.x - MAP_ENTITY_NODE_RADIUS}
+            y={point.y - MAP_ENTITY_NODE_RADIUS}
+            width={MAP_ENTITY_NODE_RADIUS * 2}
+            height={MAP_ENTITY_NODE_RADIUS * 2}
             preserveAspectRatio="xMidYMid slice"
             clipPath={`url(#${clipPathId})`}
           />
@@ -122,18 +117,16 @@ function HypermediaEntityMark({
   );
 }
 
-export type HypermediaPreview =
-  | { kind: 'page'; page: HypermediaPage }
-  | { kind: 'entity'; entity: HypermediaEntity };
+export type MapPreview = { kind: 'page'; page: MapPage } | { kind: 'entity'; entity: MapEntity };
 
-export function hypermediaPreviewKey(preview: HypermediaPreview): string {
+export function mapPreviewKey(preview: MapPreview): string {
   if (preview.kind === 'page') {
-    return hypermediaSelectionKey({ kind: 'page', readableId: preview.page.readableId });
+    return mapSelectionKey({ kind: 'page', readableId: preview.page.readableId });
   }
-  return hypermediaSelectionKey({ kind: 'entity', readableId: preview.entity.readableId });
+  return mapSelectionKey({ kind: 'entity', readableId: preview.entity.readableId });
 }
 
-function shortHypermediaLabel({
+function shortMapLabel({
   value,
   maximumCharacters,
 }: {
@@ -145,27 +138,21 @@ function shortHypermediaLabel({
     : value;
 }
 
-export function HypermediaEntityNode({
-  entity,
-  active,
-}: {
-  entity: HypermediaLayoutEntity;
-  active: boolean;
-}) {
+export function MapEntityNode({ entity, active }: { entity: MapLayoutEntity; active: boolean }) {
   const { point } = entity;
-  const identity = hypermediaEntityNodeIdentity(entity);
-  const displayLabel = shortHypermediaLabel({
+  const identity = mapEntityNodeIdentity(entity);
+  const displayLabel = shortMapLabel({
     value: identity.label,
-    maximumCharacters: HYPERMEDIA_ENTITY_LABEL_MAX_CHARACTERS,
+    maximumCharacters: MAP_ENTITY_LABEL_MAX_CHARACTERS,
   });
   return (
     <g>
-      <HypermediaEntityMark identity={identity} point={point} active={active} />
+      <MapEntityMark identity={identity} point={point} active={active} />
       <foreignObject
-        x={point.x - HYPERMEDIA_ENTITY_LABEL_WIDTH / 2}
-        y={point.y + HYPERMEDIA_ENTITY_NODE_RADIUS + 10}
-        width={HYPERMEDIA_ENTITY_LABEL_WIDTH}
-        height={HYPERMEDIA_ENTITY_LABEL_HEIGHT}
+        x={point.x - MAP_ENTITY_LABEL_WIDTH / 2}
+        y={point.y + MAP_ENTITY_NODE_RADIUS + 10}
+        width={MAP_ENTITY_LABEL_WIDTH}
+        height={MAP_ENTITY_LABEL_HEIGHT}
         className="pointer-events-none overflow-visible"
       >
         <div className="flex size-full justify-center whitespace-normal text-center font-medium text-[12px] text-foreground leading-[14px] [overflow-wrap:anywhere]">
@@ -176,7 +163,7 @@ export function HypermediaEntityNode({
   );
 }
 
-function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
+function MapPreviewCard({ preview }: { preview: MapPreview }) {
   return (
     <div className="flex min-w-0 items-start gap-3 overflow-hidden">
       {preview.kind === 'page' ? (
@@ -188,15 +175,15 @@ function HypermediaPreviewCard({ preview }: { preview: HypermediaPreview }) {
   );
 }
 
-export function HypermediaHoverPreview({
+export function MapHoverPreview({
   preview,
   selectedKey,
 }: {
-  preview: HypermediaPreview | null;
+  preview: MapPreview | null;
   selectedKey?: string;
 }) {
   const { collapsed: sidebarCollapsed } = useKnowledgeWorkspace();
-  if (!preview || hypermediaPreviewKey(preview) === selectedKey) {
+  if (!preview || mapPreviewKey(preview) === selectedKey) {
     return null;
   }
   return (
@@ -208,23 +195,23 @@ export function HypermediaHoverPreview({
       )}
       aria-live="polite"
     >
-      <HypermediaPreviewCard preview={preview} />
+      <MapPreviewCard preview={preview} />
     </div>
   );
 }
 
-type HypermediaPageLinkProps = Pick<ComponentProps<'a'>, 'aria-label' | 'tabIndex'> & {
-  'data-hypermedia-cloud'?: string;
-  'data-hypermedia-item'?: boolean;
-  page: HypermediaPage;
+type MapPageLinkProps = Pick<ComponentProps<'a'>, 'aria-label' | 'tabIndex'> & {
+  'data-map-cloud'?: string;
+  'data-map-item'?: boolean;
+  page: MapPage;
   children: ReactNode;
-  onSelect: (selection: HypermediaSelection) => void;
-  onPreview: (preview: HypermediaPreview) => void;
+  onSelect: (selection: MapSelection) => void;
+  onPreview: (preview: MapPreview) => void;
   onPreviewEnd: (key: string) => void;
   shouldSelect?: () => boolean;
 };
 
-export function HypermediaPageLink({
+export function MapPageLink({
   page,
   children,
   onSelect,
@@ -232,9 +219,9 @@ export function HypermediaPageLink({
   onPreviewEnd,
   shouldSelect,
   ...props
-}: HypermediaPageLinkProps) {
+}: MapPageLinkProps) {
   const selection = { kind: 'page', readableId: page.readableId } as const;
-  const key = hypermediaSelectionKey(selection);
+  const key = mapSelectionKey(selection);
   return (
     <a
       {...props}
@@ -261,7 +248,7 @@ export function HypermediaPageLink({
   );
 }
 
-export function HypermediaPageCloud({ path, active }: { path: string; active: boolean }) {
+export function MapPageCloud({ path, active }: { path: string; active: boolean }) {
   return (
     <path
       d={path}
@@ -278,12 +265,12 @@ export function HypermediaPageCloud({ path, active }: { path: string; active: bo
   );
 }
 
-export function HypermediaPageLabel({
+export function MapPageLabel({
   page,
   point,
   active,
 }: {
-  page: HypermediaPage;
+  page: MapPage;
   point: { x: number; y: number };
   active: boolean;
 }) {
@@ -296,9 +283,9 @@ export function HypermediaPageLabel({
         active ? 'underline decoration-2 underline-offset-4' : ''
       }`}
     >
-      {shortHypermediaLabel({
+      {shortMapLabel({
         value: page.title,
-        maximumCharacters: HYPERMEDIA_PAGE_LABEL_MAX_CHARACTERS,
+        maximumCharacters: MAP_PAGE_LABEL_MAX_CHARACTERS,
       })}
     </text>
   );

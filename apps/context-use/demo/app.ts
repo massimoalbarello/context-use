@@ -8,8 +8,8 @@ import { createEntityImagesController } from '#backend/routes/api/entities/[enti
 import { createEntitiesController } from '#backend/routes/api/entities/controller.ts';
 import { createFaceRecognitionController } from '#backend/routes/api/face-recognition/controller.ts';
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
-import { createHypermediaController } from '#backend/routes/api/hypermedia/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
+import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#backend/routes/api/profile/controller.ts';
@@ -40,17 +40,13 @@ const READ_API_ROUTES = new Set([
   '/api/records',
   '/api/records/filter-options',
   '/api/records/:recordReadableId',
-  '/api/hypermedia/pages',
+  '/api/map/pages',
+  '/api/map/neighborhoods',
   '/api/hypermedia/search',
 ]);
-const GRAPH_READ_PATH = '/api/hypermedia/neighborhoods';
 const READ_API_PATHS = [...READ_API_ROUTES].map(
   (route) => new RegExp(`^${route.replace(/:[^/]+/g, '[a-z0-9][a-z0-9-]*')}$`),
 );
-
-function isReadRequest({ method, path }: { method: string; path: string }): boolean {
-  return method === 'GET' || method === 'HEAD' || (method === 'POST' && path === GRAPH_READ_PATH);
-}
 
 function publicReadResponse({
   method,
@@ -74,7 +70,7 @@ function publicReadResponse({
 function isWorkspacePath(path: string): boolean {
   return (
     path === '/' ||
-    path === '/hypermedia' ||
+    path === '/map' ||
     path === '/settings' ||
     path === '/settings/syncs' ||
     path === '/settings/faces' ||
@@ -101,7 +97,7 @@ export function createDemoApp({
     .use(createEntityReadableIdController(dependencies))
     .use(createEntityImagesController(faceDependencies))
     .use(createFaceRecognitionController(faceDependencies))
-    .use(createHypermediaController(dependencies))
+    .use(createMapController(dependencies))
     .use(createHypermediaSearchController(dependencies))
     .use(createPagesController(dependencies))
     .use(createPageReadableIdController(dependencies))
@@ -122,7 +118,7 @@ export function createDemoApp({
   // Bun.serve receives only this function. No native/static route can skip this outer gate.
   return async function fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
-    if (!isReadRequest({ method: request.method, path })) {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
       return Response.json(
         {
           code: 'DEMO_READ_ONLY',
@@ -132,10 +128,7 @@ export function createDemoApp({
       );
     }
     let response: ReturnType<Response['clone']>;
-    if (request.method === 'POST') {
-      // This bounded POST only reads neighborhoods; retain its body and controller validation.
-      response = await api.handle(request);
-    } else if (path === '/api/auth/get-session') {
+    if (path === '/api/auth/get-session') {
       response = Response.json(await auth.getSession({ headers: request.headers }));
     } else if (READ_API_PATHS.some((pattern) => pattern.test(path))) {
       // Elysia's shared resource controllers declare GET, so handle HEAD at this boundary.

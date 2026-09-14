@@ -71,7 +71,7 @@ function nowLabelOpacity(position: number): number {
   return position < 0 ? Math.min(1, -position / NOW_LABEL_FADE_DISTANCE) : 1;
 }
 
-export function HypermediaIntervalIndicator({
+export function MapIntervalIndicator({
   month,
   scrollProgress = 0,
 }: {

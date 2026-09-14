@@ -22,7 +22,8 @@ import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { assetsQueryKey, createAsset } from '../queries/assets';
 import { createEntity, entitiesQueryKey, setEntityImage } from '../queries/entities';
 import { facesQueryKey } from '../queries/faces';
-import { hypermediaQueryKey } from '../queries/hypermedia';
+import { knowledgeSuggestionsQueryKey } from '../queries/knowledge-suggestions';
+import { mapQueryKey } from '../queries/map';
 import { createProfile, profileQueryKey, profileQueryOptions } from '../queries/profile';
 
 const EMPTY_ENTITY: EntityFormValues = { name: '', description: '', entityType: null, image: null };
@@ -72,9 +73,14 @@ function NewEntityRoute() {
     },
     onSuccess: async (readableId) => {
       await Promise.all(
-        [entitiesQueryKey, assetsQueryKey, facesQueryKey, hypermediaQueryKey, profileQueryKey].map(
-          (queryKey) => queryClient.invalidateQueries({ queryKey }),
-        ),
+        [
+          entitiesQueryKey,
+          assetsQueryKey,
+          facesQueryKey,
+          mapQueryKey,
+          knowledgeSuggestionsQueryKey,
+          profileQueryKey,
+        ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
       await queryClient.fetchQuery(profileQueryOptions);
       if (profile) {

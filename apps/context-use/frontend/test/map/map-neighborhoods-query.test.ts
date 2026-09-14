@@ -1,16 +1,13 @@
 import { expect, spyOn, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
-import {
-  type HypermediaNeighborhoods,
-  hypermediaNeighborhoodsQueryOptions,
-} from '../../src/queries/hypermedia';
+import { type MapNeighborhoods, mapNeighborhoodsQueryOptions } from '../../src/queries/map';
 
 test('one read-only request carries distinct anchor cursors and remains cached on repeat reads', async () => {
   const anchors = [
     { anchor: { readableId: 'alpha' }, cursor: 'alpha-next' },
     { anchor: { readableId: 'beta' } },
   ];
-  const response: HypermediaNeighborhoods = {
+  const response: MapNeighborhoods = {
     entities: [],
     neighborhoods: [],
     relationships: [],
@@ -28,12 +25,13 @@ test('one read-only request carries distinct anchor cursors and remains cached o
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   try {
-    await client.fetchQuery(hypermediaNeighborhoodsQueryOptions(anchors));
-    await client.fetchQuery(hypermediaNeighborhoodsQueryOptions(anchors));
+    await client.fetchQuery(mapNeighborhoodsQueryOptions(anchors));
+    await client.fetchQuery(mapNeighborhoodsQueryOptions(anchors));
     expect(requests).toHaveLength(1);
-    expect(new URL(requests[0]!.url).pathname).toBe('/api/hypermedia/neighborhoods');
-    expect(requests[0]!.method).toBe('POST');
-    expect(await requests[0]!.json()).toMatchObject({ anchors });
+    expect(new URL(requests[0]!.url).pathname).toBe('/api/map/neighborhoods');
+    expect(requests[0]!.method).toBe('GET');
+    expect(requests[0]!.body).toBeNull();
+    expect(JSON.parse(new URL(requests[0]!.url).searchParams.get('anchors')!)).toEqual(anchors);
   } finally {
     client.clear();
     fetch.mockRestore();

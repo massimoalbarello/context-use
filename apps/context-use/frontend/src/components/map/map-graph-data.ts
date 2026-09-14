@@ -1,24 +1,20 @@
-import type {
-  HypermediaEntity,
-  HypermediaNeighborhoodRequest,
-  HypermediaNeighborhoods,
-} from '../../queries/hypermedia';
-import { hypermediaEntityKey } from '../../queries/hypermedia';
+import type { MapEntity, MapNeighborhoodRequest, MapNeighborhoods } from '../../queries/map';
+import { mapEntityKey } from '../../queries/map';
 
 // Map pacing, below the server's batch ceiling. Existing batches never change on expansion.
-export const HYPERMEDIA_EXPANSION_BATCH_SIZE = 4;
+export const MAP_EXPANSION_BATCH_SIZE = 4;
 
-export function neighborhoodRequestKey(request: HypermediaNeighborhoodRequest): string {
-  return `${hypermediaEntityKey(request.anchor)}:${request.cursor ?? 'first'}`;
+export function neighborhoodRequestKey(request: MapNeighborhoodRequest): string {
+  return `${mapEntityKey(request.anchor)}:${request.cursor ?? 'first'}`;
 }
 
 export function appendNeighborhoodRequests({
   current,
   requests,
 }: {
-  current: HypermediaNeighborhoodRequest[][];
-  requests: HypermediaNeighborhoodRequest[];
-}): HypermediaNeighborhoodRequest[][] {
+  current: MapNeighborhoodRequest[][];
+  requests: MapNeighborhoodRequest[];
+}): MapNeighborhoodRequest[][] {
   const known = new Set(current.flat().map(neighborhoodRequestKey));
   const additions = requests.filter((request) => {
     const key = neighborhoodRequestKey(request);
@@ -32,31 +28,29 @@ export function appendNeighborhoodRequests({
     return current;
   }
   const batches = [...current];
-  for (let offset = 0; offset < additions.length; offset += HYPERMEDIA_EXPANSION_BATCH_SIZE) {
-    batches.push(additions.slice(offset, offset + HYPERMEDIA_EXPANSION_BATCH_SIZE));
+  for (let offset = 0; offset < additions.length; offset += MAP_EXPANSION_BATCH_SIZE) {
+    batches.push(additions.slice(offset, offset + MAP_EXPANSION_BATCH_SIZE));
   }
   return batches;
 }
 
-export type HypermediaLayoutNeighborhood = {
-  anchor: HypermediaEntity;
-  neighbors: { entity: HypermediaEntity; sharedPageCount: number }[];
+export type MapLayoutNeighborhood = {
+  anchor: MapEntity;
+  neighbors: { entity: MapEntity; sharedPageCount: number }[];
 };
 
 // These are views over Query-owned responses, not another server-data cache.
-export function mergeHypermediaNeighborhoods(
-  responses: HypermediaNeighborhoods[],
-): HypermediaLayoutNeighborhood[] {
+export function mergeMapNeighborhoods(responses: MapNeighborhoods[]): MapLayoutNeighborhood[] {
   const entities = new Map(
     responses.flatMap((response) =>
-      response.entities.map((entity) => [hypermediaEntityKey(entity), entity] as const),
+      response.entities.map((entity) => [mapEntityKey(entity), entity] as const),
     ),
   );
   const anchorKeys = new Set(
     responses.flatMap((response) =>
       response.neighborhoods
         .filter(({ available }) => available)
-        .map(({ anchor }) => hypermediaEntityKey(anchor)),
+        .map(({ anchor }) => mapEntityKey(anchor)),
     ),
   );
   const relationships = new Map(
@@ -64,18 +58,16 @@ export function mergeHypermediaNeighborhoods(
       response.relationships.map(
         (relationship) =>
           [
-            [hypermediaEntityKey(relationship.source), hypermediaEntityKey(relationship.target)]
-              .sort()
-              .join('|'),
+            [mapEntityKey(relationship.source), mapEntityKey(relationship.target)].sort().join('|'),
             relationship,
           ] as const,
       ),
     ),
   );
-  const neighbors = new Map<string, HypermediaLayoutNeighborhood['neighbors']>();
+  const neighbors = new Map<string, MapLayoutNeighborhood['neighbors']>();
   for (const relationship of relationships.values()) {
-    const source = hypermediaEntityKey(relationship.source);
-    const target = hypermediaEntityKey(relationship.target);
+    const source = mapEntityKey(relationship.source);
+    const target = mapEntityKey(relationship.target);
     for (const [from, to] of [
       [source, target],
       [target, source],

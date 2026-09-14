@@ -12,35 +12,35 @@ import {
   temporalBoundsFrom,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import {
-  DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
-  DEFAULT_HYPERMEDIA_PAGE_LIMIT,
-  decodeHypermediaEntityCursor,
-  HypermediaNeighborhoodsQuerySchema,
-  HypermediaNeighborhoodsSchema,
-  HypermediaPagesQuerySchema,
-  HypermediaPagesSchema,
-  hypermediaNeighborhoodsResponse,
-  hypermediaPagesResponse,
-  parseHypermediaEntities,
-} from '#backend/routes/api/hypermedia/model.ts';
+  DEFAULT_MAP_ENTITY_LIMIT,
+  DEFAULT_MAP_PAGE_LIMIT,
+  decodeMapEntityCursor,
+  MapNeighborhoodsQuerySchema,
+  MapNeighborhoodsSchema,
+  MapPagesQuerySchema,
+  MapPagesSchema,
+  mapNeighborhoodsResponse,
+  mapPagesResponse,
+  parseMapEntities,
+} from '#backend/routes/api/map/model.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 
-export function createHypermediaController({
+export function createMapController({
   auth,
   graphService,
 }: {
   auth: Auth;
   graphService: HypermediaGraphServiceContract;
 }) {
-  return new Elysia({ prefix: '/hypermedia' })
+  return new Elysia({ prefix: '/map' })
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
-    .post(
+    .get(
       '/neighborhoods',
-      async ({ body, user, status }) => {
+      async ({ query, user, status }) => {
         const anchors: HypermediaAnchorRequest[] = [];
-        for (const request of body.anchors) {
-          const decoded = decodeHypermediaEntityCursor(request.cursor);
+        for (const request of query.anchors) {
+          const decoded = decodeMapEntityCursor(request.cursor);
           if (decoded.state === 'invalid') {
             return status(StatusMap['Bad Request'], { error: 'Invalid neighborhood cursor' });
           }
@@ -50,9 +50,9 @@ export function createHypermediaController({
           const result = await graphService.neighborhoods({
             ownerId: user.id,
             anchors,
-            limit: body.limit ?? DEFAULT_HYPERMEDIA_ENTITY_LIMIT,
+            limit: query.limit ?? DEFAULT_MAP_ENTITY_LIMIT,
           });
-          return status(StatusMap.OK, hypermediaNeighborhoodsResponse(result));
+          return status(StatusMap.OK, mapNeighborhoodsResponse(result));
         } catch (error) {
           if (error instanceof InvalidHypermediaNeighborhoodsError) {
             return status(StatusMap['Bad Request'], { error: error.message });
@@ -62,14 +62,14 @@ export function createHypermediaController({
       },
       {
         detail: {
-          tags: ['Hypermedia'],
+          tags: ['Map'],
           summary: 'Read independently paginated entity neighborhoods',
           description:
             'Read-only batch expansion. Missing or archived anchors are unavailable. Relationships count distinct current active shared pages across all time; extra relationships between returned neighbors may be truncated.',
         },
-        body: HypermediaNeighborhoodsQuerySchema,
+        query: MapNeighborhoodsQuerySchema,
         response: {
-          [StatusMap.OK]: HypermediaNeighborhoodsSchema,
+          [StatusMap.OK]: MapNeighborhoodsSchema,
           [StatusMap['Bad Request']]: ErrorResponseSchema,
         },
       },
@@ -77,7 +77,7 @@ export function createHypermediaController({
     .get(
       '/pages',
       async ({ query, user, status }) => {
-        const visibleEntities = parseHypermediaEntities(query.visible);
+        const visibleEntities = parseMapEntities(query.visible);
         let temporalBounds: TemporalBounds | undefined;
         try {
           temporalBounds = query.time ? temporalBoundsFrom(query.time) : undefined;
@@ -88,22 +88,22 @@ export function createHypermediaController({
           throw error;
         }
         if (!visibleEntities) {
-          return status(StatusMap['Bad Request'], { error: 'Invalid hypermedia pages query' });
+          return status(StatusMap['Bad Request'], { error: 'Invalid map pages query' });
         }
         const pages = await graphService.pages({
           ownerId: user.id,
           visibleEntities,
-          limit: query.limit ?? DEFAULT_HYPERMEDIA_PAGE_LIMIT,
+          limit: query.limit ?? DEFAULT_MAP_PAGE_LIMIT,
           offset: query.offset ?? 0,
           temporalBounds,
         });
-        return status(StatusMap.OK, hypermediaPagesResponse(pages));
+        return status(StatusMap.OK, mapPagesResponse(pages));
       },
       {
-        detail: { tags: ['Hypermedia'], summary: 'Read a bounded hypermedia page view' },
-        query: HypermediaPagesQuerySchema,
+        detail: { tags: ['Map'], summary: 'Read a bounded topic map page view' },
+        query: MapPagesQuerySchema,
         response: {
-          [StatusMap.OK]: HypermediaPagesSchema,
+          [StatusMap.OK]: MapPagesSchema,
           [StatusMap['Bad Request']]: ErrorResponseSchema,
         },
       },
