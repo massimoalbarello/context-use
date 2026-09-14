@@ -29,67 +29,31 @@ test('remote flush never tells the agent to write a local memory file', () => {
   expect(plan?.relativePath).toBe('context-use-remote-memory');
 });
 
-test('personal memory allows owner and background runs but excludes other senders and agents', () => {
-  const context = { agentId: 'main', sessionKey: 'agent:main:main' };
-  expect(canUseMemory({ agentId: 'main', context })).toBe(true);
-  expect(canUseMemory({ agentId: 'main', context: { ...context, senderIsOwner: false } })).toBe(
-    true,
-  );
+test('memory follows the selected agent across conversations using host-managed sender access', () => {
   for (const sessionKey of [
     'agent:main:main',
     'agent:main:telegram:direct:owner',
     'agent:main:webchat:direct:owner',
+    'agent:main:telegram:group:-100123:topic:1',
+    'agent:main:telegram:group:-100999:topic:1:active-memory:abc',
+    'agent:main:slack:channel:123',
+    'agent:main:cron:background-task',
   ]) {
+    const context = { agentId: 'main', sessionKey };
+    expect(canUseMemory({ agentId: 'main', context })).toBe(true);
     expect(
       canUseMemory({
         agentId: 'main',
-        context: { ...context, sessionKey, requesterSenderId: 'owner', senderIsOwner: true },
+        context: { ...context, requesterSenderId: 'allowed-sender', senderIsOwner: false },
       }),
     ).toBe(true);
-    expect(
-      canUseMemory({
-        agentId: 'main',
-        context: { ...context, sessionKey, requesterSenderId: 'visitor' },
-      }),
-    ).toBe(false);
+    expect(canUseMemory({ agentId: 'other', context })).toBe(false);
   }
-  for (const sessionKey of ['agent:main:telegram:group:123', 'agent:main:slack:channel:123']) {
-    expect(
-      canUseMemory({
-        agentId: 'main',
-        context: { ...context, sessionKey, requesterSenderId: 'owner', senderIsOwner: true },
-      }),
-    ).toBe(false);
-  }
-  expect(canUseMemory({ agentId: 'other', context })).toBe(false);
-});
-
-test('personal forums allow owner turns and recall helpers without opening other groups', () => {
-  const group = 'agent:main:telegram:group:-100123';
-  const input = { agentId: 'main', personalGroupSessions: [group] };
-  const context = { agentId: 'main', requesterSenderId: 'owner', senderIsOwner: true };
-  for (const sessionKey of [group, `${group}:topic:1`, `${group}:topic:1:active-memory:abc`]) {
-    expect(canUseMemory({ ...input, context: { ...context, sessionKey } })).toBe(true);
-    expect(
-      canUseMemory({ ...input, context: { ...context, sessionKey, senderIsOwner: false } }),
-    ).toBe(false);
-  }
-  expect(
-    canUseMemory({
-      ...input,
-      context: { agentId: 'main', sessionKey: `${group}:active-memory:abc` },
-    }),
-  ).toBe(true);
-  for (const sessionKey of [
-    `${group}4:topic:1`,
-    'agent:main:telegram:group:-100999:topic:1',
-    'agent:main:slack:channel:-100123',
-    'agent:other:telegram:group:-100123',
+  for (const context of [
+    { agentId: 'other', sessionKey: 'agent:main:main' },
+    { agentId: 'main', sessionKey: 'agent:other:main' },
+    { agentId: 'main' },
   ]) {
-    expect(canUseMemory({ ...input, context: { ...context, sessionKey } })).toBe(false);
+    expect(canUseMemory({ agentId: 'main', context })).toBe(false);
   }
-  const topicOnly = { ...input, personalGroupSessions: [`${group}:topic:1`] };
-  expect(
-    canUseMemory({ ...topicOnly, context: { ...context, sessionKey: `${group}:topic:12` } }),
-  ).toBe(false);
 });

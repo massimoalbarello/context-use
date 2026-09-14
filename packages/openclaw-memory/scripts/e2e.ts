@@ -85,7 +85,7 @@ try {
     "config.session = { dmScope: 'per-channel-peer' }; config.tools = { profile: 'coding' };",
   );
   const personalGroup = 'agent:main:telegram:group:-100123';
-  await command([node, setup, 'connect', app.origin, '--personal-group', personalGroup]);
+  await command([node, setup, 'connect', app.origin]);
   const pending = await Bun.file(connectionFile).json();
   assert(pending.oauth.pending?.url);
   const before = await configuration();
@@ -190,30 +190,24 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   assert(directRecall.includes('architecture'));
-  const recallCalls = model.observations.recallCalls;
-  model.exclude();
-  const excluded = await command([
+  model.recall();
+  const channelRecall = await command([
     'openclaw',
     'agent',
     '--local',
     '--channel',
-    'telegram',
+    'slack',
     '--agent',
     'main',
     '--session-key',
-    'agent:main:telegram:group:-100999:topic:1',
+    'agent:main:slack:channel:123',
     '--message',
     'What does my sister study?',
     '--json',
   ]);
-  assert(excluded.includes('Personal memory is unavailable'));
-  assert.equal(
-    model.observations.recallCalls,
-    recallCalls,
-    'Excluded group triggered personal recall',
-  );
+  assert(channelRecall.includes('architecture'));
   console.log(
-    'Separate direct conversations retain memory; other groups receive no Context Use tools or recall.',
+    'The default install recalls across groups, forum topics, direct conversations and channels.',
   );
 
   await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");

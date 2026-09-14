@@ -58,22 +58,20 @@ describe('exclusive memory configuration', () => {
     });
   });
 
-  test('personal forum setup enables group recall and remains reversible', () => {
+  test('setup enables recall across chat types and remains reversible', () => {
     const original: OpenClawConfig = { tools: { profile: 'coding' } };
     const config = structuredClone(original);
     const state = connection();
-    state.config.personalGroupSessions = ['agent:main:telegram:group:-100123'];
     prepareConfiguration({ config, state });
     expect(config.plugins?.entries?.['active-memory']?.config?.allowedChatTypes).toEqual([
       'direct',
       'explicit',
       'group',
+      'channel',
     ]);
     expect(config.tools?.profile).toBe('coding');
     expect(restoreConfiguration({ config, state })).toEqual([]);
     expect(config).toEqual(original);
-    state.config.personalGroupSessions = ['agent:other:telegram:group:-100123'];
-    expect(() => prepareConfiguration({ config, state })).toThrow('selected agent');
   });
 
   test('rejects denied plugins and a forged restoration path', () => {

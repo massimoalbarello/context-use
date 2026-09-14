@@ -35,7 +35,6 @@ export async function connect(input: {
   directory: string;
   instance: string;
   agentId: string;
-  personalGroupSessions?: string[];
 }): Promise<{ authorizationUrl?: string }> {
   const config = { serverUrl: serverUrl(input.instance), agentId: input.agentId };
   return await withConnection({
@@ -52,9 +51,6 @@ export async function connect(input: {
         );
       }
       const state: ConnectionState = existing ?? { config, changes: [], tools: [], oauth: {} };
-      if (input.personalGroupSessions !== undefined) {
-        state.config.personalGroupSessions = [...new Set(input.personalGroupSessions)];
-      }
       const { snapshot } = await readConfigFileSnapshotForWrite();
       assertPersonalConfiguration({ config: snapshot.config, state });
       await writeState({ directory: input.directory, state });
