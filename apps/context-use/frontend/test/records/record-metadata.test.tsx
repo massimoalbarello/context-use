@@ -20,6 +20,7 @@ const record: ExternalRecord = {
   markdown: 'Discussion notes.',
   participantNames: ['Samantha Wells', 'Alex Rivera'],
   backlinks: [],
+  assets: [],
 };
 
 test('participant names belong in record metadata, not sidebar card previews', () => {

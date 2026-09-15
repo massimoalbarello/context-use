@@ -1,6 +1,7 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { SerialQueue } from '#backend/lib/serial-queue.ts';
+import type { AssetSummary } from '#backend/models/assets/model.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import type { DeliveredRecord } from '#backend/models/records/delivery-contract.generated.ts';
 import type {
@@ -15,6 +16,9 @@ import { recordSearchText } from '#backend/models/records/search.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 import { isActiveSync } from '../sync-acceptance.ts';
+import { listRecordAssets, replaceRecordAssets } from './assets.ts';
+
+class RecordAssetsUnavailable extends Error {}
 
 class RecordAcceptanceConflict extends Error {
   constructor() {
@@ -52,7 +56,9 @@ export interface RecordsRepositoryContract {
   findResource(input: {
     ownerId: string;
     readableId: string;
-  }): Promise<(StoredRecord & { backlinks: KnowledgePageSummary[] }) | null>;
+  }): Promise<
+    (StoredRecord & { backlinks: KnowledgePageSummary[]; assets: AssetSummary[] }) | null
+  >;
 }
 
 type RecordPublication = {
@@ -82,11 +88,13 @@ async function applyRecord({
   input,
   accepted,
   storageKeys,
+  assetReferences,
 }: {
   db: TypedSQL<Queries>;
   input: AcceptRecordsInput;
   accepted: AcceptedRecord;
   storageKeys: Set<string>;
+  assetReferences: Map<string, string[]>;
 }): Promise<void> {
   const { record } = accepted;
   const currentRows = await db.FindCurrentRecordRevision`
@@ -114,6 +122,7 @@ async function applyRecord({
   }
 
   const content = record.operation === 'deleted' ? null : record.content;
+  assetReferences.set(accepted.readableId, content?.assetIds ?? []);
   await db.ApplyRecordRevision`
     insert into "record"
       ("sync_id", "owner_id", "readable_id", "source_id", "kind", "record_id", "revision",
@@ -176,8 +185,14 @@ async function acceptDelivery({
     return { result: { state: 'inactive_sync' }, storageKeys };
   }
 
+  const assetReferences = new Map<string, string[]>();
   for (const record of input.records) {
-    await applyRecord({ db, input, accepted: record, storageKeys });
+    await applyRecord({ db, input, accepted: record, storageKeys, assetReferences });
+  }
+  for (const [readableId, assetIds] of assetReferences) {
+    if (!(await replaceRecordAssets({ db, ownerId: input.ownerId, readableId, assetIds }))) {
+      throw new RecordAssetsUnavailable();
+    }
   }
   return { result: { state: 'accepted' }, storageKeys };
 }
@@ -196,6 +211,9 @@ export class RecordsRepository implements RecordsRepositoryContract {
         this.sql.begin('immediate', (db) => acceptDelivery({ db, input })),
       );
     } catch (error) {
+      if (error instanceof RecordAssetsUnavailable) {
+        return { result: { state: 'missing_assets' }, storageKeys: new Set() };
+      }
       if (error instanceof RecordAcceptanceConflict) {
         return { result: { state: 'conflict' }, storageKeys: new Set() };
       }
@@ -274,7 +292,9 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }: {
     ownerId: string;
     readableId: string;
-  }): Promise<(StoredRecord & { backlinks: KnowledgePageSummary[] }) | null> {
+  }): Promise<
+    (StoredRecord & { backlinks: KnowledgePageSummary[]; assets: AssetSummary[] }) | null
+  > {
     return await this.operations.run(async () => {
       const rows = await this.sql.FindRecordResource`
         /* @notNull title provider syncReadableId syncName readableId kind recordId storageKey contentHash sizeBytes createdAt updatedAt */
@@ -298,6 +318,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
         ? {
             ...recordSummaryFrom(row),
             backlinks: await this.listBacklinks({ ownerId, readableId }),
+            assets: await listRecordAssets({ db: this.sql, ownerId, readableId }),
             storageKey: row.storageKey,
             contentHash: row.contentHash,
             sizeBytes: Number(row.sizeBytes),

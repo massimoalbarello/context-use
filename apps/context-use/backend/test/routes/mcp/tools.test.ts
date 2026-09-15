@@ -614,6 +614,7 @@ test('record search previews have exact owner-scoped read paths without imported
             ? {
                 ...record,
                 markdown,
+                assets: [],
                 backlinks: [page],
                 record: {
                   provider: record.provider,

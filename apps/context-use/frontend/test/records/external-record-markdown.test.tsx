@@ -1,9 +1,20 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from '@tanstack/react-router';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   ExternalRecordMarkdown,
   externalRecordUrl,
 } from '../../src/components/records/external-record-markdown';
+import type { AssetSummary } from '../../src/queries/assets';
 
 describe('external record Markdown', () => {
   test('omits a repeated leading title while retaining distinct and later headings', () => {
@@ -59,4 +70,52 @@ describe('external record Markdown', () => {
     expect(html).not.toContain('href="javascript:');
     expect(html).not.toContain('href="context-use:');
   });
+});
+
+afterEach(cleanup);
+
+test('record attachments use authenticated assets and only declared images are embedded', async () => {
+  const asset: AssetSummary = {
+    readableId: 'drawing',
+    name: 'drawing.png',
+    mediaType: 'image/png',
+    extension: 'png',
+    sizeBytes: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  const root = createRootRoute({ component: Outlet });
+  const source = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+    component: () => (
+      <ExternalRecordMarkdown
+        label="Mail"
+        assets={[asset]}
+        markdown={
+          '[Drawing](context-use://asset/drawing)\n\n![Inline drawing](context-use://asset/drawing)\n\n[Unknown](context-use://asset/private)\n\n![Remote tracker](https://tracker.example/pixel.png)\n\n![Unlisted](context-use://asset/private)'
+        }
+      />
+    ),
+  });
+  const target = createRoute({
+    getParentRoute: () => root,
+    path: '/assets/$id',
+    component: () => <h1>Drawing detail</h1>,
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([source, target]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  });
+  await router.load();
+  render(<RouterProvider router={router} />);
+  expect(screen.getByRole('img', { name: 'Inline drawing' }).getAttribute('src')).toBe(
+    '/api/assets/drawing/content',
+  );
+  expect(screen.getAllByRole('img')).toHaveLength(1);
+  expect(screen.queryByRole('link', { name: 'Unknown' })).toBeNull();
+  const link = screen.getByRole('link', { name: 'Drawing' });
+  expect(link.getAttribute('href')).toBe('/assets/drawing');
+  await userEvent.setup().click(link);
+  expect(await screen.findByRole('heading', { name: 'Drawing detail' })).toBeTruthy();
 });
