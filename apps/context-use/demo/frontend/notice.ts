@@ -29,10 +29,12 @@ export function demoNotice(): Plugin {
             <p class="text-xs text-muted-foreground">Steve Jobs’ fictional context, 2001–2007 · Invented conversations and notes · Read-only demo</p>
             <p class="mt-1 max-md:hidden">Deploy your own instance and connect your agents via MCP to share and curate the same context.</p>
           </div>
-          <a href="${CONTEXT_USE_DEPLOY_URL.replaceAll('&', '&amp;')}" target="_blank" rel="noopener noreferrer" class="${buttonVariants({ className: 'sm:self-center' })}">
-            Deploy your own <span aria-hidden="true">↗</span>
-            <span class="sr-only">(opens in a new tab)</span>
-          </a>
+          <div class="max-md:hidden">
+            <a href="${CONTEXT_USE_DEPLOY_URL.replaceAll('&', '&amp;')}" target="_blank" rel="noopener noreferrer" class="${buttonVariants({ className: 'sm:self-center' })}">
+              Deploy your own <span aria-hidden="true">↗</span>
+              <span class="sr-only">(opens in a new tab)</span>
+            </a>
+          </div>
         `,
         injectTo: 'body-prepend',
       },
