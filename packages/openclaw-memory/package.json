@@ -1,0 +1,66 @@
+{
+  "name": "@context-use/openclaw-memory",
+  "version": "0.1.0",
+  "description": "Context Use as OpenClaw's sole durable personal memory",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "context-use-openclaw": "./pkg/dist/bootstrap.js"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "check:types": "bun run --bun tsc",
+    "test": "bun test test",
+    "test:e2e": "bun run pack:release && bun run scripts/e2e.ts",
+    "test:published": "bun run scripts/e2e.ts --published",
+    "pack:release": "bun run build:plugin && bun run scripts/pack.ts",
+    "build:plugin": "bun run scripts/build.ts"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.9.4"
+  },
+  "devDependencies": {
+    "@repo/browser-testing": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/proper-lockfile": "^4.1.4",
+    "@types/semver": "^7.8.0",
+    "openclaw": "2026.9.4",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2",
+    "proper-lockfile": "^4.1.2",
+    "semver": "^7.8.5",
+    "typebox": "^1",
+    "zod": "^4.4.3"
+  },
+  "private": true,
+  "engines": {
+    "node": "^24.16.0 || >=26.1.0"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/massimoalbarello/context-use.git",
+    "directory": "packages/openclaw-memory"
+  },
+  "homepage": "https://github.com/massimoalbarello/context-use",
+  "bugs": {
+    "url": "https://github.com/massimoalbarello/context-use/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  },
+  "exports": {
+    "./setup-prompt": "./src/setup-prompt.ts"
+  }
+}

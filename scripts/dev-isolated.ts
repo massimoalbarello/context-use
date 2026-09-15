@@ -1,6 +1,9 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { registerOwner } from '@repo/browser-testing/auth';
+import { virtualPasskeyBrowser } from '@repo/browser-testing/browser';
+import { runBrowser, stopBrowserHarness } from '@repo/browser-testing/harness';
 import {
   BACKEND_ENVIRONMENT,
   LOCAL_PUBLIC_ORIGIN,
@@ -8,12 +11,10 @@ import {
 
 const INTERRUPTED_EXIT_CODE = 130;
 const TERMINATED_EXIT_CODE = 143;
-const FAILURE_EXIT_CODE = 1;
 const APP_URL = LOCAL_PUBLIC_ORIGIN;
-const APP_START_TIMEOUT_MS = 30_000;
+const APP_START_TIMEOUT_MS = 90_000;
 const APP_PROBE_TIMEOUT_MS = 1_000;
 const APP_PROBE_INTERVAL_MS = 200;
-const BROWSER_SCRIPTS_FOLDER = join(import.meta.dir, '..', '.agents', 'scripts');
 const ISOLATED_DEVELOPMENT_SEED_FOLDER = join(import.meta.dir, '../apps/context-use/demo/fixtures');
 const ISOLATED_DEVELOPMENT_SEED_SCRIPT = join(ISOLATED_DEVELOPMENT_SEED_FOLDER, 'seed.py');
 const seedIsolatedData = Bun.argv.includes('--seed');
@@ -26,53 +27,6 @@ const appUrlAlreadyInUse = await fetch(APP_URL, {
 if (appUrlAlreadyInUse) {
   throw new Error(`${APP_URL} is already in use; stop the existing development app first`);
 }
-
-const browserExecutable = Bun.which('browser-harness');
-if (!browserExecutable) {
-  console.error(
-    [
-      'Virtual passkey testing requires the browser-harness CLI.',
-      'Install it with:',
-      '  uv tool install --python 3.12 browser-harness',
-    ].join('\n'),
-  );
-  process.exit(FAILURE_EXIT_CODE);
-}
-
-const runBrowserScripts = async (scriptPaths: string[]) => {
-  const scriptParts = await Promise.all(
-    scriptPaths.map(async (scriptPath) => {
-      return `${await Bun.file(scriptPath).text()}\n`;
-    }),
-  );
-  const browserProcess = Bun.spawn([browserExecutable], {
-    env: {
-      ...process.env,
-      CONTEXT_USE_APP_URL: APP_URL,
-      CONTEXT_USE_SEED_FOLDER: ISOLATED_DEVELOPMENT_SEED_FOLDER,
-    },
-    stdin: new Blob(scriptParts),
-    stdout: 'inherit',
-    stderr: 'inherit',
-  });
-  const exitCode = await browserProcess.exited;
-  if (exitCode !== 0) {
-    throw new Error(`${browserExecutable} failed while running ${scriptPaths.join(', ')}`);
-  }
-};
-
-const focusBrowserForPasskey = async () => {
-  if (process.platform !== 'darwin') {
-    return;
-  }
-  const focusProcess = Bun.spawn(
-    ['osascript', '-e', 'tell application "Google Chrome" to activate'],
-    { stdout: 'inherit', stderr: 'inherit' },
-  );
-  if ((await focusProcess.exited) !== 0) {
-    throw new Error('Could not focus Google Chrome for passkey registration');
-  }
-};
 
 const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-dev-'));
 console.log(`Starting development servers with disposable data in ${dataFolder}`);
@@ -99,7 +53,8 @@ const stopForTermination = () => {
 process.on('SIGINT', stopForInterrupt);
 process.on('SIGTERM', stopForTermination);
 
-let authenticatorEnabled = false;
+let browser: Awaited<ReturnType<typeof virtualPasskeyBrowser>> | undefined;
+let harnessStarted = false;
 try {
   const startupDeadline = Date.now() + APP_START_TIMEOUT_MS;
   let appReady = false;
@@ -133,17 +88,24 @@ try {
     }
     process.exitCode = signalExitCode;
   } else {
+    browser = await virtualPasskeyBrowser({ headless: false });
     if (seedIsolatedData) {
-      await focusBrowserForPasskey();
-      await runBrowserScripts([
-        join(BROWSER_SCRIPTS_FOLDER, 'enable-virtual-webauthn.py'),
-        ISOLATED_DEVELOPMENT_SEED_SCRIPT,
-      ]);
+      await registerOwner({ page: browser.page, origin: APP_URL });
+      harnessStarted = true;
+      console.log(
+        await runBrowser({
+          source: `switch_tab(${JSON.stringify(browser.targetId)})\n${await Bun.file(ISOLATED_DEVELOPMENT_SEED_SCRIPT).text()}`,
+          env: {
+            ...browser.harnessEnv,
+            CONTEXT_USE_APP_URL: APP_URL,
+            CONTEXT_USE_SEED_FOLDER: ISOLATED_DEVELOPMENT_SEED_FOLDER,
+          },
+        }),
+      );
       console.log('Seeded isolated development data');
     } else {
-      await runBrowserScripts([join(BROWSER_SCRIPTS_FOLDER, 'enable-virtual-webauthn.py')]);
+      await browser.page.goto(APP_URL);
     }
-    authenticatorEnabled = true;
     console.log(`Virtual passkey ready at ${APP_URL}`);
 
     const exitCode = await developmentProcess.exited;
@@ -153,19 +115,20 @@ try {
   process.off('SIGINT', stopForInterrupt);
   process.off('SIGTERM', stopForTermination);
 
-  if (authenticatorEnabled) {
+  try {
     try {
-      await runBrowserScripts([join(BROWSER_SCRIPTS_FOLDER, 'disable-virtual-webauthn.py')]);
-    } catch (error) {
-      console.error('Failed to disable the virtual WebAuthn authenticator', error);
-      process.exitCode ||= FAILURE_EXIT_CODE;
+      if (browser && harnessStarted) {
+        await stopBrowserHarness(browser.harnessEnv);
+      }
+    } finally {
+      await browser?.close();
     }
+  } finally {
+    if (developmentProcess.exitCode === null) {
+      developmentProcess.kill('SIGTERM');
+      await developmentProcess.exited;
+    }
+    await rm(dataFolder, { recursive: true, force: true });
+    console.log('Removed disposable development data');
   }
-
-  if (developmentProcess.exitCode === null) {
-    developmentProcess.kill('SIGTERM');
-    await developmentProcess.exited;
-  }
-  await rm(dataFolder, { recursive: true, force: true });
-  console.log('Removed disposable development data');
 }

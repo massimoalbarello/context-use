@@ -1,0 +1,22 @@
+{
+  "name": "@repo/browser-testing",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./harness": "./src/harness.ts",
+    "./owner-browser": "./src/owner-browser.ts",
+    "./auth": "./src/auth.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "scripts": {
+    "check:types": "bun run --bun tsc",
+    "test": "bun test test"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

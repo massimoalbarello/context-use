@@ -1,0 +1,9 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build:plugin": {
+      "inputs": ["$TURBO_DEFAULT$", "../../LICENSE"],
+      "outputs": ["pkg/**"]
+    }
+  }
+}
