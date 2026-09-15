@@ -18,7 +18,7 @@ ${openclawConnectCommand(serverUrl)}
 
 Follow the plugin's instructions: give me the authorization URL and ask me to return the final localhost redirect URL. When I send it back, finish connecting. Let the plugin manage configuration and gateway refresh.
 
-Verify openclaw context-use status and call context_use_search_hypermedia in the next agent turn before reporting success.`;
+After authorization, verify openclaw context-use status. If connected and authenticated, confirm that setup is complete and tell me to start a new session with /new so the memory tools become available.`;
 }
 
 export const OPENCLAW_REMOVAL_PROMPT = `Remove the Context Use memory plugin using ${OPENCLAW_INSTALL_COMMAND} remove in this OpenClaw profile. This also works if authorization was never completed or the plugin is disabled. Let the plugin restore its configuration changes, clear its credentials and refresh the gateway. Preserve my remote memories and conversation history. Verify that a fresh conversation uses the restored memory provider.`;
