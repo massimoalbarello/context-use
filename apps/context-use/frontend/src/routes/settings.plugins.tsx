@@ -33,18 +33,19 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
             OpenClaw
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Use Context Use as your agent’s long-term memory. OpenClaw recalls useful context and
-            learns from your conversations automatically.
+            Context Use provides a{' '}
+            <a
+              className="text-foreground underline underline-offset-4"
+              href={OPENCLAW_NPM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              memory plugin
+              <span className="sr-only"> (opens in a new tab)</span>
+            </a>{' '}
+            for OpenClaw that lets it learn from your conversations and remember what matters to
+            you.
           </p>
-          <a
-            className="w-fit text-sm underline underline-offset-4"
-            href={OPENCLAW_NPM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View on npm
-            <span className="sr-only"> (opens in a new tab)</span>
-          </a>
         </div>
 
         <details className="grid gap-3">

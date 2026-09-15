@@ -14,7 +14,7 @@ test('copies setup for this instance and exposes script-owned removal', async ()
   const serverUrl = 'https://personal.context-use.com/mcp';
   render(<PluginsSettings serverUrl={serverUrl} />);
   expect(
-    screen.getByRole('link', { name: 'View on npm (opens in a new tab)' }).getAttribute('href'),
+    screen.getByRole('link', { name: 'memory plugin (opens in a new tab)' }).getAttribute('href'),
   ).toBe('https://www.npmjs.com/package/@context-use/openclaw-memory');
   const selfInstallation = screen.getByText('OpenClaw self-installation', { selector: 'summary' });
   expect(selfInstallation.closest('details')?.open).toBe(false);
