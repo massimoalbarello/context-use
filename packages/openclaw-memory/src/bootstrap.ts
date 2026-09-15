@@ -8,14 +8,13 @@ import { ConnectionError } from './error';
 import { checkHost } from './host-command';
 import { installedPlugin, installPackage } from './package-installation';
 import { runRecoveryCommand } from './recovery';
+import { SETUP_USAGE } from './usage';
 
 // npm exec does not have access to the host SDK. Install through OpenClaw first,
 // then delegate to the installed package, whose SDK dependencies the host owns.
 async function main(args: string[]): Promise<void> {
   if (!args[0] || args[0] === '--help') {
-    console.log(
-      'context-use-openclaw connect <instance-url> [agent-id=main]\ncontext-use-openclaw authorize <redirect-url-file|->\ncontext-use-openclaw status\ncontext-use-openclaw remove\ncontext-use-openclaw refresh\ncontext-use-openclaw restore-workspace <backup-directory>\n\nConnect installs through OpenClaw. Authorize reads the callback from a private file or stdin. After authorization, all commands are also available through openclaw context-use. Recovery commands remain available here after uninstall.',
-    );
+    console.log(SETUP_USAGE);
     return;
   }
   if (!satisfies(process.versions.node, metadata.engines.node)) {

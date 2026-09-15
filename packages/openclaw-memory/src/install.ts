@@ -1,11 +1,7 @@
-import {
-  mutateConfigFile,
-  readConfigFileSnapshotForWrite,
-} from 'openclaw/plugin-sdk/config-mutation';
+import { mutateConfigFile } from 'openclaw/plugin-sdk/config-mutation';
 import { PLUGIN_ID } from './contract';
-import { ConnectionError } from './error';
 import { openclaw } from './host-command';
-import { installedPlugin, installPackage } from './package-installation';
+import { installedPlugin } from './package-installation';
 
 export async function uninstall(): Promise<void> {
   if (await installedPlugin()) {
@@ -21,12 +17,4 @@ export async function uninstall(): Promise<void> {
       }
     },
   });
-}
-
-export async function install(): Promise<void> {
-  const { snapshot } = await readConfigFileSnapshotForWrite();
-  if (!snapshot.valid) {
-    throw new ConnectionError('OpenClaw configuration is invalid. Run openclaw doctor first.');
-  }
-  await installPackage();
 }

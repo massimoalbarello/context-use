@@ -1,61 +1,20 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises';
+import { text } from 'node:stream/consumers';
 import { connect, disconnect, finishAuthorization, status } from './connection';
 import { PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
 import { refreshLocalMemory, verifyRuntime } from './host';
 import { checkHost } from './host-command';
-import { install, uninstall } from './install';
+import { uninstall } from './install';
 import { refreshGateway, runRecoveryCommand } from './recovery';
 import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
 import { connectionDirectory } from './state';
-
-const usage = `context-use-openclaw connect <instance-url> [agent-id=main]
-context-use-openclaw authorize <redirect-url-file|->
-context-use-openclaw status
-context-use-openclaw disconnect
-context-use-openclaw remove
-context-use-openclaw refresh
-context-use-openclaw restore-workspace <backup-directory>
-
-Authorize reads the pasted redirect URL from a private file or stdin, keeping the code out of process arguments.
-Use the same OpenClaw profile environment for every command.
-
-Install the released package with:
-${OPENCLAW_INSTALL_COMMAND} connect <instance-url> [agent-id=main].
-For local development: bun install, then bun run --cwd packages/openclaw-memory build:plugin.
-Run the checkout helper with Node from packages/openclaw-memory/pkg/dist/setup.js.
-
-Connect checks the installation and configures the memory slot, tools and Active Memory.
-The owner opens the authorization link on any device, uses their passkey, and sends back
-its final localhost callback address. A failed localhost page is expected; no listener is needed.
-An authorized OpenClaw agent can perform setup itself; only passkey authorization needs the owner.
-After authorize, delete the temporary callback file. Setup requests a gateway refresh automatically.
-After authorization, these commands are also available as openclaw context-use <command>.
-
-This version supports one personal agent and one Context Use account across separate personal conversations.
-Setup preserves your existing conversation/session scope.
-Memory works across the agent's direct chats, groups, channels and forum topics.
-Access to connected chats is managed through OpenClaw's channel configuration.
-Disconnect restores setup-owned settings while preserving later edits and remote memories.
-Use remove for credential cleanup and uninstall; native disable alone retains connection state.
-Connect and removal retire recognized obsolete provider instructions from workspace startup files.
-Private recovery backups live outside the active workspace and survive uninstall. Removal does not
-reactivate obsolete instructions. After uninstall, recover a backup with
-${OPENCLAW_INSTALL_COMMAND} restore-workspace <backup-directory>, preserving later edits.
-Historical conversations and ordinary project notes are preserved. Existing chats retain their history;
-start a new conversation to test the restored memory provider without earlier discussion of Context Use.
-Removal rebuilds local memory's index and requests a gateway refresh. Existing memory import is outside this version.
-
-Development checks: test, check:types, and test:e2e in this package.
-The e2e test needs Chrome and OPENCLAW_TEST_NODE pointing to supported Node. It creates a
-fresh app and OpenClaw profile, uses a virtual passkey and real MCP, and scripts only model
-responses. It checks integration, not live-model memory quality. No personal account is used.`;
+import { SETUP_USAGE } from './usage';
 
 async function main(args: string[]): Promise<void> {
   const [command, argument, agentId = 'main'] = args;
   if (!command || command === '--help') {
-    console.log(usage);
+    console.log(SETUP_USAGE);
     return;
   }
   await checkHost();
@@ -66,14 +25,13 @@ async function main(args: string[]): Promise<void> {
   switch (command) {
     case 'connect': {
       if (!argument) {
-        throw new ConnectionError(usage);
+        throw new ConnectionError(SETUP_USAGE);
       }
       PluginConfigSchema.shape.agentId.parse(agentId);
-      await install();
       const result = await connect({ directory, instance: argument, agentId });
       if (result.authorizationUrl) {
         console.log(
-          `Open this URL on your own device and authorize Context Use:\n${result.authorizationUrl}\n\nChoose a client name you have not used for another connection. The final localhost page may fail to load; that is expected. Copy its full address and send it back. Finish with ${OPENCLAW_INSTALL_COMMAND} authorize <redirect-url-file|-> using a private file or stdin. Do not store the link or code as a memory.`,
+          `Open this URL to authorize Context Use:\n${result.authorizationUrl}\n\nCopy the final localhost URL and send it back, even if the page does not load. Finish with ${OPENCLAW_INSTALL_COMMAND} authorize, passing the returned URL through standard input.`,
         );
       } else {
         await verifyRuntime();
@@ -83,12 +41,10 @@ async function main(args: string[]): Promise<void> {
       return;
     }
     case 'authorize': {
-      if (!argument) {
-        throw new ConnectionError(usage);
+      if (argument || process.stdin.isTTY) {
+        throw new ConnectionError('Pass the returned authorization URL through standard input.');
       }
-      const redirectUrl = (
-        await readFile(argument === '-' ? '/dev/stdin' : argument, 'utf8')
-      ).trim();
+      const redirectUrl = (await text(process.stdin)).trim();
       await finishAuthorization({ directory, redirectUrl });
       await verifyRuntime();
       console.log('Context Use connected.');
@@ -117,7 +73,7 @@ async function main(args: string[]): Promise<void> {
       return;
     }
     default:
-      throw new ConnectionError(usage);
+      throw new ConnectionError(SETUP_USAGE);
   }
 }
 

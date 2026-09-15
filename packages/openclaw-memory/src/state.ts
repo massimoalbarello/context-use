@@ -75,9 +75,7 @@ export async function readState(directory: string): Promise<ConnectionState | un
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return undefined;
     }
-    throw new ConnectionError(
-      'Context Use connection state is unreadable. Restore its backup before reconnecting.',
-    );
+    throw new ConnectionError('Context Use connection state is unreadable.');
   }
 }
 

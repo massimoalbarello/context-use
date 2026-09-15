@@ -70,6 +70,9 @@ export async function connect(input: {
       }
       const state: ConnectionState = existing ?? { config, changes: [], tools: [], oauth: {} };
       const { snapshot } = await readConfigFileSnapshotForWrite();
+      if (!snapshot.valid) {
+        throw new ConnectionError('OpenClaw configuration is invalid. Run openclaw doctor first.');
+      }
       assertPersonalConfiguration({ config: snapshot.config, state });
       await writeState({ directory: input.directory, state });
       const result = await auth(

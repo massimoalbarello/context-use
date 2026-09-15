@@ -45,10 +45,12 @@ const sdkConfig = import.meta.resolve('openclaw/plugin-sdk/config-mutation');
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
 const gatewayPort = availablePort();
 
-async function command(args: string[]): Promise<string> {
+async function command(input: string[] | { args: string[]; stdin: string }): Promise<string> {
+  const { args, stdin } = Array.isArray(input) ? { args: input, stdin: undefined } : input;
   const process = Bun.spawn(args, {
     cwd: directory,
     env,
+    stdin: stdin === undefined ? 'ignore' : new Blob([stdin]),
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: COMMAND_TIMEOUT_MS,
@@ -175,13 +177,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     callbackUrl: CALLBACK_URL,
     clientName: 'OpenClaw first installation',
   });
-  const callback = join(directory, 'callback.txt');
   const swapped = new URL(redirectUrl);
   swapped.searchParams.set('state', 'another-connection');
-  await writeFile(callback, swapped.href, { mode: PRIVATE_MODE });
-  await assert.rejects(command(['npx', '--yes', packageSpec, 'authorize', callback]));
-  await writeFile(callback, redirectUrl, { mode: PRIVATE_MODE });
-  model.setup(`${installCommand} authorize ${quote(callback)}`);
+  const authorize = (url: string) =>
+    command({ args: ['npx', '--yes', packageSpec, 'authorize'], stdin: url });
+  await assert.rejects(authorize(swapped.href));
+  model.setup(`printf '%s' ${quote(redirectUrl)} | ${installCommand} authorize`);
   await command([
     'openclaw',
     'agent',
@@ -191,12 +192,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--session-key',
     `${personalGroup}:topic:1`,
     '--message',
-    'Complete authorization using the private callback file.',
+    `Finish connecting using this authorization response: ${redirectUrl}`,
     '--json',
   ]);
   model.learn();
-  await assert.rejects(command(['npx', '--yes', packageSpec, 'authorize', callback]));
-  await rm(callback);
+  await assert.rejects(authorize(redirectUrl));
   const expired = await Bun.file(connectionFile).json();
   expired.oauth.tokens.access_token = 'expired-test-access-token';
   await writeFile(connectionFile, JSON.stringify(expired), { mode: PRIVATE_MODE });
@@ -207,6 +207,15 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(connected.plugins.entries['active-memory'].config.allowedChatTypes.includes('group'));
   assert((await command(['openclaw', 'context-use', 'status'])).includes('"connected": true'));
   console.log('Native installation and pasted callback authorization passed.');
+
+  const installedManifest = join(stateDir, 'extensions', PLUGIN_ID, 'package.json');
+  const installedPackage = await Bun.file(installedManifest).json();
+  await writeFile(installedManifest, JSON.stringify({ ...installedPackage, version: '0.0.0' }));
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  assert.equal((await Bun.file(installedManifest).json()).version, '0.0.0');
+  assert((await Bun.file(connectionFile).json()).oauth.tokens);
+  await writeFile(installedManifest, JSON.stringify(installedPackage));
+  console.log('Reconnect reused the installed version without removal or another authorization.');
 
   const initialAgents = await Bun.file(join(workspace, 'AGENTS.md')).text();
   assert(!initialAgents.includes('context_use_'));
@@ -357,9 +366,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     callbackUrl: CALLBACK_URL,
     clientName: 'OpenClaw reinstallation',
   });
-  await writeFile(callback, newRedirect, { mode: PRIVATE_MODE });
-  await command(['npx', '--yes', packageSpec, 'authorize', callback]);
-  await rm(callback);
+  await authorize(newRedirect);
   model.recall();
   const reinstalledRecall = await command([
     'openclaw',

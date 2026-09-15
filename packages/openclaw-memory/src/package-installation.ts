@@ -31,11 +31,11 @@ export async function installPackage(): Promise<void> {
   const existing = await installedPlugin();
   if (existing) {
     const installed = z
-      .object({ name: z.string(), version: z.string() })
+      .object({ name: z.string() })
       .parse(JSON.parse(await readFile(join(existing.rootDir, 'package.json'), 'utf8')));
-    if (installed.name !== packageJson.name || installed.version !== packageJson.version) {
+    if (installed.name !== packageJson.name) {
       throw new ConnectionError(
-        'A different Context Use plugin version is installed. Remove it before installing this package.',
+        `The context-use plugin ID belongs to another package: ${installed.name}.`,
       );
     }
     return;
