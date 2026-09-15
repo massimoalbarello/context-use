@@ -49,22 +49,26 @@
   {
     "name": "Synthetic iPod demo checklist",
     "path": "assets/synthetic-ipod-demo-checklist.txt",
-    "readableId": "synthetic-ipod-demo-checklist"
+    "readableId": "synthetic-ipod-demo-checklist",
+    "expectedMediaType": "text/plain"
   },
   {
     "name": "Synthetic iPhone rehearsal checklist",
     "path": "assets/synthetic-iphone-rehearsal-checklist.txt",
-    "readableId": "synthetic-iphone-rehearsal-checklist"
+    "readableId": "synthetic-iphone-rehearsal-checklist",
+    "expectedMediaType": "text/plain"
   },
   {
     "name": "My product commitment ledger",
     "path": "assets/product-commitments.csv",
-    "readableId": "my-product-commitment-ledger"
+    "readableId": "my-product-commitment-ledger",
+    "expectedMediaType": "text/csv"
   },
   {
     "name": "Historical asset credits",
     "path": "assets/historical-asset-credits.txt",
-    "readableId": "historical-asset-credits"
+    "readableId": "historical-asset-credits",
+    "expectedMediaType": "text/plain"
   },
   {
     "readableId": "apple-company-mark",
@@ -359,5 +363,17 @@
     "license": "Public domain",
     "licenseUrl": "https://commons.wikimedia.org/wiki/File:Pixar_animation_studios1.png#Licensing",
     "dateNote": "30 July 2007 in Emeryville, California; original upload was December 2007 and Commons transfer March 2008. Location reference, not evidence of a visit by Steve."
+  },
+  {
+    "readableId": "synthetic-iphone-rehearsal-handout",
+    "name": "Synthetic iPhone rehearsal handout",
+    "path": "assets/synthetic-iphone-rehearsal.pdf",
+    "expectedMediaType": "application/pdf"
+  },
+  {
+    "readableId": "synthetic-iphone-rehearsal-animation",
+    "name": "Synthetic iPhone rehearsal animation",
+    "path": "assets/synthetic-iphone-rehearsal.mp4",
+    "expectedMediaType": "video/mp4"
   }
 ]

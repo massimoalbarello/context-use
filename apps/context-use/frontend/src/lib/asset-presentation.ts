@@ -11,5 +11,12 @@ export function isEmbeddableAsset(asset: { mediaType: string }): boolean {
 }
 
 export function isVideoAsset(asset: { mediaType: string }): boolean {
-  return asset.mediaType === 'video/mp4';
+  return ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'].includes(asset.mediaType);
+}
+
+export function assetTypeLabel(asset: { mediaType: string; extension?: string | null }): string {
+  if (asset.extension) {
+    return asset.extension.toUpperCase();
+  }
+  return asset.mediaType === 'application/octet-stream' ? 'File' : asset.mediaType;
 }

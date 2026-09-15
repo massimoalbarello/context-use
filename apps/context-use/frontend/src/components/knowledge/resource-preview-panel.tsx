@@ -1,12 +1,14 @@
 import { Button } from '@repo/ui/button';
 import { Expand, X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { assetTypeLabel } from '../../lib/asset-presentation';
 import { useAssetPreview } from '../../lib/hooks/use-assets';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
 import { useRecord } from '../../lib/hooks/use-records';
 import type { ResourceSelection } from '../../lib/resource-selection';
 import type { KnowledgePageSummary } from '../../queries/pages';
+import { AssetFileActions } from '../assets/asset-file-actions';
 import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
 import { EntityAvatar } from '../entities/entity-link';
@@ -195,9 +197,10 @@ function AssetPreview({ readableId, onClose, onExpand }: PreviewProps) {
         <div className="grid gap-5">
           <h2 className="break-words font-semibold text-2xl">{asset.name}</h2>
           <p className="text-muted-foreground text-sm">
-            {asset.mediaType} · {formatAssetSize(asset.sizeBytes)}
+            {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
           </p>
           <AssetMedia asset={asset} className="max-h-96 w-full rounded-lg object-contain" />
+          <AssetFileActions readableId={asset.readableId} />
         </div>
       ) : (
         <PreviewStatus>Loading asset…</PreviewStatus>

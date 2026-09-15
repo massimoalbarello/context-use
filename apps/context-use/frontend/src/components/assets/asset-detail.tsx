@@ -1,13 +1,6 @@
-import { buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { ExternalLink, File } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import {
-  assetContentUrl,
-  assetDownloadUrl,
-  isEmbeddableAsset,
-  isVideoAsset,
-} from '../../lib/asset-presentation';
+import { assetTypeLabel, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { useArchiveAsset } from '../../lib/hooks/use-archive-asset';
 import { useAsset } from '../../lib/hooks/use-assets';
 import { useUpdateAsset } from '../../lib/hooks/use-update-asset';
@@ -26,6 +19,7 @@ import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { Badge } from '../ui/badge';
 import { FieldError } from '../ui/field';
+import { AssetFileActions } from './asset-file-actions';
 
 const ASSET_EDIT_FORM_ID = 'asset-edit-form';
 
@@ -98,8 +92,6 @@ function AssetPreview({
   children: ReactNode;
   processAction?: ReactNode;
 }) {
-  const contentUrl = assetContentUrl(asset.readableId);
-  const downloadUrl = assetDownloadUrl(asset.readableId);
   return (
     <section className="grid gap-5 rounded-xl bg-muted p-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
       {children}
@@ -107,7 +99,7 @@ function AssetPreview({
         <dl className="grid gap-2 text-sm">
           <div>
             <dt className="text-muted-foreground">Type</dt>
-            <dd>{asset.mediaType}</dd>
+            <dd>{assetTypeLabel(asset)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Size</dt>
@@ -119,18 +111,7 @@ function AssetPreview({
           </div>
         </dl>
         {processAction}
-        <a className={buttonVariants({ variant: 'outline' })} href={downloadUrl} download>
-          Download
-        </a>
-        <a
-          className={buttonVariants({ variant: 'link' })}
-          href={contentUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <ExternalLink aria-hidden="true" />
-          Open asset page
-        </a>
+        <AssetFileActions readableId={asset.readableId} />
       </div>
     </section>
   );
@@ -259,16 +240,10 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
         </AssetFaces>
       ) : (
         <AssetPreview asset={asset}>
-          {isVideoAsset(asset) ? (
-            <AssetMedia
-              asset={asset}
-              className="max-h-[28rem] w-full rounded-lg bg-background object-contain"
-            />
-          ) : (
-            <div className="flex min-h-48 items-center justify-center rounded-lg bg-background text-muted-foreground">
-              <File className="size-14 stroke-[1.2]" aria-hidden="true" />
-            </div>
-          )}
+          <AssetMedia
+            asset={asset}
+            className="max-h-[28rem] w-full rounded-lg bg-background object-contain"
+          />
         </AssetPreview>
       )}
 
