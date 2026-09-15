@@ -22,7 +22,7 @@ test('copies setup for this instance and exposes script-owned removal', async ()
   expect(selfInstallation.closest('details')?.open).toBe(true);
   await user.click(screen.getByRole('button', { name: 'Copy setup prompt' }));
   const prompt = await navigator.clipboard.readText();
-  expect(prompt).toContain(`npx --yes ${OPENCLAW_PACKAGE}`);
+  expect(prompt).toContain('npx --yes @context-use/openclaw-memory@beta');
   expect(prompt).toContain(`${OPENCLAW_PACKAGE} connect '${serverUrl}'`);
   expect(prompt).toContain('Check openclaw --version first');
   expect(prompt).toContain('ask me to return the final localhost redirect URL');

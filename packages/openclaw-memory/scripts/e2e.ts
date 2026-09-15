@@ -386,12 +386,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await waitGateway();
   console.log('Disposable gateway is ready; removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
-  const removal = await command(['openclaw', 'context-use', 'remove']);
+  console.log(await command(['openclaw', 'context-use', 'remove']));
   assert(!(await Bun.file(connectionFile).exists()));
-  assert(
-    removal.includes('Gateway refresh requested'),
-    'Removal did not request a refresh from the running gateway',
-  );
+  // OpenClaw may reload itself as configuration changes. Verify the next chat's
+  // provider below, regardless of whether removal needed to request another refresh.
   await waitGateway();
   model.removed();
   const gatewayChat = await command([

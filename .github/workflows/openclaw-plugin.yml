@@ -4,12 +4,16 @@ on:
   pull_request:
   push:
     branches: [main]
+    paths:
+      - packages/openclaw-memory/**
+      - packages/typescript-config/**
+      - package.json
+      - bun.lock
+      - LICENSE
+      - .bun-version
+      - .github/actions/prepare/**
+      - .github/workflows/openclaw-plugin.yml
   workflow_dispatch:
-    inputs:
-      version:
-        description: Package version to publish from main (must match package.json)
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -18,6 +22,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v6
 
@@ -28,13 +34,12 @@ jobs:
 
       - uses: ./.github/actions/prepare
 
-      - name: Validate requested release
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          RELEASE_VERSION: ${{ inputs.version }}
+      - name: Generate release version
+        id: version
         run: |
-          test "$GITHUB_REF" = refs/heads/main
-          bun -e 'import p from "./packages/openclaw-memory/package.json"; if (process.env.RELEASE_VERSION !== p.version) throw new Error("Requested version must match package.json");'
+          version=$(node -p 'const p = require("./packages/openclaw-memory/package.json"); `${p.version}-${p.publishConfig.tag}.${process.env.GITHUB_RUN_NUMBER}`')
+          npm pkg set version="$version" --prefix packages/openclaw-memory --workspaces=false
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Check plugin
         run: |
@@ -52,9 +57,10 @@ jobs:
           name: openclaw-memory-package
           path: packages/openclaw-memory/release/*.tgz
           if-no-files-found: error
+          overwrite: true
 
   publish:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: verify
     runs-on: ubuntu-latest
     environment: npm
@@ -63,7 +69,9 @@ jobs:
       id-token: write
     concurrency:
       group: publish-openclaw-memory
-      cancel-in-progress: false
+      queue: max
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
     steps:
       - uses: actions/checkout@v6
 
@@ -78,7 +86,10 @@ jobs:
           name: openclaw-memory-package
           path: release
 
+      - uses: ./.github/actions/prepare
+
       - name: Publish the verified artifact
+        id: publish
         # Configure this workflow and the npm environment as the package's trusted
         # publisher. NPM_TOKEN is only needed to bootstrap a package that does not
         # yet exist; remove that secret after configuring trusted publishing.
@@ -87,12 +98,11 @@ jobs:
         run: |
           artifacts=(release/*.tgz)
           test "${#artifacts[@]}" -eq 1
-          release_tag=$(node -p 'require("./packages/openclaw-memory/package.json").publishConfig.tag')
-          release_access=$(node -p 'require("./packages/openclaw-memory/package.json").publishConfig.access')
-          npm publish "${artifacts[0]}" --tag "$release_tag" --access "$release_access" --ignore-scripts
+          bun run packages/openclaw-memory/scripts/publish.ts "${artifacts[0]}"
 
   verify-published:
-    needs: publish
+    needs: [verify, publish]
+    if: needs.publish.outputs.published == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -104,6 +114,11 @@ jobs:
           package-manager-cache: false
 
       - uses: ./.github/actions/prepare
+
+      - name: Select the exact published version
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: npm pkg set version="$RELEASE_VERSION" --prefix packages/openclaw-memory --workspaces=false
 
       - name: Install test browser
         run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
