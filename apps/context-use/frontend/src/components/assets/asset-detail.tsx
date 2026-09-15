@@ -17,6 +17,7 @@ import { ResourceList } from '../knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { RecordLink } from '../records/record-link';
 import { SyncAttribution } from '../syncs/sync-attribution';
 import { Badge } from '../ui/badge';
 import { FieldError } from '../ui/field';
@@ -80,6 +81,25 @@ function AssetEntityImageUsageList({ asset }: { asset: Asset }) {
       ) : (
         <p className="text-muted-foreground text-sm">None yet.</p>
       )}
+    </section>
+  );
+}
+
+function AssetRecordUsageList({ asset }: { asset: Asset }) {
+  const usages = asset.usages.filter((usage) => usage.kind === 'record');
+  if (usages.length === 0) {
+    return null;
+  }
+  return (
+    <section>
+      <h2 className="mb-4 font-semibold text-lg">Attached to records</h2>
+      <ResourceList>
+        {usages.map(({ record }) => (
+          <li key={record.readableId}>
+            <RecordLink record={record} />
+          </li>
+        ))}
+      </ResourceList>
     </section>
   );
 }
@@ -223,8 +243,8 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
       {archiveAsset.error && <FieldError>{archiveAsset.error.message}</FieldError>}
       {archiveConflictVisible && (
         <p className="text-destructive text-sm" role="alert">
-          This asset can’t be archived until every embed, attachment, and entity image is removed or
-          replaced.{' '}
+          This asset can’t be archived until every page or record attachment, embed, and entity
+          image is removed or replaced.{' '}
           <a className="font-medium underline" href="#used-by">
             Review usages
           </a>
@@ -257,6 +277,7 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
         <AssetUsageList asset={asset} presentation="embed" />
         <AssetUsageList asset={asset} presentation="attachment" />
         {isImage && <AssetEntityImageUsageList asset={asset} />}
+        <AssetRecordUsageList asset={asset} />
       </div>
     </DetailShell>
   );

@@ -5,6 +5,10 @@ import {
   type RecordSummary,
   recordParticipantNames,
 } from '#backend/models/records/model.ts';
+import {
+  AssetSummarySchema,
+  assetSummaryResponse,
+} from '#backend/routes/api/assets/summary-model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageSummarySchema,
@@ -30,6 +34,7 @@ export const RecordSchema = t.Object({
   markdown: t.String({ minLength: 1 }),
   participantNames: t.Array(t.String()),
   backlinks: t.Array(KnowledgePageSummarySchema),
+  assets: t.Array(AssetSummarySchema),
 });
 
 export const RecordFilterOptionsSchema = t.Object({
@@ -81,5 +86,6 @@ export function recordResponse(record: RecordResource) {
     markdown: record.markdown,
     participantNames: recordParticipantNames(record.record),
     backlinks: record.backlinks.map(pageSummaryResponse),
+    assets: record.assets.map(assetSummaryResponse),
   };
 }

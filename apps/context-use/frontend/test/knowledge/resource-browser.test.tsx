@@ -51,6 +51,7 @@ async function renderResourceBrowser(path = '/pages') {
     sync: { readableId: 'research-sync', name: 'Research sync' },
     createdAt: timestamp,
     updatedAt: timestamp,
+    assets: [],
     markdown: 'Research source content.',
     participantNames: [],
     backlinks: [],
