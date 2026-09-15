@@ -10,6 +10,8 @@ export type RecordSync = {
   revokedAt: string | null;
 };
 
+export type RecordSyncReference = Pick<RecordSync, 'readableId' | 'name'>;
+
 export type RecordSyncPrincipal = {
   syncId: string;
   ownerId: string;

@@ -115,6 +115,9 @@ export function createAssetTransferController({
             },
           });
         }
+        if (result.state !== 'invalid') {
+          throw new Error('Unexpected user asset creation result');
+        }
         return status(
           StatusMap['Bad Request'],
           transferError({ code: 'invalid_asset', message: result.message }),

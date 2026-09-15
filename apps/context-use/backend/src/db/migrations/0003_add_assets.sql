@@ -23,7 +23,7 @@ create table "asset" (
   check (length(trim("name")) between 1 and 160),
   check (length(trim("media_type")) between 1 and 160),
   check ("extension" is null or "extension" not glob '*[^a-z0-9]*'),
-  check ("size_bytes" between 1 and 104857600),
+  check ("size_bytes" between 0 and 104857600),
   check ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64)
 );
 

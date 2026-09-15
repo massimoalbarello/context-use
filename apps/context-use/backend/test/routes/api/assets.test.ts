@@ -146,6 +146,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expectNoInternalResourceIds(await uploadResponse.clone().json());
     expect(await uploadResponse.json()).toEqual(
       expect.objectContaining({
+        origin: 'upload',
+        sync: null,
         readableId: 'quarterly-chart',
         name: 'Quarterly chart',
         mediaType: 'image/png',

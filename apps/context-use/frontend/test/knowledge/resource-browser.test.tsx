@@ -28,6 +28,8 @@ async function renderResourceBrowser(path = '/pages') {
     pages: [],
   };
   const asset: Asset = {
+    origin: 'upload',
+    sync: null,
     readableId: 'chart',
     name: 'Launch chart',
     mediaType: 'image/png',

@@ -7,6 +7,7 @@ import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { ExternalRecordMarkdown } from '../records/external-record-markdown';
 import { RecordTimestamp } from '../records/record-timestamp';
+import { SyncAttribution } from '../syncs/sync-attribution';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
@@ -48,10 +49,7 @@ export function RecordDetail({
   return (
     <DetailShell className="gap-0">
       <DetailHeader>
-        <ResourceDetailHeading
-          actions={null}
-          context={<Badge variant="secondary">Synced by {record.sync.name}</Badge>}
-        >
+        <ResourceDetailHeading actions={null} context={<SyncAttribution sync={record.sync} />}>
           Record
         </ResourceDetailHeading>
       </DetailHeader>

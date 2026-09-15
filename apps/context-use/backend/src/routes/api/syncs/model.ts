@@ -10,6 +10,8 @@ export const RecordSyncSchema = t.Object({
   revokedAt: t.Nullable(t.String()),
 });
 
+export const RecordSyncReferenceSchema = t.Pick(RecordSyncSchema, ['readableId', 'name']);
+
 export const RecordSyncListSchema = t.Object({ items: t.Array(RecordSyncSchema) });
 
 export const CreateRecordSyncBodySchema = t.Object({

@@ -13,6 +13,7 @@ import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { type Asset, MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
+import { RecordSyncsRepository } from '#backend/repositories/syncs/repository.ts';
 import {
   AssetTransferCapabilities,
   MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
@@ -22,6 +23,7 @@ import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
+import { RecordSyncsService } from '#backend/services/syncs/service.ts';
 import { unusedAssetFacesService } from '../../../support/app.ts';
 import {
   unusedHypermediaRetrievalService,
@@ -229,6 +231,8 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       expectNoInternalResourceIds(created);
       expect(created).toEqual(
         expect.objectContaining({
+          origin: 'upload',
+          sync: null,
           address: 'context-use://asset/quarterly-chart',
           readableId: 'quarterly-chart',
           name: 'Quarterly chart',
@@ -392,6 +396,8 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
 
 test('raw upload endpoints enforce required headers and byte limits before one AssetsService call', async () => {
   const createdAsset: Asset = {
+    origin: 'upload',
+    sync: null,
     depicts: [],
     id: 'internal-asset-id',
     readableId: 'bounded-upload',
@@ -405,6 +411,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   };
   let createCalls = 0;
   const assetsService: AssetsServiceContract = {
+    findImport: unexpectedCall,
     faces: unusedAssetFacesService,
     create: async (input) => {
       createCalls += 1;
@@ -531,6 +538,8 @@ test('raw upload endpoints enforce required headers and byte limits before one A
 
 test('asset updates return no echoed state and archive blockers expose only public usage coordinates', async () => {
   const asset: Asset = {
+    origin: 'upload',
+    sync: null,
     depicts: [],
     id: 'internal-asset-id',
     readableId: 'quarterly-chart',
@@ -570,6 +579,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
   };
   let archiveCalls = 0;
   const assetsService: AssetsServiceContract = {
+    findImport: unexpectedCall,
     faces: unusedAssetFacesService,
     create: unexpectedCall,
     list: unexpectedCall,
@@ -651,4 +661,43 @@ test('asset updates return no echoed state and archive blockers expose only publ
     await client.close();
     await server.close();
   }
+});
+
+test('MCP asset details expose the same public sync attribution as the asset service', async () => {
+  await withAssetMcp({
+    run: async ({ assetsService, client, database }) => {
+      const syncs = new RecordSyncsService({ syncs: new RecordSyncsRepository(database) });
+      const created = await syncs.create({ actorId: OWNER_USER_ID, name: 'Mail' });
+      if (created.state !== 'created') {
+        throw new Error('Expected a sync');
+      }
+      const syncPrincipal = await syncs.authenticate({ apiKey: created.apiKey });
+      if (!syncPrincipal) {
+        throw new Error('Expected authentication');
+      }
+      const asset = await assetsService.create({
+        ownerId: OWNER_USER_ID,
+        name: 'Mail attachment',
+        file: new Blob([PNG_BYTES]),
+        sync: {
+          syncId: syncPrincipal.syncId,
+          key: 'attachment',
+          sha256: new Bun.CryptoHasher('sha256').update(PNG_BYTES).digest('hex'),
+        },
+      });
+      if (asset.state !== 'created') {
+        throw new Error('Expected an asset');
+      }
+      const result = await client.callTool({
+        name: 'read_asset',
+        arguments: { address: `context-use://asset/${asset.asset.readableId}` },
+      });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        origin: 'sync',
+        sync: { readableId: created.sync.readableId, name: 'Mail' },
+      });
+      expectNoInternalResourceIds(result.structuredContent);
+    },
+  });
 });

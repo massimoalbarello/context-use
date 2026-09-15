@@ -1,4 +1,5 @@
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
+import type { RecordSyncReference } from '#backend/models/syncs/model.ts';
 import type { DeliveredRecord } from './delivery-contract.generated.ts';
 
 export type RecordSummary = {
@@ -9,7 +10,7 @@ export type RecordSummary = {
   sourceUpdatedAt: string | null;
   kind: string;
   recordId: string;
-  sync: { readableId: string; name: string };
+  sync: RecordSyncReference;
   createdAt: string;
   updatedAt: string;
 };

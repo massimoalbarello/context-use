@@ -567,7 +567,7 @@ test('partial writes and SQL failures remove every unpublished file, then the ex
       }
       const storage = new PartialStorage(join(dataFolder, 'objects'));
       const records = service({ sql: database, storage });
-      for (const error of ['disk write failed', 'Record file was not fully written']) {
+      for (const error of ['disk write failed', 'File was not fully written']) {
         await expect(records.accept(batch)).rejects.toThrow(error);
         expect(await recordCount(database)).toBe(0);
         expect(await fileKeys(dataFolder)).toEqual([]);
@@ -687,9 +687,7 @@ test('cleanup failure is reported without deleting published revisions, and an e
       const first = activeRecord({ eventId: 'first' });
       const latest = activeRecord({ eventId: 'latest', revision: CURRENT_REVISION });
       const batch = input([first, latest]);
-      await expect(records.accept(batch)).rejects.toThrow(
-        'Could not remove unpublished record files',
-      );
+      await expect(records.accept(batch)).rejects.toThrow('Could not remove unpublished files');
       const published = await storedReference(database);
       expect(
         (await records.findResource({ ownerId: OWNER_ID, readableId: published.readableId }))

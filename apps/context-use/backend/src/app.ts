@@ -4,11 +4,9 @@ import { type Auth, sessionSecuritySchemes } from '#backend/lib/auth/better-auth
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import type { McpTransportContract } from '#backend/lib/mcp/transport.ts';
 import { createRequestResponsePlugin } from '#backend/lib/request-response.ts';
+import { createAssetImportsController } from '#backend/routes/api/assets/imports/controller.ts';
 import { createApiController } from '#backend/routes/api/controller.ts';
-import {
-  createRecordDeliveryController,
-  recordSyncSecuritySchemes,
-} from '#backend/routes/api/records/delivery-controller.ts';
+import { createRecordDeliveryController } from '#backend/routes/api/records/delivery-controller.ts';
 import { createAuthDiscoveryController } from '#backend/routes/auth-discovery/controller.ts';
 import {
   createFrontendAssetsController,
@@ -17,6 +15,7 @@ import {
 import type { AssetTransferCapabilitiesContract } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#backend/routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#backend/routes/mcp/controller.ts';
+import { recordSyncSecuritySchemes } from '#backend/routes/sync-auth.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
@@ -173,6 +172,7 @@ export function createApp({
       }),
     )
     .use(createRecordDeliveryController({ recordsService, syncsService }))
+    .use(createAssetImportsController({ assetsService, syncsService }))
     .onStop(() => mcpTransport.close())
     .use(createFrontendFallbackController({ frontendAssetsService }));
 }

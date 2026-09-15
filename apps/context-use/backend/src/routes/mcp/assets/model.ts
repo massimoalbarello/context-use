@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import type { Asset, AssetSummary, AssetUsage } from '#backend/models/assets/model.ts';
-import { MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
+import { ASSET_ORIGINS, MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
 import { assetAddress } from '#backend/models/readable-ids/addresses.ts';
+import { MAX_SYNC_NAME_LENGTH } from '#backend/models/syncs/model.ts';
 import { AssetAddressSchema, McpReadableIdSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
   McpEntityReferenceSchema,
@@ -18,7 +19,7 @@ export const McpAssetSummarySchema = z.object({
   name: z.string(),
   mediaType: z.string(),
   extension: z.string().nullable(),
-  sizeBytes: z.number().int().min(1).max(MAX_ASSET_BYTES),
+  sizeBytes: z.number().int().min(0).max(MAX_ASSET_BYTES),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -36,6 +37,13 @@ const McpAssetUsageSchema = z.union([
 ]);
 
 export const McpAssetSchema = McpAssetSummarySchema.extend({
+  origin: z.enum(ASSET_ORIGINS),
+  sync: z
+    .object({
+      readableId: McpReadableIdSchema,
+      name: z.string().min(1).max(MAX_SYNC_NAME_LENGTH),
+    })
+    .nullable(),
   usages: z.array(McpAssetUsageSchema),
   depicts: z.array(
     z.object({ entity: McpEntityReferenceSchema, source: z.enum(['detected', 'confirmed']) }),
@@ -76,6 +84,8 @@ export function mcpAssetUsage(usage: AssetUsage) {
 export function mcpAsset(asset: Asset) {
   return {
     ...mcpAssetSummary(asset),
+    origin: asset.origin,
+    sync: asset.sync,
     usages: asset.usages.map(mcpAssetUsage),
     depicts: asset.depicts.map(({ entity, source }) => ({
       entity: mcpEntityReference(entity),

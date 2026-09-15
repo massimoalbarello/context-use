@@ -1,5 +1,6 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import { SerialQueue } from '#backend/lib/serial-queue.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import type { DeliveredRecord } from '#backend/models/records/delivery-contract.generated.ts';
 import type {
@@ -13,6 +14,7 @@ import type {
 import { recordSearchText } from '#backend/models/records/search.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { replaceSearchDocument } from '../search-index.ts';
+import { isActiveSync } from '../sync-acceptance.ts';
 
 class RecordAcceptanceConflict extends Error {
   constructor() {
@@ -170,13 +172,7 @@ async function acceptDelivery({
   input: AcceptRecordsInput;
 }): Promise<RecordPublication> {
   const storageKeys = new Set<string>();
-  const syncs = await db.FindActiveRecordSyncForAcceptance`
-    /* @notNull id ownerId */
-    select "id", "owner_id" as "ownerId"
-    from "record_sync"
-    where "id" = ${input.syncId} and "owner_id" = ${input.ownerId} and "revoked_at" is null
-  `;
-  if (!syncs[0]) {
+  if (!(await isActiveSync({ db, syncId: input.syncId, ownerId: input.ownerId }))) {
     return { result: { state: 'inactive_sync' }, storageKeys };
   }
 
@@ -188,7 +184,7 @@ async function acceptDelivery({
 
 export class RecordsRepository implements RecordsRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
-  private operationTail: Promise<void> = Promise.resolve();
+  private readonly operations = new SerialQueue();
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
@@ -196,7 +192,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
 
   async accept(input: AcceptRecordsInput): Promise<RecordPublication> {
     try {
-      return await this.serialize(() =>
+      return await this.operations.run(() =>
         this.sql.begin('immediate', (db) => acceptDelivery({ db, input })),
       );
     } catch (error) {
@@ -220,7 +216,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
     sortBy = 'sourceUpdatedAt',
     sortDirection = 'desc',
   }: ListRecordsInput): Promise<RecordPage> {
-    return await this.serialize(async () => {
+    return await this.operations.run(async () => {
       const rows = await this.sql.ListRecordResources`
         /* @notNull readableId title provider kind recordId syncReadableId syncName createdAt updatedAt */
         select record."readable_id" as "readableId", record."title", record."provider", record."kind",
@@ -257,7 +253,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
   }
 
   filterOptions({ ownerId }: { ownerId: string }): Promise<RecordFilterOptions> {
-    return this.serialize(() => this.readFilterOptions(ownerId));
+    return this.operations.run(() => this.readFilterOptions(ownerId));
   }
 
   private async readFilterOptions(ownerId: string): Promise<RecordFilterOptions> {
@@ -279,7 +275,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
     ownerId: string;
     readableId: string;
   }): Promise<(StoredRecord & { backlinks: KnowledgePageSummary[] }) | null> {
-    return await this.serialize(async () => {
+    return await this.operations.run(async () => {
       const rows = await this.sql.FindRecordResource`
         /* @notNull title provider syncReadableId syncName readableId kind recordId storageKey contentHash sizeBytes createdAt updatedAt */
         select record."title", record."provider", record."source_created_at" as "sourceCreatedAt",
@@ -331,14 +327,5 @@ export class RecordsRepository implements RecordsRepositoryContract {
       order by revision."title", page."readable_id"
     `;
     return rows.map((row) => ({ ...row, revisionNumber: Number(row.revisionNumber) }));
-  }
-
-  private serialize<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.operationTail.then(operation);
-    this.operationTail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
   }
 }
