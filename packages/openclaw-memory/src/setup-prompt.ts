@@ -16,7 +16,7 @@ export function openclawSetupPrompt(serverUrl: string): string {
 Check openclaw --version first (requires ${OPENCLAW_REQUIREMENT}), then run:
 ${openclawConnectCommand(serverUrl)}
 
-Follow the plugin's instructions: give me the authorization URL and ask me to return the final localhost redirect URL. When I send it back, finish connecting and delete any temporary files. Let the plugin manage configuration and gateway refresh.
+Follow the plugin's instructions: give me the authorization URL and ask me to return the final localhost redirect URL. When I send it back, finish connecting. Let the plugin manage configuration and gateway refresh.
 
 Verify openclaw context-use status and call context_use_search_hypermedia in the next agent turn before reporting success.`;
 }
