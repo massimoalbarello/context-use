@@ -93,6 +93,7 @@ const principal: McpClientAuthorizationPrincipal = {
 
 const unusedAssetsService: AssetsServiceContract = {
   faces: unusedAssetFacesService,
+  findImport: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,

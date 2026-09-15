@@ -1,6 +1,10 @@
 import { t } from 'elysia';
 import type { Asset, AssetUsage } from '#backend/models/assets/model.ts';
-import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
+import {
+  ASSET_ORIGINS,
+  MAX_ASSET_BYTES,
+  MAX_ASSET_NAME_LENGTH,
+} from '#backend/models/assets/model.ts';
 import {
   AssetSummarySchema,
   assetSummaryResponse,
@@ -18,6 +22,7 @@ import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
+import { RecordSyncReferenceSchema } from '#backend/routes/api/syncs/model.ts';
 
 export const KnowledgePageAssetUsageSchema = t.Object({
   kind: t.Literal('page'),
@@ -41,6 +46,8 @@ export const AssetResourceInUseResponseSchema = t.Object({
 });
 
 export const AssetSchema = t.Object({
+  origin: t.UnionEnum(ASSET_ORIGINS),
+  sync: t.Nullable(RecordSyncReferenceSchema),
   ...AssetSummarySchema.properties,
   usages: t.Array(AssetUsageSchema),
   depicts: t.Array(
@@ -90,6 +97,8 @@ export function assetUsageResponse(usage: AssetUsage) {
 export function assetResponse(asset: Asset) {
   return {
     ...assetSummaryResponse(asset),
+    origin: asset.origin,
+    sync: asset.sync,
     usages: asset.usages.map(assetUsageResponse),
     depicts: asset.depicts.map(({ entity, source }) => ({
       entity: entityReferenceResponse(entity),

@@ -1,16 +1,28 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#backend/lib/pagination.ts';
+import { SerialQueue } from '#backend/lib/serial-queue.ts';
+import type { ImportedAsset } from '#backend/models/assets/import.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#backend/models/assets/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
 import { replaceSearchDocument } from '../search-index.ts';
+import { type AssetImportIdentity, checkAssetImport, findAssetImport } from './imports.ts';
+
+export interface CreateAssetInput {
+  asset: Omit<StoredAsset, 'origin'>;
+  sync?: { syncId: string; key: string };
+}
+
+export type AssetPublication =
+  | { state: 'created'; asset: StoredAsset }
+  | { state: 'existing'; asset: ImportedAsset }
+  | { state: 'readable_id_conflict' | 'sync_conflict' | 'inactive_sync' };
 
 export interface AssetsRepositoryContract {
-  create(
-    input: StoredAsset,
-  ): Promise<{ state: 'created'; asset: StoredAsset } | { state: 'readable_id_conflict' }>;
+  create(input: CreateAssetInput): Promise<AssetPublication>;
+  findImport(input: AssetImportIdentity): Promise<ImportedAsset | null>;
   list(input: {
     ownerId: string;
     limit: number;
@@ -50,41 +62,68 @@ function assetSummaryFrom(row: AssetSummaryRow): AssetSummary {
 
 export class AssetsRepository implements AssetsRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
+  private readonly operations = new SerialQueue();
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
   }
 
-  create(input: StoredAsset) {
-    return this.sql.begin(async (db) => {
-      const rows = await db.CreateAsset`
-        /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
+  findImport(input: AssetImportIdentity): Promise<ImportedAsset | null> {
+    return this.operations.run(() => findAssetImport({ db: this.sql, input }));
+  }
+
+  create({ asset: input, sync }: CreateAssetInput): Promise<AssetPublication> {
+    const origin = sync ? 'sync' : 'upload';
+    return this.operations.run(() =>
+      this.sql.begin('immediate', async (db) => {
+        if (sync) {
+          const identity = { ownerId: input.ownerId, ...sync };
+          const acceptance = await checkAssetImport({
+            db,
+            input: identity,
+            contentHash: input.contentHash,
+            sizeBytes: input.sizeBytes,
+          });
+          if (acceptance) {
+            return acceptance;
+          }
+        }
+        const rows = await db.CreateAsset`
+        /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt origin */
+        /* @type origin 'upload' | 'sync' */
         insert into "asset"
           ("id", "owner_id", "readable_id", "name", "media_type", "extension", "size_bytes",
-           "content_hash", "storage_key", "created_at", "updated_at")
+           "content_hash", "storage_key", "created_at", "updated_at", "origin")
         values
           (${input.id}, ${input.ownerId}, ${input.readableId}, ${input.name}, ${input.mediaType},
            ${input.extension}, ${input.sizeBytes}, ${input.contentHash}, ${input.storageKey},
-           ${input.createdAt}, ${input.updatedAt})
+           ${input.createdAt}, ${input.updatedAt}, ${origin})
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
           "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
-          "storage_key" as "storageKey", "content_hash" as "contentHash",
+          "storage_key" as "storageKey", "content_hash" as "contentHash", "origin",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;
-      if (!rows[0]) {
-        return { state: 'readable_id_conflict' } as const;
-      }
-      await replaceSearchDocument({
-        db,
-        ownerId: input.ownerId,
-        resourceType: 'asset',
-        readableId: input.readableId,
-        label: input.name,
-        metadata: [input.mediaType, input.extension].filter(Boolean).join(' '),
-      });
-      return { state: 'created' as const, asset: storedAssetFrom(rows[0]) };
-    });
+        if (!rows[0]) {
+          return { state: 'readable_id_conflict' } as const;
+        }
+        if (sync) {
+          await db.InsertAssetImport`
+          insert into "asset_import" ("owner_id", "sync_id", "import_key", "asset_id")
+          values (${input.ownerId}, ${sync.syncId}, ${sync.key}, ${input.id})
+        `;
+        }
+        await replaceSearchDocument({
+          db,
+          ownerId: input.ownerId,
+          resourceType: 'asset',
+          readableId: input.readableId,
+          label: input.name,
+          metadata: [input.mediaType, input.extension].filter(Boolean).join(' '),
+        });
+        return { state: 'created' as const, asset: storedAssetFrom(rows[0]) };
+      }),
+    );
   }
 
   async list({
@@ -98,8 +137,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
     offset: number;
     kind?: 'entity_image';
   }) {
-    const normalizedKind = kind ?? null;
-    const rowsPromise = this.sql.ListAssets`
+    return await this.operations.run(async () => {
+      const normalizedKind = kind ?? null;
+      const rowsPromise = this.sql.ListAssets`
       /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
       select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
         "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
@@ -116,7 +156,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
         ))
       order by "updated_at" desc, "id" desc limit ${limit} offset ${offset}
     `;
-    const countsPromise = this.sql.CountAssets`
+      const countsPromise = this.sql.CountAssets`
       /* @notNull total */
       select count(*) as "total" from "asset"
       where "owner_id" = ${ownerId} and "archived_at" is null
@@ -129,20 +169,26 @@ export class AssetsRepository implements AssetsRepositoryContract {
           )
         ))
     `;
-    const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
-    return pageFrom({
-      items: rows.map(assetSummaryFrom),
-      total: Number(counts[0]?.total ?? 0),
-      offset,
+      const [rows, counts] = await Promise.all([rowsPromise, countsPromise]);
+      return pageFrom({
+        items: rows.map(assetSummaryFrom),
+        total: Number(counts[0]?.total ?? 0),
+        offset,
+      });
     });
   }
 
-  async find({ ownerId, readableId }: { ownerId: string; readableId: string }) {
+  find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null> {
+    return this.operations.run(() => this.findAsset(input));
+  }
+
+  private async findAsset({ ownerId, readableId }: { ownerId: string; readableId: string }) {
     const rows = await this.sql.FindAsset`
-      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
+      /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt origin */
+        /* @type origin 'upload' | 'sync' */
       select "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
         "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
-        "storage_key" as "storageKey", "content_hash" as "contentHash",
+        "storage_key" as "storageKey", "content_hash" as "contentHash", "origin",
         "created_at" as "createdAt", "updated_at" as "updatedAt"
       from "asset"
       where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
@@ -160,56 +206,43 @@ export class AssetsRepository implements AssetsRepositoryContract {
     readableId: string;
     usageLimit?: number;
   }): Promise<Asset | null> {
-    const asset = await this.find({ ownerId, readableId });
-    if (!asset) {
-      return null;
-    }
-    return {
-      ...this.summary(asset),
-      depicts: await this.depicts({ db: this.sql, ownerId, assetId: asset.id }),
-      usages: await this.listActiveUsages({
-        db: this.sql,
-        ownerId,
-        assetId: asset.id,
-        limit: usageLimit,
-      }),
-    };
+    return await this.operations.run(async () => {
+      const asset = await this.findAsset({ ownerId, readableId });
+      if (!asset) {
+        return null;
+      }
+      return this.assetDetail({ db: this.sql, asset, usageLimit });
+    });
   }
 
   updateName(input: { ownerId: string; readableId: string; name: string; updatedAt: string }) {
-    return this.sql.begin(async (db) => {
-      const rows = await db.UpdateAssetName`
-        /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
+    return this.operations.run(() =>
+      this.sql.begin('immediate', async (db) => {
+        const rows = await db.UpdateAssetName`
+        /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt origin */
+        /* @type origin 'upload' | 'sync' */
         update "asset" set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
           and "archived_at" is null
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
           "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
-          "storage_key" as "storageKey", "content_hash" as "contentHash",
+          "storage_key" as "storageKey", "content_hash" as "contentHash", "origin",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;
-      if (!rows[0]) {
-        return null;
-      }
-      await replaceSearchDocument({
-        db,
-        ownerId: input.ownerId,
-        resourceType: 'asset',
-        readableId: input.readableId,
-        label: input.name,
-        metadata: [rows[0].mediaType, rows[0].extension].filter(Boolean).join(' '),
-      });
-      const asset = storedAssetFrom(rows[0]);
-      return {
-        ...this.summary(asset),
-        depicts: await this.depicts({ db, ownerId: input.ownerId, assetId: asset.id }),
-        usages: await this.listActiveUsages({
+        if (!rows[0]) {
+          return null;
+        }
+        await replaceSearchDocument({
           db,
           ownerId: input.ownerId,
-          assetId: asset.id,
-        }),
-      };
-    });
+          resourceType: 'asset',
+          readableId: input.readableId,
+          label: input.name,
+          metadata: [rows[0].mediaType, rows[0].extension].filter(Boolean).join(' '),
+        });
+        return this.assetDetail({ db, asset: storedAssetFrom(rows[0]) });
+      }),
+    );
   }
 
   archive(input: {
@@ -217,38 +250,74 @@ export class AssetsRepository implements AssetsRepositoryContract {
     readableId: string;
     archivedAt: string;
   }): Promise<ArchiveResult<AssetUsage>> {
-    return this.sql.begin(async (db) => {
-      const targets = await db.FindAssetArchiveTarget`
+    return this.operations.run(() =>
+      this.sql.begin('immediate', async (db) => {
+        const targets = await db.FindAssetArchiveTarget`
         /* @notNull id */
         select "id", "archived_at" as "archivedAt" from "asset"
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
       `;
-      const target = targets[0];
-      if (!target) {
-        return { state: 'not_found' } as const;
-      }
-      if (target.archivedAt) {
-        return { state: 'archived' } as const;
-      }
-      const blockers = await this.listActiveUsages({
-        db,
-        ownerId: input.ownerId,
-        assetId: target.id,
-      });
-      if (blockers.length > 0) {
-        return { state: 'resource_in_use' as const, blockers };
-      }
-      await db`
+        const target = targets[0];
+        if (!target) {
+          return { state: 'not_found' } as const;
+        }
+        if (target.archivedAt) {
+          return { state: 'archived' } as const;
+        }
+        const blockers = await this.listActiveUsages({
+          db,
+          ownerId: input.ownerId,
+          assetId: target.id,
+        });
+        if (blockers.length > 0) {
+          return { state: 'resource_in_use' as const, blockers };
+        }
+        await db`
         update "asset" set "archived_at" = ${input.archivedAt}
         where "owner_id" = ${input.ownerId} and "id" = ${target.id}
       `;
-      await db.RemoveAssetSearchDocument`
+        await db.RemoveAssetSearchDocument`
         delete from "hypermedia_search_document"
         where "owner_id" = ${input.ownerId} and "resource_type" = 'asset'
           and "readable_id" = ${input.readableId}
       `;
-      return { state: 'archived' } as const;
-    });
+        return { state: 'archived' } as const;
+      }),
+    );
+  }
+
+  private async assetDetail({
+    db,
+    asset,
+    usageLimit,
+  }: {
+    db: TypedSQL<Queries>;
+    asset: StoredAsset;
+    usageLimit?: number;
+  }): Promise<Asset> {
+    const syncs =
+      asset.origin === 'sync'
+        ? await db.FindAssetSync`
+      /* @notNull readableId name */
+      select sync."readable_id" as "readableId", sync."name"
+      from "asset_import" source
+      join "record_sync" sync on sync."id" = source."sync_id"
+        and sync."owner_id" = source."owner_id"
+      where source."owner_id" = ${asset.ownerId} and source."asset_id" = ${asset.id}
+    `
+        : [];
+    return {
+      ...this.summary(asset),
+      origin: asset.origin,
+      sync: syncs[0] ?? null,
+      depicts: await this.depicts({ db, ownerId: asset.ownerId, assetId: asset.id }),
+      usages: await this.listActiveUsages({
+        db,
+        ownerId: asset.ownerId,
+        assetId: asset.id,
+        limit: usageLimit,
+      }),
+    };
   }
 
   private async depicts({
@@ -287,6 +356,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
 
   private summary(asset: StoredAsset): AssetSummary {
     const {
+      origin: _origin,
       ownerId: _ownerId,
       storageKey: _storageKey,
       contentHash: _contentHash,

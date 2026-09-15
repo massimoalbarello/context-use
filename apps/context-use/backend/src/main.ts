@@ -69,6 +69,7 @@ if (authSecret.source.kind === 'environment') {
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
 let recordsDatabase: SQL | undefined;
+let assetsDatabase: SQL | undefined;
 let retrievalDatabase: SQL | undefined;
 let facesDatabase: Database | undefined;
 const faceAnalyzer = new LocalFaceAnalyzer({ dataFolder: env.DATA_FOLDER });
@@ -87,7 +88,8 @@ try {
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
   });
-  const assetsRepository = new AssetsRepository(database);
+  assetsDatabase = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+  const assetsRepository = new AssetsRepository(assetsDatabase);
   facesDatabase = createSynchronousSqliteDatabase({ dataFolder: env.DATA_FOLDER });
   const entitiesRepository = new EntitiesRepository(database);
   const facesService = new AssetFacesService({
@@ -177,6 +179,7 @@ try {
       database.close(),
       recordsDatabase?.close(),
       retrievalDatabase?.close(),
+      assetsDatabase?.close(),
       facesDatabase?.close(),
     ]);
   });
@@ -196,6 +199,7 @@ try {
     database.close(),
     recordsDatabase?.close(),
     retrievalDatabase?.close(),
+    assetsDatabase?.close(),
     facesDatabase?.close(),
   ]);
   throw error;

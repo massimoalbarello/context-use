@@ -5,17 +5,12 @@ import {
   type RecordSummary,
   recordParticipantNames,
 } from '#backend/models/records/model.ts';
-import { MAX_SYNC_NAME_LENGTH } from '#backend/models/syncs/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
-
-export const RecordSyncReferenceSchema = t.Object({
-  readableId: ReadableIdSchema,
-  name: t.String({ minLength: 1, maxLength: MAX_SYNC_NAME_LENGTH }),
-});
+import { RecordSyncReferenceSchema } from '#backend/routes/api/syncs/model.ts';
 
 export const RecordSummarySchema = t.Object({
   readableId: ReadableIdSchema,

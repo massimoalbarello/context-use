@@ -17,6 +17,7 @@ import { ResourceList } from '../knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { SyncAttribution } from '../syncs/sync-attribution';
 import { Badge } from '../ui/badge';
 import { FieldError } from '../ui/field';
 import { AssetFileActions } from './asset-file-actions';
@@ -142,6 +143,7 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
     <DetailShell>
       <DetailHeader>
         <ResourceDetailHeading
+          context={asset.origin === 'sync' ? <SyncAttribution sync={asset.sync} /> : null}
           actions={
             editing ? (
               <ResourceDetailActions

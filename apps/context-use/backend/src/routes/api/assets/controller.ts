@@ -26,7 +26,12 @@ export function createAssetsController({
     .post(
       '/assets',
       async ({ body, user, status }) => {
-        const result = await assetsService.create({ ownerId: user.id, ...body });
+        const result = await assetsService.create({
+          ownerId: user.id,
+          name: body.name,
+          file: body.file,
+          allowDuplicate: body.allowDuplicate,
+        });
         if (result.state === 'created') {
           return status(StatusMap.Created, assetResponse(result.asset));
         }
@@ -36,6 +41,9 @@ export function createAssetsController({
               'An asset with this name already exists. Use a more specific name or keep this name anyway.',
             nameConflict: true as const,
           });
+        }
+        if (result.state !== 'invalid') {
+          throw new Error('Unexpected user asset creation result');
         }
         return status(StatusMap['Bad Request'], { error: result.message });
       },

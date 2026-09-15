@@ -3,10 +3,8 @@ import { StatusMap } from 'elysia';
 import { createApp } from '#backend/app.ts';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#backend/models/records/delivery-contract.generated.ts';
-import {
-  RECORD_DELIVERY_ROUTE_PATH,
-  RECORD_SYNC_SECURITY_SCHEME,
-} from '#backend/routes/api/records/delivery-controller.ts';
+import { RECORD_DELIVERY_ROUTE_PATH } from '#backend/routes/api/records/delivery-controller.ts';
+import { RECORD_SYNC_SECURITY_SCHEME } from '#backend/routes/sync-auth.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
@@ -44,6 +42,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   };
   const assetsService: AssetsServiceContract = {
     faces: unusedAssetFacesService,
+    findImport: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
     detail: unexpectedCall,

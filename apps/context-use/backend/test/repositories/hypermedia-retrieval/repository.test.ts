@@ -186,17 +186,19 @@ async function createAsset({
   name: string;
 }): Promise<void> {
   const result = await assets.create({
-    id: `asset-${readableId}`,
-    ownerId: OWNER_A,
-    readableId,
-    name,
-    mediaType: 'text/plain',
-    extension: 'txt',
-    sizeBytes: 1,
-    storageKey: `${OWNER_A}/assets/${readableId}`,
-    contentHash: 'a'.repeat(SHA256_HEX_LENGTH),
-    createdAt: NOW,
-    updatedAt: NOW,
+    asset: {
+      id: `asset-${readableId}`,
+      ownerId: OWNER_A,
+      readableId,
+      name,
+      mediaType: 'text/plain',
+      extension: 'txt',
+      sizeBytes: 1,
+      storageKey: `${OWNER_A}/assets/${readableId}`,
+      contentHash: 'a'.repeat(SHA256_HEX_LENGTH),
+      createdAt: NOW,
+      updatedAt: NOW,
+    },
   });
   expect(result.state).toBe('created');
 }

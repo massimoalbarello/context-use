@@ -52,6 +52,7 @@ const entitiesService: EntitiesServiceContract = {
 
 const assetsService: AssetsServiceContract = {
   faces: unusedAssetFacesService,
+  findImport: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,
