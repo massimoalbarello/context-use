@@ -7,13 +7,10 @@ import {
   mutateConfigFile,
   readConfigFileSnapshotForWrite,
 } from 'openclaw/plugin-sdk/config-mutation';
-import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from 'openclaw/plugin-sdk/health';
-import { resolveStateDir } from 'openclaw/plugin-sdk/state-paths';
 import { discoverTools, withClient } from './client';
 import {
   assertPersonalConfiguration,
   prepareConfiguration,
-  removeToolGrants,
   restoreConfiguration,
 } from './configuration';
 import { PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
@@ -21,24 +18,9 @@ import { ConnectionError } from './error';
 import { authorizationResponse, oauthProvider } from './oauth';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
-import { retireWorkspace } from './workspace';
-
-async function retireConfiguredWorkspace(agentId?: string): Promise<string> {
-  const { snapshot } = await readConfigFileSnapshotForWrite();
-  const selected = agentId ?? resolveDefaultAgentId(snapshot.config);
-  const backup = await retireWorkspace({
-    workspace: resolveAgentWorkspaceDir(snapshot.config, selected),
-    backups: join(resolveStateDir(), 'backups', 'context-use-workspace'),
-  });
-  if (backup) {
-    console.log(`Retired obsolete memory instructions. Recovery backup: ${backup}`);
-  }
-  return selected;
-}
 
 async function activate(input: { directory: string; state: ConnectionState }): Promise<void> {
   input.state.tools = await withClient({ ...input, run: discoverTools });
-  await retireConfiguredWorkspace(input.state.config.agentId);
   await mutateConfigFile({
     mutate: async (config) => {
       prepareConfiguration({ config, state: input.state });
@@ -128,9 +110,7 @@ export async function finishAuthorization(input: {
   });
 }
 
-export async function disconnect(
-  directory: string,
-): Promise<{ preserved: string[]; agentId: string }> {
+export async function disconnect(directory: string): Promise<{ preserved: string[] }> {
   return await withConnection({
     directory,
     run: async () => {
@@ -149,12 +129,10 @@ export async function disconnect(
           if (state) {
             preserved = restoreConfiguration({ config, state });
           }
-          removeToolGrants(config);
         },
       });
-      const agentId = await retireConfiguredWorkspace(state?.config.agentId);
       await rm(join(directory, 'connection.json'), { force: true });
-      return { preserved, agentId };
+      return { preserved };
     },
   });
 }

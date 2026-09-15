@@ -2,7 +2,28 @@ import { expect, test } from 'bun:test';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readState, withConnection, writeState } from '../src/state';
+import { readState, readStateSync, withConnection, writeState } from '../src/state';
+
+test('rejects incomplete saved state instead of filling in missing fields', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'context-use-state-test-'));
+  const state = {
+    config: { serverUrl: 'https://memory.example/mcp', agentId: 'main' },
+    changes: [],
+    tools: [],
+    oauth: {},
+  };
+  try {
+    for (const field of ['changes', 'tools', 'oauth'] as const) {
+      const incomplete: Partial<typeof state> = { ...state };
+      delete incomplete[field];
+      await writeFile(join(directory, 'connection.json'), JSON.stringify(incomplete));
+      await expect(readState(directory)).rejects.toThrow('connection state is unreadable');
+      expect(() => readStateSync(directory)).toThrow('connection state is unreadable');
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test('serializes rotating credentials and stores them privately', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'context-use-state-test-'));

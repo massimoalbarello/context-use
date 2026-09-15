@@ -7,8 +7,7 @@ export async function uninstall(): Promise<void> {
   if (await installedPlugin()) {
     console.log(await openclaw(['plugins', 'uninstall', PLUGIN_ID, '--force']));
   }
-  // Native uninstall may retain an enabled:false entry. It belongs to the
-  // removed plugin, and must not make the next install look already complete.
+  // OpenClaw retains an enabled:false entry on uninstall. Remove our entry too.
   await mutateConfigFile({
     writeOptions: { allowConfigSizeDrop: true },
     mutate: (config) => {

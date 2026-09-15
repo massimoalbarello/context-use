@@ -3,10 +3,10 @@ import { text } from 'node:stream/consumers';
 import { connect, disconnect, finishAuthorization, status } from './connection';
 import { PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
-import { refreshLocalMemory, verifyRuntime } from './host';
+import { refreshGateway } from './gateway';
+import { verifyRuntime } from './host';
 import { checkHost } from './host-command';
 import { uninstall } from './install';
-import { refreshGateway, runRecoveryCommand } from './recovery';
 import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
 import { connectionDirectory } from './state';
 import { SETUP_USAGE } from './usage';
@@ -18,11 +18,11 @@ async function main(args: string[]): Promise<void> {
     return;
   }
   await checkHost();
-  if (await runRecoveryCommand(args)) {
-    return;
-  }
   const directory = connectionDirectory();
   switch (command) {
+    case 'refresh':
+      await refreshGateway();
+      return;
     case 'connect': {
       if (!argument) {
         throw new ConnectionError(SETUP_USAGE);
@@ -61,14 +61,13 @@ async function main(args: string[]): Promise<void> {
     }
     case 'disconnect':
     case 'remove': {
-      const { preserved, agentId } = await disconnect(directory);
+      const { preserved } = await disconnect(directory);
       console.log(
         `Disconnected. Remote memories are preserved.${preserved.length ? ` Kept user edits: ${preserved.join(', ')}.` : ''}`,
       );
       if (command === 'remove') {
         await uninstall();
       }
-      await refreshLocalMemory(agentId);
       await refreshGateway();
       return;
     }

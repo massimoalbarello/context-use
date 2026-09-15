@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2",
-    "mdast-util-from-markdown": "^2.0.3",
     "proper-lockfile": "^4.1.2",
     "semver": "^7.8.5",
     "typebox": "^1",

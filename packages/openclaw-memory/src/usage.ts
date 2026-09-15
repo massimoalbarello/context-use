@@ -4,9 +4,8 @@ context-use-openclaw status
 context-use-openclaw disconnect
 context-use-openclaw remove
 context-use-openclaw refresh
-context-use-openclaw restore-workspace <backup-directory>
 
 Connect installs the plugin and starts browser authorization. Pass the returned URL to authorize
 through standard input. After installation, these commands also work through openclaw context-use.
 Use the same OpenClaw profile for every command. Remove restores your settings and uninstalls the
-plugin while preserving remote memories. Refresh and restore-workspace also work after uninstall.`;
+plugin while preserving remote memories. Refresh also works after uninstall.`;

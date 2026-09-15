@@ -180,25 +180,6 @@ export function restoreConfiguration(input: {
   return preserved;
 }
 
-/** These grants name this plugin exclusively, including manual tool-name repairs. */
-export function removeToolGrants(config: OpenClawConfig): void {
-  function clean(policy: { allow?: string[]; alsoAllow?: string[] } | undefined): void {
-    for (const key of ['allow', 'alsoAllow'] as const) {
-      if (policy?.[key]) {
-        policy[key] = policy[key].filter(
-          (name) => name !== PLUGIN_ID && !name.startsWith('context_use_'),
-        );
-      }
-    }
-  }
-  clean(config.tools);
-  Object.values(config.tools?.byProvider ?? {}).forEach(clean);
-  for (const agent of Object.values(config.agents?.entries ?? {})) {
-    clean(agent.tools);
-    Object.values(agent.tools?.byProvider ?? {}).forEach(clean);
-  }
-}
-
 export function configMatches(input: { actual: unknown; expected: PluginConfig }): boolean {
   return isDeepStrictEqual(input.actual, input.expected);
 }

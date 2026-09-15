@@ -28,26 +28,22 @@ export type Change = z.infer<typeof ChangeSchema>;
 
 const ConnectionStateSchema = z.object({
   config: PluginConfigSchema,
-  changes: z.array(ChangeSchema).default([]),
-  tools: z
-    .array(
-      z
-        .object({
-          name: z.string().regex(/^[a-z][a-z0-9_]*$/),
-          inputSchema: z.object({ type: z.literal('object') }).passthrough(),
-        })
-        .passthrough(),
-    )
-    .default([]),
-  oauth: z
-    .object({
-      client: z.record(z.string(), z.unknown()).optional(),
-      tokens: z.record(z.string(), z.unknown()).optional(),
-      discovery: z.record(z.string(), z.unknown()).optional(),
-      verifier: z.string().optional(),
-      pending: z.object({ url: z.url(), state: z.string(), createdAt: z.number() }).optional(),
-    })
-    .default({}),
+  changes: z.array(ChangeSchema),
+  tools: z.array(
+    z
+      .object({
+        name: z.string().regex(/^[a-z][a-z0-9_]*$/),
+        inputSchema: z.object({ type: z.literal('object') }).passthrough(),
+      })
+      .passthrough(),
+  ),
+  oauth: z.object({
+    client: z.record(z.string(), z.unknown()).optional(),
+    tokens: z.record(z.string(), z.unknown()).optional(),
+    discovery: z.record(z.string(), z.unknown()).optional(),
+    verifier: z.string().optional(),
+    pending: z.object({ url: z.url(), state: z.string(), createdAt: z.number() }).optional(),
+  }),
 });
 
 export type ConnectionState = {

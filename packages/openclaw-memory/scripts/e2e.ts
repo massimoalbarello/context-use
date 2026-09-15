@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +7,6 @@ import { ownerBrowser } from '@repo/browser-testing/owner-browser';
 import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
-import { LEGACY_AGENTS, LEGACY_USER } from '../test/fixtures/workspace';
 import { availablePort, startApp } from './e2e-app';
 import { startModel } from './e2e-model';
 
@@ -127,8 +126,10 @@ try {
   console.log('Owner registered through virtual passkey.');
   const workspace = join(stateDir, 'workspace');
   await mkdir(workspace, { recursive: true });
-  await writeFile(join(workspace, 'AGENTS.md'), LEGACY_AGENTS);
-  await writeFile(join(workspace, 'USER.md'), LEGACY_USER);
+  const initialAgents = '# Workspace\n\nBe concise.\n';
+  const initialUser = '# User\n\nRowan is building Context Use. Likes architecture.\n';
+  await writeFile(join(workspace, 'AGENTS.md'), initialAgents);
+  await writeFile(join(workspace, 'USER.md'), initialUser);
   await configure(
     `config.session = { dmScope: 'per-channel-peer' }; config.tools = { profile: 'coding' }; config.agents={defaults:{workspace:${JSON.stringify(workspace)}}}; config.gateway={mode:'local',port:${gatewayPort},auth:{mode:'token',token:${JSON.stringify(crypto.randomUUID())}}};`,
   );
@@ -208,25 +209,13 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert((await command(['openclaw', 'context-use', 'status'])).includes('"connected": true'));
   console.log('Native installation and pasted callback authorization passed.');
 
-  const installedManifest = join(stateDir, 'extensions', PLUGIN_ID, 'package.json');
-  const installedPackage = await Bun.file(installedManifest).json();
-  await writeFile(installedManifest, JSON.stringify({ ...installedPackage, version: '0.0.0' }));
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
-  assert.equal((await Bun.file(installedManifest).json()).version, '0.0.0');
   assert((await Bun.file(connectionFile).json()).oauth.tokens);
-  await writeFile(installedManifest, JSON.stringify(installedPackage));
-  console.log('Reconnect reused the installed version without removal or another authorization.');
+  console.log('Reconnect retained the current connection without another authorization.');
 
-  const initialAgents = await Bun.file(join(workspace, 'AGENTS.md')).text();
-  assert(!initialAgents.includes('context_use_'));
-  const backups = join(stateDir, 'backups', 'context-use-workspace');
-  const [backup] = await readdir(backups);
-  assert(backup, 'Workspace cleanup did not retain a recovery backup');
-  assert((await Bun.file(join(workspace, 'USER.md')).text()).includes('Likes architecture'));
-  await writeFile(
-    join(workspace, 'USER.md'),
-    `${await Bun.file(join(workspace, 'USER.md')).text()}\nLOCAL_MEMORY_CANARY`,
-  );
+  assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), initialAgents);
+  assert.equal(await Bun.file(join(workspace, 'USER.md')).text(), initialUser);
+  await writeFile(join(workspace, 'USER.md'), `${initialUser}\nLOCAL_MEMORY_CANARY`);
   await writeFile(join(workspace, 'MEMORY.md'), 'LOCAL_MEMORY_CANARY');
   const learn = await command([
     'openclaw',
@@ -312,11 +301,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'The default install recalls across groups, forum topics, direct conversations and channels.',
   );
 
-  // Reproduce persistent directions and the manual tool-grant repair observed in
-  // an existing installation. Removal must own cleanup even when the agent wrote them.
-  await writeFile(join(workspace, 'AGENTS.md'), `${LEGACY_AGENTS}\nKeep my later style edit.\n`);
+  const editedAgents = `${initialAgents}\nKeep my later style edit.\n`;
+  await writeFile(join(workspace, 'AGENTS.md'), editedAgents);
   await configure(
-    "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow=['context_use_*','read'];",
+    "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow.push('read');",
   );
   await command(['openclaw', 'context-use', 'disconnect']);
   const removed = await configuration();
@@ -332,9 +320,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const afterRemoval = await configuration();
   assert(!afterRemoval.plugins.entries?.[PLUGIN_ID], 'Native uninstall tombstone survived');
   assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['read']);
-  const cleanAgents = await Bun.file(join(workspace, 'AGENTS.md')).text();
-  assert(!cleanAgents.includes('context_use_') && !cleanAgents.includes('Context-use Only'));
-  assert(cleanAgents.includes('Keep my later style edit.'));
+  assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), editedAgents);
+  assert.equal(
+    await Bun.file(join(workspace, 'USER.md')).text(),
+    `${initialUser}\nLOCAL_MEMORY_CANARY`,
+  );
   model.removed();
   const cleanChat = await command([
     'openclaw',
@@ -353,11 +343,9 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(cleanChat.includes('Local memory is available'));
   assert(model.observations.removedCalls > 0, 'No post-removal model request was inspected');
   console.log(
-    'Removal cleaned provider instructions and grants, preserved later edits and remote memory, and exposed only the restored memory provider in a fresh chat.',
+    'Removal restored setup-owned settings, preserved workspace files, later edits and remote memory, and exposed only the restored memory provider in a fresh chat.',
   );
 
-  // Also accept a tombstone left by older native uninstall paths.
-  await configure("config.plugins.entries['context-use']={enabled:false};");
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
   console.log('Package reinstalled; authorizing the new connection.');
   const reconnect = await Bun.file(connectionFile).json();
@@ -419,15 +407,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const refresh = await command(['npx', '--yes', packageSpec, 'refresh']);
   assert(refresh.includes('Gateway refresh requested'));
   await waitGateway();
-  // Recover one unchanged file while leaving subsequent edits to USER.md intact.
-  await writeFile(join(workspace, 'AGENTS.md'), initialAgents);
-  await command(['npx', '--yes', packageSpec, 'restore-workspace', join(backups, backup)]);
-  assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), LEGACY_AGENTS);
-  assert((await Bun.file(join(workspace, 'USER.md')).text()).includes('LOCAL_MEMORY_CANARY'));
   const inventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
   assert(!inventory.plugins.some((plugin: { id: string }) => plugin.id === PLUGIN_ID));
   assert(!(await Bun.file(connectionFile).exists()));
-  console.log('The npm helper refreshed the gateway and recovered a backup after uninstall.');
+  console.log('The npm helper refreshed the gateway after uninstall.');
 } finally {
   try {
     await owner?.close();

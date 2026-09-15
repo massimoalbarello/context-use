@@ -5,9 +5,9 @@ import { satisfies } from 'semver';
 import metadata from '../package.json';
 import { serverUrl } from './contract';
 import { ConnectionError } from './error';
+import { refreshGateway } from './gateway';
 import { checkHost } from './host-command';
 import { installedPlugin, installPackage } from './package-installation';
-import { runRecoveryCommand } from './recovery';
 import { SETUP_USAGE } from './usage';
 
 // npm exec does not have access to the host SDK. Install through OpenClaw first,
@@ -29,7 +29,8 @@ async function main(args: string[]): Promise<void> {
     serverUrl(args[1]);
   }
   await checkHost();
-  if (await runRecoveryCommand(args)) {
+  if (args[0] === 'refresh') {
+    await refreshGateway();
     return;
   }
   if (args[0] === 'connect') {

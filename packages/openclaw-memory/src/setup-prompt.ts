@@ -21,4 +21,4 @@ Follow the plugin's instructions: give me the authorization URL and ask me to re
 Verify openclaw context-use status and call context_use_search_hypermedia in the next agent turn before reporting success.`;
 }
 
-export const OPENCLAW_REMOVAL_PROMPT = `Remove the Context Use memory plugin using ${OPENCLAW_INSTALL_COMMAND} remove in this OpenClaw profile. This also works if authorization was never completed or the plugin is disabled. Let the plugin clean up its configuration, credentials and obsolete workspace instructions, and refresh the gateway. Preserve my remote memories and conversation history. Verify that a fresh conversation uses the restored memory provider.`;
+export const OPENCLAW_REMOVAL_PROMPT = `Remove the Context Use memory plugin using ${OPENCLAW_INSTALL_COMMAND} remove in this OpenClaw profile. This also works if authorization was never completed or the plugin is disabled. Let the plugin restore its configuration changes, clear its credentials and refresh the gateway. Preserve my remote memories and conversation history. Verify that a fresh conversation uses the restored memory provider.`;

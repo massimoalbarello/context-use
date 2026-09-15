@@ -3,28 +3,6 @@ import { z } from 'zod';
 import { ConnectionError } from './error';
 import { openclaw } from './host-command';
 import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
-import { restoreWorkspace } from './workspace';
-
-// Recovery must work from npm even after the plugin and its host SDK link are removed.
-export async function runRecoveryCommand(args: string[]): Promise<boolean> {
-  switch (args[0]) {
-    case 'refresh':
-      await refreshGateway();
-      return true;
-    case 'restore-workspace': {
-      if (!args[1]) {
-        throw new ConnectionError('Provide the workspace recovery backup directory.');
-      }
-      const preserved = await restoreWorkspace(args[1]);
-      console.log(
-        `Workspace backup restored.${preserved.length ? ` Kept later edits: ${preserved.join(', ')}.` : ''}`,
-      );
-      return true;
-    }
-    default:
-      return false;
-  }
-}
 
 export async function refreshGateway(): Promise<void> {
   const local = z

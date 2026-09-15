@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { OpenClawConfig } from 'openclaw/plugin-sdk/config-runtime';
-import { prepareConfiguration, removeToolGrants, restoreConfiguration } from '../src/configuration';
+import { prepareConfiguration, restoreConfiguration } from '../src/configuration';
 import type { ConnectionState } from '../src/state';
 
 function connection(): ConnectionState {
@@ -85,20 +85,17 @@ describe('exclusive memory configuration', () => {
     );
   });
 
-  test('removes provider grants, including later tool-name repairs, while retaining unrelated grants', () => {
+  test('removes setup-owned grants while preserving later additions', () => {
     const config: OpenClawConfig = {
       plugins: { allow: ['memory-core'] },
-      tools: { alsoAllow: ['context_use_search_hypermedia', 'read'] },
       agents: { entries: { main: { tools: { alsoAllow: ['exec'] } } } },
     };
     const state = connection();
     prepareConfiguration({ config, state });
-    config.agents!.entries!.main!.tools!.alsoAllow = ['exec', 'context_use_*', 'web_search'];
+    config.agents!.entries!.main!.tools!.alsoAllow!.push('web_search');
     config.plugins!.allow!.push('another-plugin');
     restoreConfiguration({ config, state });
-    removeToolGrants(config);
     expect(config.plugins?.allow).toEqual(['memory-core', 'another-plugin']);
     expect(config.agents?.entries?.main?.tools?.alsoAllow).toEqual(['exec', 'web_search']);
-    expect(config.tools?.alsoAllow).toEqual(['read']);
   });
 });

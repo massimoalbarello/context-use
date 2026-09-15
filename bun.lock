@@ -127,11 +127,10 @@
       "name": "@context-use/openclaw-memory",
       "version": "0.1.0",
       "bin": {
-        "context-use-openclaw": "./pkg/dist/setup.js",
+        "context-use-openclaw": "./pkg/dist/bootstrap.js",
       },
       "dependencies": {
         "@modelcontextprotocol/client": "^2",
-        "mdast-util-from-markdown": "^2.0.3",
         "proper-lockfile": "^4.1.2",
         "semver": "^7.8.5",
         "typebox": "^1",
