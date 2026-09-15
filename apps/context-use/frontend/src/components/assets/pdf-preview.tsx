@@ -1,4 +1,3 @@
-import { Button } from '@repo/ui/button';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AssetPreviewFallback } from './asset-preview-fallback';
@@ -19,7 +18,6 @@ function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
   const file = useMemo(() => ({ data: bytes }), [bytes]);
   const container = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(0);
-  const [page, setPage] = useState(1);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     const element = container.current!;
@@ -31,7 +29,13 @@ function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
     <AssetPreviewFallback message="This PDF could not be previewed. It may be damaged or password protected." />
   );
   return (
-    <section ref={container} className="min-w-0" aria-label={`${name} preview`}>
+    <section
+      ref={container}
+      className="max-h-[32rem] min-w-0 overflow-auto overscroll-contain"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll the PDF.
+      tabIndex={0}
+      aria-label={`${name} preview`}
+    >
       {failed ? (
         fallback
       ) : (
@@ -45,41 +49,22 @@ function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
         >
           {({ pdf }) => (
             <div className="grid gap-3">
-              {width > 0 && (
-                <Page
-                  pageNumber={page}
-                  width={width}
-                  suspense={false}
-                  className="overflow-hidden rounded-lg border"
-                  aria-label={`${name}, page ${page}`}
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                  error={fallback}
-                  loading={<p role="status">Loading page…</p>}
-                  onRenderError={() => setFailed(true)}
-                />
-              )}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Previous page
-                </Button>
-                <p className="text-muted-foreground text-xs" role="status">
-                  Page {page} of {pdf.numPages}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === pdf.numPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Next page
-                </Button>
-              </div>
+              {width > 0 &&
+                Array.from(Array(pdf.numPages).keys()).map((pageIndex) => (
+                  <Page
+                    key={pageIndex + 1}
+                    pageNumber={pageIndex + 1}
+                    width={width}
+                    suspense={false}
+                    className="overflow-hidden rounded-lg"
+                    aria-label={`${name}, page ${pageIndex + 1}`}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    error={fallback}
+                    loading={<p role="status">Loading page…</p>}
+                    onRenderError={() => setFailed(true)}
+                  />
+                ))}
             </div>
           )}
         </Document>
