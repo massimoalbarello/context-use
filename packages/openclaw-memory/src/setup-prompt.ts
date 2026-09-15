@@ -2,6 +2,7 @@ import metadata from '../package.json';
 
 // This browser-safe entry point owns the public setup contract used by Settings.
 export const OPENCLAW_PACKAGE = `${metadata.name}@${metadata.version}`;
+export const OPENCLAW_NPM_URL = `https://www.npmjs.com/package/${metadata.name}`;
 export const OPENCLAW_REQUIREMENT = metadata.peerDependencies.openclaw;
 export const OPENCLAW_INSTALL_COMMAND = `npx --yes ${OPENCLAW_PACKAGE}`;
 

@@ -2,10 +2,10 @@ import { Button, buttonVariants } from '@repo/ui/button';
 import { Check, ChevronDown, Copy } from 'lucide-react';
 import { useId, useState } from 'react';
 import claudeLogoUrl from '../../assets/claude.svg';
+import { CopyablePrompt } from '../copyable-prompt';
 import { Card, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { CopyablePrompt } from './copyable-prompt';
 import INITIAL_CONTEXT_PROMPT from './initial-context-prompt.md?raw';
 
 type CopyState = 'idle' | 'copied' | 'failed';
@@ -186,6 +186,8 @@ export function AgentSetup({ mcpServerUrl }: { mcpServerUrl: string }) {
             copyLabel="Copy context prompt"
             copiedLabel="Context prompt copied"
             rows={18}
+            buttonVariant="default"
+            buttonSize="lg"
             value={contextPrompt}
           />
         </section>

@@ -1,12 +1,12 @@
 import {
+  OPENCLAW_NPM_URL,
   OPENCLAW_REMOVAL_PROMPT,
-  OPENCLAW_REQUIREMENT,
   openclawConnectCommand,
   openclawSetupPrompt,
 } from '@context-use/openclaw-memory/setup-prompt';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { CopyablePrompt } from '../components/setup/copyable-prompt';
+import { CopyablePrompt } from '../components/copyable-prompt';
 import { mcpClientsQueryOptions } from '../queries/mcp-clients';
 
 export const Route = createFileRoute('/settings/plugins')({
@@ -36,21 +36,32 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
             Use Context Use as your agent’s long-term memory. OpenClaw recalls useful context and
             learns from your conversations automatically.
           </p>
-          <p className="text-muted-foreground text-sm">
-            Public beta · OpenClaw {OPENCLAW_REQUIREMENT}
-          </p>
+          <a
+            className="w-fit text-sm underline underline-offset-4"
+            href={OPENCLAW_NPM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View on npm
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
         </div>
 
-        <p>
-          Copy this prompt into OpenClaw. It will handle setup and give you a link to authorize.
-        </p>
-        <CopyablePrompt
-          ariaLabel="OpenClaw setup prompt"
-          copyLabel="Copy setup prompt"
-          copiedLabel="Setup prompt copied"
-          rows={7}
-          value={openclawSetupPrompt(serverUrl)}
-        />
+        <details className="grid gap-3">
+          <summary className="cursor-pointer text-sm">OpenClaw self-installation</summary>
+          <div className="mt-3 grid gap-3">
+            <p className="text-muted-foreground text-sm">
+              Copy this prompt into OpenClaw. It will handle setup and give you a link to authorize.
+            </p>
+            <CopyablePrompt
+              ariaLabel="OpenClaw setup prompt"
+              copyLabel="Copy setup prompt"
+              copiedLabel="Setup prompt copied"
+              rows={7}
+              value={openclawSetupPrompt(serverUrl)}
+            />
+          </div>
+        </details>
 
         <details className="grid gap-3">
           <summary className="cursor-pointer text-sm">Install from a terminal</summary>

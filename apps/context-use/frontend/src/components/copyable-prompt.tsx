@@ -1,8 +1,8 @@
 import { Button } from '@repo/ui/button';
 import { Check, Copy } from 'lucide-react';
-import { useState } from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Textarea } from '../ui/textarea';
+import { type ComponentProps, useState } from 'react';
+import { Card, CardContent } from './ui/card';
+import { Textarea } from './ui/textarea';
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
@@ -10,13 +10,17 @@ export function CopyablePrompt({
   ariaLabel,
   copyLabel,
   copiedLabel,
-  rows,
+  rows = 6,
+  buttonVariant = 'outline',
+  buttonSize = 'default',
   value,
 }: {
   ariaLabel: string;
   copyLabel: string;
   copiedLabel: string;
-  rows: number;
+  rows?: number;
+  buttonVariant?: ComponentProps<typeof Button>['variant'];
+  buttonSize?: ComponentProps<typeof Button>['size'];
   value: string;
 }) {
   const [copyState, setCopyState] = useState<CopyState>('idle');
@@ -44,8 +48,8 @@ export function CopyablePrompt({
 
         <Button
           type="button"
-          variant={rows < 10 ? 'outline' : 'default'}
-          size={rows < 10 ? 'default' : 'lg'}
+          variant={buttonVariant}
+          size={buttonSize}
           className="justify-self-start"
           onClick={copyPrompt}
         >
