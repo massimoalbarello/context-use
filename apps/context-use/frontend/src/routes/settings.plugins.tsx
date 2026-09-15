@@ -1,7 +1,6 @@
 import {
   OPENCLAW_NPM_URL,
   OPENCLAW_REMOVAL_PROMPT,
-  openclawConnectCommand,
   openclawSetupPrompt,
 } from '@context-use/openclaw-memory/setup-prompt';
 import { useSuspenseQuery } from '@tanstack/react-query';
@@ -61,19 +60,6 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
               rows={7}
               value={openclawSetupPrompt(serverUrl)}
             />
-          </div>
-        </details>
-
-        <details className="grid gap-3">
-          <summary className="cursor-pointer text-sm">Install from a terminal</summary>
-          <div className="mt-3 grid gap-3">
-            <p className="text-muted-foreground text-sm">
-              Run this command on the computer running OpenClaw, then follow its authorization
-              instructions.
-            </p>
-            <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-xs">
-              <code>{openclawConnectCommand(serverUrl)}</code>
-            </pre>
           </div>
         </details>
 
