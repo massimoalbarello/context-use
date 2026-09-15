@@ -20,6 +20,7 @@ import { MapIntervalIndicator } from './map-interval-indicator';
 import {
   buildMapLayout,
   type CanvasBounds,
+  type CanvasPoint,
   initialMapViewBox,
   type MapLayout,
   type MapLayoutEntity,
@@ -254,6 +255,8 @@ export function MapCanvas({
   const [panning, setPanning] = useState(false);
   const [showExplorationHint, setShowExplorationHint] = useState(true);
   const suppressNextCloudClick = useRef(false);
+  const touches = useRef(new Map<number, CanvasPoint>());
+  const suppressTouchClick = useRef(false);
   const drag = useRef<{
     pointerId: number;
     clientX: number;
@@ -334,20 +337,30 @@ export function MapCanvas({
     scheduleViewport(nextViewBox);
   }
 
+  function canvasAnchor(point: CanvasPoint) {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    const current = viewBoxRef.current;
+    // The SVG uses xMidYMid meet, so portrait screens have space above and below the viewBox.
+    const scale = Math.min(rect.width / current.width, rect.height / current.height);
+    return {
+      x: (point.x - rect.left - rect.width / 2) / (current.width * scale) + 0.5,
+      y: (point.y - rect.top - rect.height / 2) / (current.height * scale) + 0.5,
+    };
+  }
+
   function handlePinchZoom(event: globalThis.WheelEvent) {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
     }
-    const rect = canvas.getBoundingClientRect();
     const boundedDelta = Math.max(
       -MAX_WHEEL_ZOOM_DELTA,
       Math.min(MAX_WHEEL_ZOOM_DELTA, event.deltaY),
     );
-    zoom(Math.exp(boundedDelta * WHEEL_ZOOM_RATE), {
-      x: (event.clientX - rect.left) / rect.width,
-      y: (event.clientY - rect.top) / rect.height,
-    });
+    zoom(
+      Math.exp(boundedDelta * WHEEL_ZOOM_RATE),
+      canvasAnchor({ x: event.clientX, y: event.clientY }),
+    );
   }
 
   const handleWheel = useEffectEvent((event: globalThis.WheelEvent) => {
@@ -374,7 +387,32 @@ export function MapCanvas({
     return () => surface.removeEventListener('wheel', handleWheel, { capture: true });
   }, []);
 
+  function beginTouch(event: ReactPointerEvent<SVGSVGElement>) {
+    if (event.pointerType !== 'touch' || touches.current.size === 0) {
+      suppressTouchClick.current = false;
+    }
+    if (event.pointerType !== 'touch') {
+      return false;
+    }
+    touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (touches.current.size < 2) {
+      return false;
+    }
+    for (const pointerId of touches.current.keys()) {
+      event.currentTarget.setPointerCapture(pointerId);
+    }
+    drag.current = null;
+    suppressTouchClick.current = true;
+    suppressNextCloudClick.current = true;
+    setPreview(null);
+    setPanning(true);
+    return true;
+  }
+
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
+    if (beginTouch(event)) {
+      return;
+    }
     if (event.button !== 0 || (event.target as Element).closest('[data-map-item]')) {
       return;
     }
@@ -387,21 +425,56 @@ export function MapCanvas({
       pointerId: event.pointerId,
       clientX: event.clientX,
       clientY: event.clientY,
-      viewBox,
-      currentViewBox: viewBox,
+      viewBox: viewBoxRef.current,
+      currentViewBox: viewBoxRef.current,
       moved: false,
       cloudReadableId: cloudReadableId ?? undefined,
     };
     setPanning(true);
   }
 
+  function moveTouch(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!touches.current.has(event.pointerId)) {
+      return false;
+    }
+    const [a, b] = touches.current.values();
+    touches.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const [c, d] = touches.current.values();
+    if (!a || !b || !c || !d) {
+      return false;
+    }
+    const distance = Math.hypot(a.x - b.x, a.y - b.y);
+    const nextDistance = Math.hypot(c.x - d.x, c.y - d.y);
+    if (distance > 0 && nextDistance > 0) {
+      zoom(distance / nextDistance, canvasAnchor({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }));
+      const current = viewBoxRef.current;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const scale = Math.min(rect.width / current.width, rect.height / current.height);
+      const nextViewBox = {
+        ...current,
+        x: current.x - (c.x + d.x - a.x - b.x) / (2 * scale),
+        y: current.y - (c.y + d.y - a.y - b.y) / (2 * scale),
+      };
+      updateViewBox(nextViewBox);
+      scheduleViewport(nextViewBox);
+    }
+    return true;
+  }
+
   function handlePointerMove(event: ReactPointerEvent<SVGSVGElement>) {
+    if (moveTouch(event)) {
+      return;
+    }
     if (!drag.current || drag.current.pointerId !== event.pointerId) {
       return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
-    const dx = ((event.clientX - drag.current.clientX) / rect.width) * drag.current.viewBox.width;
-    const dy = ((event.clientY - drag.current.clientY) / rect.height) * drag.current.viewBox.height;
+    const scale = Math.min(
+      rect.width / drag.current.viewBox.width,
+      rect.height / drag.current.viewBox.height,
+    );
+    const dx = (event.clientX - drag.current.clientX) / scale;
+    const dy = (event.clientY - drag.current.clientY) / scale;
     if (
       !drag.current.moved &&
       Math.abs(event.clientX - drag.current.clientX) +
@@ -420,7 +493,34 @@ export function MapCanvas({
     updateViewBox(currentViewBox);
   }
 
+  function endTouch(event: ReactPointerEvent<SVGSVGElement>) {
+    touches.current.delete(event.pointerId);
+    if (!suppressTouchClick.current || event.pointerType !== 'touch') {
+      return false;
+    }
+    const remaining = touches.current.entries().next().value;
+    drag.current = remaining
+      ? {
+          pointerId: remaining[0],
+          clientX: remaining[1].x,
+          clientY: remaining[1].y,
+          viewBox: viewBoxRef.current,
+          currentViewBox: viewBoxRef.current,
+          moved: true,
+        }
+      : null;
+    setPanning(touches.current.size > 0);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    scheduleViewport(viewBoxRef.current);
+    return true;
+  }
+
   function handlePointerEnd(event: ReactPointerEvent<SVGSVGElement>) {
+    if (endTouch(event)) {
+      return;
+    }
     if (drag.current?.pointerId === event.pointerId) {
       const completedDrag = drag.current;
       suppressNextCloudClick.current =
@@ -438,6 +538,9 @@ export function MapCanvas({
   }
 
   function handlePointerCancel(event: ReactPointerEvent<SVGSVGElement>) {
+    if (endTouch(event)) {
+      return;
+    }
     if (drag.current?.pointerId !== event.pointerId) {
       return;
     }
@@ -468,6 +571,18 @@ export function MapCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={(event) => {
+          // Recapturing a touch from a child link also bubbles a lost-capture event.
+          if (event.target === event.currentTarget) {
+            handlePointerCancel(event);
+          }
+        }}
+        onClickCapture={(event) => {
+          if (suppressTouchClick.current && event.detail > 0) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
       >
         <MapScene
           layout={visibleLayout}
