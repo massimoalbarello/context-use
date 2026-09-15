@@ -77,7 +77,14 @@ export function MapIntervalIndicator({
             {calendarMonthShortLabel(month)}
             <ChevronsUpDown className="size-3" aria-hidden="true" />
           </PopoverTrigger>
-          <PopoverContent side="left" align="center" className="w-28 p-2" aria-label="Choose month">
+          <PopoverContent
+            side="bottom"
+            align="center"
+            sideOffset={({ anchor, positioner }) => -(anchor.height + positioner.height) / 2}
+            collisionAvoidance={{ side: 'shift', align: 'shift' }}
+            className="w-28 p-2"
+            aria-label="Choose month"
+          >
             {picker}
           </PopoverContent>
         </Popover>
