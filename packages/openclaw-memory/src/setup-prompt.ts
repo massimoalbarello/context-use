@@ -14,11 +14,10 @@ export function openclawSetupPrompt(serverUrl: string): string {
 
 Check openclaw --version first (requires ${OPENCLAW_REQUIREMENT}), then run:
 ${openclawConnectCommand(serverUrl)}
-Use this profile and append this agent's ID if it is not main.
 
 Follow the plugin's instructions: give me the authorization URL and ask me to return the final localhost redirect URL. Complete authorization with ${OPENCLAW_INSTALL_COMMAND} authorize <redirect-url-file|-> using stdin or a private file, then delete the file. Let the plugin manage configuration and gateway refresh.
 
-Verify openclaw context-use status and call context_use_search_hypermedia in the next agent turn before reporting success. Keep setup instructions out of workspace memory files.`;
+Verify openclaw context-use status and call context_use_search_hypermedia in the next agent turn before reporting success.`;
 }
 
 export const OPENCLAW_REMOVAL_PROMPT = `Remove the Context Use memory plugin using ${OPENCLAW_INSTALL_COMMAND} remove in this OpenClaw profile. This also works if authorization was never completed or the plugin is disabled. Let the plugin clean up its configuration, credentials and obsolete workspace instructions, and refresh the gateway. Preserve my remote memories and conversation history. Verify that a fresh conversation uses the restored memory provider.`;
