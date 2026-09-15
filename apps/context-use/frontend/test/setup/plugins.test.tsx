@@ -26,7 +26,10 @@ test('copies setup for this instance and exposes script-owned removal', async ()
   expect(prompt).toContain(`${OPENCLAW_PACKAGE} connect '${serverUrl}'`);
   expect(prompt).toContain('Check openclaw --version first');
   expect(prompt).toContain('ask me to return the final localhost redirect URL');
-  expect(prompt).toContain('context_use_search_hypermedia');
+  expect(prompt).toContain('verify openclaw context-use status');
+  expect(prompt).toContain('If connected and authenticated, confirm that setup is complete');
+  expect(prompt).toContain('start a new session with /new so the memory tools become available');
+  expect(prompt).not.toContain('context_use_search_hypermedia');
   expect(prompt).toContain('Keep my conversations separate');
   expect(screen.getByRole('button', { name: 'Setup prompt copied' })).toBeTruthy();
   await user.click(selfInstallation);
