@@ -53,7 +53,11 @@
     },
     "@repo/context-use#test": {
       "dependsOn": ["^test"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/eslint.config.mjs"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/eslint.config.mjs",
+        "$TURBO_ROOT$/biome.json"
+      ]
     },
     "dev": {
       "cache": false,

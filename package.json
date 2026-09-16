@@ -26,7 +26,8 @@
     "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
     "check:frontend": "node node_modules/eslint/bin/eslint.js apps/context-use/frontend/src",
-    "check:all": "bun run --parallel check:types check:codestyle check:frontend",
+    "check:backend": "node node_modules/dependency-cruiser/bin/dependency-cruiser.mjs --config apps/context-use/backend/dependency-cruiser.config.mjs apps/context-use/backend/src",
+    "check:all": "bun run --parallel check:types check:codestyle check:frontend check:backend",
     "check:commit-message": "bun run --bun commitlint",
     "test": "bun run --bun turbo test",
     "fix:codestyle": "bun run --bun biome check --write"
@@ -43,6 +44,7 @@
     "@types/bun": "^1.4.0",
     "@typescript-eslint/parser": "8.70.0",
     "@typescript/native": "npm:typescript@7.0.2",
+    "dependency-cruiser": "18.3.1",
     "eslint": "9.39.5",
     "turbo": "^2.10.12",
     "typescript": "npm:@typescript/typescript6@6.0.2"
