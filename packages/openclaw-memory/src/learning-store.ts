@@ -104,7 +104,7 @@ export class LearningStore {
         .run(
           id,
           first ? 'learn' : 'dream',
-          `agent:${input.agentId}:context-use-learning:${id}`,
+          `agent:${input.agentId}:subagent:context-use-learning:${id}`,
           first?.source ?? '',
           through,
           evidence,

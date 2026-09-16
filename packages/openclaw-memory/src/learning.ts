@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/complexity/useMaxParams: OpenClaw hooks use positional arguments. */
 import { join } from 'node:path';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
+import { isIncognitoSessionKey, isSubagentSessionKey } from 'openclaw/plugin-sdk/routing';
 import { lock } from 'proper-lockfile';
 import { Type } from 'typebox';
 import { configMatches } from './configuration';
@@ -17,7 +18,7 @@ const RUN_TIMEOUT_MS = 600_000;
 const LOCK_STALE_MS = 120_000;
 
 export function isLearningSession(sessionKey?: string): boolean {
-  return /^agent:[^:]+:context-use-learning:/.test(sessionKey ?? '');
+  return /^agent:[^:]+:subagent:context-use-learning:/.test(sessionKey ?? '');
 }
 
 function learningPrompt(job: LearningJob): string {
@@ -64,18 +65,27 @@ export function registerLearning(input: {
   const owns = (context: { agentId?: string; sessionKey?: string }) =>
     context.agentId === config.agentId &&
     context.sessionKey?.startsWith(`agent:${config.agentId}:`) === true;
+  const canCapture = (context: { agentId?: string; sessionKey?: string }) => {
+    if (
+      !owns(context) ||
+      !connected() ||
+      isIncognitoSessionKey(context.sessionKey) ||
+      isSubagentSessionKey(context.sessionKey)
+    ) {
+      return false;
+    }
+    const entry = api.runtime.agent.session.getSessionEntry({
+      agentId: config.agentId,
+      sessionKey: context.sessionKey!,
+      readConsistency: 'latest',
+    });
+    return Boolean(entry && !entry.pluginOwnerId);
+  };
   const capture = (
     event: { messages?: unknown[] },
     context: { agentId?: string; sessionKey?: string; sessionId?: string },
   ) => {
-    if (
-      !owns(context) ||
-      isLearningSession(context.sessionKey) ||
-      context.sessionKey?.includes(':active-memory:')
-    ) {
-      return;
-    }
-    if (!connected()) {
+    if (!canCapture(context)) {
       return;
     }
     queue().capture({
@@ -87,7 +97,7 @@ export function registerLearning(input: {
   api.on('agent_end', capture);
   api.on('before_reset', capture);
   api.on('before_compaction', async (event, context) => {
-    if (!owns(context) || isLearningSession(context.sessionKey)) {
+    if (!canCapture(context)) {
       return;
     }
     // Some harnesses omit messages. Read the host's transcript before it is compacted.
@@ -159,7 +169,7 @@ export function registerLearning(input: {
           promptMode: 'minimal',
           lightContext: true,
           deliver: false,
-          lane: 'context-use-learning',
+          lane: 'subagent',
           toolsAlsoAllow: [...allowed],
           idempotencyKey: job.id,
         });

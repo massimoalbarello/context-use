@@ -8,6 +8,7 @@ import type {
   OpenClawPluginService,
   PluginRuntime,
 } from 'openclaw/plugin-sdk/core';
+import { isSubagentSessionKey } from 'openclaw/plugin-sdk/routing';
 import { callMemoryTool } from '../src/client';
 import { FINISH_LEARNING_TOOL } from '../src/contract';
 import { registerLearning } from '../src/learning';
@@ -51,6 +52,10 @@ async function fixture() {
   const dispatched: Parameters<PluginRuntime['subagent']['run']>[0][] = [];
   const deleted: string[] = [];
   const warnings: string[] = [];
+  const sessions = new Map<string, { sessionId: string; pluginOwnerId?: string }>([
+    [context.sessionKey, { sessionId: context.sessionId }],
+  ]);
+  const transcriptReads: string[] = [];
   let acknowledged = false;
   const api = {
     on: (name: string, handler: unknown) => hooks.set(name, handler),
@@ -63,13 +68,21 @@ async function fixture() {
     lifecycle: { registerRuntimeLifecycle: () => {} },
     logger: { warn: (warning: string) => warnings.push(warning) },
     runtime: {
+      agent: {
+        session: {
+          getSessionEntry: ({ sessionKey }: { sessionKey: string }) => sessions.get(sessionKey),
+        },
+      },
       subagent: {
         run: (params: Parameters<PluginRuntime['subagent']['run']>[0]) => {
           dispatched.push(params);
           return Promise.resolve({ runId: 'run-1' });
         },
         waitForRun: () => Promise.resolve({ status: 'ok' }),
-        getSessionMessages: () => Promise.resolve({ messages }),
+        getSessionMessages: ({ sessionKey }: { sessionKey: string }) => {
+          transcriptReads.push(sessionKey);
+          return Promise.resolve({ messages });
+        },
         deleteSession: (params: { sessionKey: string }) => {
           deleted.push(params.sessionKey);
           return Promise.resolve();
@@ -115,6 +128,8 @@ async function fixture() {
     dispatched,
     deleted,
     warnings,
+    sessions,
+    transcriptReads,
     get acknowledged() {
       return acknowledged;
     },
@@ -130,6 +145,8 @@ test('turn and reset hooks capture synchronously without invoking a model, then 
   await f.cycle();
   expect(f.dispatched).toHaveLength(1);
   expect(f.dispatched[0]?.deliver).toBe(false);
+  expect(isSubagentSessionKey(f.dispatched[0]?.sessionKey)).toBe(true);
+  expect(f.dispatched[0]?.lane).toBe('subagent');
   expect(f.dispatched[0]?.message).toContain('museum');
   expect(f.dispatched[0]?.toolsAlsoAllow).toContain(FINISH_LEARNING_TOOL);
   expect(f.dispatched[0]?.toolsAlsoAllow).not.toContain('context_use_archive_entity');
@@ -147,18 +164,35 @@ test('compaction captures the host transcript when the hook omits messages', asy
   expect(f.dispatched).toHaveLength(0);
 });
 
+test('automatic learning never reads or persists incognito, plugin-owned, or subagent sessions', async () => {
+  const f = await fixture();
+  for (const sessionKey of [
+    'agent:main:dashboard:incognito-private',
+    'agent:main:subagent:another-worker',
+    'agent:main:recall-worker',
+  ]) {
+    f.sessions.set(sessionKey, {
+      sessionId: 'private',
+      ...(sessionKey.endsWith('recall-worker') ? { pluginOwnerId: 'another-plugin' } : {}),
+    });
+    const privateContext = { ...context, sessionKey };
+    f.hook('agent_end', { messages }, privateContext);
+    f.hook('before_reset', { messages }, privateContext);
+    await f.hook('before_compaction', { messageCount: 1 }, privateContext);
+  }
+  expect(f.db.status().pending).toBe(0);
+  expect(f.transcriptReads).toEqual([]);
+  await f.cycle();
+  expect(f.dispatched).toEqual([]);
+});
+
 test('workers cannot recurse, cross agents, perform external actions, or run after account changes', async () => {
   const f = await fixture();
   f.hook('agent_end', { messages }, { ...context, agentId: 'other' });
   f.hook(
     'agent_end',
     { messages },
-    { ...context, sessionKey: 'agent:main:main:active-memory:test' },
-  );
-  f.hook(
-    'agent_end',
-    { messages },
-    { ...context, sessionKey: 'agent:main:context-use-learning:fake' },
+    { ...context, sessionKey: 'agent:main:subagent:context-use-learning:fake' },
   );
   expect(f.db.status().pending).toBe(0);
   f.hook('before_reset', { messages });
