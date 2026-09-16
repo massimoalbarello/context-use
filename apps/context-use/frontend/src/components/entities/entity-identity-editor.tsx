@@ -80,8 +80,9 @@ export function EntityIdentityEditor({
       </ResourceDetailHeading>
       <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
         <Button
-          className="relative h-auto rounded-full p-0"
+          className="relative h-auto p-0"
           variant="ghost"
+          shape="round"
           type="button"
           aria-label="Edit entity image"
           aria-controls="entity-image-editor"

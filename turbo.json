@@ -51,6 +51,10 @@
     "test": {
       "dependsOn": ["^test"]
     },
+    "@repo/context-use#test": {
+      "dependsOn": ["^test"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/eslint.config.mjs"]
+    },
     "dev": {
       "cache": false,
       "env": [

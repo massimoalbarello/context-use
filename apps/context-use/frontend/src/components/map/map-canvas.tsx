@@ -184,7 +184,8 @@ function MapExplorationCue({ error, onRetry }: { error: Error | null; onRetry: (
           type="button"
           variant="outline"
           size="sm"
-          className="pointer-events-auto h-auto max-w-full whitespace-normal rounded-full bg-card/92 py-2 shadow-sm backdrop-blur"
+          shape="round"
+          className="pointer-events-auto h-auto max-w-full whitespace-normal py-2 shadow-sm"
           onClick={onRetry}
         >
           Retry loading nearby entities
