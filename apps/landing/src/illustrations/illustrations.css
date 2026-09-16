@@ -203,74 +203,16 @@
   left: 84.3%;
 }
 
-.agent-orbit {
-  stroke: #dce4d6;
-  stroke-width: 1;
-}
-.agent-node {
+.orbiting-agent {
   position: absolute;
-  display: grid;
-  justify-items: center;
-  gap: 2cqw;
-  transform: translate(-50%, -50%);
-  animation: agent-drift 9s ease-in-out infinite;
+  width: 10cqw;
+  height: 10cqw;
+  object-fit: contain;
+  offset-path: ellipse(36% 34% at 50% 50%);
+  offset-rotate: 0deg;
+  animation: agent-orbit 30s linear infinite;
 }
-.agent-chip {
-  position: relative;
-  display: grid;
-  width: 14cqw;
-  height: 14cqw;
-  place-items: center;
-  border-radius: 50%;
-  color: #fff7ee;
-  background: #ce775b;
-  box-shadow:
-    inset 0 0 0 1px #ffffff40,
-    0 1.5cqw 3cqw #a05d4222;
-}
-.agent-symbol {
-  width: 8.5cqw;
-  height: 8.5cqw;
-}
-.agent-one {
-  top: 35%;
-  left: 22%;
-}
-.agent-two {
-  top: 72%;
-  left: 78%;
-  animation-delay: -4.5s;
-  animation-direction: reverse;
-}
-.agent-two .agent-chip {
-  background: linear-gradient(145deg, #738ef0, #4659b3 70%, #354480);
-  color: #f5f8ff;
-  box-shadow:
-    inset 0 0 0 1px #ffffff40,
-    0 1.5cqw 3cqw #4157a522;
-}
-.agent-check {
-  position: absolute;
-  right: -0.2cqw;
-  bottom: -0.2cqw;
-  display: grid;
-  width: 4cqw;
-  height: 4cqw;
-  place-items: center;
-  border: 0.5cqw solid #f5f6f1;
-  border-radius: 50%;
-  background: #72a260;
-  color: white;
-}
-.agent-check svg {
-  width: 2.3cqw;
-  height: 2.3cqw;
-  stroke-width: 2.5;
-}
-.agent-status {
-  font-size: 1.85cqw;
-  color: #658257;
-}
+
 .illustration-eyebrow {
   display: block;
   color: #737c72;
@@ -438,51 +380,52 @@
 
 .revision-document {
   position: absolute;
-  inset: 7% 6% 24%;
+  inset: 5%;
   padding: 4cqw;
   border: 1px solid #e1e5dc;
   border-radius: 2cqw;
   background: #fff;
   box-shadow: 0 1cqw 3cqw #263b210a;
 }
-
 .revision-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2cqw;
-}
-.revision-heading strong {
-  font-size: 2.7cqw;
+  margin: 0 0 4cqw;
+  font-size: 3.2cqw;
   font-weight: 600;
   letter-spacing: -0.03em;
 }
-.revision-heading > span {
-  color: #7a8077;
-  font-size: 1.7cqw;
-}
 .revision-prose {
+  font-size: 3.65cqw;
+  line-height: 1.8;
+  letter-spacing: -0.02em;
+}
+.revision-guests {
   margin-top: 3cqw;
-  font-size: 3.3cqw;
-  line-height: 1.85;
-  letter-spacing: -0.015em;
 }
 .revision-word {
   display: inline-grid;
   border-radius: 0.5cqw;
-  padding: 0 0.6cqw;
+  padding: 0 0.4cqw;
   background: #e3efd9;
-  animation: word-selection 12s linear infinite;
+  animation: word-selection 16s linear infinite;
 }
 .revision-word > span {
   grid-area: 1 / 1;
 }
 .revision-word-original {
   opacity: 0;
-  animation: original-word 12s linear infinite;
+  animation: original-word 16s linear infinite;
 }
 .revision-word-updated {
-  animation: updated-word 12s linear infinite;
+  animation: updated-word 16s linear infinite;
+}
+.revision-people {
+  animation-name: people-selection;
+}
+.revision-people .revision-word-original {
+  animation-name: original-people;
+}
+.revision-people .revision-word-updated {
+  animation-name: updated-people;
 }
 .collaboration-cursor {
   position: absolute;
@@ -506,59 +449,24 @@
   box-shadow: 0 0.4cqw 1cqw #0001;
 }
 .cursor-agent {
-  top: 73%;
-  left: 73%;
+  top: 10%;
+  right: 8%;
   color: #8974ac;
-  animation: agent-cursor 12s ease-in-out infinite;
 }
 .cursor-agent > span {
   background: #e7dff3;
   color: #564272;
 }
 .cursor-you {
-  top: 25%;
-  left: 78%;
+  top: 18%;
+  left: 28%;
   color: #5c9347;
-  animation: user-cursor 12s ease-in-out infinite;
+  animation: user-cursor 16s ease-in-out infinite;
 }
 .cursor-you > span {
-  margin-top: -3cqw;
+  margin-top: -2cqw;
   background: #d6ebc9;
   color: #35572a;
-}
-.revision-timeline {
-  position: absolute;
-  inset: auto 22% 7%;
-  display: flex;
-  justify-content: space-between;
-  border-top: 1px solid #b3c5a7;
-}
-.revision-timeline > span {
-  position: relative;
-  padding-top: 2cqw;
-  text-align: center;
-  font-size: 2cqw;
-}
-.revision-timeline > span::before {
-  position: absolute;
-  top: -0.8cqw;
-  left: 50%;
-  width: 1.6cqw;
-  height: 1.6cqw;
-  border: 0.25cqw solid #f5f6f1;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  background: #a291b9;
-  content: "";
-}
-.revision-timeline > span:nth-child(2)::before {
-  background: #71975f;
-}
-.revision-timeline small {
-  display: block;
-  margin-top: 0.25cqw;
-  color: #747c6c;
-  font-size: 1.65cqw;
 }
 
 @keyframes context-flow {
@@ -566,19 +474,12 @@
     stroke-dashoffset: -33.1;
   }
 }
-@keyframes agent-drift {
-  0%,
-  100% {
-    translate: 0 0;
+@keyframes agent-orbit {
+  from {
+    offset-distance: 0%;
   }
-  25% {
-    translate: 2cqw -3cqw;
-  }
-  50% {
-    translate: 4cqw 0;
-  }
-  75% {
-    translate: 2cqw 3cqw;
+  to {
+    offset-distance: 100%;
   }
 }
 @keyframes data-bob {
@@ -592,64 +493,93 @@
 }
 @keyframes original-word {
   0%,
-  37%,
+  19%,
   98%,
   100% {
     opacity: 1;
   }
-  40%,
+  22%,
   95% {
     opacity: 0;
   }
 }
 @keyframes updated-word {
   0%,
-  37%,
+  19%,
   98%,
   100% {
     opacity: 0;
   }
-  40%,
+  22%,
   95% {
     opacity: 1;
   }
 }
 @keyframes word-selection {
   0%,
-  28%,
+  14%,
   98%,
   100% {
     background: #ede8f4;
   }
-  34%,
+  19%,
   95% {
     background: #e3efd9;
   }
 }
-@keyframes agent-cursor {
+@keyframes original-people {
   0%,
-  20%,
+  44%,
+  98%,
   100% {
-    translate: 0 0;
+    opacity: 1;
   }
-  35%,
-  90% {
-    translate: 1cqw -1cqw;
+  47%,
+  95% {
+    opacity: 0;
+  }
+}
+@keyframes updated-people {
+  0%,
+  44%,
+  98%,
+  100% {
+    opacity: 0;
+  }
+  47%,
+  95% {
+    opacity: 1;
+  }
+}
+@keyframes people-selection {
+  0%,
+  39%,
+  98%,
+  100% {
+    background: #ede8f4;
+  }
+  44%,
+  95% {
+    background: #e3efd9;
   }
 }
 @keyframes user-cursor {
   0%,
-  18%,
+  8%,
   100% {
-    translate: 3cqw 2cqw;
+    translate: 44cqw 38cqw;
   }
-  32%,
-  44% {
-    translate: -43cqw 0;
-  }
-  55%,
-  90% {
+  15%,
+  24% {
     translate: 0 0;
+  }
+  38%,
+  50% {
+    translate: -2cqw 34cqw;
+  }
+  60%,
+  92% {
+    translate: 44cqw 38cqw;
   }
 }
 
