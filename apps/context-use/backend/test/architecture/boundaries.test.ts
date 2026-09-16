@@ -49,6 +49,7 @@ async function checkImports(files: Record<string, string>) {
     expect(errors).toBe('');
     const result = JSON.parse(output) as ICruiseResult;
     expect(exitCode).toBe(0);
+    expect(result.modules.length).toBeGreaterThan(0);
     // The JSON reporter always exits successfully; also verify the reporter used in CI.
     const enforcement = Bun.spawn({
       cmd: [

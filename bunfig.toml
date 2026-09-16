@@ -1,0 +1,5 @@
+[install]
+# Keep compiler API consumers on the root TypeScript 6 dependency rather than
+# an arbitrary workspace compiler. Bun's fetch types also need undici-types.
+linker = "isolated"
+hoistPattern = ["undici-types"]

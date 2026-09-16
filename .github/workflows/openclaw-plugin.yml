@@ -9,6 +9,7 @@ on:
       - packages/typescript-config/**
       - package.json
       - bun.lock
+      - bunfig.toml
       - LICENSE
       - .bun-version
       - .github/actions/prepare/**
@@ -122,6 +123,15 @@ jobs:
 
       - name: Install test browser
         run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
+
+      - name: Wait for npm to serve the published version
+        timeout-minutes: 5
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          until npm view "@context-use/openclaw-memory@$RELEASE_VERSION" version --prefer-online --fetch-retries=0; do
+            sleep 5
+          done
 
       - name: Install and test the published version through real OpenClaw
         run: bun run --cwd packages/openclaw-memory test:published
