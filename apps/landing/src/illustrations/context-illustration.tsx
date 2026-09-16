@@ -26,7 +26,7 @@ export function ContextIllustration() {
       description="Flight details, travel messages, and a photo become a Lisbon trip plan for September 12–18. Maya and Alex are mentioned in the plan and both faces are identified in the photo."
     >
       <div className="trip-sources">
-        <span className="illustration-eyebrow">The pieces</span>
+        <span className="illustration-eyebrow">The data</span>
         <div className="trip-fragment">
           <Mail />
           <span>

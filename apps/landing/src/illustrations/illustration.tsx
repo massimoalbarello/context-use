@@ -1,5 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
+const VISIBLE_FRACTION = 0.25;
+
 export function Illustration({
   children,
   description,
@@ -17,14 +19,21 @@ export function Illustration({
     if (!element) {
       return;
     }
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) {
-        setVisible(true);
-        observer.disconnect();
-      }
-    });
+    let inView = false;
+    const updateVisibility = () => setVisible(inView && !document.hidden);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        inView = Boolean(entry?.isIntersecting && entry.intersectionRatio >= VISIBLE_FRACTION);
+        updateVisibility();
+      },
+      { threshold: VISIBLE_FRACTION },
+    );
     observer.observe(element);
-    return () => observer.disconnect();
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', updateVisibility);
+    };
   }, []);
 
   return (

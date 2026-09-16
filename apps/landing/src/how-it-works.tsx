@@ -1,7 +1,8 @@
 import { MarkGithubIcon } from '@primer/octicons-react';
-import { buttonVariants } from '@repo/ui/button';
+import { Button, buttonVariants } from '@repo/ui/button';
 import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Pause, Play } from 'lucide-react';
+import { useState } from 'react';
 import { AgentsIllustration } from './illustrations/agents-illustration';
 import { ContextIllustration } from './illustrations/context-illustration';
 import { RevisionsIllustration } from './illustrations/revisions-illustration';
@@ -37,15 +38,32 @@ const FEATURES = [
 ];
 
 export function HowItWorks() {
+  const [paused, setPaused] = useState(false);
   return (
-    <section id="how-it-works" className="how-it-works" aria-labelledby="how-it-works-title">
+    <section
+      id="how-it-works"
+      className="how-it-works"
+      aria-labelledby="how-it-works-title"
+      data-motion-paused={paused}
+    >
       <div className="how-it-works-inner">
         <div className="how-it-works-intro">
-          <span className="section-eyebrow">How it works</span>
-          <h2 id="how-it-works-title">
-            Your context, shared by
-            <br className="hidden sm:block" /> you and your agents.
-          </h2>
+          <div>
+            <span className="section-eyebrow">How it works</span>
+            <h2 id="how-it-works-title">
+              Your context, shared by
+              <br className="hidden sm:block" /> you and your agents.
+            </h2>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="illustration-motion-toggle"
+            onClick={() => setPaused(!paused)}
+          >
+            {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+            {paused ? 'Resume animations' : 'Pause animations'}
+          </Button>
         </div>
         <div className="feature-rows">
           {FEATURES.map(({ title, description, illustration: FeatureIllustration }) => (

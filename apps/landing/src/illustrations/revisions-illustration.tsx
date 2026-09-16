@@ -1,45 +1,48 @@
-import { ArrowDown, Check, MessageCircle } from 'lucide-react';
+import { MessageCircle, MousePointer2 } from 'lucide-react';
 import { Illustration } from './illustration';
 
 export function RevisionsIllustration() {
   return (
     <Illustration
       name="revisions-illustration"
-      description="An agent drafts a plan for a morning train to Sintra. You add new information that Alex arrives at noon. The agent updates the shared plan to take the afternoon train together, with the revision history visible."
+      description="An agent drafts a morning train to Sintra in a shared trip plan. When Alex's arrival changes to noon, your cursor updates morning to afternoon. The agent and you cursors and revision history show how you keep the same context up to date."
     >
       <div className="revision-document">
         <div className="revision-heading">
           <strong>A day in Sintra</strong>
-          <span>Trip plan</span>
+          <span>Shared trip plan</span>
         </div>
-        <div className="revision-original">
-          <span className="revision-author">Agent · First plan</span>
-          <p>Take the morning train to Sintra.</p>
+        <p className="revision-prose">
+          Take the{' '}
+          <span className="revision-word">
+            <span className="revision-word-original">morning</span>
+            <span className="revision-word-updated">afternoon</span>
+          </span>{' '}
+          train to Sintra.
+          <br />
+          Spend the day exploring together.
+        </p>
+        <div className="collaboration-cursor cursor-agent">
+          <MousePointer2 />
+          <span>agent</span>
         </div>
-        <div className="revision-update">
+        <div className="collaboration-cursor cursor-you">
+          <MousePointer2 />
+          <span>you</span>
+        </div>
+        <div className="revision-news">
           <MessageCircle />
-          <div>
-            <span className="revision-author">You · New information</span>
-            <p>Alex arrives at noon. Let’s go together.</p>
-          </div>
-        </div>
-        <ArrowDown className="revision-arrow" />
-        <div className="revision-current">
-          <span className="revision-author">
-            <Check /> Agent · Updated plan
+          <span>
+            <strong>New arrival time</strong>Alex now arrives at noon.
           </span>
-          <p>Take the afternoon train to Sintra together.</p>
         </div>
       </div>
       <div className="revision-timeline">
         <span>
-          Agent <small>Drafts</small>
+          Agent <small>Drafted the plan</small>
         </span>
         <span>
-          You <small>Adds context</small>
-        </span>
-        <span>
-          Agent <small>Refines</small>
+          You <small>Added new context</small>
         </span>
       </div>
     </Illustration>
