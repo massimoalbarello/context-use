@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { satisfies } from 'semver';
 import metadata from '../package.json';
 import { serverUrl } from './contract';
 import { ConnectionError } from './error';
 import { refreshGateway } from './gateway';
-import { checkHost } from './host-command';
+import { checkHost, runSetupCommand } from './host-command';
 import { installedPlugin, installPackage } from './package-installation';
 import { SETUP_USAGE } from './usage';
 
@@ -40,13 +39,9 @@ async function main(args: string[]): Promise<void> {
   if (!installed) {
     throw new ConnectionError('Context Use is not installed. Run connect first.');
   }
-  const child = spawn(process.execPath, [join(installed.rootDir, 'dist/setup.js'), ...args], {
-    stdio: 'inherit',
-  });
-  // biome-ignore lint/complexity/useMaxParams: Promise executors receive resolve and reject.
-  process.exitCode = await new Promise<number>((resolve, reject) => {
-    child.once('error', reject);
-    child.once('exit', (code) => resolve(code ?? 1));
+  process.exitCode = await runSetupCommand({
+    script: join(installed.rootDir, 'dist/setup.js'),
+    args,
   });
 }
 

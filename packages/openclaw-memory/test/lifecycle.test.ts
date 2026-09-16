@@ -10,7 +10,7 @@ test('excludes competing bootstrap memory while retaining operational instructio
   expect(isMemoryPath({ path: '/work/src/memory/index.ts', workspaceDir: '/work' })).toBe(false);
 });
 
-test('remote flush never tells the agent to write a local memory file', () => {
+test('routine learning runs in the background without a foreground compaction flush', () => {
   const capability = memoryCapability('main');
   expect(capability.supportsPrivateTranscriptRecall).toBe(false);
   const prompt = capability.promptBuilder!({
@@ -25,8 +25,9 @@ test('remote flush never tells the agent to write a local memory file', () => {
     nowMs: Date.now(),
     contextWindowTokens: 100_000,
   });
-  expect(plan?.prompt).toContain('context_use_read_hypermedia_curation_guide');
-  expect(plan?.relativePath).toBe('context-use-remote-memory');
+  expect(prompt).toContain('Leave routine');
+  expect(prompt).toContain('queued background work is not a completed save');
+  expect(plan).toBeNull();
 });
 
 test('memory follows the selected agent across conversations using host-managed sender access', () => {

@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/complexity/useMaxParams: OpenClaw callbacks use positional arguments. */
 
-import { spawn } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { resolveAgentWorkspaceDir } from 'openclaw/plugin-sdk/agent-runtime';
 import { definePluginEntry } from 'openclaw/plugin-sdk/plugin-entry';
@@ -8,6 +7,8 @@ import { z } from 'zod';
 import { callMemoryTool } from './client';
 import { configMatches } from './configuration';
 import { assertHostVersion, PLUGIN_ID, PluginConfigSchema, toolName } from './contract';
+import { runSetupCommand } from './host-command';
+import { registerLearning } from './learning';
 import { canUseMemory, filterBootstrap, isMemoryPath, memoryCapability } from './lifecycle';
 import { type ConnectionState, connectionDirectory, readStateSync } from './state';
 import { toolInput } from './tool-input';
@@ -39,19 +40,9 @@ export default definePluginEntry({
           .helpOption(false)
           .allowUnknownOption()
           .action(async (args: string[]) => {
-            const child = spawn(
-              process.execPath,
-              [join(dirname(api.source), 'setup.js'), ...args],
-              {
-                stdio: 'inherit',
-              },
-            );
-            await new Promise<void>((resolve, reject) => {
-              child.once('error', reject);
-              child.once('exit', (code) => {
-                process.exitCode = code ?? 1;
-                resolve();
-              });
+            process.exitCode = await runSetupCommand({
+              script: join(dirname(api.source), 'setup.js'),
+              args,
             });
           });
       },
@@ -118,6 +109,17 @@ export default definePluginEntry({
       );
       return;
     }
+    if (state.learningId) {
+      registerLearning({
+        connectionId: state.learningId,
+        api,
+        config,
+        directory,
+        toolNames: state.tools.map((tool) => toolName(tool.name)),
+      });
+    } else {
+      api.logger.warn('Reconnect Context Use to enable background learning.');
+    }
     api.registerTool(
       (context) => {
         if (!canUseMemory({ ...config, context })) {
@@ -134,6 +136,7 @@ export default definePluginEntry({
               try {
                 const result = await callMemoryTool({
                   directory,
+                  connectionId: state.learningId,
                   ...config,
                   name: tool.name,
                   arguments: input.parse(args),

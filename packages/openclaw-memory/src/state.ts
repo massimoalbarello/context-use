@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type {
   OAuthDiscoveryState,
@@ -12,9 +12,8 @@ import { lock } from 'proper-lockfile';
 import { z } from 'zod';
 import { PLUGIN_ID, PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
+import { PRIVATE_DIRECTORY_MODE, writePrivateFile } from './private-files';
 
-const PRIVATE_DIRECTORY_MODE = 0o700;
-const PRIVATE_FILE_MODE = 0o600;
 const LOCK_STALE_MS = 120_000;
 const LOCK_RETRIES = 300;
 const LOCK_RETRY_MS = 100;
@@ -27,6 +26,7 @@ export const ChangeSchema = z.object({
 export type Change = z.infer<typeof ChangeSchema>;
 
 const ConnectionStateSchema = z.object({
+  learningId: z.string().uuid().optional(),
   config: PluginConfigSchema,
   changes: z.array(ChangeSchema),
   tools: z.array(
@@ -47,6 +47,7 @@ const ConnectionStateSchema = z.object({
 });
 
 export type ConnectionState = {
+  learningId?: string;
   config: z.infer<typeof PluginConfigSchema>;
   changes: Change[];
   tools: Tool[];
@@ -79,16 +80,10 @@ export async function writeState(input: {
   directory: string;
   state: ConnectionState;
 }): Promise<void> {
-  const path = join(input.directory, 'connection.json');
-  // Callers hold the connection lock. Reusing this path also replaces credentials
-  // left by an interrupted write when disconnect writes the cleared OAuth state.
-  const temporary = `${path}.tmp`;
-  try {
-    await writeFile(temporary, JSON.stringify(input.state), { mode: PRIVATE_FILE_MODE });
-    await rename(temporary, path);
-  } finally {
-    await rm(temporary, { force: true });
-  }
+  await writePrivateFile({
+    path: join(input.directory, 'connection.json'),
+    data: JSON.stringify(input.state),
+  });
 }
 
 // The same cross-process lock covers refresh and disconnect, so a pending request cannot

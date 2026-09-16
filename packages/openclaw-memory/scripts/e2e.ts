@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { ownerBrowser } from '@repo/browser-testing/owner-browser';
 import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
+import { LearningStore } from '../src/learning-store';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
 import { availablePort, startApp } from './e2e-app';
 import { startModel } from './e2e-model';
@@ -61,7 +62,7 @@ async function command(input: string[] | { args: string[]; stdin: string }): Pro
   ]);
   if (code !== 0 || process.signalCode || stderr.includes('context-use failed during register')) {
     throw new Error(
-      `Command ${args.slice(0, COMMAND_LABEL_ARGUMENTS).join(' ')} failed (${code}): ${stderr}`,
+      `Command ${args.slice(0, COMMAND_LABEL_ARGUMENTS).join(' ')} failed (${code}): ${stderr}\n${stdout}`,
     );
   }
   return stdout;
@@ -136,7 +137,7 @@ try {
   await configure(`config.agents ??= {}; config.agents.defaults ??= {}; config.agents.defaults.workspace=${JSON.stringify(workspace)};
 config.agents.defaults.model={primary:'fixture/memory-fixture'};
 config.tools={...config.tools,codeMode:{enabled:false},toolSearch:{enabled:false}};
-config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text'],contextWindow:100000,maxTokens:4000}]}}};`);
+config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text','image'],contextWindow:100000,maxTokens:4000}]}}};`);
   const personalGroup = 'agent:main:telegram:group:-100123';
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
   const installCommand = `OPENCLAW_STATE_DIR=${quote(stateDir)} OPENCLAW_CONFIG_PATH=${quote(env.OPENCLAW_CONFIG_PATH)} PATH=${quote(env.PATH)} npx --yes ${quote(packageSpec)}`;
@@ -379,7 +380,153 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     stderr: Bun.file(join(directory, 'gateway-error.log')),
   });
   await waitGateway();
-  console.log('Disposable gateway is ready; removing the installed plugin.');
+  model.background();
+  const backgroundSession = `${personalGroup}:topic:6`;
+  const attachmentFixtures = [
+    {
+      fileName: 'Exhibition photo',
+      mimeType: 'image/png',
+      bytes: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    },
+    {
+      fileName: 'Exhibition video',
+      mimeType: 'video/mp4',
+      bytes: Buffer.from(
+        await Bun.file(
+          join(repo, 'apps/context-use/demo/fixtures/assets/synthetic-iphone-rehearsal.mp4'),
+        ).arrayBuffer(),
+      ),
+    },
+    {
+      fileName: 'Exhibition document',
+      mimeType: 'application/pdf',
+      bytes: Buffer.from(
+        await Bun.file(
+          join(repo, 'apps/context-use/demo/fixtures/assets/synthetic-iphone-rehearsal.pdf'),
+        ).arrayBuffer(),
+      ),
+    },
+  ];
+  const dispatched = await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'chat.send',
+    '--timeout',
+    String(COMMAND_TIMEOUT_MS),
+    '--params',
+    JSON.stringify({
+      sessionKey: backgroundSession,
+      message:
+        "I'll visit Mira's exhibition on 20 June 2030 and buy admission at the door. Keep these image, video and document attachments with the plan.",
+      attachments: attachmentFixtures.map(({ fileName, mimeType, bytes }) => ({
+        type: 'file',
+        fileName,
+        mimeType,
+        content: bytes.toString('base64'),
+      })),
+      idempotencyKey: crypto.randomUUID(),
+      deliver: false,
+    }),
+    '--json',
+  ]);
+  const completed = await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'agent.wait',
+    '--timeout',
+    String(COMMAND_TIMEOUT_MS),
+    '--params',
+    JSON.stringify({ runId: JSON.parse(dispatched).runId, timeoutMs: COMMAND_TIMEOUT_MS }),
+    '--json',
+  ]);
+  assert.equal(JSON.parse(completed).status, 'ok');
+  const reply = await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'chat.history',
+    '--params',
+    JSON.stringify({ sessionKey: backgroundSession }),
+    '--json',
+  ]);
+  assert(reply.includes('Enjoy the exhibition.'));
+  assert(
+    !JSON.parse(reply).messages.some((message: { role: string }) => message.role === 'toolResult'),
+  );
+  await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'sessions.reset',
+    '--params',
+    JSON.stringify({ key: backgroundSession, reason: 'new' }),
+    '--json',
+  ]);
+  const learningTimeoutMs = 180_000;
+  const pollIntervalMs = 1_000;
+  const deadline = Date.now() + learningTimeoutMs;
+  const connection = await Bun.file(connectionFile).json();
+  const queue = new LearningStore({
+    directory: join(stateDir, 'plugins', PLUGIN_ID),
+    config: connection.config,
+    connectionId: connection.learningId,
+  });
+  try {
+    let saved = false;
+    while (Date.now() < deadline) {
+      saved = await owner.page.request.get(`${app.origin}/api/pages`).then(async (response) => {
+        assert(response.ok());
+        return (await response.text()).includes('Exhibition visit');
+      });
+      if (saved && queue.status().pending === 0) {
+        break;
+      }
+      await Bun.sleep(pollIntervalMs);
+    }
+    assert(saved, 'The background worker did not save the plan across /new');
+    assert.equal(queue.status().pending, 0, 'Unacknowledged evidence remains queued');
+    assert(model.observations.backgroundCalls > 0);
+    const assetsResponse = await owner.page.request.get(`${app.origin}/api/assets`);
+    assert(assetsResponse.ok());
+    const assets = (await assetsResponse.json()).items as {
+      name: string;
+      readableId: string;
+      mediaType: string;
+    }[];
+    assert.equal(
+      assets.length,
+      attachmentFixtures.length,
+      'Every attachment should create exactly one asset',
+    );
+    for (const fixture of attachmentFixtures) {
+      const asset = assets.find((asset) => asset.name === fixture.fileName);
+      assert(asset, `Missing captured asset: ${fixture.fileName}`);
+      assert.equal(asset.mediaType, fixture.mimeType);
+      const content: Awaited<ReturnType<typeof owner.page.request.get>> =
+        await owner.page.request.get(`${app.origin}/api/assets/${asset.readableId}/content`);
+      assert(content.ok());
+      assert.deepEqual(await content.body(), fixture.bytes, 'Captured asset bytes changed');
+    }
+    await owner.page.goto(`${app.origin}/map?resource=page&resourceId=exhibition-visit`);
+    await owner.page
+      .getByRole('heading', { name: 'Exhibition visit', exact: true })
+      .first()
+      .waitFor();
+    for (const fixture of attachmentFixtures) {
+      await owner.page.getByRole('link', { name: fixture.fileName, exact: true }).first().waitFor();
+    }
+  } finally {
+    queue.close();
+  }
+  console.log(
+    'A reply made no memory calls; background learning saved the plan and original image, video and document assets across /new, displayed their links in the app, and cleared its evidence.',
+  );
+  console.log('Removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
   console.log(await command(['openclaw', 'context-use', 'remove']));
   assert(!(await Bun.file(connectionFile).exists()));

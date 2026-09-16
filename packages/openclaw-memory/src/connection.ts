@@ -1,5 +1,7 @@
 /** biome-ignore-all lint/complexity/useMaxParams: The Fetch API uses positional arguments. */
 
+import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { auth } from '@modelcontextprotocol/client';
@@ -10,17 +12,23 @@ import {
 import { discoverTools, withClient } from './client';
 import {
   assertPersonalConfiguration,
+  configMatches,
   prepareConfiguration,
   restoreConfiguration,
 } from './configuration';
-import { PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
+import { AUTHORIZATION_SCOPE, PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
 import { ConnectionError } from './error';
+import { attachmentDirectory, LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
 
+const authorizationFetch: NonNullable<Parameters<typeof auth>[1]['fetchFn']> = (url, init) =>
+  fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+
 async function activate(input: { directory: string; state: ConnectionState }): Promise<void> {
   input.state.tools = await withClient({ ...input, run: discoverTools });
+  input.state.learningId ??= randomUUID();
   await mutateConfigFile({
     mutate: async (config) => {
       prepareConfiguration({ config, state: input.state });
@@ -29,6 +37,21 @@ async function activate(input: { directory: string; state: ConnectionState }): P
       await writeState(input);
     },
   });
+}
+
+async function removeLearningData(input: {
+  directory: string;
+  connectionId: string;
+}): Promise<void> {
+  await rm(join(input.directory, attachmentDirectory(input.connectionId)), {
+    recursive: true,
+    force: true,
+  });
+  for (const suffix of ['', '-journal']) {
+    await rm(join(input.directory, `${learningDatabase(input.connectionId)}${suffix}`), {
+      force: true,
+    });
+  }
 }
 
 export async function connect(input: {
@@ -41,11 +64,7 @@ export async function connect(input: {
     directory: input.directory,
     run: async () => {
       const existing = await readState(input.directory);
-      if (
-        existing &&
-        (existing.config.serverUrl !== config.serverUrl ||
-          existing.config.agentId !== config.agentId)
-      ) {
+      if (existing && !configMatches({ actual: existing.config, expected: config })) {
         throw new ConnectionError(
           'Disconnect the existing account before changing instance or agent.',
         );
@@ -61,9 +80,8 @@ export async function connect(input: {
         oauthProvider({ directory: input.directory, state, interactive: true }),
         {
           serverUrl: config.serverUrl,
-          scope: 'mcp offline_access',
-          fetchFn: (url, init) =>
-            fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+          scope: AUTHORIZATION_SCOPE,
+          fetchFn: authorizationFetch,
         },
       );
       if (result === 'REDIRECT') {
@@ -95,8 +113,7 @@ export async function finishAuthorization(input: {
         {
           serverUrl: state.config.serverUrl,
           ...response,
-          fetchFn: (url, init) =>
-            fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+          fetchFn: authorizationFetch,
         },
       );
       if (result !== 'AUTHORIZED') {
@@ -104,7 +121,16 @@ export async function finishAuthorization(input: {
       }
       delete state.oauth.pending;
       delete state.oauth.verifier;
+      // A new authorization can belong to another person even when the OAuth client is reused.
+      const previousLearningId = state.learningId;
+      state.learningId = randomUUID();
       await writeState({ directory: input.directory, state });
+      if (previousLearningId) {
+        await removeLearningData({
+          directory: input.directory,
+          connectionId: previousLearningId,
+        });
+      }
       await activate({ directory: input.directory, state });
     },
   });
@@ -132,6 +158,9 @@ export async function disconnect(directory: string): Promise<{ preserved: string
         },
       });
       await rm(join(directory, 'connection.json'), { force: true });
+      if (state?.learningId) {
+        await removeLearningData({ directory, connectionId: state.learningId });
+      }
       return { preserved };
     },
   });
@@ -157,7 +186,28 @@ export async function status(directory: string): Promise<Record<string, unknown>
       const selected =
         snapshot.config.plugins?.slots?.memory === PLUGIN_ID &&
         snapshot.config.plugins?.entries?.[PLUGIN_ID]?.enabled === true;
-      return { connected: selected, authenticated: true, ...state.config, tools: tools.length };
+      const learning =
+        state.learningId && existsSync(join(directory, learningDatabase(state.learningId)))
+          ? new LearningStore({
+              directory,
+              config: state.config,
+              connectionId: state.learningId,
+            })
+          : undefined;
+      try {
+        return {
+          connected: selected,
+          authenticated: true,
+          ...state.config,
+          tools: tools.length,
+          learning: {
+            enabled: Boolean(state.learningId),
+            ...(learning?.status() ?? { pending: 0, running: false }),
+          },
+        };
+      } finally {
+        learning?.close();
+      }
     },
   });
 }

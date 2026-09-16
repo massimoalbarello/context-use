@@ -55,14 +55,14 @@ export async function discoverTools(client: Client): Promise<Tool[]> {
   return tools.filter((tool) => MCP_TOOL_NAMES.some((name) => name === tool.name));
 }
 
-export async function callMemoryTool(input: {
+export async function withMemoryClient<T>(input: {
+  connectionId?: string;
   directory: string;
   serverUrl: string;
   agentId: string;
-  name: string;
-  arguments: Record<string, unknown>;
   signal?: AbortSignal;
-}): Promise<CallToolResult> {
+  run: (client: Client) => Promise<T>;
+}): Promise<T> {
   return await withConnection({
     directory: input.directory,
     run: async () => {
@@ -70,6 +70,7 @@ export async function callMemoryTool(input: {
       const state = await readState(input.directory);
       if (
         !state ||
+        state.learningId !== input.connectionId ||
         state.config.serverUrl !== input.serverUrl ||
         state.config.agentId !== input.agentId ||
         !state.oauth.tokens
@@ -79,16 +80,27 @@ export async function callMemoryTool(input: {
       return await withClient({
         directory: input.directory,
         state,
-        run: async (client) => {
-          return await client.callTool(
-            { name: input.name, arguments: input.arguments },
-            {
-              timeout: REQUEST_TIMEOUT_MS,
-              signal: input.signal,
-            },
-          );
-        },
+        run: input.run,
       });
     },
+  });
+}
+
+export async function callMemoryTool(input: {
+  connectionId?: string;
+  directory: string;
+  serverUrl: string;
+  agentId: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  signal?: AbortSignal;
+}): Promise<CallToolResult> {
+  return await withMemoryClient({
+    ...input,
+    run: (client) =>
+      client.callTool(
+        { name: input.name, arguments: input.arguments },
+        { timeout: REQUEST_TIMEOUT_MS, signal: input.signal },
+      ),
   });
 }

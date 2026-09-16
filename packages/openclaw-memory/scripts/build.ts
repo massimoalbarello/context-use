@@ -2,7 +2,14 @@ import { chmod, copyFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import metadata from '../package.json';
-import { MCP_TOOL_NAMES, PLUGIN_ID, PluginConfigSchema, toolName } from '../src/contract';
+import {
+  FINISH_LEARNING_TOOL,
+  MCP_TOOL_NAMES,
+  PLUGIN_ID,
+  PluginConfigSchema,
+  SAVE_ATTACHMENT_TOOL,
+  toolName,
+} from '../src/contract';
 
 const EXECUTABLE_MODE = 0o755;
 const JSON_INDENT = 2;
@@ -87,7 +94,9 @@ await Bun.write(
           hasSubcommands: true,
         },
       ],
-      contracts: { tools: MCP_TOOL_NAMES.map(toolName) },
+      contracts: {
+        tools: [...MCP_TOOL_NAMES.map(toolName), FINISH_LEARNING_TOOL, SAVE_ATTACHMENT_TOOL],
+      },
       configSchema: z.toJSONSchema(PluginConfigSchema),
     },
     null,

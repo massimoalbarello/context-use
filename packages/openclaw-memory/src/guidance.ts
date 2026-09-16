@@ -17,6 +17,13 @@ authorization links, redirect URLs or authorization codes. Respect requests not 
 If nothing merits preservation, make no write. If an operation fails or its outcome is uncertain,
 do not claim success or blindly replay a create. Keep the final reply focused on the user's task.`;
 
+export const CONVERSATION_LEARNING_GUIDANCE = `When background learning is enabled, Context Use queues conversation evidence for background learning after turns and before resets
+and compactions. The Gateway curates this evidence without holding up your reply. Leave routine
+learning to that worker. If the user explicitly asks you to remember, correct or forget something,
+handle it now through Context Use tools: read the curation guide, search and read existing knowledge,
+then make the smallest supported change. Respect retention preferences. Do not claim information
+has been saved until the required writes succeed; queued background work is not a completed save.`;
+
 export const MEMORY_GUIDANCE = `Context Use is your sole durable personal memory. Read and write
 through its context_use_ tools whenever useful, including background work. Use it across your
 connected conversations. If Context Use is unavailable, report the limitation when relevant;
