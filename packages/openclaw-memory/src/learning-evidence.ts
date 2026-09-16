@@ -16,6 +16,7 @@ const MediaSchema = z.object({
 });
 const MediaMessageSchema = z.object({
   role: z.literal('user'),
+  content: z.unknown(),
   timestamp: z.union([z.string(), z.number()]).optional(),
   __openclaw: z.object({ media: z.array(MediaSchema) }),
 });
@@ -23,6 +24,17 @@ const CHUNK_CHARS = 6_000;
 
 export type LearningAttachment = { reference: string; fileName?: string; contentType?: string };
 export type LearningEvidence = { key: string; text: string; attachment?: LearningAttachment };
+
+function messageText(content: unknown): string {
+  return typeof content === 'string'
+    ? content
+    : (Array.isArray(content) ? content : [])
+        .flatMap((part) => {
+          const parsed = TextSchema.safeParse(part);
+          return parsed.success ? [parsed.data.text] : [];
+        })
+        .join('\n');
+}
 
 export function attachmentsFromMessages(messages: unknown[]): LearningEvidence[] {
   return messages.flatMap((raw) => {
@@ -44,6 +56,7 @@ export function attachmentsFromMessages(messages: unknown[]): LearningEvidence[]
           text: JSON.stringify({
             role: 'user',
             timestamp: parsed.data.timestamp,
+            caption: messageText(parsed.data.content).slice(0, CHUNK_CHARS),
             attachment: { id: key, fileName: media.fileName, contentType: media.contentType },
           }),
         },
@@ -59,15 +72,7 @@ export function evidenceFromMessages(messages: unknown[]): LearningEvidence[] {
       return [];
     }
     const message = parsed.data;
-    const text =
-      typeof message.content === 'string'
-        ? message.content
-        : (Array.isArray(message.content) ? message.content : [])
-            .flatMap((part) => {
-              const parsed = TextSchema.safeParse(part);
-              return parsed.success ? [parsed.data.text] : [];
-            })
-            .join('\n');
+    const text = messageText(message.content);
     if (!text.trim()) {
       return [];
     }

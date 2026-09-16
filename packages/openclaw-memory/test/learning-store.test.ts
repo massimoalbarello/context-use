@@ -187,6 +187,7 @@ test('attachment references survive reset and restart, scope uploads to the acti
   const evidence = attachmentsFromMessages([
     {
       role: 'user',
+      content: [{ type: 'text', text: 'These files document the exhibition.' }],
       __openclaw: {
         media: [
           { path: '/media/photo.png', fileName: 'Exhibition photo', contentType: 'image/png' },
@@ -208,6 +209,7 @@ test('attachment references survive reset and restart, scope uploads to the acti
   db.capture({ source: 'chat', evidence, now: NOW });
   const job = db.next({ agentId: 'main', now: NOW })!;
   expect(job.evidence).not.toContain('/media/');
+  expect(job.evidence).toContain('These files document the exhibition.');
   const reopened = open();
   expect(reopened.attachments(job)).toHaveLength(attachmentCount);
   expect(() => reopened.acknowledge({ sessionKey: job.sessionKey })).toThrow('every attachment');
