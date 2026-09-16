@@ -3,13 +3,20 @@ import { Button, buttonVariants } from '@repo/ui/button';
 import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { DEMO_URL, GITHUB_URL } from './links';
 
-const GITHUB_URL = 'https://github.com/massimoalbarello/context-use';
-const DEMO_URL = 'https://demo.context-use.com/map';
-
-function NavigationLinks() {
+function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
+      {/* biome-ignore lint/a11y/useValidAnchor: This fragment link navigates; the handler only closes the mobile menu. */}
+      <a
+        href="#how-it-works"
+        onClick={onNavigate}
+        className={buttonVariants({ variant: 'ghost', size: 'lg' })}
+      >
+        How it works
+      </a>
       <a
         href={GITHUB_URL}
         target="_blank"
@@ -39,18 +46,19 @@ function NavigationLinks() {
 }
 
 export function LandingNavigation() {
+  const [open, setOpen] = useState(false);
   return (
     <>
-      <nav aria-label="Main navigation" className="hidden items-center gap-3 sm:flex">
+      <nav aria-label="Main navigation" className="hidden items-center gap-3 lg:flex">
         <NavigationLinks />
       </nav>
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button
               variant="ghost"
               size="icon-lg"
-              className="group sm:hidden"
+              className="group lg:hidden"
               aria-label="Toggle navigation"
             />
           }
@@ -61,10 +69,10 @@ export function LandingNavigation() {
         <PopoverContent
           align="end"
           aria-label="Navigation"
-          className="w-56 max-w-[calc(100vw-2.5rem)] p-2 sm:hidden"
+          className="w-56 max-w-[calc(100vw-2.5rem)] p-2 lg:hidden"
         >
           <nav aria-label="Mobile navigation" className="flex flex-col gap-1">
-            <NavigationLinks />
+            <NavigationLinks onNavigate={() => setOpen(false)} />
           </nav>
         </PopoverContent>
       </Popover>
