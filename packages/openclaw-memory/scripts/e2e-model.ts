@@ -224,7 +224,13 @@ export function startModel() {
         const row = z
           .object({
             message: z.object({
-              attachment: z.object({ id: z.string(), fileName: z.string().optional() }).optional(),
+              attachment: z
+                .object({
+                  id: z.string(),
+                  fileName: z.string().optional(),
+                  contentType: z.string().optional(),
+                })
+                .optional(),
             }),
           })
           .parse(JSON.parse(line));
@@ -269,7 +275,10 @@ export function startModel() {
         name: 'save_learning_attachment',
         arguments: {
           attachmentId: attachment.id,
-          name: attachment.fileName ?? 'Exhibition attachment',
+          name:
+            attachment.contentType === 'image/png'
+              ? 'Exhibition photo'
+              : (attachment.fileName ?? 'Exhibition attachment'),
         },
       })),
       ...(alreadySaved

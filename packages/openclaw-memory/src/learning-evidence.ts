@@ -12,7 +12,6 @@ const MediaSchema = z.object({
   url: z.string().optional(),
   fileName: z.string().optional(),
   contentType: z.string().optional(),
-  hydrationSuppressed: z.boolean().optional(),
 });
 const MediaMessageSchema = z.object({
   role: z.literal('user'),
@@ -44,7 +43,7 @@ export function attachmentsFromMessages(messages: unknown[]): LearningEvidence[]
     }
     return parsed.data.__openclaw.media.flatMap((media) => {
       const reference = media.path ?? media.url;
-      if (!reference || media.hydrationSuppressed) {
+      if (!reference) {
         return [];
       }
       const attachment = { reference, fileName: media.fileName, contentType: media.contentType };

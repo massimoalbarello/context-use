@@ -196,6 +196,7 @@ test('attachment references survive reset and restart, scope uploads to the acti
             path: '/media/guide.pdf',
             fileName: 'Exhibition guide',
             contentType: 'application/pdf',
+            hydrationSuppressed: true,
           },
         ],
       },
