@@ -1,5 +1,6 @@
 import './style.css';
 import { ErrorComponent, type ErrorComponentProps, useNavigate } from '@tanstack/react-router';
+import { DemoIntroduction } from './introduction';
 import {
   DEMO_WRITE_DENIED_EVENT,
   DemoNoticeDialog,
@@ -23,6 +24,7 @@ browser.fetch = (...args) => {
 const { Route } = await import('#frontend/routes/__root.tsx');
 // Account screens load protected APIs. Explain their denial without changing those screens.
 const Workspace = Route.options.component!;
+const introductionTrigger = document.getElementById('demo-introduction-trigger');
 Route.update({ component: DemoWorkspace, errorComponent: DemoRouteError });
 const { mountDashboard } = await import('#frontend/mount.tsx');
 mountDashboard();
@@ -32,6 +34,7 @@ function DemoWorkspace() {
     <>
       <Workspace />
       <DemoWriteNotice events={writeNotices} />
+      {introductionTrigger && <DemoIntroduction triggerContainer={introductionTrigger} />}
     </>
   );
 }
