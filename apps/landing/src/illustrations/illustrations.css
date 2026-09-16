@@ -29,6 +29,7 @@
   font-weight: 500;
   line-height: 1.12;
   letter-spacing: -0.045em;
+  text-wrap: balance;
 }
 
 .feature-rows {
