@@ -29,10 +29,11 @@ export function startModel() {
     mainCalls: 0,
     removedCalls: 0,
     setupCalls: 0,
+    backgroundCalls: 0,
     prompt: '',
     tools: new Set<string>(),
   };
-  let phase: 'setup' | 'learn' | 'recall' | 'removed' = 'learn';
+  let phase: 'setup' | 'learn' | 'recall' | 'background' | 'removed' = 'learn';
   let setupCommand = '';
   let setupStarted = false;
   let setupSession: string | undefined;
@@ -191,6 +192,65 @@ export function startModel() {
     observations.removedCalls += 1;
     return { answer: 'Local memory is available. You are Rowan and like architecture.' };
   }
+  function backgroundReply(input: ModelInput): Reply {
+    observations.backgroundCalls += 1;
+    const transcript = JSON.stringify(input.messages);
+    if (!transcript.includes('Liza is arriving')) {
+      const finished = input.messages.some((message) => message.role === 'tool');
+      return finished
+        ? { answer: 'NO_REPLY' }
+        : { call: { name: 'finish_learning', arguments: {} }, answer: '' };
+    }
+    const results = input.messages.filter((message) => message.role === 'tool');
+    const guide = results
+      .map((message) => {
+        try {
+          return ToolPayloadSchema.parse(JSON.parse(String(message.content))).guide_version;
+        } catch {
+          return undefined;
+        }
+      })
+      .find(Boolean);
+    const steps = [
+      { name: 'read_hypermedia_curation_guide', arguments: {} },
+      { name: 'search_hypermedia', arguments: { query: 'Liza Stansted' } },
+      {
+        name: 'create_entity',
+        arguments: {
+          name: 'Rowan',
+          description: 'The user.',
+          entityType: { value: 'person' },
+          isSelf: true,
+        },
+      },
+      {
+        name: 'create_entity',
+        arguments: {
+          name: 'Liza',
+          description: 'A person Rowan plans to pick up at Stansted.',
+          entityType: { value: 'person' },
+        },
+      },
+      {
+        name: 'create_knowledge_page',
+        arguments: {
+          guide_version: guide,
+          markdown:
+            '# Stansted pickup\n\n[Rowan](context-use://entity/rowan) said that [Liza](context-use://entity/liza) is arriving in London on 16 September 2026. Rowan plans to pick her up at Stansted, travelling from Canary Wharf and buying coach tickets once there. Source: the supplied conversation; this is a plan, not a completed trip.',
+        },
+      },
+      { name: 'read_knowledge_page', arguments: { address: 'context-use://page/stansted-pickup' } },
+      { name: 'finish_learning', arguments: {} },
+    ];
+    const verifyStep = 6;
+    if (results.length === verifyStep) {
+      assert(
+        JSON.stringify(results.at(-1)?.content).includes('Canary Wharf'),
+        'Background worker did not persist the plan',
+      );
+    }
+    return { call: steps[results.length], answer: 'NO_REPLY' };
+  }
   function reply(input: ModelInput): Reply {
     if (phase === 'setup') {
       return setupReply(input);
@@ -199,6 +259,16 @@ export function startModel() {
       return removedReply(input);
     }
     const names = input.tools.map((tool) => tool.function.name);
+    if (names.includes('context_use_finish_learning')) {
+      return backgroundReply(input);
+    }
+    if (phase === 'background') {
+      return {
+        answer: names.includes('context_use_create_knowledge_page')
+          ? 'I can help with your trip.'
+          : 'NONE',
+      };
+    }
     assert(
       !names.includes('memory_search') && !names.includes('memory_get'),
       'A competing memory provider is available',
@@ -292,6 +362,9 @@ export function startModel() {
     recall: () => {
       phase = 'recall';
       recallStep = 0;
+    },
+    background: () => {
+      phase = 'background';
     },
     removed: () => {
       phase = 'removed';

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { callMemoryTool } from './client';
 import { configMatches } from './configuration';
 import { assertHostVersion, PLUGIN_ID, PluginConfigSchema, toolName } from './contract';
+import { registerLearning } from './learning';
 import { canUseMemory, filterBootstrap, isMemoryPath, memoryCapability } from './lifecycle';
 import { type ConnectionState, connectionDirectory, readStateSync } from './state';
 import { toolInput } from './tool-input';
@@ -118,6 +119,17 @@ export default definePluginEntry({
       );
       return;
     }
+    if (state.learningId) {
+      registerLearning({
+        connectionId: state.learningId,
+        api,
+        config,
+        directory,
+        toolNames: state.tools.map((tool) => toolName(tool.name)),
+      });
+    } else {
+      api.logger.warn('Reconnect Context Use to enable background learning.');
+    }
     api.registerTool(
       (context) => {
         if (!canUseMemory({ ...config, context })) {
@@ -134,6 +146,7 @@ export default definePluginEntry({
               try {
                 const result = await callMemoryTool({
                   directory,
+                  connectionId: state.learningId,
                   ...config,
                   name: tool.name,
                   arguments: input.parse(args),

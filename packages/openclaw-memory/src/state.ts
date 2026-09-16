@@ -27,6 +27,7 @@ export const ChangeSchema = z.object({
 export type Change = z.infer<typeof ChangeSchema>;
 
 const ConnectionStateSchema = z.object({
+  learningId: z.string().uuid().optional(),
   config: PluginConfigSchema,
   changes: z.array(ChangeSchema),
   tools: z.array(
@@ -47,6 +48,7 @@ const ConnectionStateSchema = z.object({
 });
 
 export type ConnectionState = {
+  learningId?: string;
   config: z.infer<typeof PluginConfigSchema>;
   changes: Change[];
   tools: Tool[];

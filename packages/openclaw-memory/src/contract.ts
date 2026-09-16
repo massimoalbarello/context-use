@@ -10,6 +10,7 @@ export const CALLBACK_URL = 'http://127.0.0.1:49187/context-use/callback';
 export const REQUEST_TIMEOUT_MS = 30_000;
 export const AUTHORIZATION_TIMEOUT_MS = 600_000;
 export const toolName = (name: string) => `context_use_${name}`;
+export const FINISH_LEARNING_TOOL = toolName('finish_learning');
 
 export const PluginConfigSchema = z.strictObject({
   agentId: z.string().regex(/^[a-z0-9][a-z0-9_-]*$/),

@@ -1,5 +1,7 @@
 /** biome-ignore-all lint/complexity/useMaxParams: The Fetch API uses positional arguments. */
 
+import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { auth } from '@modelcontextprotocol/client';
@@ -15,12 +17,14 @@ import {
 } from './configuration';
 import { PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
 import { ConnectionError } from './error';
+import { LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
 
 async function activate(input: { directory: string; state: ConnectionState }): Promise<void> {
   input.state.tools = await withClient({ ...input, run: discoverTools });
+  input.state.learningId ??= randomUUID();
   await mutateConfigFile({
     mutate: async (config) => {
       prepareConfiguration({ config, state: input.state });
@@ -104,7 +108,17 @@ export async function finishAuthorization(input: {
       }
       delete state.oauth.pending;
       delete state.oauth.verifier;
+      // A new authorization can belong to another person even when the OAuth client is reused.
+      const previousLearningId = state.learningId;
+      state.learningId = randomUUID();
       await writeState({ directory: input.directory, state });
+      if (previousLearningId) {
+        for (const suffix of ['', '-journal']) {
+          await rm(join(input.directory, `${learningDatabase(previousLearningId)}${suffix}`), {
+            force: true,
+          });
+        }
+      }
       await activate({ directory: input.directory, state });
     },
   });
@@ -132,6 +146,13 @@ export async function disconnect(directory: string): Promise<{ preserved: string
         },
       });
       await rm(join(directory, 'connection.json'), { force: true });
+      if (state?.learningId) {
+        for (const suffix of ['', '-journal']) {
+          await rm(join(directory, `${learningDatabase(state.learningId)}${suffix}`), {
+            force: true,
+          });
+        }
+      }
       return { preserved };
     },
   });
@@ -157,7 +178,28 @@ export async function status(directory: string): Promise<Record<string, unknown>
       const selected =
         snapshot.config.plugins?.slots?.memory === PLUGIN_ID &&
         snapshot.config.plugins?.entries?.[PLUGIN_ID]?.enabled === true;
-      return { connected: selected, authenticated: true, ...state.config, tools: tools.length };
+      const learning =
+        state.learningId && existsSync(join(directory, learningDatabase(state.learningId)))
+          ? new LearningStore({
+              directory,
+              config: state.config,
+              connectionId: state.learningId,
+            })
+          : undefined;
+      try {
+        return {
+          connected: selected,
+          authenticated: true,
+          ...state.config,
+          tools: tools.length,
+          learning: {
+            enabled: Boolean(state.learningId),
+            ...(learning?.status() ?? { pending: 0, running: false }),
+          },
+        };
+      } finally {
+        learning?.close();
+      }
     },
   });
 }

@@ -56,6 +56,7 @@ export async function discoverTools(client: Client): Promise<Tool[]> {
 }
 
 export async function callMemoryTool(input: {
+  connectionId?: string;
   directory: string;
   serverUrl: string;
   agentId: string;
@@ -70,6 +71,7 @@ export async function callMemoryTool(input: {
       const state = await readState(input.directory);
       if (
         !state ||
+        state.learningId !== input.connectionId ||
         state.config.serverUrl !== input.serverUrl ||
         state.config.agentId !== input.agentId ||
         !state.oauth.tokens
