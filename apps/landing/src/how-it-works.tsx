@@ -29,7 +29,7 @@ const FEATURES = [
     illustration: ContextIllustration,
   },
   {
-    title: 'Stay in sync with your agents',
+    title: 'Your agents stay in sync with your life',
     description:
       'You see everything your agents know about you so you can be sure they stay aligned.',
     illustration: RevisionsIllustration,
@@ -43,7 +43,7 @@ export function HowItWorks() {
         <div className="how-it-works-intro">
           <div>
             <span className="section-eyebrow">How it works</span>
-            <h2 id="how-it-works-title">Your context, shared by you and your agents.</h2>
+            <h2 id="how-it-works-title">All your context, shared by you and your agents.</h2>
           </div>
         </div>
         <div className="feature-rows">
