@@ -62,7 +62,7 @@ async function command(input: string[] | { args: string[]; stdin: string }): Pro
   ]);
   if (code !== 0 || process.signalCode || stderr.includes('context-use failed during register')) {
     throw new Error(
-      `Command ${args.slice(0, COMMAND_LABEL_ARGUMENTS).join(' ')} failed (${code}): ${stderr}`,
+      `Command ${args.slice(0, COMMAND_LABEL_ARGUMENTS).join(' ')} failed (${code}): ${stderr}\n${stdout}`,
     );
   }
   return stdout;
@@ -137,7 +137,7 @@ try {
   await configure(`config.agents ??= {}; config.agents.defaults ??= {}; config.agents.defaults.workspace=${JSON.stringify(workspace)};
 config.agents.defaults.model={primary:'fixture/memory-fixture'};
 config.tools={...config.tools,codeMode:{enabled:false},toolSearch:{enabled:false}};
-config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text'],contextWindow:100000,maxTokens:4000}]}}};`);
+config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`)},apiKey:'fixture',api:'openai-completions',models:[{id:'memory-fixture',name:'Memory fixture',reasoning:false,input:['text','image'],contextWindow:100000,maxTokens:4000}]}}};`);
   const personalGroup = 'agent:main:telegram:group:-100123';
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
   const installCommand = `OPENCLAW_STATE_DIR=${quote(stateDir)} OPENCLAW_CONFIG_PATH=${quote(env.OPENCLAW_CONFIG_PATH)} PATH=${quote(env.PATH)} npx --yes ${quote(packageSpec)}`;
@@ -410,17 +410,15 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       ),
     },
   ];
-  const reply = await command([
+  const dispatched = await command([
     'openclaw',
     'gateway',
     'call',
-    'agent',
-    '--expect-final',
+    'chat.send',
     '--timeout',
     String(COMMAND_TIMEOUT_MS),
     '--params',
     JSON.stringify({
-      agentId: 'main',
       sessionKey: backgroundSession,
       message:
         "I'll visit Mira's exhibition on 20 June 2030 and buy admission at the door. Keep these image, video and document attachments with the plan.",
@@ -435,8 +433,31 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     }),
     '--json',
   ]);
+  const completed = await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'agent.wait',
+    '--timeout',
+    String(COMMAND_TIMEOUT_MS),
+    '--params',
+    JSON.stringify({ runId: JSON.parse(dispatched).runId, timeoutMs: COMMAND_TIMEOUT_MS }),
+    '--json',
+  ]);
+  assert.equal(JSON.parse(completed).status, 'ok');
+  const reply = await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'chat.history',
+    '--params',
+    JSON.stringify({ sessionKey: backgroundSession }),
+    '--json',
+  ]);
   assert(reply.includes('Enjoy the exhibition.'));
-  assert.equal(JSON.parse(reply).result.meta.toolSummary?.calls ?? 0, 0);
+  assert(
+    !JSON.parse(reply).messages.some((message: { role: string }) => message.role === 'toolResult'),
+  );
   await command([
     'openclaw',
     'gateway',

@@ -86,16 +86,19 @@ export function registerLearningTools(input: {
           'Acknowledge this background job only after its evidence has been considered and all required memory operations succeeded. Also use when no information merits saving.',
         parameters: Type.Object({
           omittedAttachments: Type.Optional(
-            Type.Array(
-              Type.Object({
-                id: Type.String(),
-                reason: Type.String({
-                  minLength: 1,
-                  description:
-                    'Explicit retention preference or sensitive content. Never omit a failed upload.',
+            Type.Union([
+              Type.Array(
+                Type.Object({
+                  id: Type.String(),
+                  reason: Type.String({
+                    minLength: 1,
+                    description:
+                      'Explicit retention preference or sensitive content. Never omit a failed upload.',
+                  }),
                 }),
-              }),
-            ),
+              ),
+              Type.Null(),
+            ]),
           ),
         }),
         execute: (_id, args) => {
@@ -106,7 +109,8 @@ export function registerLearningTools(input: {
             .object({
               omittedAttachments: z
                 .array(z.object({ id: z.string(), reason: z.string().min(1) }))
-                .default([]),
+                .nullish()
+                .transform((value) => value ?? []),
             })
             .parse(args);
           queue().acknowledge({

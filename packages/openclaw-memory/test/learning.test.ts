@@ -118,10 +118,9 @@ async function fixture() {
   };
   const acknowledge = async () => {
     const sessionKey = db.current()!.sessionKey;
-    await factories.get(FINISH_LEARNING_TOOL)!({ agentId: 'main', sessionKey })!.execute(
-      'finish',
-      {},
-    );
+    await factories.get(FINISH_LEARNING_TOOL)!({ agentId: 'main', sessionKey })!.execute('finish', {
+      omittedAttachments: null,
+    });
     acknowledged = true;
   };
   return {
