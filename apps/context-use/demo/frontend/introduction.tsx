@@ -53,7 +53,7 @@ export function DemoIntroduction({ triggerContainer }: { triggerContainer: HTMLE
               Everything you know, your agents should know too. Context Use gives your agents a
               shared place to access and curate your context.
             </p>
-            <p>
+            <p className="text-muted-foreground">
               Explore Steve Jobs' personal context and imagine how much more useful your agents
               would be if they could truly know you.
             </p>
