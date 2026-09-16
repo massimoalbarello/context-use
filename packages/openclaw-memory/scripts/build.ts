@@ -7,7 +7,9 @@ import { MCP_TOOL_NAMES, PLUGIN_ID, PluginConfigSchema, toolName } from '../src/
 const EXECUTABLE_MODE = 0o755;
 const JSON_INDENT = 2;
 const root = resolve(import.meta.dir, '..');
-const output = join(root, 'pkg');
+const output = resolve(Bun.argv[2] ?? join(root, 'pkg'));
+const releaseVersion = Bun.argv[3] ?? metadata.version;
+process.chdir(root);
 const dist = join(output, 'dist');
 await rm(output, { recursive: true, force: true });
 const result = await Bun.build({
@@ -20,6 +22,21 @@ const result = await Bun.build({
   outdir: dist,
   target: 'node',
   packages: 'external',
+  plugins: [
+    {
+      name: 'release-metadata',
+      setup(build) {
+        build.onLoad({ filter: /package\.json$/ }, ({ path }) => {
+          if (path === join(root, 'package.json')) {
+            return {
+              contents: JSON.stringify({ ...metadata, version: releaseVersion }, null, JSON_INDENT),
+              loader: 'json',
+            };
+          }
+        });
+      },
+    },
+  ],
 });
 if (!result.success) {
   throw new AggregateError(result.logs, 'OpenClaw plugin compilation failed');
@@ -29,7 +46,6 @@ await chmod(join(dist, 'bootstrap.js'), EXECUTABLE_MODE);
 await copyFile(resolve(root, '../../LICENSE'), join(output, 'LICENSE'));
 const {
   name,
-  version,
   description,
   type,
   license,
@@ -53,7 +69,7 @@ const publicOpenclaw = {
 };
 await Bun.write(
   join(output, 'package.json'),
-  `${JSON.stringify({ name, version, description, type, license, bin: publicBin, openclaw: publicOpenclaw, peerDependencies, peerDependenciesMeta, engines, dependencies, repository, homepage, bugs, publishConfig, files: ['dist', 'openclaw.plugin.json', 'LICENSE'], exports: { './setup-prompt': './dist/setup-prompt.js' } }, null, JSON_INDENT)}\n`,
+  `${JSON.stringify({ name, version: releaseVersion, description, type, license, bin: publicBin, openclaw: publicOpenclaw, peerDependencies, peerDependenciesMeta, engines, dependencies, repository, homepage, bugs, publishConfig, files: ['dist', 'openclaw.plugin.json', 'LICENSE'], exports: { './setup-prompt': './dist/setup-prompt.js' } }, null, JSON_INDENT)}\n`,
 );
 await Bun.write(
   join(output, 'openclaw.plugin.json'),

@@ -26,7 +26,7 @@
     "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
     "check:frontend": "node node_modules/eslint/bin/eslint.js apps/context-use/frontend/src",
-    "check:backend": "node node_modules/dependency-cruiser/bin/dependency-cruiser.mjs --config apps/context-use/backend/dependency-cruiser.config.mjs apps/context-use/backend/src",
+    "check:backend": "node apps/context-use/backend/scripts/check-boundaries.mjs",
     "check:all": "bun run --parallel check:types check:codestyle check:frontend check:backend",
     "check:commit-message": "bun run --bun commitlint",
     "test": "bun run --bun turbo test",

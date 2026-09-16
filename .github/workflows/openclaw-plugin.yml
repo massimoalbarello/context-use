@@ -9,6 +9,7 @@ on:
       - packages/typescript-config/**
       - package.json
       - bun.lock
+      - bunfig.toml
       - LICENSE
       - .bun-version
       - .github/actions/prepare/**
@@ -72,6 +73,7 @@ jobs:
       queue: max
     outputs:
       published: ${{ steps.publish.outputs.published }}
+      integrity: ${{ steps.publish.outputs.integrity }}
     steps:
       - uses: actions/checkout@v6
 
@@ -124,4 +126,9 @@ jobs:
         run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
 
       - name: Install and test the published version through real OpenClaw
-        run: bun run --cwd packages/openclaw-memory test:published
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+          RELEASE_INTEGRITY: ${{ needs.publish.outputs.integrity }}
+        run: |
+          bun run packages/openclaw-memory/scripts/wait-published.ts "@context-use/openclaw-memory@$RELEASE_VERSION" "$RELEASE_INTEGRITY"
+          bun run --cwd packages/openclaw-memory test:published

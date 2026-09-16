@@ -49,15 +49,10 @@ async function checkImports(files: Record<string, string>) {
     expect(errors).toBe('');
     const result = JSON.parse(output) as ICruiseResult;
     expect(exitCode).toBe(0);
-    // The JSON reporter always exits successfully; also verify the reporter used in CI.
+    expect(result.modules.length).toBeGreaterThan(0);
+    // Verify the same entry point that enforces boundaries in CI.
     const enforcement = Bun.spawn({
-      cmd: [
-        'node',
-        join(WORKSPACE, 'node_modules/dependency-cruiser/bin/dependency-cruiser.mjs'),
-        '--config',
-        join(WORKSPACE, BACKEND, 'dependency-cruiser.config.mjs'),
-        BACKEND,
-      ],
+      cmd: ['node', join(WORKSPACE, BACKEND, 'scripts/check-boundaries.mjs'), BACKEND],
       cwd: directory,
       stdout: 'ignore',
       stderr: 'pipe',
@@ -67,13 +62,38 @@ async function checkImports(files: Record<string, string>) {
       enforcement.exited,
       new Response(enforcement.stderr).text(),
     ]);
-    expect(enforcementErrors).toBe('');
-    expect(enforcementExit).toBe(result.summary.error);
+    expect(enforcementExit).toBe(result.summary.error > 0 ? 1 : 0);
+    if (result.summary.error === 0) {
+      expect(enforcementErrors).toBe('');
+    }
     return result.summary.violations;
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
 }
+
+test('the CI entry point rejects an empty dependency scan', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'context-use-empty-boundaries-'));
+  try {
+    const child = Bun.spawn(
+      ['node', join(WORKSPACE, BACKEND, 'scripts/check-boundaries.mjs'), directory],
+      {
+        cwd: WORKSPACE,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    const [exitCode, , errors] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+    ]);
+    expect(exitCode).not.toBe(0);
+    expect(errors).toContain('scanned no modules');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test(
   'runtime repository imports cannot bypass service contracts with alternate syntax',

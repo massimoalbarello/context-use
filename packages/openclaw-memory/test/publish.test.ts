@@ -14,17 +14,26 @@ test(
     const versions: Record<string, unknown> = {};
     let tags: Record<string, string> = {};
     let publications = 0;
+    const tarballs = new Map<string, Buffer>();
     const registry = Bun.serve({
       hostname: '127.0.0.1',
       port: 0,
       async fetch(request) {
+        if (new URL(request.url).pathname.endsWith('.tgz')) {
+          const contents = tarballs.get(new URL(request.url).pathname.split('/').at(-1)!);
+          return contents ? new Response(contents) : new Response('Not found', { status: 404 });
+        }
         if (request.method === 'PUT') {
           const publication = (await request.json()) as {
             versions: Record<string, unknown>;
             'dist-tags': Record<string, string>;
+            _attachments: Record<string, { data: string }>;
           };
           Object.assign(versions, publication.versions);
           tags = publication['dist-tags'];
+          for (const [name, attachment] of Object.entries(publication._attachments)) {
+            tarballs.set(name.split('/').at(-1)!, Buffer.from(attachment.data, 'base64'));
+          }
           publications++;
           return Response.json({ ok: true });
         }
@@ -93,9 +102,42 @@ test(
       expect(older.output).toContain('already points to newer version');
       expect(publications).toBe(1);
       expect(tags.beta).toBe('0.1.0-beta.2');
-      expect(await Bun.file(join(root, 'output')).text()).toBe(
-        'published=true\npublished=true\npublished=false\n',
-      );
+      expect(
+        (await Bun.file(join(root, 'output')).text())
+          .split('\n')
+          .filter((line) => line.startsWith('published=')),
+      ).toEqual(['published=true', 'published=true', 'published=false']);
+
+      // Use the real build and pack boundaries, including versions embedded in JS.
+      function publishBuiltPackage(version: string) {
+        execFileSync(process.execPath, [
+          resolve(import.meta.dir, '../scripts/build.ts'),
+          join(root, 'package'),
+          version,
+        ]);
+        const [artifact] = JSON.parse(
+          execFileSync(
+            'npm',
+            [
+              'pack',
+              join(root, 'package'),
+              '--ignore-scripts',
+              '--json',
+              '--pack-destination',
+              root,
+            ],
+            { encoding: 'utf8' },
+          ),
+        );
+        return run(join(root, artifact.filename));
+      }
+      expect(await publishBuiltPackage('0.1.0-beta.3')).toMatchObject({ exitCode: 0 });
+      expect(publications).toBe(2);
+      const unchanged = await publishBuiltPackage('0.1.0-beta.4');
+      expect(unchanged).toMatchObject({ exitCode: 0 });
+      expect(unchanged.output).toContain('packaged contents are unchanged');
+      expect(publications).toBe(2);
+      expect(tags.beta).toBe('0.1.0-beta.3');
     } finally {
       await registry.stop(true);
       await rm(root, { recursive: true, force: true });
