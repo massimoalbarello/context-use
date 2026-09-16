@@ -4,10 +4,9 @@ import { join } from 'node:path';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
 import { getAgentScopedMediaLocalRoots } from 'openclaw/plugin-sdk/media-local-roots';
 import { MAX_ATTACHMENT_BYTES } from './asset-upload';
+import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from './file-permissions';
 import { attachmentDirectory, type LearningJob, type LearningStore } from './learning-store';
 
-const PRIVATE_DIRECTORY_MODE = 0o700;
-const PRIVATE_FILE_MODE = 0o600;
 const attachmentPath = (input: {
   directory: string;
   connectionId: string;

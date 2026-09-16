@@ -3,10 +3,9 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { PluginConfig } from './contract';
+import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from './file-permissions';
 import type { LearningAttachment, LearningEvidence } from './learning-evidence';
 
-const PRIVATE_DIRECTORY_MODE = 0o700;
-const PRIVATE_FILE_MODE = 0o600;
 const BATCH_CHARS = 48_000;
 export const attachmentDirectory = (connectionId: string) =>
   `learning-${encodeURIComponent(connectionId)}-attachments`;

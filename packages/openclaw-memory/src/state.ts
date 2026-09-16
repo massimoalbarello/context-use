@@ -12,9 +12,8 @@ import { lock } from 'proper-lockfile';
 import { z } from 'zod';
 import { PLUGIN_ID, PluginConfigSchema } from './contract';
 import { ConnectionError } from './error';
+import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from './file-permissions';
 
-const PRIVATE_DIRECTORY_MODE = 0o700;
-const PRIVATE_FILE_MODE = 0o600;
 const LOCK_STALE_MS = 120_000;
 const LOCK_RETRIES = 300;
 const LOCK_RETRY_MS = 100;
