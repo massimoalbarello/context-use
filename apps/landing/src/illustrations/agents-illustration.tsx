@@ -1,7 +1,7 @@
 import chatgpt from '../assets/agents/chatgpt.svg';
 import claude from '../assets/agents/claude.svg';
 import gemini from '../assets/agents/gemini.svg';
-import hermes from '../assets/agents/hermes.svg';
+import hermes from '../assets/agents/hermes.png';
 import openclaw from '../assets/agents/openclaw.svg';
 import { ContextStore } from './context-store';
 import { Illustration } from './illustration';

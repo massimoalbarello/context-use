@@ -1,5 +1,6 @@
 import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
 import { ContextUseBrand } from '@repo/ui/context-use-brand';
+import { ChevronDown } from 'lucide-react';
 import { HowItWorks } from './how-it-works';
 import { LandingNavigation } from './navigation';
 
@@ -16,6 +17,13 @@ export function LandingPage() {
             <ContextUseBrand />
             <LandingNavigation />
           </header>
+          <a
+            href="#how-it-works"
+            className="landing-scroll-cue"
+            aria-label="Scroll to how Context Use works"
+          >
+            <ChevronDown aria-hidden="true" size={22} strokeWidth={1.5} />
+          </a>
         </div>
         <HowItWorks />
       </main>

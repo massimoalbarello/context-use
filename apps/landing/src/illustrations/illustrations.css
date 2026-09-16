@@ -171,10 +171,9 @@
   width: 10cqw;
   height: 10cqw;
   place-items: center;
-  border: 1px solid var(--source-border);
+  border: 1px solid #e2e5de;
   border-radius: 50%;
-  background: var(--source-background);
-  color: var(--source-color);
+  background: #ffffff;
   box-shadow: 0 0.5cqw 1cqw #263d2610;
 }
 
@@ -184,37 +183,22 @@
 }
 
 .source-mail {
-  --source-color: #cf6c51;
-  --source-background: #fae8df;
-  --source-border: #eed4c7;
   top: 21.4%;
   left: 15.7%;
 }
 .source-chat {
-  --source-color: #56884d;
-  --source-background: #e8f2df;
-  --source-border: #d2e4c6;
   top: 50%;
   left: 13.4%;
 }
 .source-calendar {
-  --source-color: #95702d;
-  --source-background: #f7eed4;
-  --source-border: #eaddb9;
   top: 78.6%;
   left: 15.7%;
 }
 .source-document {
-  --source-color: #4c7eaf;
-  --source-background: #e3eef9;
-  --source-border: #ccddec;
   top: 28.6%;
   left: 84.3%;
 }
 .source-photo {
-  --source-color: #9370b0;
-  --source-background: #efe6f7;
-  --source-border: #e0d2eb;
   top: 71.4%;
   left: 84.3%;
 }

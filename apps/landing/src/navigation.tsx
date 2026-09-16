@@ -3,20 +3,11 @@ import { Button, buttonVariants } from '@repo/ui/button';
 import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
-import { useState } from 'react';
 import { DEMO_URL, GITHUB_URL } from './links';
 
-function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavigationLinks() {
   return (
     <>
-      {/* biome-ignore lint/a11y/useValidAnchor: This fragment link navigates; the handler only closes the mobile menu. */}
-      <a
-        href="#how-it-works"
-        onClick={onNavigate}
-        className={buttonVariants({ variant: 'ghost', size: 'lg' })}
-      >
-        How it works
-      </a>
       <a
         href={GITHUB_URL}
         target="_blank"
@@ -46,13 +37,12 @@ function NavigationLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function LandingNavigation() {
-  const [open, setOpen] = useState(false);
   return (
     <>
       <nav aria-label="Main navigation" className="hidden items-center gap-3 lg:flex">
         <NavigationLinks />
       </nav>
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover>
         <PopoverTrigger
           render={
             <Button
@@ -72,7 +62,7 @@ export function LandingNavigation() {
           className="w-56 max-w-[calc(100vw-2.5rem)] p-2 lg:hidden"
         >
           <nav aria-label="Mobile navigation" className="flex flex-col gap-1">
-            <NavigationLinks onNavigate={() => setOpen(false)} />
+            <NavigationLinks />
           </nav>
         </PopoverContent>
       </Popover>

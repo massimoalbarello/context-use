@@ -18,6 +18,31 @@ html {
   min-height: 100svh;
 }
 
+.landing-scroll-cue {
+  position: absolute;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  color: #a6aaa7;
+  transition: color 150ms;
+}
+
+.landing-scroll-cue:hover,
+.landing-scroll-cue:focus-visible {
+  color: #fff;
+}
+
+.landing-scroll-cue:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 3px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
