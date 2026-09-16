@@ -43,10 +43,7 @@ export function HowItWorks() {
         <div className="how-it-works-intro">
           <div>
             <span className="section-eyebrow">How it works</span>
-            <h2 id="how-it-works-title">
-              Your context, shared by
-              <br className="hidden sm:block" /> you and your agents.
-            </h2>
+            <h2 id="how-it-works-title">Your context, shared by you and your agents.</h2>
           </div>
         </div>
         <div className="feature-rows">
