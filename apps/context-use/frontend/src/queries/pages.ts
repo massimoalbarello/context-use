@@ -66,11 +66,11 @@ async function pageSearchPage({
 }
 
 export function pagesQueryOptions({ dateRange, query, interval }: KnowledgePageListFilters = {}) {
-  const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
   return infiniteQueryOptions({
     queryKey: [...pagesListQueryKey, { dateRange: dateRange ?? null, query, interval }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
+      const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
       if (query?.trim()) {
         return pageSearchPage({ query, interval, time });
       }

@@ -4,6 +4,10 @@ description: Prepare the environment for the workflow
 runs:
   using: composite
   steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '24'
+
     - uses: oven-sh/setup-bun@v2
       with:
         bun-version-file: .bun-version

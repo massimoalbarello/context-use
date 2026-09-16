@@ -29,6 +29,9 @@ jobs:
       - name: Check JS Codestyle
         run: bun check:codestyle
 
+      - name: Check frontend design and query contracts
+        run: bun check:frontend
+
   tests:
     runs-on: ubuntu-latest
     steps:

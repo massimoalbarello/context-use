@@ -25,7 +25,8 @@
     "deploy:landing": "bun --filter @repo/landing deploy",
     "check:types": "bun run --bun turbo check:types",
     "check:codestyle": "bun run --bun biome check",
-    "check:all": "bun run --parallel check:types check:codestyle",
+    "check:frontend": "node node_modules/eslint/bin/eslint.js apps/context-use/frontend/src",
+    "check:all": "bun run --parallel check:types check:codestyle check:frontend",
     "check:commit-message": "bun run --bun commitlint",
     "test": "bun run --bun turbo test",
     "fix:codestyle": "bun run --bun biome check --write"
@@ -37,13 +38,18 @@
     "@commitlint/format": "^21.2.2",
     "@commitlint/types": "^21.2.0",
     "@repo/browser-testing": "workspace:*",
+    "@shadcn/lint": "0.1.0",
+    "@tanstack/eslint-plugin-query": "5.103.0",
     "@types/bun": "^1.4.0",
+    "@typescript-eslint/parser": "8.70.0",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "eslint": "9.39.5",
     "turbo": "^2.10.12",
-    "typescript": "catalog:"
+    "typescript": "npm:@typescript/typescript6@6.0.2"
   },
   "engines": {
     "bun": "1.4.0",
-    "node": "please use bun"
+    "node": ">=22.14.0"
   },
   "packageManager": "bun@1.4.0"
 }
