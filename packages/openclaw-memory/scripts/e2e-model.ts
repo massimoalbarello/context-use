@@ -195,7 +195,7 @@ export function startModel() {
   function backgroundReply(input: ModelInput): Reply {
     observations.backgroundCalls += 1;
     const transcript = JSON.stringify(input.messages);
-    if (!transcript.includes('Liza is arriving')) {
+    if (!transcript.includes("Mira's exhibition")) {
       const finished = input.messages.some((message) => message.role === 'tool');
       return finished
         ? { answer: 'NO_REPLY' }
@@ -211,41 +211,34 @@ export function startModel() {
         }
       })
       .find(Boolean);
+    const alreadySaved = JSON.stringify(results[1]?.content ?? '').includes(
+      'context-use://page/exhibition-visit',
+    );
     const steps = [
       { name: 'read_hypermedia_curation_guide', arguments: {} },
-      { name: 'search_hypermedia', arguments: { query: 'Liza Stansted' } },
+      { name: 'search_hypermedia', arguments: { query: 'exhibition' } },
+      ...(alreadySaved
+        ? []
+        : [
+            {
+              name: 'create_knowledge_page',
+              arguments: {
+                guide_version: guide,
+                markdown:
+                  '# Exhibition visit\n\n[Rowan](context-use://entity/rowan) plans to visit [Mira](context-use://entity/mira)’s exhibition on 20 June 2030 and buy admission at the door. Source: the supplied conversation; this is a plan, not a completed visit.',
+              },
+            },
+          ]),
       {
-        name: 'create_entity',
-        arguments: {
-          name: 'Rowan',
-          description: 'The user.',
-          entityType: { value: 'person' },
-          isSelf: true,
-        },
+        name: 'read_knowledge_page',
+        arguments: { address: 'context-use://page/exhibition-visit' },
       },
-      {
-        name: 'create_entity',
-        arguments: {
-          name: 'Liza',
-          description: 'A person Rowan plans to pick up at Stansted.',
-          entityType: { value: 'person' },
-        },
-      },
-      {
-        name: 'create_knowledge_page',
-        arguments: {
-          guide_version: guide,
-          markdown:
-            '# Stansted pickup\n\n[Rowan](context-use://entity/rowan) said that [Liza](context-use://entity/liza) is arriving in London on 16 September 2026. Rowan plans to pick her up at Stansted, travelling from Canary Wharf and buying coach tickets once there. Source: the supplied conversation; this is a plan, not a completed trip.',
-        },
-      },
-      { name: 'read_knowledge_page', arguments: { address: 'context-use://page/stansted-pickup' } },
       { name: 'finish_learning', arguments: {} },
     ];
-    const verifyStep = 6;
+    const verifyStep = steps.length - 1;
     if (results.length === verifyStep) {
       assert(
-        JSON.stringify(results.at(-1)?.content).includes('Canary Wharf'),
+        JSON.stringify(results.at(-1)?.content).includes('admission at the door'),
         'Background worker did not persist the plan',
       );
     }
@@ -265,7 +258,7 @@ export function startModel() {
     if (phase === 'background') {
       return {
         answer: names.includes('context_use_create_knowledge_page')
-          ? 'I can help with your trip.'
+          ? 'Enjoy the exhibition.'
           : 'NONE',
       };
     }

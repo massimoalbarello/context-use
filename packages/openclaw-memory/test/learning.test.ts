@@ -28,7 +28,7 @@ const context = {
   sessionId: 'session-1',
 };
 const messages = [
-  { role: 'user', content: 'Liza is arriving tonight. I will pick her up at Stansted.' },
+  { role: 'user', content: 'Mira has an exhibition tonight. I will visit the museum.' },
 ];
 
 async function fixture() {
@@ -130,7 +130,7 @@ test('turn and reset hooks capture synchronously without invoking a model, then 
   await f.cycle();
   expect(f.dispatched).toHaveLength(1);
   expect(f.dispatched[0]?.deliver).toBe(false);
-  expect(f.dispatched[0]?.message).toContain('Stansted');
+  expect(f.dispatched[0]?.message).toContain('museum');
   expect(f.dispatched[0]?.toolsAlsoAllow).toContain(FINISH_LEARNING_TOOL);
   expect(f.dispatched[0]?.toolsAlsoAllow).not.toContain('context_use_archive_entity');
   await f.acknowledge();

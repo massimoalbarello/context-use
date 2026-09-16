@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { ownerBrowser } from '@repo/browser-testing/owner-browser';
 import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
+import { LearningStore } from '../src/learning-store';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
 import { availablePort, startApp } from './e2e-app';
 import { startModel } from './e2e-model';
@@ -379,7 +380,66 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     stderr: Bun.file(join(directory, 'gateway-error.log')),
   });
   await waitGateway();
-  console.log('Disposable gateway is ready; removing the installed plugin.');
+  model.background();
+  const backgroundSession = `${personalGroup}:topic:6`;
+  const reply = await command([
+    'openclaw',
+    'agent',
+    '--agent',
+    'main',
+    '--session-key',
+    backgroundSession,
+    '--message',
+    "I'll visit Mira's exhibition on 20 June 2030 and buy admission at the door.",
+    '--json',
+  ]);
+  assert(reply.includes('Enjoy the exhibition.'));
+  assert.equal(JSON.parse(reply).result.meta.toolSummary?.calls ?? 0, 0);
+  await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'sessions.reset',
+    '--params',
+    JSON.stringify({ key: backgroundSession, reason: 'new' }),
+    '--json',
+  ]);
+  const learningTimeoutMs = 180_000;
+  const pollIntervalMs = 1_000;
+  const deadline = Date.now() + learningTimeoutMs;
+  const connection = await Bun.file(connectionFile).json();
+  const queue = new LearningStore({
+    directory: join(stateDir, 'plugins', PLUGIN_ID),
+    config: connection.config,
+    connectionId: connection.learningId,
+  });
+  try {
+    let saved = false;
+    while (Date.now() < deadline) {
+      saved = await owner.page.request.get(`${app.origin}/api/pages`).then(async (response) => {
+        assert(response.ok());
+        return (await response.text()).includes('Exhibition visit');
+      });
+      if (saved && queue.status().pending === 0) {
+        break;
+      }
+      await Bun.sleep(pollIntervalMs);
+    }
+    assert(saved, 'The background worker did not save the plan across /new');
+    assert.equal(queue.status().pending, 0, 'Unacknowledged evidence remains queued');
+    assert(model.observations.backgroundCalls > 0);
+    await owner.page.goto(`${app.origin}/map?resource=page&resourceId=exhibition-visit`);
+    await owner.page
+      .getByRole('heading', { name: 'Exhibition visit', exact: true })
+      .first()
+      .waitFor();
+  } finally {
+    queue.close();
+  }
+  console.log(
+    'A reply made no memory calls; background learning saved the plan across /new, displayed it in the app, and cleared its evidence.',
+  );
+  console.log('Removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
   console.log(await command(['openclaw', 'context-use', 'remove']));
   assert(!(await Bun.file(connectionFile).exists()));

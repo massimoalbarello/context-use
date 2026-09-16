@@ -8,7 +8,7 @@ import { DREAM_INTERVAL_MS, LearningStore, learningDatabase } from '../src/learn
 const config = { agentId: 'main', serverUrl: 'https://memory.example/mcp' };
 const directories: string[] = [];
 const stores: LearningStore[] = [];
-const NOW = Date.parse('2026-09-16T14:13:00Z');
+const NOW = Date.parse('2030-06-20T10:00:00Z');
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'learning-test-'));
   directories.push(directory);
@@ -33,16 +33,19 @@ test('reset evidence survives reopening, deduplicates completed turns, and prese
   const evidence = evidenceFromMessages([
     {
       role: 'user',
-      content: 'Liza is arriving tonight. I am picking her up at Stansted.',
+      content: 'Mira has an exhibition tonight. I will visit the museum.',
       timestamp: NOW,
     },
-    { role: 'assistant', content: [{ type: 'text', text: 'I suggest the 21:25 coach.' }] },
+    {
+      role: 'assistant',
+      content: [{ type: 'text', text: 'You could book admission in advance.' }],
+    },
   ]);
-  db.capture({ source: 'personal-chat:old-session', evidence, now: NOW });
-  db.capture({ source: 'personal-chat:old-session', evidence, now: NOW });
+  db.capture({ source: 'chat:session-1', evidence, now: NOW });
+  db.capture({ source: 'chat:session-1', evidence, now: NOW });
   expect(db.status().pending).toBe(2);
   const job = db.next({ agentId: 'main', now: NOW })!;
-  expect(job.evidence).toContain('Stansted');
+  expect(job.evidence).toContain('museum');
   expect(job.evidence).toContain('"role":"assistant"');
   db.started({ id: job.id, runId: 'run-1', now: NOW });
   const reopened = open();
@@ -51,7 +54,7 @@ test('reset evidence survives reopening, deduplicates completed turns, and prese
   db.capture({
     source: job.source,
     evidence: evidenceFromMessages([
-      { role: 'user', content: "I'll buy the tickets once I'm there.", timestamp: NOW + 1 },
+      { role: 'user', content: "I'll buy admission at the door.", timestamp: NOW + 1 },
     ]),
     now: NOW + 1,
   });
@@ -59,9 +62,9 @@ test('reset evidence survives reopening, deduplicates completed turns, and prese
   reopened.finish({ id: job.id, now: NOW });
   db.capture({ source: job.source, evidence, now: NOW });
   expect(db.status().pending).toBe(1);
-  expect(db.next({ agentId: 'main', now: NOW })?.evidence).toContain('buy the tickets');
+  expect(db.next({ agentId: 'main', now: NOW })?.evidence).toContain('admission at the door');
   expect(
-    (await readFile(join(directory, learningDatabase('owner')))).includes(Buffer.from('Stansted')),
+    (await readFile(join(directory, learningDatabase('owner')))).includes(Buffer.from('museum')),
   ).toBe(false);
   const permissionsMask = 0o777;
   const privateFileMode = 0o600;
@@ -120,7 +123,9 @@ test('a failing conversation does not block learning in other conversations', as
   db.retry({ id: failed.id, at: NOW + retryDelay });
   db.capture({
     source: 'another-chat',
-    evidence: evidenceFromMessages([{ role: 'user', content: 'I am picking Liza up tonight.' }]),
+    evidence: evidenceFromMessages([
+      { role: 'user', content: 'I am visiting an exhibition tonight.' },
+    ]),
     now: NOW,
   });
   const next = db.next({ agentId: 'main', now: NOW })!;
@@ -134,7 +139,7 @@ test('a failing conversation does not block learning in other conversations', as
 test('large conversations are drained in bounded batches without losing their final facts', async () => {
   const { db } = await fixture();
   const size = 100_000;
-  const content = `${'a'.repeat(size)} My final decision is the later coach.`;
+  const content = `${'a'.repeat(size)} I will buy admission at the door.`;
   const evidence = evidenceFromMessages([{ role: 'user', content }]);
   db.capture({ source: 'chat', evidence, now: NOW });
   let combined = '';
@@ -146,7 +151,7 @@ test('large conversations are drained in bounded batches without losing their fi
     db.acknowledge(job.sessionKey);
     db.finish({ id: job.id, now: NOW });
   }
-  expect(combined).toContain('My final decision is the later coach.');
+  expect(combined).toContain('I will buy admission at the door.');
 });
 
 test('connection ownership is enforced and tool output, reasoning and media bytes are excluded', async () => {
