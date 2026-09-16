@@ -6,7 +6,7 @@ export function AgentsIllustration() {
   return (
     <Illustration
       name="agents-illustration"
-      description="Two authorized AI agents, represented by a sunburst and an interlocking-loop symbol, move gently around the shared context-use store."
+      description="Two authorized agents, a coral sunburst and a blue four-point star, float around their shared context-use store. Green checkmarks show that both are connected."
     >
       <div className="context-halo" />
       <svg
@@ -15,52 +15,38 @@ export function AgentsIllustration() {
         viewBox="0 0 560 350"
         fill="none"
       >
-        <path
-          d="M129 111 C205 111 185 175 280 175 M431 227 C355 227 375 175 280 175"
-          className="connection-line"
+        <ellipse
+          cx="280"
+          cy="175"
+          rx="182"
+          ry="87"
+          transform="rotate(22 280 175)"
+          className="agent-orbit"
         />
+        <path d="M125 113 Q191 113 280 175 T435 237" className="connection-line" />
+        <path d="M125 113 Q191 113 280 175 T435 237" pathLength="100" className="connection-dots" />
       </svg>
       <div className="agent-node agent-one">
         <div className="agent-chip">
-          <svg
-            aria-hidden="true"
-            className="agent-symbol agent-sunburst"
-            viewBox="0 0 48 48"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-          >
-            <path d="M24 6v11m0 14v11M6 24h11m14 0h11M11 11l8 8m10 10 8 8M11 37l8-8m10-10 8-8M17 7l4 10m6 14 4 10M7 31l10-4m14-6 10-4M7 17l10 4m14 6 10 4M17 41l4-10m6-14 4-10" />
+          <svg aria-hidden="true" className="agent-symbol" viewBox="0 0 48 48" fill="currentColor">
+            <path d="m22 3 5 1-1 13 7-12 4 3-7 12 13-6 2 5-15 5 15 3-1 5-15-4 10 11-4 3-9-12 1 15-5 1-1-16-7 13-4-3 8-13-14 7-2-5 15-5-15-3 1-5 15 4L7 10l4-3 10 13z" />
           </svg>
+          <span className="agent-check">
+            <Check />
+          </span>
         </div>
-        <span className="agent-status">
-          <Check /> Authorized
-        </span>
+        <span className="agent-status">Authorized</span>
       </div>
       <div className="agent-node agent-two">
         <div className="agent-chip">
-          <svg
-            aria-hidden="true"
-            className="agent-symbol agent-knot"
-            viewBox="0 0 48 48"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M24 8c-9-6-20 7-12 15l12 7 8-5V15Z" />
-            <path d="M24 8c-9-6-20 7-12 15l12 7 8-5V15Z" transform="rotate(60 24 24)" />
-            <path d="M24 8c-9-6-20 7-12 15l12 7 8-5V15Z" transform="rotate(120 24 24)" />
-            <path d="M24 8c-9-6-20 7-12 15l12 7 8-5V15Z" transform="rotate(180 24 24)" />
-            <path d="M24 8c-9-6-20 7-12 15l12 7 8-5V15Z" transform="rotate(240 24 24)" />
-            <path d="M24 8c-9-6-20 7-12 15l12 7 8-5V15Z" transform="rotate(300 24 24)" />
+          <svg aria-hidden="true" className="agent-symbol" viewBox="0 0 48 48" fill="currentColor">
+            <path d="M24 3C27 17 31 21 45 24 31 27 27 31 24 45 21 31 17 27 3 24 17 21 21 17 24 3Z" />
           </svg>
+          <span className="agent-check">
+            <Check />
+          </span>
         </div>
-        <span className="agent-status">
-          <Check /> Authorized
-        </span>
+        <span className="agent-status">Authorized</span>
       </div>
       <ContextStore />
     </Illustration>

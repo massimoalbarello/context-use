@@ -1,11 +1,11 @@
-import { MessageCircle, MousePointer2 } from 'lucide-react';
+import { MousePointer2 } from 'lucide-react';
 import { Illustration } from './illustration';
 
 export function RevisionsIllustration() {
   return (
     <Illustration
       name="revisions-illustration"
-      description="An agent drafts a morning train to Sintra in a shared trip plan. When Alex's arrival changes to noon, your cursor updates morning to afternoon. The agent and you cursors and revision history show how you keep the same context up to date."
+      description="An agent drafts a morning train to Sintra in a shared trip plan. Your cursor adds the latest timing, updating morning to afternoon. The agent and you cursors and revision history show how you keep the same context up to date."
     >
       <div className="revision-document">
         <div className="revision-heading">
@@ -20,7 +20,11 @@ export function RevisionsIllustration() {
           </span>{' '}
           train to Sintra.
           <br />
-          Spend the day exploring together.
+          Wander through the palace gardens,
+          <br />
+          then find a quiet spot for coffee.
+          <br />
+          Maya and Alex are coming along.
         </p>
         <div className="collaboration-cursor cursor-agent">
           <MousePointer2 />
@@ -29,12 +33,6 @@ export function RevisionsIllustration() {
         <div className="collaboration-cursor cursor-you">
           <MousePointer2 />
           <span>you</span>
-        </div>
-        <div className="revision-news">
-          <MessageCircle />
-          <span>
-            <strong>New arrival time</strong>Alex now arrives at noon.
-          </span>
         </div>
       </div>
       <div className="revision-timeline">

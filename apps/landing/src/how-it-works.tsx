@@ -1,8 +1,7 @@
 import { MarkGithubIcon } from '@primer/octicons-react';
-import { Button, buttonVariants } from '@repo/ui/button';
+import { buttonVariants } from '@repo/ui/button';
 import { CONTEXT_USE_DEPLOY_URL } from '@repo/ui/context-use-links';
-import { ArrowUpRight, Pause, Play } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import { AgentsIllustration } from './illustrations/agents-illustration';
 import { ContextIllustration } from './illustrations/context-illustration';
 import { RevisionsIllustration } from './illustrations/revisions-illustration';
@@ -38,14 +37,8 @@ const FEATURES = [
 ];
 
 export function HowItWorks() {
-  const [paused, setPaused] = useState(false);
   return (
-    <section
-      id="how-it-works"
-      className="how-it-works"
-      aria-labelledby="how-it-works-title"
-      data-motion-paused={paused}
-    >
+    <section id="how-it-works" className="how-it-works" aria-labelledby="how-it-works-title">
       <div className="how-it-works-inner">
         <div className="how-it-works-intro">
           <div>
@@ -55,15 +48,6 @@ export function HowItWorks() {
               <br className="hidden sm:block" /> you and your agents.
             </h2>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="illustration-motion-toggle"
-            onClick={() => setPaused(!paused)}
-          >
-            {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
-            {paused ? 'Resume animations' : 'Pause animations'}
-          </Button>
         </div>
         <div className="feature-rows">
           {FEATURES.map(({ title, description, illustration: FeatureIllustration }) => (
@@ -77,7 +61,6 @@ export function HowItWorks() {
           ))}
         </div>
         <div className="open-source-section">
-          <span className="section-eyebrow">Built in the open</span>
           <h3>
             100% open source
             <br />
