@@ -21,7 +21,6 @@ export default defineConfig([
       // SVG's fill-none is valid, but shadcn/lint 0.1 mistakes it for a color token.
       'shadcn/no-raw-colors': ['error', { allow: ['fill-none'] }],
       'shadcn/no-unknown-classes': 'error',
-      // Advisory while existing specialized buttons retain their visual contracts.
       'shadcn/no-restyle': [
         'warn',
         {
@@ -31,7 +30,7 @@ export default defineConfig([
               pattern: '^Button$',
               deny: ['color', 'shape'],
               message:
-                'Prefer a {{component}} variant ({{variants}}) from {{file}} for colors and shape. Keep layout in className.',
+                'Use {{component}} variant ({{variants}}) and shape props from {{file}}. Keep layout in className.',
             },
           ],
         },

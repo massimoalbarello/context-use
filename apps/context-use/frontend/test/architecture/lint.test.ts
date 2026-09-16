@@ -86,7 +86,7 @@ test(
       source: `
     import { Button as Action } from '@repo/ui/button';
     export const View = () => <>
-      <Action variant="outline" size="sm" className="mt-4 w-full px-4" />
+      <Action variant="outline" size="sm" shape="round" className="mt-4 w-full px-4" />
       <Action className="bg-primary rounded-full" />
     </>;
   `,
