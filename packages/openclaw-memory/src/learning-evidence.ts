@@ -16,7 +16,7 @@ const MediaSchema = z.object({
 });
 const MediaMessageSchema = z.object({
   role: z.literal('user'),
-  content: z.unknown(),
+  content: z.unknown().optional(),
   timestamp: z.union([z.string(), z.number()]).optional(),
   __openclaw: z.object({ media: z.array(MediaSchema) }),
 });
