@@ -7,6 +7,7 @@ import {
   MCP_TOOL_NAMES,
   PLUGIN_ID,
   PluginConfigSchema,
+  SAVE_ATTACHMENT_TOOL,
   toolName,
 } from '../src/contract';
 
@@ -77,7 +78,9 @@ await Bun.write(
           hasSubcommands: true,
         },
       ],
-      contracts: { tools: [...MCP_TOOL_NAMES.map(toolName), FINISH_LEARNING_TOOL] },
+      contracts: {
+        tools: [...MCP_TOOL_NAMES.map(toolName), FINISH_LEARNING_TOOL, SAVE_ATTACHMENT_TOOL],
+      },
       configSchema: z.toJSONSchema(PluginConfigSchema),
     },
     null,

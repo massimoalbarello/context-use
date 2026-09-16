@@ -10,7 +10,7 @@ import type {
 } from 'openclaw/plugin-sdk/core';
 import { isSubagentSessionKey } from 'openclaw/plugin-sdk/routing';
 import { callMemoryTool } from '../src/client';
-import { FINISH_LEARNING_TOOL } from '../src/contract';
+import { FINISH_LEARNING_TOOL, SAVE_ATTACHMENT_TOOL } from '../src/contract';
 import { registerLearning } from '../src/learning';
 import { LearningStore } from '../src/learning-store';
 import { writeState } from '../src/state';
@@ -48,7 +48,10 @@ async function fixture() {
   await writeState({ directory, state });
   const hooks = new Map<string, unknown>();
   let service: OpenClawPluginService;
-  let factory: (context: unknown) => { execute: () => Promise<unknown> } | null;
+  type ToolFactory = (
+    context: unknown,
+  ) => { execute: (id: string, args: unknown) => Promise<unknown> } | null;
+  const factories = new Map<string, ToolFactory>();
   const dispatched: Parameters<PluginRuntime['subagent']['run']>[0][] = [];
   const deleted: string[] = [];
   const warnings: string[] = [];
@@ -59,8 +62,8 @@ async function fixture() {
   let acknowledged = false;
   const api = {
     on: (name: string, handler: unknown) => hooks.set(name, handler),
-    registerTool: (value: typeof factory) => {
-      factory = value;
+    registerTool: (value: ToolFactory, options: { names: string[] }) => {
+      factories.set(options.names[0]!, value);
     },
     registerService: (value: OpenClawPluginService) => {
       service = value;
@@ -115,7 +118,10 @@ async function fixture() {
   };
   const acknowledge = async () => {
     const sessionKey = db.current()!.sessionKey;
-    await factory({ agentId: 'main', sessionKey })!.execute();
+    await factories.get(FINISH_LEARNING_TOOL)!({ agentId: 'main', sessionKey })!.execute(
+      'finish',
+      {},
+    );
     acknowledged = true;
   };
   return {
@@ -130,6 +136,7 @@ async function fixture() {
     warnings,
     sessions,
     transcriptReads,
+    factories,
     get acknowledged() {
       return acknowledged;
     },
@@ -138,7 +145,7 @@ async function fixture() {
 
 test('turn and reset hooks capture synchronously without invoking a model, then a silent worker learns', async () => {
   const f = await fixture();
-  expect(f.hook('agent_end', { messages, success: true })).toBeUndefined();
+  await f.hook('agent_end', { messages, success: true });
   f.hook('before_reset', { messages, reason: 'new' });
   expect(f.dispatched).toHaveLength(0);
   expect(f.db.status().pending).toBe(1);
@@ -176,7 +183,7 @@ test('automatic learning never reads or persists incognito, plugin-owned, or sub
       ...(sessionKey.endsWith('recall-worker') ? { pluginOwnerId: 'another-plugin' } : {}),
     });
     const privateContext = { ...context, sessionKey };
-    f.hook('agent_end', { messages }, privateContext);
+    await f.hook('agent_end', { messages }, privateContext);
     f.hook('before_reset', { messages }, privateContext);
     await f.hook('before_compaction', { messageCount: 1 }, privateContext);
   }
@@ -188,8 +195,8 @@ test('automatic learning never reads or persists incognito, plugin-owned, or sub
 
 test('workers cannot recurse, cross agents, perform external actions, or run after account changes', async () => {
   const f = await fixture();
-  f.hook('agent_end', { messages }, { ...context, agentId: 'other' });
-  f.hook(
+  await f.hook('agent_end', { messages }, { ...context, agentId: 'other' });
+  await f.hook(
     'agent_end',
     { messages },
     { ...context, sessionKey: 'agent:main:subagent:context-use-learning:fake' },
@@ -222,10 +229,25 @@ test('workers cannot recurse, cross agents, perform external actions, or run aft
 
 test('a model that finishes without acknowledging does not discard evidence', async () => {
   const f = await fixture();
-  f.hook('agent_end', { messages });
+  await f.hook('agent_end', { messages });
   await f.cycle();
   await f.cycle();
   expect(f.db.status().pending).toBe(1);
   expect(f.db.status().retryAt).toBeGreaterThan(Date.now());
   expect(f.warnings).toHaveLength(1);
+});
+
+test('attachment tools cannot select arbitrary paths or attachments outside their active job', async () => {
+  const f = await fixture();
+  expect(f.factories.get(SAVE_ATTACHMENT_TOOL)!(context)).toBeNull();
+  f.hook('before_reset', { messages });
+  await f.cycle();
+  const worker = { agentId: 'main', sessionKey: f.db.current()!.sessionKey };
+  const tool = f.factories.get(SAVE_ATTACHMENT_TOOL)!(worker)!;
+  await expect(
+    tool.execute('save', { attachmentId: '/private/secret', name: 'Secret' }),
+  ).rejects.toThrow('not part');
+  await expect(
+    tool.execute('save', { attachmentId: 'another-job', name: 'Photo' }),
+  ).rejects.toThrow('not part');
 });

@@ -382,15 +382,57 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await waitGateway();
   model.background();
   const backgroundSession = `${personalGroup}:topic:6`;
+  const attachmentFixtures = [
+    {
+      fileName: 'Exhibition photo',
+      mimeType: 'image/png',
+      bytes: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    },
+    {
+      fileName: 'Exhibition video',
+      mimeType: 'video/mp4',
+      bytes: Buffer.from(
+        await Bun.file(
+          join(repo, 'apps/context-use/demo/fixtures/assets/synthetic-iphone-rehearsal.mp4'),
+        ).arrayBuffer(),
+      ),
+    },
+    {
+      fileName: 'Exhibition document',
+      mimeType: 'application/pdf',
+      bytes: Buffer.from(
+        await Bun.file(
+          join(repo, 'apps/context-use/demo/fixtures/assets/synthetic-iphone-rehearsal.pdf'),
+        ).arrayBuffer(),
+      ),
+    },
+  ];
   const reply = await command([
     'openclaw',
+    'gateway',
+    'call',
     'agent',
-    '--agent',
-    'main',
-    '--session-key',
-    backgroundSession,
-    '--message',
-    "I'll visit Mira's exhibition on 20 June 2030 and buy admission at the door.",
+    '--expect-final',
+    '--timeout',
+    String(COMMAND_TIMEOUT_MS),
+    '--params',
+    JSON.stringify({
+      agentId: 'main',
+      sessionKey: backgroundSession,
+      message:
+        "I'll visit Mira's exhibition on 20 June 2030 and buy admission at the door. Keep these image, video and document attachments with the plan.",
+      attachments: attachmentFixtures.map(({ fileName, mimeType, bytes }) => ({
+        type: 'file',
+        fileName,
+        mimeType,
+        content: bytes.toString('base64'),
+      })),
+      idempotencyKey: crypto.randomUUID(),
+      deliver: false,
+    }),
     '--json',
   ]);
   assert(reply.includes('Enjoy the exhibition.'));
@@ -428,16 +470,40 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     assert(saved, 'The background worker did not save the plan across /new');
     assert.equal(queue.status().pending, 0, 'Unacknowledged evidence remains queued');
     assert(model.observations.backgroundCalls > 0);
+    const assetsResponse = await owner.page.request.get(`${app.origin}/api/assets`);
+    assert(assetsResponse.ok());
+    const assets = (await assetsResponse.json()).items as {
+      name: string;
+      readableId: string;
+      mediaType: string;
+    }[];
+    assert.equal(
+      assets.length,
+      attachmentFixtures.length,
+      'Every attachment should create exactly one asset',
+    );
+    for (const fixture of attachmentFixtures) {
+      const asset = assets.find((asset) => asset.name === fixture.fileName);
+      assert(asset, `Missing captured asset: ${fixture.fileName}`);
+      assert.equal(asset.mediaType, fixture.mimeType);
+      const content: Awaited<ReturnType<typeof owner.page.request.get>> =
+        await owner.page.request.get(`${app.origin}/api/assets/${asset.readableId}/content`);
+      assert(content.ok());
+      assert.deepEqual(await content.body(), fixture.bytes, 'Captured asset bytes changed');
+    }
     await owner.page.goto(`${app.origin}/map?resource=page&resourceId=exhibition-visit`);
     await owner.page
       .getByRole('heading', { name: 'Exhibition visit', exact: true })
       .first()
       .waitFor();
+    for (const fixture of attachmentFixtures) {
+      await owner.page.getByRole('link', { name: fixture.fileName, exact: true }).first().waitFor();
+    }
   } finally {
     queue.close();
   }
   console.log(
-    'A reply made no memory calls; background learning saved the plan across /new, displayed it in the app, and cleared its evidence.',
+    'A reply made no memory calls; background learning saved the plan and original image, video and document assets across /new, displayed their links in the app, and cleared its evidence.',
   );
   console.log('Removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.

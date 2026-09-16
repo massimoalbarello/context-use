@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { evidenceFromMessages } from '../src/learning-evidence';
+import { attachmentsFromMessages, evidenceFromMessages } from '../src/learning-evidence';
 import { DREAM_INTERVAL_MS, LearningStore, learningDatabase } from '../src/learning-store';
 
 const config = { agentId: 'main', serverUrl: 'https://memory.example/mcp' };
@@ -58,7 +58,7 @@ test('reset evidence survives reopening, deduplicates completed turns, and prese
     ]),
     now: NOW + 1,
   });
-  reopened.acknowledge(job.sessionKey);
+  reopened.acknowledge({ sessionKey: job.sessionKey });
   reopened.finish({ id: job.id, now: NOW });
   db.capture({ source: job.source, evidence, now: NOW });
   expect(db.status().pending).toBe(1);
@@ -86,7 +86,7 @@ test('failed jobs keep evidence and change dispatch identity without accepting s
   expect(db.status().retryAt).toBe(NOW + 1);
   expect(db.next({ agentId: 'main', now: NOW })).toBeUndefined();
   expect(db.next({ agentId: 'main', now: NOW + 1 })?.id).not.toBe(job.id);
-  expect(() => db.acknowledge(job.sessionKey)).toThrow('no longer active');
+  expect(() => db.acknowledge({ sessionKey: job.sessionKey })).toThrow('no longer active');
 });
 
 test('dreaming runs only after new evidence has been learned and its interval is due', async () => {
@@ -98,13 +98,13 @@ test('dreaming runs only after new evidence has been learned and its interval is
     now: NOW,
   });
   const job = db.next({ agentId: 'main', now: NOW })!;
-  db.acknowledge(job.sessionKey);
+  db.acknowledge({ sessionKey: job.sessionKey });
   db.finish({ id: job.id, now: NOW });
   expect(db.next({ agentId: 'main', now: NOW })).toBeUndefined();
   const dream = db.next({ agentId: 'main', now: NOW + DREAM_INTERVAL_MS })!;
   expect(dream.kind).toBe('dream');
   expect(dream.evidence).toBe('');
-  db.acknowledge(dream.sessionKey);
+  db.acknowledge({ sessionKey: dream.sessionKey });
   db.finish({ id: dream.id, now: NOW + DREAM_INTERVAL_MS });
   expect(db.next({ agentId: 'main', now: NOW + DREAM_INTERVAL_MS * 2 })).toBeUndefined();
 });
@@ -130,7 +130,7 @@ test('a failing conversation does not block learning in other conversations', as
   });
   const next = db.next({ agentId: 'main', now: NOW })!;
   expect(next.source).toBe('another-chat');
-  db.acknowledge(next.sessionKey);
+  db.acknowledge({ sessionKey: next.sessionKey });
   db.finish({ id: next.id, now: NOW });
   expect(db.status().pending).toBe(1);
   expect(db.next({ agentId: 'main', now: NOW + retryDelay })?.source).toBe('failing-chat');
@@ -148,7 +148,7 @@ test('large conversations are drained in bounded batches without losing their fi
     const maxBatchChars = 50_000;
     expect(job.evidence.length).toBeLessThan(maxBatchChars);
     combined += job.evidence;
-    db.acknowledge(job.sessionKey);
+    db.acknowledge({ sessionKey: job.sessionKey });
     db.finish({ id: job.id, now: NOW });
   }
   expect(combined).toContain('I will buy admission at the door.');
@@ -180,4 +180,64 @@ test('connection ownership is enforced and tool output, reasoning and media byte
       { role: 'user', content: [{ type: 'image', data: 'raw image bytes' }] },
     ]),
   ).toEqual([]);
+});
+
+test('attachment references survive reset and restart, scope uploads to the active job, and require completion', async () => {
+  const { db, open } = await fixture();
+  const evidence = attachmentsFromMessages([
+    {
+      role: 'user',
+      __openclaw: {
+        media: [
+          { path: '/media/photo.png', fileName: 'Exhibition photo', contentType: 'image/png' },
+          { path: '/media/clip.mp4', fileName: 'Exhibition video', contentType: 'video/mp4' },
+          {
+            path: '/media/guide.pdf',
+            fileName: 'Exhibition guide',
+            contentType: 'application/pdf',
+          },
+        ],
+      },
+    },
+    { role: 'assistant', __openclaw: { media: [{ path: '/private/unrelated' }] } },
+    { role: 'user', content: 'Please read /private/not-an-attachment' },
+  ]);
+  const attachmentCount = 3;
+  expect(evidence).toHaveLength(attachmentCount);
+  db.capture({ source: 'chat', evidence, now: NOW });
+  db.capture({ source: 'chat', evidence, now: NOW });
+  const job = db.next({ agentId: 'main', now: NOW })!;
+  expect(job.evidence).not.toContain('/media/');
+  const reopened = open();
+  expect(reopened.attachments(job)).toHaveLength(attachmentCount);
+  expect(() => reopened.acknowledge({ sessionKey: job.sessionKey })).toThrow('every attachment');
+  const [first, second, third] = evidence;
+  expect(() => db.savedAttachment({ jobId: job.id, key: 'another-job', asset: '{}' })).toThrow(
+    'not part',
+  );
+  expect(
+    db.prepareAttachmentUpload({ jobId: job.id, key: first!.key, name: 'Exhibition photo' }),
+  ).toBe('Exhibition photo');
+  expect(
+    reopened.prepareAttachmentUpload({
+      jobId: job.id,
+      key: first!.key,
+      name: 'Different retry name',
+    }),
+  ).toBe('Exhibition photo');
+  db.savedAttachment({
+    jobId: job.id,
+    key: first!.key,
+    asset: '{"address":"context-use://asset/photo"}',
+  });
+  db.savedAttachment({
+    jobId: job.id,
+    key: second!.key,
+    asset: '{"address":"context-use://asset/video"}',
+  });
+  expect(() => db.acknowledge({ sessionKey: job.sessionKey })).toThrow('every attachment');
+  db.acknowledge({ sessionKey: job.sessionKey, omittedAttachments: [third!.key] });
+  db.finish({ id: job.id, now: NOW });
+  expect(reopened.attachments(job)).toEqual([]);
+  expect(db.status().pending).toBe(0);
 });

@@ -3,11 +3,13 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { PluginConfig } from './contract';
-import type { LearningEvidence } from './learning-evidence';
+import type { LearningAttachment, LearningEvidence } from './learning-evidence';
 
 const PRIVATE_DIRECTORY_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
 const BATCH_CHARS = 48_000;
+export const attachmentDirectory = (connectionId: string) =>
+  `learning-${encodeURIComponent(connectionId)}-attachments`;
 export const DREAM_INTERVAL_MS = 21_600_000;
 export const learningDatabase = (connectionId: string) =>
   `learning-${encodeURIComponent(connectionId)}.sqlite`;
@@ -48,6 +50,10 @@ export class LearningStore {
         runId TEXT, acknowledged INTEGER NOT NULL DEFAULT 0, startedAt INTEGER NOT NULL DEFAULT 0
       );
       CREATE TABLE IF NOT EXISTS retries (source TEXT PRIMARY KEY, retryAt INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS attachments (
+        source TEXT NOT NULL, key TEXT NOT NULL, evidenceId INTEGER NOT NULL,
+        data TEXT, asset TEXT, uploadName TEXT, PRIMARY KEY (source, key)
+      );
       CREATE TABLE IF NOT EXISTS dreaming (
         singleton INTEGER PRIMARY KEY CHECK(singleton = 1), through INTEGER NOT NULL,
         completedAt INTEGER NOT NULL
@@ -70,6 +76,12 @@ export class LearningStore {
       );
       for (const item of input.evidence) {
         insert.run(input.source, item.key, item.text, input.now);
+        if (item.attachment) {
+          this.db
+            .prepare(`INSERT OR IGNORE INTO attachments(source, key, evidenceId, data)
+            SELECT source, fingerprint, id, ? FROM evidence WHERE source = ? AND fingerprint = ?`)
+            .run(JSON.stringify(item.attachment), input.source, item.key);
+        }
       }
     });
   }
@@ -162,7 +174,72 @@ export class LearningStore {
       .run(input.runId, input.now, input.id);
   }
 
-  acknowledge(sessionKey: string): void {
+  attachments(
+    job: LearningJob,
+  ): { key: string; attachment: LearningAttachment; asset: string | null }[] {
+    const rows = this.db
+      .prepare(
+        'SELECT key, data, asset FROM attachments WHERE source = ? AND evidenceId <= ? AND data IS NOT NULL ORDER BY evidenceId',
+      )
+      .all(job.source, job.through) as { key: string; data: string; asset: string | null }[];
+    return rows.map((row) => ({
+      key: row.key,
+      attachment: JSON.parse(row.data),
+      asset: row.asset,
+    }));
+  }
+
+  private attachmentSource(input: { jobId: string; key: string }): string {
+    const job = this.current();
+    if (
+      !job ||
+      job.id !== input.jobId ||
+      !this.attachments(job).some((item) => item.key === input.key)
+    ) {
+      throw new Error('This attachment is not part of the active learning job.');
+    }
+    return job.source;
+  }
+
+  prepareAttachmentUpload(input: { jobId: string; key: string; name: string }): string {
+    const source = this.attachmentSource(input);
+    this.db
+      .prepare(
+        'UPDATE attachments SET uploadName = COALESCE(uploadName, ?) WHERE source = ? AND key = ?',
+      )
+      .run(input.name, source, input.key);
+    return (
+      this.db
+        .prepare('SELECT uploadName FROM attachments WHERE source = ? AND key = ?')
+        .get(source, input.key) as { uploadName: string }
+    ).uploadName;
+  }
+
+  clearAttachmentUploadName(input: { jobId: string; key: string }): void {
+    const source = this.attachmentSource(input);
+    this.db
+      .prepare('UPDATE attachments SET uploadName = NULL WHERE source = ? AND key = ?')
+      .run(source, input.key);
+  }
+
+  savedAttachment(input: { jobId: string; key: string; asset: string }): void {
+    const source = this.attachmentSource(input);
+    this.db
+      .prepare('UPDATE attachments SET asset = ? WHERE source = ? AND key = ?')
+      .run(input.asset, source, input.key);
+  }
+
+  acknowledge(input: { sessionKey: string; omittedAttachments?: string[] }): void {
+    const { sessionKey, omittedAttachments = [] } = input;
+    const job = this.current();
+    if (
+      job?.sessionKey === sessionKey &&
+      this.attachments(job).some((item) => !item.asset && !omittedAttachments.includes(item.key))
+    ) {
+      throw new Error(
+        'Save every attachment or explicitly exclude it for a retention reason before finishing. Failed uploads must be retried.',
+      );
+    }
     const result = this.db
       .prepare('UPDATE job SET acknowledged = 1 WHERE sessionKey = ?')
       .run(sessionKey);
@@ -191,6 +268,9 @@ export class LearningStore {
       if (job.kind === 'learn') {
         this.db
           .prepare('UPDATE evidence SET text = NULL WHERE source = ? AND id <= ?')
+          .run(job.source, job.through);
+        this.db
+          .prepare('UPDATE attachments SET data = NULL WHERE source = ? AND evidenceId <= ?')
           .run(job.source, job.through);
       } else {
         this.db

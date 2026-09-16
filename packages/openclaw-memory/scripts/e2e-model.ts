@@ -211,24 +211,88 @@ export function startModel() {
         }
       })
       .find(Boolean);
+    const prompt = input.messages
+      .map((message) => (typeof message.content === 'string' ? message.content : ''))
+      .join('\n');
+    const evidence =
+      prompt.match(/<conversation-evidence>\n([\s\S]*?)<\/conversation-evidence>/)?.[1] ?? '';
+    const attachments = evidence
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .flatMap((line) => {
+        const row = z
+          .object({
+            message: z.object({
+              attachment: z.object({ id: z.string(), fileName: z.string().optional() }).optional(),
+            }),
+          })
+          .parse(JSON.parse(line));
+        return row.message.attachment ? [row.message.attachment] : [];
+      });
+    const assets = results.flatMap((message) => {
+      try {
+        const asset = z
+          .object({ address: z.string().startsWith('context-use://asset/'), name: z.string() })
+          .safeParse(JSON.parse(String(message.content)));
+        return asset.success ? [asset.data] : [];
+      } catch {
+        return [];
+      }
+    });
     const alreadySaved = JSON.stringify(results[1]?.content ?? '').includes(
       'context-use://page/exhibition-visit',
     );
+    const priorPage = results.flatMap((message) => {
+      try {
+        const page = z
+          .object({ markdown: z.string(), revisionNumber: z.number() })
+          .safeParse(JSON.parse(String(message.content)));
+        return page.success ? [page.data] : [];
+      } catch {
+        return [];
+      }
+    })[0];
+    const original =
+      priorPage?.markdown ??
+      '# Exhibition visit\n\n[Rowan](context-use://entity/rowan) plans to visit [Mira](context-use://entity/mira)’s exhibition on 20 June 2030 and buy admission at the door. Source: the supplied conversation; this is a plan, not a completed visit.';
+    const markdown =
+      original +
+      assets
+        .filter((asset) => !original.includes(asset.address))
+        .map((asset) => `\n\n[${asset.name}](${asset.address})`)
+        .join('');
     const steps = [
       { name: 'read_hypermedia_curation_guide', arguments: {} },
       { name: 'search_hypermedia', arguments: { query: 'exhibition' } },
+      ...attachments.map((attachment) => ({
+        name: 'save_learning_attachment',
+        arguments: {
+          attachmentId: attachment.id,
+          name: attachment.fileName ?? 'Exhibition attachment',
+        },
+      })),
       ...(alreadySaved
-        ? []
-        : [
+        ? [
             {
-              name: 'create_knowledge_page',
-              arguments: {
-                guide_version: guide,
-                markdown:
-                  '# Exhibition visit\n\n[Rowan](context-use://entity/rowan) plans to visit [Mira](context-use://entity/mira)’s exhibition on 20 June 2030 and buy admission at the door. Source: the supplied conversation; this is a plan, not a completed visit.',
-              },
+              name: 'read_knowledge_page',
+              arguments: { address: 'context-use://page/exhibition-visit' },
             },
-          ]),
+            ...(attachments.length
+              ? [
+                  {
+                    name: 'update_knowledge_page',
+                    arguments: {
+                      guide_version: guide,
+                      address: 'context-use://page/exhibition-visit',
+                      expectedRevisionNumber: priorPage?.revisionNumber,
+                      markdown,
+                    },
+                  },
+                ]
+              : []),
+          ]
+        : [{ name: 'create_knowledge_page', arguments: { guide_version: guide, markdown } }]),
       {
         name: 'read_knowledge_page',
         arguments: { address: 'context-use://page/exhibition-visit' },

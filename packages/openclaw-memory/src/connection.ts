@@ -17,7 +17,7 @@ import {
 } from './configuration';
 import { PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
 import { ConnectionError } from './error';
-import { LearningStore, learningDatabase } from './learning-store';
+import { attachmentDirectory, LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
@@ -113,6 +113,10 @@ export async function finishAuthorization(input: {
       state.learningId = randomUUID();
       await writeState({ directory: input.directory, state });
       if (previousLearningId) {
+        await rm(join(input.directory, attachmentDirectory(previousLearningId)), {
+          recursive: true,
+          force: true,
+        });
         for (const suffix of ['', '-journal']) {
           await rm(join(input.directory, `${learningDatabase(previousLearningId)}${suffix}`), {
             force: true,
@@ -147,6 +151,10 @@ export async function disconnect(directory: string): Promise<{ preserved: string
       });
       await rm(join(directory, 'connection.json'), { force: true });
       if (state?.learningId) {
+        await rm(join(directory, attachmentDirectory(state.learningId)), {
+          recursive: true,
+          force: true,
+        });
         for (const suffix of ['', '-journal']) {
           await rm(join(directory, `${learningDatabase(state.learningId)}${suffix}`), {
             force: true,
