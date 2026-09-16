@@ -216,12 +216,14 @@
   position: absolute;
   display: grid;
   width: 24%;
+  aspect-ratio: 1;
+  align-content: center;
   justify-items: center;
   gap: 0.7cqw;
   padding: 2.5cqw 1cqw;
   transform: translate(-50%, -50%);
   border: 1px solid #e0e5dc;
-  border-radius: 3cqw;
+  border-radius: 50%;
   background: #fcfdfa;
   box-shadow: 0 0.5cqw 1.5cqw #263d2608;
 }
