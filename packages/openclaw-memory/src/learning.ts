@@ -8,8 +8,14 @@ import { FINISH_LEARNING_TOOL, type PluginConfig, SAVE_ATTACHMENT_TOOL } from '.
 import { LEARNING_GUIDANCE, MEMORY_GUIDANCE } from './guidance';
 import { clearStagedAttachments, stageAttachments } from './learning-attachments';
 import { attachmentsFromMessages, evidenceFromMessages } from './learning-evidence';
-import { type LearningJob, LearningStore, learningDatabase } from './learning-store';
-import { isLearningSession, registerLearningTools } from './learning-tools';
+import {
+  isLearningSession,
+  type LearningJob,
+  LearningStore,
+  learningDatabase,
+} from './learning-store';
+import { registerLearningTools } from './learning-tools';
+import { canUseMemory } from './lifecycle';
 import { readStateSync, withConnection } from './state';
 
 const POLL_MS = 15_000;
@@ -61,8 +67,7 @@ export function registerLearning(input: {
       'Context Use background learning is pending; inspect openclaw context-use status.',
     );
   const owns = (context: { agentId?: string; sessionKey?: string }) =>
-    context.agentId === config.agentId &&
-    context.sessionKey?.startsWith(`agent:${config.agentId}:`) === true;
+    canUseMemory({ agentId: config.agentId, context });
   const canCapture = (context: { agentId?: string; sessionKey?: string }) => {
     if (
       !owns(context) ||

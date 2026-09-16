@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { z } from 'zod';
-import { toolInput } from '../src/tool-input';
+import { toolInput, toolInputFromSchema } from '../src/tool-input';
 
 const MAX_RESULTS = 50;
 const MAX_TAGS = 3;
@@ -13,6 +13,22 @@ const original = z.object({
   tags: z.array(z.string()).min(1).max(MAX_TAGS).optional(),
 });
 const bridge = toolInput(z.toJSONSchema(original) as Parameters<typeof toolInput>[0]);
+
+test('local tool schemas preserve normalization and validation while accepting provider omissions', () => {
+  const local = toolInputFromSchema(
+    z.object({
+      name: z.string().trim().min(1),
+      reasons: z.array(z.object({ reason: z.string().min(1) })).optional(),
+    }),
+  );
+  const args = { name: '  Exhibition photo  ', reasons: null };
+  expect(
+    z.fromJSONSchema(JSON.parse(JSON.stringify(local.parameters))).safeParse(args).success,
+  ).toBe(true);
+  expect(local.parse(args)).toEqual({ name: 'Exhibition photo', reasons: undefined });
+  expect(() => local.parse({ name: '   ' })).toThrow();
+  expect(() => local.parse({ name: 'Photo', reasons: [{ reason: '' }] })).toThrow();
+});
 
 test('provider schemas can express omission without inventing filters or cursors', async () => {
   // This public SDK entry point ships without declarations in the pinned host.

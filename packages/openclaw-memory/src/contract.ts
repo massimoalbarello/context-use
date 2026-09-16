@@ -9,6 +9,7 @@ export const OPENCLAW_VERSION_RANGE = packageJson.peerDependencies.openclaw;
 export const CALLBACK_URL = 'http://127.0.0.1:49187/context-use/callback';
 export const REQUEST_TIMEOUT_MS = 30_000;
 export const AUTHORIZATION_TIMEOUT_MS = 600_000;
+export const AUTHORIZATION_SCOPE = 'mcp offline_access';
 export const toolName = (name: string) => `context_use_${name}`;
 export const FINISH_LEARNING_TOOL = toolName('finish_learning');
 export const SAVE_ATTACHMENT_TOOL = toolName('save_learning_attachment');

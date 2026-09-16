@@ -35,7 +35,7 @@ export function memoryCapability(agentId: string): MemoryPluginCapability {
 
 export function canUseMemory(input: {
   agentId: string;
-  context: OpenClawPluginToolContext;
+  context: Partial<OpenClawPluginToolContext>;
 }): boolean {
   const context = input.context;
   return (

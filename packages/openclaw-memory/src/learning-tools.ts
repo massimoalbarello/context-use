@@ -1,17 +1,36 @@
 /** biome-ignore-all lint/complexity/useMaxParams: OpenClaw tools use positional arguments. */
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
-import { Type } from 'typebox';
 import { z } from 'zod';
 import { AssetNameConflictError, uploadAttachment } from './asset-upload';
 import { FINISH_LEARNING_TOOL, type PluginConfig, SAVE_ATTACHMENT_TOOL } from './contract';
 import { readStagedAttachment } from './learning-attachments';
-import type { LearningStore } from './learning-store';
+import { isLearningSession, type LearningStore } from './learning-store';
+import { toolInputFromSchema } from './tool-input';
 
 const MAX_ASSET_NAME_LENGTH = 160;
-
-export function isLearningSession(sessionKey?: string): boolean {
-  return /^agent:[^:]+:subagent:context-use-learning:/.test(sessionKey ?? '');
-}
+const finishInput = toolInputFromSchema(
+  z.object({
+    omittedAttachments: z
+      .array(
+        z.object({
+          id: z.string(),
+          reason: z
+            .string()
+            .min(1)
+            .describe(
+              'Explicit retention preference or sensitive content. Never omit a failed upload.',
+            ),
+        }),
+      )
+      .optional(),
+  }),
+);
+const attachmentInput = toolInputFromSchema(
+  z.object({
+    attachmentId: z.string(),
+    name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
+  }),
+);
 
 async function saveAttachment(input: {
   db: LearningStore;
@@ -84,38 +103,15 @@ export function registerLearningTools(input: {
         label: 'Finish Context Use learning',
         description:
           'Acknowledge this background job only after its evidence has been considered and all required memory operations succeeded. Also use when no information merits saving.',
-        parameters: Type.Object({
-          omittedAttachments: Type.Optional(
-            Type.Union([
-              Type.Array(
-                Type.Object({
-                  id: Type.String(),
-                  reason: Type.String({
-                    minLength: 1,
-                    description:
-                      'Explicit retention preference or sensitive content. Never omit a failed upload.',
-                  }),
-                }),
-              ),
-              Type.Null(),
-            ]),
-          ),
-        }),
+        parameters: finishInput.parameters,
         execute: (_id, args) => {
           if (!connected()) {
             throw new Error('Context Use is disconnected.');
           }
-          const omissions = z
-            .object({
-              omittedAttachments: z
-                .array(z.object({ id: z.string(), reason: z.string().min(1) }))
-                .nullish()
-                .transform((value) => value ?? []),
-            })
-            .parse(args);
+          const omissions = finishInput.parse(args);
           queue().acknowledge({
             sessionKey: context.sessionKey!,
-            omittedAttachments: omissions.omittedAttachments.map((item) => item.id),
+            omittedAttachments: omissions.omittedAttachments?.map((item) => item.id),
           });
           return Promise.resolve({
             content: [{ type: 'text' as const, text: 'Learning acknowledged.' }],
@@ -136,17 +132,9 @@ export function registerLearningTools(input: {
         label: 'Save conversation attachment',
         description:
           'Save one attachment from this learning job as a Context Use asset. Supply its attachment ID and a meaningful name. Only queued attachments can be read. Reuses an already saved attachment on retry.',
-        parameters: Type.Object({
-          attachmentId: Type.String(),
-          name: Type.String({ minLength: 1, maxLength: MAX_ASSET_NAME_LENGTH }),
-        }),
+        parameters: attachmentInput.parameters,
         execute: async (_id, args) => {
-          const { attachmentId, name } = z
-            .object({
-              attachmentId: z.string(),
-              name: z.string().trim().min(1).max(MAX_ASSET_NAME_LENGTH),
-            })
-            .parse(args);
+          const { attachmentId, name } = attachmentInput.parse(args);
           if (!connected()) {
             throw new Error('Context Use is disconnected.');
           }

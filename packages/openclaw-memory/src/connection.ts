@@ -12,15 +12,19 @@ import {
 import { discoverTools, withClient } from './client';
 import {
   assertPersonalConfiguration,
+  configMatches,
   prepareConfiguration,
   restoreConfiguration,
 } from './configuration';
-import { PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
+import { AUTHORIZATION_SCOPE, PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
 import { ConnectionError } from './error';
 import { attachmentDirectory, LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
+
+const authorizationFetch: NonNullable<Parameters<typeof auth>[1]['fetchFn']> = (url, init) =>
+  fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 
 async function activate(input: { directory: string; state: ConnectionState }): Promise<void> {
   input.state.tools = await withClient({ ...input, run: discoverTools });
@@ -35,6 +39,21 @@ async function activate(input: { directory: string; state: ConnectionState }): P
   });
 }
 
+async function removeLearningData(input: {
+  directory: string;
+  connectionId: string;
+}): Promise<void> {
+  await rm(join(input.directory, attachmentDirectory(input.connectionId)), {
+    recursive: true,
+    force: true,
+  });
+  for (const suffix of ['', '-journal']) {
+    await rm(join(input.directory, `${learningDatabase(input.connectionId)}${suffix}`), {
+      force: true,
+    });
+  }
+}
+
 export async function connect(input: {
   directory: string;
   instance: string;
@@ -45,11 +64,7 @@ export async function connect(input: {
     directory: input.directory,
     run: async () => {
       const existing = await readState(input.directory);
-      if (
-        existing &&
-        (existing.config.serverUrl !== config.serverUrl ||
-          existing.config.agentId !== config.agentId)
-      ) {
+      if (existing && !configMatches({ actual: existing.config, expected: config })) {
         throw new ConnectionError(
           'Disconnect the existing account before changing instance or agent.',
         );
@@ -65,9 +80,8 @@ export async function connect(input: {
         oauthProvider({ directory: input.directory, state, interactive: true }),
         {
           serverUrl: config.serverUrl,
-          scope: 'mcp offline_access',
-          fetchFn: (url, init) =>
-            fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+          scope: AUTHORIZATION_SCOPE,
+          fetchFn: authorizationFetch,
         },
       );
       if (result === 'REDIRECT') {
@@ -99,8 +113,7 @@ export async function finishAuthorization(input: {
         {
           serverUrl: state.config.serverUrl,
           ...response,
-          fetchFn: (url, init) =>
-            fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+          fetchFn: authorizationFetch,
         },
       );
       if (result !== 'AUTHORIZED') {
@@ -113,15 +126,10 @@ export async function finishAuthorization(input: {
       state.learningId = randomUUID();
       await writeState({ directory: input.directory, state });
       if (previousLearningId) {
-        await rm(join(input.directory, attachmentDirectory(previousLearningId)), {
-          recursive: true,
-          force: true,
+        await removeLearningData({
+          directory: input.directory,
+          connectionId: previousLearningId,
         });
-        for (const suffix of ['', '-journal']) {
-          await rm(join(input.directory, `${learningDatabase(previousLearningId)}${suffix}`), {
-            force: true,
-          });
-        }
       }
       await activate({ directory: input.directory, state });
     },
@@ -151,15 +159,7 @@ export async function disconnect(directory: string): Promise<{ preserved: string
       });
       await rm(join(directory, 'connection.json'), { force: true });
       if (state?.learningId) {
-        await rm(join(directory, attachmentDirectory(state.learningId)), {
-          recursive: true,
-          force: true,
-        });
-        for (const suffix of ['', '-journal']) {
-          await rm(join(directory, `${learningDatabase(state.learningId)}${suffix}`), {
-            force: true,
-          });
-        }
+        await removeLearningData({ directory, connectionId: state.learningId });
       }
       return { preserved };
     },

@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
 import { getAgentScopedMediaLocalRoots } from 'openclaw/plugin-sdk/media-local-roots';
 import { MAX_ATTACHMENT_BYTES } from './asset-upload';
-import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from './file-permissions';
 import { attachmentDirectory, type LearningJob, type LearningStore } from './learning-store';
+import { PRIVATE_DIRECTORY_MODE, writePrivateFile } from './private-files';
 
 const attachmentPath = (input: {
   directory: string;
@@ -59,13 +59,7 @@ export async function stageAttachments(
       recursive: true,
       mode: PRIVATE_DIRECTORY_MODE,
     });
-    const temporary = `${path}.tmp`;
-    try {
-      await writeFile(temporary, media.buffer, { mode: PRIVATE_FILE_MODE });
-      await rename(temporary, path);
-    } finally {
-      await rm(temporary, { force: true });
-    }
+    await writePrivateFile({ path, data: media.buffer });
   }
 }
 

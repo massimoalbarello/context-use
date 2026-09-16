@@ -1,10 +1,19 @@
-import { execFile } from 'node:child_process';
+/** biome-ignore-all lint/complexity/useMaxParams: Promise executors use positional arguments. */
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { assertHostVersion } from './contract';
 import { ConnectionError } from './error';
 
 const execute = promisify(execFile);
 const HOST_TIMEOUT_MS = 120_000;
+
+export async function runSetupCommand(input: { script: string; args: string[] }): Promise<number> {
+  const child = spawn(process.execPath, [input.script, ...input.args], { stdio: 'inherit' });
+  return await new Promise<number>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('exit', (code) => resolve(code ?? 1));
+  });
+}
 
 export async function openclaw(args: string[]): Promise<string> {
   const result = await execute('openclaw', args, {

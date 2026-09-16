@@ -13,10 +13,9 @@ const MediaSchema = z.object({
   fileName: z.string().optional(),
   contentType: z.string().optional(),
 });
-const MediaMessageSchema = z.object({
+const MediaMessageSchema = MessageSchema.extend({
   role: z.literal('user'),
   content: z.unknown().optional(),
-  timestamp: z.union([z.string(), z.number()]).optional(),
   __openclaw: z.object({ media: z.array(MediaSchema) }),
 });
 const CHUNK_CHARS = 6_000;

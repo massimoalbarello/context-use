@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/complexity/useMaxParams: OpenClaw callbacks use positional arguments. */
 
-import { spawn } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { resolveAgentWorkspaceDir } from 'openclaw/plugin-sdk/agent-runtime';
 import { definePluginEntry } from 'openclaw/plugin-sdk/plugin-entry';
@@ -8,6 +7,7 @@ import { z } from 'zod';
 import { callMemoryTool } from './client';
 import { configMatches } from './configuration';
 import { assertHostVersion, PLUGIN_ID, PluginConfigSchema, toolName } from './contract';
+import { runSetupCommand } from './host-command';
 import { registerLearning } from './learning';
 import { canUseMemory, filterBootstrap, isMemoryPath, memoryCapability } from './lifecycle';
 import { type ConnectionState, connectionDirectory, readStateSync } from './state';
@@ -40,19 +40,9 @@ export default definePluginEntry({
           .helpOption(false)
           .allowUnknownOption()
           .action(async (args: string[]) => {
-            const child = spawn(
-              process.execPath,
-              [join(dirname(api.source), 'setup.js'), ...args],
-              {
-                stdio: 'inherit',
-              },
-            );
-            await new Promise<void>((resolve, reject) => {
-              child.once('error', reject);
-              child.once('exit', (code) => {
-                process.exitCode = code ?? 1;
-                resolve();
-              });
+            process.exitCode = await runSetupCommand({
+              script: join(dirname(api.source), 'setup.js'),
+              args,
             });
           });
       },

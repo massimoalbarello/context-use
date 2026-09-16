@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { OAuthClientProvider } from '@modelcontextprotocol/client';
-import { AUTHORIZATION_TIMEOUT_MS, CALLBACK_URL } from './contract';
+import { AUTHORIZATION_SCOPE, AUTHORIZATION_TIMEOUT_MS, CALLBACK_URL } from './contract';
 import { ConnectionError } from './error';
 import type { ConnectionState } from './state';
 import { writeState } from './state';
@@ -22,7 +22,7 @@ export function oauthProvider(input: {
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
       token_endpoint_auth_method: 'none',
-      scope: 'mcp offline_access',
+      scope: AUTHORIZATION_SCOPE,
     },
     state: () => randomBytes(STATE_BYTES).toString('hex'),
     clientInformation: () => oauth.client,

@@ -47,12 +47,19 @@ function modelInput(schema: z.ZodType): z.ZodType {
   return input.meta(schema.meta() ?? {});
 }
 
-export function toolInput(inputSchema: Tool['inputSchema']) {
-  const original = z.fromJSONSchema(inputSchema as z.core.JSONSchema.JSONSchema);
+export function toolInputFromSchema<T extends z.ZodType>(original: T) {
   const input = modelInput(original);
   return {
     parameters: Type.Unsafe<Record<string, unknown>>(z.toJSONSchema(input, { io: 'input' })),
+    parse: (args: unknown): z.output<T> => original.parse(input.parse(args)),
+  };
+}
+
+export function toolInput(inputSchema: Tool['inputSchema']) {
+  const input = toolInputFromSchema(z.fromJSONSchema(inputSchema as z.core.JSONSchema.JSONSchema));
+  return {
+    ...input,
     parse: (args: unknown): Record<string, unknown> =>
-      z.record(z.string(), z.unknown()).parse(original.parse(input.parse(args))),
+      z.record(z.string(), z.unknown()).parse(input.parse(args)),
   };
 }

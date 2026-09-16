@@ -3,10 +3,17 @@ import { chmodSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import type { PluginConfig } from './contract';
-import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from './file-permissions';
 import type { LearningAttachment, LearningEvidence } from './learning-evidence';
+import { PRIVATE_DIRECTORY_MODE, PRIVATE_FILE_MODE } from './private-files';
 
 const BATCH_CHARS = 48_000;
+const LEARNING_SESSION_PREFIX = 'subagent:context-use-learning:';
+const LEARNING_SESSION_PATTERN = new RegExp(`^agent:[^:]+:${LEARNING_SESSION_PREFIX}`);
+
+export function isLearningSession(sessionKey?: string): boolean {
+  return LEARNING_SESSION_PATTERN.test(sessionKey ?? '');
+}
+
 export const attachmentDirectory = (connectionId: string) =>
   `learning-${encodeURIComponent(connectionId)}-attachments`;
 export const DREAM_INTERVAL_MS = 21_600_000;
@@ -115,7 +122,7 @@ export class LearningStore {
         .run(
           id,
           first ? 'learn' : 'dream',
-          `agent:${input.agentId}:subagent:context-use-learning:${id}`,
+          `agent:${input.agentId}:${LEARNING_SESSION_PREFIX}${id}`,
           first?.source ?? '',
           through,
           evidence,
