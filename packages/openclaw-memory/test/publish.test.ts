@@ -102,11 +102,9 @@ test(
       expect(older.output).toContain('already points to newer version');
       expect(publications).toBe(1);
       expect(tags.beta).toBe('0.1.0-beta.2');
-      expect(
-        (await Bun.file(join(root, 'output')).text())
-          .split('\n')
-          .filter((line) => line.startsWith('published=')),
-      ).toEqual(['published=true', 'published=true', 'published=false']);
+      expect(await Bun.file(join(root, 'output')).text()).toBe(
+        'published=true\npublished=true\npublished=false\n',
+      );
 
       // Use the real build and pack boundaries, including versions embedded in JS.
       function publishBuiltPackage(version: string) {

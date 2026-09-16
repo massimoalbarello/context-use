@@ -73,7 +73,6 @@ jobs:
       queue: max
     outputs:
       published: ${{ steps.publish.outputs.published }}
-      integrity: ${{ steps.publish.outputs.integrity }}
     steps:
       - uses: actions/checkout@v6
 
@@ -125,10 +124,14 @@ jobs:
       - name: Install test browser
         run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
 
-      - name: Install and test the published version through real OpenClaw
+      - name: Wait for npm to serve the published version
+        timeout-minutes: 5
         env:
           RELEASE_VERSION: ${{ needs.verify.outputs.version }}
-          RELEASE_INTEGRITY: ${{ needs.publish.outputs.integrity }}
         run: |
-          bun run packages/openclaw-memory/scripts/wait-published.ts "@context-use/openclaw-memory@$RELEASE_VERSION" "$RELEASE_INTEGRITY"
-          bun run --cwd packages/openclaw-memory test:published
+          until npm view "@context-use/openclaw-memory@$RELEASE_VERSION" version --prefer-online --fetch-retries=0; do
+            sleep 5
+          done
+
+      - name: Install and test the published version through real OpenClaw
+        run: bun run --cwd packages/openclaw-memory test:published
