@@ -32,6 +32,9 @@ jobs:
       - name: Check frontend design and query contracts
         run: bun check:frontend
 
+      - name: Check backend dependency boundaries
+        run: bun check:backend
+
   tests:
     runs-on: ubuntu-latest
     steps:
