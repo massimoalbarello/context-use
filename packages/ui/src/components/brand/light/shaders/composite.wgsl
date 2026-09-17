@@ -17,7 +17,7 @@
   let local_glow = exp(-max(distances.g, 0.0) / (unit * 0.16));
   var color = vec3f(0.002, 0.0025, 0.004);
   color += light * (0.01 + local_glow * 0.045) * (1.0 - logo);
-  color += sharp * 1.05 + soft * 0.5 + rays * 0.9 * (1.0 - logo);
+  color += sharp * 1.05 + soft * 0.2 + rays * 0.9 * (1.0 - logo);
   color += vec3f(0.004) * logo;
   let tone = vec3f(1.0) - exp(-color * 1.3);
   return vec4f(pow(tone, vec3f(0.85)), 1.0);

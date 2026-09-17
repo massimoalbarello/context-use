@@ -16,7 +16,9 @@ import { Lighting, Shape } from "./contracts.wgsl";
   let highlight = lighting.light / max(1.0, length(lighting.light) / 0.22);
   let delta = point - highlight;
   let spot = exp(-dot(delta, delta) / 0.033);
-  let edge = exp(-abs(distance) / (0.85 * lighting.pixel_ratio));
+  let half_width = 0.75 * lighting.pixel_ratio;
+  let antialias = max(0.5 * fwidth(distance), 0.5);
+  let edge = 1.0 - smoothstep(half_width - antialias, half_width + antialias, abs(distance));
   let energy = edge * (0.9 + spot * 3.5);
   return vec4f(color * energy, 1.0);
 }
