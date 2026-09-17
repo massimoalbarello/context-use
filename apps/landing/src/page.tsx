@@ -10,7 +10,7 @@ export function LandingPage() {
       <main>
         <div className="landing-hero">
           <h1 className="sr-only">
-            Context Use — Personal hypermedia for human-agent collaboration
+            Context Use — All your context, shared by you and your agents.
           </h1>
           <AnimatedContextUseLogo className="absolute inset-0 aspect-auto size-full" />
           <header className="relative flex items-center justify-between gap-4 px-5 py-5 sm:px-8 sm:py-6">
