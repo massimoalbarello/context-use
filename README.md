@@ -1,6 +1,6 @@
 <div align="center">
   <h1><img src="packages/ui/src/assets/context-use.svg" alt="" width="32" height="32" align="absmiddle" /> Context Use</h1>
-  <p><em>Personal hypermedia for human-agent collaboration.</em></p>
+  <p><em>All your context, shared by you and your agents.</em></p>
 
   <img src=".github/assets/context-use-logo.gif" alt="Context Use logo illuminated by orbiting warm light" width="720" height="405" />
 

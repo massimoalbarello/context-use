@@ -41,10 +41,7 @@ export function HowItWorks() {
     <section id="how-it-works" className="how-it-works" aria-labelledby="how-it-works-title">
       <div className="how-it-works-inner">
         <div className="how-it-works-intro">
-          <div>
-            <span className="section-eyebrow">How it works</span>
-            <h2 id="how-it-works-title">All your context, shared by you and your agents.</h2>
-          </div>
+          <h2 id="how-it-works-title">All your context, shared by you and your agents.</h2>
         </div>
         <div className="feature-rows">
           {FEATURES.map(({ title, description, illustration: FeatureIllustration }) => (
