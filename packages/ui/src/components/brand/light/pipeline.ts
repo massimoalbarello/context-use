@@ -95,9 +95,14 @@ export function createPipeline({
       Math.ceil(fieldSize[0] / CASCADE_ALIGNMENT) * CASCADE_ALIGNMENT * ATLAS_SCALE,
       Math.ceil(fieldSize[1] / CASCADE_ALIGNMENT) * CASCADE_ALIGNMENT * ATLAS_SCALE,
     ];
-    for (const resource of [field, emitter, irradiance, rays]) {
+    for (const resource of [field, emitter, irradiance]) {
       resource.resize(fieldSize);
     }
+    const rayScale = Math.min(1, quality.rayDimension / Math.max(...size));
+    rays.resize([
+      Math.max(1, Math.round(size[0] * rayScale)),
+      Math.max(1, Math.round(size[1] * rayScale)),
+    ]);
     for (const resource of cascades) {
       resource.resize(atlasSize);
     }

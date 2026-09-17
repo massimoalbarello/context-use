@@ -1,9 +1,9 @@
 import { createFrameHealthMonitor, type FrameHealthSample } from './frame-health';
 
 const QUALITY_LEVELS = [
-  { name: 'high', effectDimension: 1024, raySamples: 320 },
-  { name: 'medium', effectDimension: 768, raySamples: 256 },
-  { name: 'low', effectDimension: 384, raySamples: 256 },
+  { name: 'high', effectDimension: 1024, rayDimension: 1536, raySamples: 320 },
+  { name: 'medium', effectDimension: 768, rayDimension: 1024, raySamples: 256 },
+  { name: 'low', effectDimension: 384, rayDimension: 512, raySamples: 256 },
 ] as const;
 
 export type Quality = (typeof QUALITY_LEVELS)[number];
