@@ -10,7 +10,7 @@ import type {
 } from '#backend/models/hypermedia-retrieval/model.ts';
 import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#backend/models/hypermedia-retrieval/model.ts';
 import { parseKnowledgePageMarkdown } from '#backend/models/knowledge-pages/markdown.ts';
-import type { DeliveredRecord } from '#backend/models/records/delivery-contract.generated.ts';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { recordSearchText } from '#backend/models/records/search.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
@@ -96,16 +96,7 @@ function resultFrom({
     };
   }
   if (row.resourceType === 'record') {
-    if (
-      !(
-        row.recordKind &&
-        row.recordTitle !== null &&
-        row.recordProvider &&
-        row.recordId &&
-        row.syncReadableId &&
-        row.syncName
-      )
-    ) {
+    if (!(row.recordKind && row.recordTitle !== null && row.recordProvider && row.recordId)) {
       throw new Error('Hypermedia record search projection is incomplete');
     }
     return {
@@ -113,13 +104,15 @@ function resultFrom({
       record: {
         readableId: row.readableId,
         title: row.recordTitle,
-        provider: row.recordProvider,
-        participantNames: JSON.parse(row.participantNames),
+        source: {
+          provider: row.recordProvider,
+          kind: row.recordKind,
+          id: row.recordId,
+          url: row.sourceUrl,
+        },
+        occurredAt: row.occurredAt,
         sourceCreatedAt: row.sourceCreatedAt,
         sourceUpdatedAt: row.sourceUpdatedAt,
-        kind: row.recordKind,
-        recordId: row.recordId,
-        sync: { readableId: row.syncReadableId, name: row.syncName },
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       },
@@ -183,10 +176,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       if (row.resourceType === 'knowledge_page') {
         document.body = parseKnowledgePageMarkdown(text).searchableText;
       } else {
-        const record: DeliveredRecord = JSON.parse(text);
-        if (record.operation === 'deleted') {
-          throw new Error('An active search result references a deletion');
-        }
+        const record = RecordInputSchema.parse(JSON.parse(text));
         const projection = recordSearchText(record);
         document.body = projection.body;
         document.metadata = projection.metadata;
@@ -222,7 +212,6 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     const recordsOnly = filters?.record !== undefined;
     const provider = filters?.record?.provider ?? null;
     const recordKind = filters?.record?.kind ?? null;
-    const participantName = filters?.record?.participantName ?? null;
     const createdFrom = filters?.record?.createdFrom ?? null;
     const createdTo = filters?.record?.createdTo ?? null;
     const updatedFrom = filters?.record?.updatedFrom ?? null;
@@ -231,7 +220,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     // One statement pins rank, count, metadata and immutable file references to the same snapshot.
     // File reads happen after it completes, so they never hold a database transaction open.
     const rows = await this.sql.SearchHypermedia`
-      /* @notNull resourceType readableId participantNames createdAt updatedAt total */
+      /* @notNull resourceType readableId createdAt updatedAt total */
       /* @type total number */
       /* @type resourceType 'entity' | 'knowledge_page' | 'asset' | 'record' */
       /* @type isSelf number */
@@ -270,7 +259,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
           on document."resource_type" = 'record'
          and record."owner_id" = document."owner_id"
          and record."readable_id" = document."readable_id"
-         and record."operation" <> 'deleted'
+         and record."deleted_at" is null
         where "hypermedia_search_fts" match ${expression}
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
@@ -284,10 +273,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
           and (${createdTo} is null or julianday(record."source_created_at") < julianday(${createdTo}))
           and (${updatedFrom} is null or julianday(record."source_updated_at") >= julianday(${updatedFrom}))
           and (${updatedTo} is null or julianday(record."source_updated_at") < julianday(${updatedTo}))
-          and (${participantName} is null or exists (
-            select 1 from json_each(document."participant_names") participant
-            where lower(trim(participant."value")) = lower(trim(${participantName}))
-          ))
+
           and (
             (document."resource_type" = 'entity' and entity."id" is not null)
             or (document."resource_type" = 'knowledge_page' and page."id" is not null)
@@ -329,7 +315,6 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       )
       select (select count(*) from matching_document) as "total", document."resource_type" as "resourceType",
         document."readable_id" as "readableId",
-        document."participant_names" as "participantNames",
         coalesce(revision."storage_key", record."storage_key") as "storageKey",
         coalesce(revision."content_hash", record."content_hash") as "contentHash",
         coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
@@ -349,8 +334,8 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         asset."size_bytes" as "assetSizeBytes",
         record."title" as "recordTitle", record."provider" as "recordProvider",
         record."source_created_at" as "sourceCreatedAt", record."source_updated_at" as "sourceUpdatedAt",
-        record."kind" as "recordKind", record."record_id" as "recordId",
-        sync."readable_id" as "syncReadableId", sync."name" as "syncName",
+        record."kind" as "recordKind", record."source_id" as "recordId",
+        record."source_url" as "sourceUrl", record."occurred_at" as "occurredAt",
         case document."resource_type"
           when 'entity' then entity."created_at"
           when 'knowledge_page' then page."created_at"
@@ -391,9 +376,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         on document."resource_type" = 'record'
        and record."owner_id" = document."owner_id"
        and record."readable_id" = document."readable_id"
-       and record."operation" <> 'deleted'
-      left join "record_sync" sync
-        on sync."id" = record."sync_id" and sync."owner_id" = record."owner_id"
+       and record."deleted_at" is null
       order by selected_document."relevance", document."resource_type", document."readable_id"
     `;
     const totalMatches = Number(rows[0]?.total ?? 0);

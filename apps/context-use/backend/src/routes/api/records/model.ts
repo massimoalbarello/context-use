@@ -3,37 +3,32 @@ import {
   RECORD_SORT_FIELDS,
   type RecordResource,
   type RecordSummary,
-  recordParticipantNames,
 } from '#backend/models/records/model.ts';
-import { MAX_SYNC_NAME_LENGTH } from '#backend/models/syncs/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
 
-export const RecordSyncReferenceSchema = t.Object({
-  readableId: ReadableIdSchema,
-  name: t.String({ minLength: 1, maxLength: MAX_SYNC_NAME_LENGTH }),
-});
-
 export const RecordSummarySchema = t.Object({
   readableId: ReadableIdSchema,
   title: t.String({ minLength: 1 }),
-  provider: t.String({ minLength: 1 }),
+  source: t.Object({
+    provider: t.String(),
+    kind: t.String(),
+    id: t.String(),
+    url: t.Nullable(t.String()),
+  }),
+  occurredAt: t.Nullable(t.String({ format: 'date-time' })),
   sourceCreatedAt: t.Nullable(t.String({ format: 'date-time' })),
   sourceUpdatedAt: t.Nullable(t.String({ format: 'date-time' })),
-  kind: t.String({ minLength: 1 }),
-  recordId: t.String({ minLength: 1 }),
-  sync: RecordSyncReferenceSchema,
   createdAt: t.Date(),
   updatedAt: t.Date(),
 });
 
 export const RecordSchema = t.Object({
   ...RecordSummarySchema.properties,
-  markdown: t.String({ minLength: 1 }),
-  participantNames: t.Array(t.String()),
+  body: t.String(),
   backlinks: t.Array(KnowledgePageSummarySchema),
 });
 
@@ -69,12 +64,10 @@ export function recordSummaryResponse(record: RecordSummary) {
   return {
     readableId: record.readableId,
     title: record.title,
-    provider: record.provider,
+    source: record.source,
+    occurredAt: record.occurredAt,
     sourceCreatedAt: record.sourceCreatedAt,
     sourceUpdatedAt: record.sourceUpdatedAt,
-    kind: record.kind,
-    recordId: record.recordId,
-    sync: record.sync,
     createdAt: new Date(record.createdAt),
     updatedAt: new Date(record.updatedAt),
   };
@@ -83,8 +76,7 @@ export function recordSummaryResponse(record: RecordSummary) {
 export function recordResponse(record: RecordResource) {
   return {
     ...recordSummaryResponse(record),
-    markdown: record.markdown,
-    participantNames: recordParticipantNames(record.record),
+    body: record.body,
     backlinks: record.backlinks.map(pageSummaryResponse),
   };
 }

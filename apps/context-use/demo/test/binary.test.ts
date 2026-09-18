@@ -77,7 +77,7 @@ test(
         '/api/pages',
         '/api/profile',
         '/api/auth/get-session',
-        '/api/records/batch',
+        '/api/records',
         '/mcp',
         '/',
       ]) {
@@ -88,7 +88,7 @@ test(
       for (const path of [
         '/api/auth/sign-out',
         '/api/auth/passkey/generate-register-options',
-        '/api/syncs',
+        '/api/api-keys',
         '/mcp/asset-transfers/token',
       ]) {
         assert.equal((await request({ path })).status, StatusMap.Forbidden, path);
@@ -98,7 +98,7 @@ test(
         '/entities/new',
         '/assets/new',
         '/settings',
-        '/settings/syncs',
+        '/settings/api-keys',
       ]) {
         assert.match(await (await request({ path })).text(), /Read-only demo/);
       }

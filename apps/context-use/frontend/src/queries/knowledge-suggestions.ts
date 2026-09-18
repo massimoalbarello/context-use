@@ -3,7 +3,7 @@ import type { AssetSummary } from './assets';
 import type { EntitySummary } from './entities';
 import { searchHypermedia } from './hypermedia-search';
 import type { KnowledgePageSummary } from './pages';
-import type { ExternalRecordSummary } from './records';
+import type { ContextRecordSummary } from './records';
 
 export const knowledgeSuggestionsQueryKey = ['knowledge-suggestions'] as const;
 
@@ -11,7 +11,7 @@ export type KnowledgeSuggestion =
   | { kind: 'entity'; entity: EntitySummary }
   | { kind: 'page'; page: KnowledgePageSummary }
   | { kind: 'asset'; asset: AssetSummary }
-  | { kind: 'record'; record: ExternalRecordSummary };
+  | { kind: 'record'; record: ContextRecordSummary };
 
 type KnowledgeSuggestions = {
   suggestions: KnowledgeSuggestion[];

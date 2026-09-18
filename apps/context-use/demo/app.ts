@@ -20,7 +20,7 @@ import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
 // This allowlist deliberately names read operations. New controller routes never become
-// public automatically. Auth, MCP and delivery controllers aren't mounted.
+// public automatically. Auth, MCP and record-write controllers aren't mounted.
 const READ_API_ROUTES = new Set([
   '/api/health',
   '/api/profile',
@@ -72,7 +72,7 @@ function isWorkspacePath(path: string): boolean {
     path === '/' ||
     path === '/map' ||
     path === '/settings' ||
-    path === '/settings/syncs' ||
+    path === '/settings/api-keys' ||
     path === '/settings/faces' ||
     /^\/(?:entities|pages|assets|records)(?:\/[a-z0-9][a-z0-9-]*)?$/.test(path)
   );

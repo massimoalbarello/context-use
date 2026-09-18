@@ -57,7 +57,13 @@ function PageLinkList({
           {recordReferences.map((record) => (
             <li key={`record-${record.readableId}`}>
               {record.available ? (
-                <RecordLink record={{ ...record, title: record.title ?? record.readableId }} />
+                <RecordLink
+                  record={{
+                    readableId: record.readableId,
+                    title: record.title ?? record.readableId,
+                    source: { provider: record.provider, kind: record.kind },
+                  }}
+                />
               ) : (
                 <p className="break-words text-muted-foreground text-sm">
                   Unavailable record · {record.readableId}

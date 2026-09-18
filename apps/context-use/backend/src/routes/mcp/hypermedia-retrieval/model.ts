@@ -14,6 +14,7 @@ import {
   pageAddress,
   recordAddress,
 } from '#backend/models/readable-ids/addresses.ts';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import {
   AssetAddressSchema,
   EntityAddressSchema,
@@ -91,15 +92,6 @@ export const SearchHypermediaInputSchema = z.object({
         .describe(
           'Exact kind from a search result, such as "email" or "meeting". Omit to allow any kind.',
         ),
-      participantName: z
-        .string()
-        .trim()
-        .min(1)
-        .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
-        .optional()
-        .describe(
-          'Complete participant name from a search result, not a partial name. Omit to allow any participant.',
-        ),
     })
     .strict()
     .optional()
@@ -148,14 +140,7 @@ const RecordResultSchema = z.object({
   resourceType: z.literal('record'),
   address: RecordAddressSchema,
   readableId: McpReadableIdSchema,
-  title: z.string(),
-  provider: z.string(),
-  participantNames: z.array(z.string()),
-  sourceCreatedAt: z.string().nullable(),
-  sourceUpdatedAt: z.string().nullable(),
-  kind: z.string(),
-  recordId: z.string(),
-  sync: z.object({ readableId: McpReadableIdSchema, name: z.string() }),
+  ...RecordInputSchema.omit({ body: true }).shape,
   matchExcerpt: MatchExcerptSchema,
 });
 
@@ -200,13 +185,10 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
       address: recordAddress(result.record.readableId),
       readableId: result.record.readableId,
       title: result.record.title,
-      provider: result.record.provider,
-      participantNames: result.record.participantNames,
+      source: result.record.source,
+      occurredAt: result.record.occurredAt,
       sourceCreatedAt: result.record.sourceCreatedAt,
       sourceUpdatedAt: result.record.sourceUpdatedAt,
-      kind: result.record.kind,
-      recordId: result.record.recordId,
-      sync: { readableId: result.record.sync.readableId, name: result.record.sync.name },
       matchExcerpt: result.matchExcerpt,
     };
   }

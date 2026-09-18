@@ -33,8 +33,8 @@ import { KnowledgePagesService } from '#backend/services/knowledge-pages/service
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import {
+  unusedApiKeysService,
   unusedAssetFacesService,
-  unusedRecordSyncsService,
   unusedRecordsService,
 } from '../../support/app.ts';
 import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
@@ -164,7 +164,7 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       pagesService,
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
       recordsService: unusedRecordsService,
-      syncsService: unusedRecordSyncsService,
+      apiKeysService: unusedApiKeysService,
     });
 
     const profileResponse = await app.handle(

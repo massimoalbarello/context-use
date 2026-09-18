@@ -12,21 +12,19 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { KnowledgeLinkTextarea } from '../../src/components/pages/knowledge-link-textarea';
 import { KnowledgePageMarkdown } from '../../src/components/pages/knowledge-page-markdown';
-import type { ExternalRecordSummary } from '../../src/queries/records';
+import type { ContextRecordSummary } from '../../src/queries/records';
 
 afterEach(cleanup);
 
-const record: ExternalRecordSummary = {
+const record: ContextRecordSummary = {
   readableId: 'source-record',
   title: 'Launch [decision]',
-  provider: 'github',
-  kind: 'issue',
-  recordId: '1',
-  sync: { readableId: 'sync', name: 'Source sync' },
   sourceCreatedAt: null,
   sourceUpdatedAt: null,
   createdAt: new Date('2026-09-11'),
   updatedAt: new Date('2026-09-11'),
+  source: { provider: 'github', kind: 'issue', id: '1', url: null },
+  occurredAt: null,
 };
 
 function ReferenceEditor() {

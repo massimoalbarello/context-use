@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
-  ExternalRecordMarkdown,
+  ContextRecordMarkdown,
   externalRecordUrl,
-} from '../../src/components/records/external-record-markdown';
+} from '../../src/components/records/record-markdown';
 
 describe('external record Markdown', () => {
   test('omits a repeated leading title while retaining distinct and later headings', () => {
     const html = renderToStaticMarkup(
-      <ExternalRecordMarkdown
+      <ContextRecordMarkdown
         label="Record title"
         markdown={'# Record title\n\nBody\n\n# Record title\n\n# Another heading'}
       />,
@@ -31,7 +31,7 @@ describe('external record Markdown', () => {
 
   test('does not activate raw HTML, images, or unsafe links', () => {
     const html = renderToStaticMarkup(
-      <ExternalRecordMarkdown
+      <ContextRecordMarkdown
         label="Delivered record"
         markdown={`# Delivered record
 

@@ -159,15 +159,12 @@ test('mixed BM25 order and more than seven matches of one type are preserved wit
       record: {
         readableId: 'decision',
         title: 'Source decision',
-        provider: 'github',
-        participantNames: [],
-        kind: 'issue',
-        recordId: '42',
-        sync: { readableId: 'sync', name: 'Source' },
         sourceCreatedAt: null,
         sourceUpdatedAt: null,
         createdAt: timestamp,
         updatedAt: timestamp,
+        source: { provider: 'github', kind: 'issue', id: '42', url: null },
+        occurredAt: null,
       },
     },
     {

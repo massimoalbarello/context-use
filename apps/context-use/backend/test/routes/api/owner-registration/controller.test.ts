@@ -17,9 +17,9 @@ import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import {
+  unusedApiKeysService,
   unusedAssetFacesService,
   unusedHypermediaGraphService,
-  unusedRecordSyncsService,
   unusedRecordsService,
 } from '../../../support/app.ts';
 import {
@@ -109,7 +109,7 @@ test('owner registration API exposes only complete registration states', async (
       pagesService,
       profilesService,
       recordsService: unusedRecordsService,
-      syncsService: unusedRecordSyncsService,
+      apiKeysService: unusedApiKeysService,
     });
 
     const availableResponse = await app.handle(

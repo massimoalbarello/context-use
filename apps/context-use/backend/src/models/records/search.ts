@@ -1,14 +1,10 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { readableMarkdownText } from '#backend/models/markdown/text.ts';
-import type { DeliveredRecord } from './delivery-contract.generated.ts';
-import { recordParticipantNames } from './model.ts';
+import type { NativeRecord } from './model.ts';
 
-/** The sync owns the explicit title; Markdown headings remain part of the body. */
-export function recordSearchText(record: Exclude<DeliveredRecord, { operation: 'deleted' }>) {
-  const participantNames = recordParticipantNames(record);
+export function recordSearchText(record: NativeRecord) {
   return {
-    body: readableMarkdownText(fromMarkdown(record.content.body)),
-    metadata: [record.provider, record.kind, ...participantNames].join(' '),
-    participantNames,
+    body: readableMarkdownText(fromMarkdown(record.body)),
+    metadata: [record.source.provider, record.source.kind].join(' '),
   };
 }

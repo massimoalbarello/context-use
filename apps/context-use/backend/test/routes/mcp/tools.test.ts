@@ -427,7 +427,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
             entity: { type: undefined },
             knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
             asset: { kind: 'entity_image' },
-            record: { provider: 'granola', kind: 'meeting', participantName: 'Luca' },
+            record: { provider: 'granola', kind: 'meeting' },
           },
         });
         return Promise.resolve({ results: [], totalMatches: 0, truncated: false });
@@ -443,7 +443,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
           interval: 'with',
           time: '2026',
           assetKind: 'entity_image',
-          recordFilter: { provider: ' granola ', kind: ' meeting ', participantName: ' Luca ' },
+          recordFilter: { provider: ' granola ', kind: ' meeting ' },
         },
       });
       expect(result.isError).not.toBe(true);
@@ -570,15 +570,12 @@ test('record search previews have exact owner-scoped read paths without imported
   const record = {
     readableId: 'calendar-meeting-42',
     title: 'Planning meeting',
-    provider: 'calendar',
-    participantNames: ['Samantha'],
     sourceCreatedAt: null,
     sourceUpdatedAt: null,
-    kind: 'meeting',
-    recordId: 'meeting-42',
-    sync: { readableId: 'my-calendar', name: 'My calendar' },
     createdAt: NOW,
     updatedAt: NOW,
+    source: { provider: 'calendar', kind: 'meeting', id: 'meeting-42', url: null },
+    occurredAt: null,
   };
   const markdown = '# Planning meeting\n\nEvidence that must not be included in search previews.';
   await withMcpClient({
@@ -590,7 +587,7 @@ test('record search previews have exact owner-scoped read paths without imported
           entity: { type: undefined },
           knowledgePage: { interval: undefined, temporalBounds: undefined },
           asset: { kind: undefined },
-          record: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
+          record: { provider: 'calendar', kind: 'meeting' },
         });
         return Promise.resolve({
           results: [
@@ -612,20 +609,8 @@ test('record search previews have exact owner-scoped read paths without imported
           input.readableId === record.readableId
             ? {
                 ...record,
-                markdown,
+                body: markdown,
                 backlinks: [page],
-                record: {
-                  provider: record.provider,
-                  kind: record.kind,
-                  id: record.recordId,
-                  sourceId: 'private-source',
-                  eventId: 'private-event',
-                  revision: 1,
-                  committedAt: NOW,
-                  contentHash: 'private-hash',
-                  operation: 'added' as const,
-                  content: { title: record.title, body: markdown },
-                },
               }
             : null,
         );
@@ -637,7 +622,7 @@ test('record search previews have exact owner-scoped read paths without imported
         arguments: {
           query: 'meeting',
           resourceTypes: ['record'],
-          recordFilter: { provider: 'calendar', kind: 'meeting', participantName: 'Samantha' },
+          recordFilter: { provider: 'calendar', kind: 'meeting' },
         },
       });
       expect(found.isError).not.toBe(true);
@@ -648,14 +633,11 @@ test('record search previews have exact owner-scoped read paths without imported
             address: 'context-use://record/calendar-meeting-42',
             readableId: record.readableId,
             title: record.title,
-            provider: record.provider,
-            participantNames: record.participantNames,
+            occurredAt: null,
             sourceCreatedAt: null,
             sourceUpdatedAt: null,
-            kind: record.kind,
-            recordId: record.recordId,
-            sync: record.sync,
             matchExcerpt: 'Meeting with Samantha.',
+            source: record.source,
           },
         ],
         truncated: false,
@@ -663,7 +645,7 @@ test('record search previews have exact owner-scoped read paths without imported
       expectNoInternalResourceIds(found.structuredContent);
       expect(JSON.stringify(found.structuredContent)).not.toContain(markdown);
       expect(JSON.stringify(found.structuredContent)).not.toContain('private-');
-      for (const recordFilter of [{ participantName: ' ' }, { unsupported: 'value' }]) {
+      for (const recordFilter of [{ provider: ' ' }, { unsupported: 'value' }]) {
         const invalid = await client.callTool({
           name: 'search_hypermedia',
           arguments: { query: 'meeting', recordFilter },
@@ -676,8 +658,8 @@ test('record search previews have exact owner-scoped read paths without imported
       });
       expect(read.isError).not.toBe(true);
       expect(read.structuredContent).toMatchObject({
-        markdown,
-        metadata: { provider: 'calendar' },
+        body: markdown,
+        source: { provider: 'calendar' },
         backlinks: [{ address: 'context-use://page/growth-playbook', readableId: page.readableId }],
       });
       const missing = await client.callTool({

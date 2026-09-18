@@ -1,43 +1,29 @@
 import { afterEach, expect, test } from 'bun:test';
 import { cleanup, render, screen } from '@testing-library/react';
 import { RecordMetadata } from '../../src/components/records/record-detail';
-import { RecordCardContent } from '../../src/components/records/record-link';
-import type { ExternalRecord } from '../../src/queries/records';
+import type { ContextRecord } from '../../src/queries/records';
 
 afterEach(cleanup);
 
-const record: ExternalRecord = {
+const record: ContextRecord = {
   readableId: 'meeting-a1b2c3',
   title: 'Project review',
-  provider: 'granola',
-  kind: 'meeting',
   sourceCreatedAt: null,
   sourceUpdatedAt: null,
-  recordId: 'source-meeting',
-  sync: { readableId: 'notes-sync-a1b2c3', name: 'Meeting notes' },
   createdAt: new Date('2026-09-09T11:00:00.000Z'),
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
-  markdown: 'Discussion notes.',
-  participantNames: ['Samantha Wells', 'Alex Rivera'],
+  body: 'Discussion notes.',
   backlinks: [],
+  source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
+  occurredAt: null,
 };
 
-test('participant names belong in record metadata, not sidebar card previews', () => {
-  const { unmount } = render(<RecordMetadata record={record} />);
-  expect(screen.getByText('Participants').nextElementSibling?.textContent).toBe(
-    'Samantha Wells, Alex Rivera',
+test('record metadata shows source identity and occurrence separately from ingestion dates', () => {
+  render(<RecordMetadata record={{ ...record, occurredAt: '2001-01-09T13:00:00.000Z' }} />);
+  expect(screen.getByText(record.source.provider)).toBeTruthy();
+  expect(screen.getByText(record.source.kind)).toBeTruthy();
+  expect(screen.getByText('Occurred at').nextElementSibling?.querySelector('time')?.dateTime).toBe(
+    '2001-01-09T13:00:00.000Z',
   );
-  expect(screen.getByText(record.provider)).toBeTruthy();
-  expect(screen.getByText(record.kind)).toBeTruthy();
-  unmount();
-
-  render(<RecordCardContent record={record} />);
-  expect(screen.getByText(record.title)).toBeTruthy();
-  expect(screen.queryByText(/Samantha Wells/)).toBeNull();
-  expect(screen.queryByText(/Alex Rivera/)).toBeNull();
-});
-
-test('record metadata handles sources that supply no participant names', () => {
-  render(<RecordMetadata record={{ ...record, participantNames: [] }} />);
-  expect(screen.getByText('Participants').nextElementSibling?.textContent).toBe('Not provided');
+  expect(screen.queryByText('Participants')).toBeNull();
 });

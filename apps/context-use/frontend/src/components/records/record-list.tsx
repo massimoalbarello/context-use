@@ -1,6 +1,6 @@
 import { useRouterState } from '@tanstack/react-router';
 import { knowledgeResourceFromPath } from '../../lib/knowledge-navigation';
-import type { ExternalRecordSummary } from '../../queries/records';
+import type { ContextRecordSummary } from '../../queries/records';
 import { ResourceList, ResourceListEmpty } from '../knowledge/resource-list';
 import { RecordLink } from './record-link';
 
@@ -8,7 +8,7 @@ export function RecordList({
   records,
   filtered = false,
 }: {
-  records: ExternalRecordSummary[];
+  records: ContextRecordSummary[];
   filtered?: boolean;
 }) {
   const activeRecordId = useRouterState({

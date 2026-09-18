@@ -236,7 +236,7 @@ async function resolveLinks({
     const rows = await db.ResolveRecordLink`
       select record."readable_id" from "record" record
       where record."owner_id" = ${ownerId} and record."readable_id" = ${readableId}
-        and (record."operation" <> 'deleted' or exists (
+        and (record."deleted_at" is null or exists (
           select 1 from "knowledge_page_record_reference" reference
           join "knowledge_page" page
             on page."current_revision_id" = reference."source_revision_id"
@@ -943,7 +943,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     const rows = await this.sql.ListKnowledgePageRecordReferences`
       /* @notNull readableId provider kind available */
       select record."readable_id" as "readableId", record."title", record."provider", record."kind",
-        record."operation" <> 'deleted' as "available"
+        record."deleted_at" is null as "available"
       from "knowledge_page_record_reference" reference
       join "record" record on record."owner_id" = reference."owner_id"
         and record."readable_id" = reference."target_record_readable_id"

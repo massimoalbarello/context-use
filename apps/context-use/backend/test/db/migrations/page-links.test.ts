@@ -67,18 +67,10 @@ async function seedOwner({ database, ownerId }: { database: SQL; ownerId: string
       insert into "asset" ("id", "owner_id", "readable_id", "name", "media_type", "size_bytes", "content_hash", "storage_key", "created_at", "updated_at")
       values (${`${ownerId}-asset`}, ${ownerId}, 'asset', 'Asset', 'text/plain', 1, ${HASH}, ${`${ownerId}/asset`}, ${NOW}, ${NOW})
     `;
-    const syncId = Bun.randomUUIDv7();
-    const keyHash = new Bun.CryptoHasher('sha256').update(ownerId).digest('hex');
-    await db`
-      insert into "record_sync" ("id", "owner_id", "readable_id", "name", "api_key_sha256", "created_at")
-      values (${syncId}, ${ownerId}, 'sync', 'Sync', ${keyHash}, ${NOW})
-    `;
     await db`
       insert into "record"
-        ("sync_id", "owner_id", "readable_id", "source_id", "kind", "record_id", "provider", "title",
-         "revision", "operation", "revision_hash", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
-      values (${syncId}, ${ownerId}, ${`${ownerId}-record`}, 'source', 'note', 'record', 'notion', 'Record',
-        1, 'added', ${HASH}, ${`${ownerId}/record`}, ${HASH}, 1, ${NOW}, ${NOW})
+        ("owner_id", "readable_id", "source_id", "kind", "provider", "title", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
+      values (${ownerId}, ${`${ownerId}-record`}, 'source', 'note', 'notion', 'Record', ${`${ownerId}/record`}, ${HASH}, 1, ${NOW}, ${NOW})
     `;
   });
 }

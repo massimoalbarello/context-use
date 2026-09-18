@@ -16,10 +16,7 @@
     "deploy:demo": "bun run scripts/deploy-demo.ts",
     "generate:queries": "bun --cwd backend bun-sqlgen generate 'src/repositories/**/*.ts' --migrations src/db/migrations",
     "check:queries": "bun run generate:queries --check",
-    "update:delivery-contract": "bun run backend/scripts/update-record-delivery-contract.ts",
-    "generate:delivery-contract": "bun run backend/scripts/generate-record-delivery-contract.ts",
-    "check:delivery-contract": "bun run backend/scripts/generate-record-delivery-contract.ts --check",
-    "check:types": "bun run check:queries && bun run check:delivery-contract && bun run --bun tsc -b",
+    "check:types": "bun run check:queries && bun run --bun tsc -b",
     "test": "bun run --sequential test:backend test:frontend test:demo test:build",
     "test:backend": "bun test --cwd backend",
     "test:frontend": "bun test --cwd frontend",
@@ -84,13 +81,10 @@
     "@types/react-dom": "^19.2.5",
     "@vgpu/wgsl": "0.4.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "json-schema-to-typescript": "^16.0.0",
-    "json-schema-to-zod": "^2.8.1",
     "openapi-types": "^12.1.3",
     "typescript": "catalog:",
     "vite": "^8.2.2",
-    "vite-plugin-static-copy": "^4.1.1",
-    "yaml": "^2.9.0"
+    "vite-plugin-static-copy": "^4.1.1"
   },
   "imports": {
     "#backend/*": "./backend/src/*",

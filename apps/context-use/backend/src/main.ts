@@ -20,7 +20,7 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.ts';
-import { MAX_RECORD_DELIVERY_BYTES } from '#backend/models/records/delivery-contract.generated.ts';
+import { ApiKeysRepository } from '#backend/repositories/api-keys/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { FacesRepository } from '#backend/repositories/faces/repository.ts';
@@ -33,9 +33,9 @@ import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-pro
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
-import { RecordSyncsRepository } from '#backend/repositories/syncs/repository.ts';
 import { AssetTransferCapabilities } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
+import { ApiKeysService } from '#backend/services/api-keys/service.ts';
 import { AssetFacesService } from '#backend/services/assets/faces.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
@@ -48,7 +48,6 @@ import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/s
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
-import { RecordSyncsService } from '#backend/services/syncs/service.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;
@@ -121,8 +120,8 @@ try {
   recordsDatabase = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
   const recordsRepository = new RecordsRepository(recordsDatabase);
   const recordsService = new RecordsService({ records: recordsRepository, storage });
-  const syncsService = new RecordSyncsService({
-    syncs: new RecordSyncsRepository(database),
+  const apiKeysService = new ApiKeysService({
+    keys: new ApiKeysRepository(database),
   });
   const pagesService = new KnowledgePagesService({
     pages: pagesRepository,
@@ -169,7 +168,7 @@ try {
     pagesService,
     profilesService,
     recordsService,
-    syncsService,
+    apiKeysService,
   }).onStop(async () => {
     await facesService.close();
     await faceAnalyzer.close();
@@ -184,8 +183,7 @@ try {
     port: env.PORT,
     hostname: '0.0.0.0',
     maxRequestBodySize:
-      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES, MAX_RECORD_DELIVERY_BYTES) +
-      REQUEST_BODY_OVERHEAD_BYTES,
+      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES) + REQUEST_BODY_OVERHEAD_BYTES,
   });
 
   logger.info(`listening on ${server!.url.origin}`);
