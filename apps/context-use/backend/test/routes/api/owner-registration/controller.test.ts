@@ -20,7 +20,9 @@ import {
   unusedApiKeysService,
   unusedAssetFacesService,
   unusedHypermediaGraphService,
+  unusedManagedSyncsService,
   unusedRecordsService,
+  unusedSyncFetch,
 } from '../../../support/app.ts';
 import {
   testMcpServerUrl,
@@ -92,6 +94,8 @@ test('owner registration API exposes only complete registration states', async (
       migrations: new Map([['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)]]),
     });
     const app = createApp({
+      managedSyncsService: unusedManagedSyncsService,
+      syncFetch: unusedSyncFetch,
       auth,
       assetsService,
       assetTransferCapabilities: unusedAssetTransferCapabilities,

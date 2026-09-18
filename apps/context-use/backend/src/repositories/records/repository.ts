@@ -30,7 +30,9 @@ export type ListRecordsInput = RecordListFilters & {
   limit: number;
   offset: number;
 };
+export type CountRecordsInput = { ownerId: string; provider: string; kinds: readonly string[] };
 export interface RecordsRepositoryContract {
+  countResources(input: CountRecordsInput): Promise<number>;
   write(input: WriteRecordInput): Promise<RecordPublication>;
   listResources(input: ListRecordsInput): Promise<RecordPage>;
   filterOptions(input: { ownerId: string }): Promise<RecordFilterOptions>;
@@ -205,6 +207,17 @@ export class RecordsRepository implements RecordsRepositoryContract {
         nextOffset: rows.length > limit ? offset + items.length : null,
         filterOptions: await this.readFilterOptions(ownerId),
       };
+    });
+  }
+
+  countResources(input: CountRecordsInput): Promise<number> {
+    return this.serialize(async () => {
+      const rows = await this.sql.CountRecordResources`
+        select count(*) as "recordCount" from "record"
+        where "owner_id" = ${input.ownerId} and "deleted_at" is null and "provider" = ${input.provider}
+          and "kind" in (select value from json_each(${JSON.stringify(input.kinds)}))
+      `;
+      return Number(rows[0]!.recordCount);
     });
   }
 

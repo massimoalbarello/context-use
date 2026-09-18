@@ -10,7 +10,12 @@ import type { HealthServiceContract } from '#backend/services/health/service.ts'
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
-import { unusedAssetFacesService, unusedHypermediaGraphService } from './support/app.ts';
+import {
+  unusedAssetFacesService,
+  unusedHypermediaGraphService,
+  unusedManagedSyncsService,
+  unusedSyncFetch,
+} from './support/app.ts';
 import {
   testMcpServerUrl,
   unusedAssetTransferCapabilities,
@@ -79,6 +84,8 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
 
   const app = createApp({
+    managedSyncsService: unusedManagedSyncsService,
+    syncFetch: unusedSyncFetch,
     auth,
     assetsService,
     assetTransferCapabilities: unusedAssetTransferCapabilities,

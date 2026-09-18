@@ -1,0 +1,24 @@
+diff --git a/src/server/api/runtime-api.d.ts b/src/server/api/runtime-api.d.ts
+index 8cbfa55cfd78f4223c35b3940be9b7abbcd1fc01..f5c5a1ee69f02da9642a97f901ba9e41560a43b4 100644
+--- a/src/server/api/runtime-api.d.ts
++++ b/src/server/api/runtime-api.d.ts
+@@ -127,6 +127,7 @@ export interface RuntimeProviderSetup {
+ }
+ interface RuntimeOAuthClientSetup {
+     configured: boolean;
++    clientId: string | null;
+     customClientAvailable: boolean;
+     expectedRedirectUri: string;
+     missingFields: string[];
+diff --git a/src/server/api/runtime-api.js b/src/server/api/runtime-api.js
+index fdb0d6fd0fc7a5c2fe4b86e8675ab1cdcd708e0d..7927da126a7adeab0ec5e3580505af8df59550bb 100644
+--- a/src/server/api/runtime-api.js
++++ b/src/server/api/runtime-api.js
+@@ -223,6 +223,7 @@ export function serializeRuntimeProviderSetup(provider, oauth) {
+         oauthClient: oauth
+             ? {
+                 configured: oauth.configured,
++                clientId: oauth.clientId,
+                 customClientAvailable: oauth.customClientAvailable,
+                 expectedRedirectUri: oauth.expectedRedirectUri,
+                 missingFields: oauth.missingFields,
