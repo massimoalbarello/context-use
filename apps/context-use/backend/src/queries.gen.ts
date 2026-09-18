@@ -789,6 +789,11 @@ export interface IListRecordResourcesResult {
     updatedAt: string;
 }
 
+/** Result of query `CountRecordResources`. */
+export interface ICountRecordResourcesResult {
+    recordCount: number | null;
+}
+
 /** Result of query `RecordFilterOptions`. */
 export interface IRecordFilterOptionsResult {
     provider: string;
@@ -907,6 +912,7 @@ export interface Queries {
     WriteRecord: IWriteRecordResult;
     RemoveRecordSearchDocument: IRemoveRecordSearchDocumentResult;
     ListRecordResources: IListRecordResourcesResult;
+    CountRecordResources: ICountRecordResourcesResult;
     RecordFilterOptions: IRecordFilterOptionsResult;
     FindRecordResource: IFindRecordResourceResult;
     ListRecordBacklinks: IListRecordBacklinksResult;

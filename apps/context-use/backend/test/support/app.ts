@@ -8,6 +8,7 @@ import type {
   RecordResourcesServiceContract,
   RecordsIngestionContract,
 } from '#backend/services/records/service.ts';
+import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 
 function unexpectedCall(): never {
   throw new Error('Unexpected hypermedia service call');
@@ -48,3 +49,12 @@ export const unusedAssetFacesService: AssetFacesServiceContract = {
   notifyAssetSaved: () => {},
   preparePortrait: () => Promise.resolve(),
 };
+
+export const unusedManagedSyncsService: ManagedSyncsServiceContract = {
+  list: unexpectedCall,
+  configureApp: unexpectedCall,
+  connect: unexpectedCall,
+  completeConnection: unexpectedCall,
+  update: unexpectedCall,
+};
+export const unusedSyncFetch = () => Promise.resolve(new Response(null, { status: 404 }));

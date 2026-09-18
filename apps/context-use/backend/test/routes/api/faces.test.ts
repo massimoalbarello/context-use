@@ -33,7 +33,12 @@ import { HypermediaGraphService } from '#backend/services/hypermedia-graph/servi
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
-import { unusedApiKeysService, unusedRecordsService } from '../../support/app.ts';
+import {
+  unusedApiKeysService,
+  unusedManagedSyncsService,
+  unusedRecordsService,
+  unusedSyncFetch,
+} from '../../support/app.ts';
 import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
 import {
   testMcpServerUrl,
@@ -177,6 +182,8 @@ async function fixture({ automatic = true } = {}) {
     protectMcpRequest: unusedMcpProtection,
   };
   const app = createApp({
+    managedSyncsService: unusedManagedSyncsService,
+    syncFetch: unusedSyncFetch,
     auth,
     assetsService: assets,
     entitiesService: entities,

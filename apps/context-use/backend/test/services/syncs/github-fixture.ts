@@ -1,0 +1,38 @@
+import type { JsonObject } from '@context-use/open-sync/json';
+export const now = '2026-09-17T12:00:00.000Z';
+export function pull(input: { id?: string; title?: string; updatedAt?: string } = {}): JsonObject {
+  return {
+    id: input.id ?? 'PR_one',
+    number: 1,
+    title: input.title ?? 'Improve local records',
+    body: 'Keep **useful context**.',
+    url: 'https://github.com/example/project/pull/1',
+    state: 'OPEN',
+    isDraft: false,
+    createdAt: now,
+    updatedAt: input.updatedAt ?? now,
+    repository: { nameWithOwner: 'example/project' },
+    author: { id: 'U_owner', login: 'octocat' },
+  };
+}
+export function page(
+  input: { cursor?: string; nodes?: JsonObject[]; more?: boolean } = {},
+): JsonObject {
+  return {
+    data: {
+      viewer: {
+        id: 'U_owner',
+        pullRequests: {
+          edges: (input.nodes ?? [pull()]).map(
+            // biome-ignore lint/complexity/useMaxParams: Array.map supplies the fixture index.
+            (node, index) => ({
+              cursor: `${input.cursor ?? 'cursor'}-${index}`,
+              node,
+            }),
+          ),
+          pageInfo: { hasNextPage: input.more ?? false },
+        },
+      },
+    },
+  };
+}

@@ -35,9 +35,11 @@ import type {
   RecordResourcesServiceContract,
   RecordsIngestionContract,
 } from '#backend/services/records/service.ts';
+import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 import { createAssetFacesController } from './assets/[assetReadableId]/faces/controller.ts';
 import { createEntityImagesController } from './entities/[entityReadableId]/images/controller.ts';
 import { createFaceRecognitionController } from './face-recognition/controller.ts';
+import { createManagedSyncsController } from './syncs/managed/controller.ts';
 
 // The `/api` prefix is applied here, so child controllers keep bare path strings.
 export function createApiController({
@@ -54,8 +56,10 @@ export function createApiController({
   profilesService,
   recordsService,
   apiKeysService,
+  managedSyncsService,
 }: {
   auth: Auth;
+  managedSyncsService: ManagedSyncsServiceContract;
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
   healthService: HealthServiceContract;
@@ -93,6 +97,7 @@ export function createApiController({
     .use(createRecordsController({ auth, recordsService }))
     .use(createRecordWriteController({ recordsService, apiKeysService }))
     .use(createRecordReadableIdController({ auth, recordsService }))
+    .use(createManagedSyncsController({ auth, syncs: managedSyncsService }))
     .use(createApiKeysController({ auth, apiKeysService }))
     .use(createKnowledgeProfileController({ auth, profilesService }))
     .use(createHealthController({ healthService }));

@@ -1,5 +1,6 @@
 import { cp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { getOpenSyncBuildOptions } from '@context-use/open-sync/build';
 import {
   faceEngineDirectory as builtFaceEngineDirectory,
   migrationDirectory,
@@ -12,13 +13,20 @@ await rm(faceEngineDirectory, { recursive: true, force: true });
 await cp(builtFaceEngineDirectory({ host: !BACKEND_BUILD_TARGET }), faceEngineDirectory, {
   recursive: true,
 });
+const syncBuild = getOpenSyncBuildOptions();
 const result = await Bun.build({
+  external: syncBuild.external,
   entrypoints: [join(import.meta.dir, '../backend/src/main.ts')],
   compile: {
     outfile: join(output, 'context-use'),
     execArgv: ['--smol'],
     ...(BACKEND_BUILD_TARGET ? { target: BACKEND_BUILD_TARGET } : {}),
-    assets: [join(output, 'instance/public'), migrationDirectory, faceEngineDirectory],
+    assets: [
+      join(output, 'instance/public'),
+      migrationDirectory,
+      faceEngineDirectory,
+      ...syncBuild.assets,
+    ],
   },
   bytecode: true,
   format: 'esm',
