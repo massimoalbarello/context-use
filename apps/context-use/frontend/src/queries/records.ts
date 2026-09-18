@@ -6,11 +6,11 @@ import { searchHypermedia } from './hypermedia-search';
 
 export type RecordCollectionFilters = RecordListFilters & { query?: string };
 
-export type ExternalRecordPage = NonNullable<
+export type ContextRecordPage = NonNullable<
   Awaited<ReturnType<typeof api.api.records.get>>['data']
 >;
-export type ExternalRecordSummary = ExternalRecordPage['items'][number];
-export type ExternalRecord = NonNullable<
+export type ContextRecordSummary = ContextRecordPage['items'][number];
+export type ContextRecord = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.records>['get']>>['data']
 >;
 

@@ -15,7 +15,7 @@ import { EntityAvatar } from '../entities/entity-link';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
-import { ExternalRecordMarkdown } from '../records/external-record-markdown';
+import { ContextRecordMarkdown } from '../records/record-markdown';
 import { ResourceList } from './resource-list';
 import { ResourceScrollArea } from './resource-scroll-area';
 
@@ -219,9 +219,9 @@ function RecordPreview({ readableId, onClose, onExpand }: PreviewProps) {
         <div className="grid gap-4">
           <h2 className="font-semibold text-2xl">{record.title}</h2>
           <p className="text-muted-foreground text-sm">
-            {record.provider} · {record.kind}
+            {record.source.provider} · {record.source.kind}
           </p>
-          <ExternalRecordMarkdown markdown={record.markdown} label={record.title} />
+          <ContextRecordMarkdown markdown={record.body} label={record.title} />
           {record.backlinks.length > 0 && (
             <section className="grid gap-2 border-t pt-4">
               <h3 className="font-semibold">Referenced by</h3>

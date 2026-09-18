@@ -8,10 +8,7 @@ import { runMigrations } from '#backend/db/migrate.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { EntityType } from '#backend/models/entities/model.ts';
 import { MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH } from '#backend/models/hypermedia-retrieval/model.ts';
-import type {
-  DeliveredRecord,
-  RecordContent,
-} from '#backend/models/records/delivery-contract.generated.ts';
+import type { RecordDeletion, RecordInput } from '#backend/models/records/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HypermediaRetrievalRepository } from '#backend/repositories/hypermedia-retrieval/repository.ts';
@@ -25,72 +22,55 @@ import { RecordsService } from '#backend/services/records/service.ts';
 
 const OWNER_A = 'owner-a';
 const OWNER_B = 'owner-b';
+const MILLISECONDS_PER_SECOND = 1000;
 const NOW = '2026-09-08T12:00:00.000Z';
 const SHA256_HEX_LENGTH = 64;
 const SIGNAL_ASSET_COUNT = 3;
 
-async function createRecordSync({
-  database,
-  ownerId = OWNER_A,
-}: {
-  database: SQL;
-  ownerId?: string;
-}): Promise<string> {
-  const syncId = Bun.randomUUIDv7();
-  await database`
-    insert into "record_sync"
-      ("id", "owner_id", "readable_id", "name", "api_key_sha256", "created_at")
-    values (${syncId}, ${ownerId}, 'source-notes', 'Source notes', ${new Bun.CryptoHasher('sha256').update(syncId).digest('hex')}, ${NOW})
-  `;
-  return syncId;
-}
-
-function deliveredRecord({
+function recordFixture({
   revision = 1,
   id = 'meeting-42',
+  provider = 'calendar',
+  kind = 'meeting',
   content,
 }: {
   revision?: number;
   id?: string;
-  content?: Omit<RecordContent, 'title'> & { title?: string };
-}): DeliveredRecord {
-  const record = {
-    eventId: `delivery-event-${revision}`,
-    provider: 'calendar',
-    sourceId: 'private-source-id',
-    kind: 'meeting',
-    id,
-    revision,
-    committedAt: NOW,
-    contentHash: new Bun.CryptoHasher('sha256')
-      .update(JSON.stringify(content ?? 'deleted'))
-      .digest('hex'),
+  provider?: string;
+  kind?: string;
+  content?: Omit<RecordInput, 'source' | 'title'> & { title?: string; sourceUrl?: string };
+}): RecordInput | RecordDeletion {
+  const source = { provider, kind, id };
+  const sourceUpdatedAt = new Date(
+    Date.parse(NOW) + revision * MILLISECONDS_PER_SECOND,
+  ).toISOString();
+  if (!content) {
+    return { source, sourceUpdatedAt };
+  }
+  const { sourceUrl, ...fields } = content;
+  return {
+    title: 'Imported evidence',
+    ...fields,
+    source: { ...source, url: sourceUrl },
+    sourceUpdatedAt,
   };
-  return content
-    ? {
-        ...record,
-        operation: revision === 1 ? 'added' : 'updated',
-        content: { title: 'Imported evidence', ...content },
-      }
-    : { ...record, operation: 'deleted' };
 }
-
-function acceptRecords({
+async function writeRecords({
   records,
-  syncId,
-  deliveries,
+  values,
   ownerId = OWNER_A,
 }: {
   records: RecordsService;
-  syncId: string;
-  deliveries: DeliveredRecord[];
+  values: (RecordInput | RecordDeletion)[];
   ownerId?: string;
 }) {
-  return records.accept({
-    ownerId,
-    syncId,
-    envelope: { version: 1, batchId: 'batch', records: deliveries },
-  });
+  for (const value of values) {
+    const result =
+      'body' in value
+        ? await records.upsert({ ownerId, record: value })
+        : await records.remove({ ownerId, ...value });
+    expect(['created', 'updated', 'unchanged', 'stale']).toContain(result.state);
+  }
 }
 
 interface RetrievalTestContext {
@@ -518,29 +498,14 @@ test('top-K ordering is deterministic', () =>
 
 test('all four types are searchable, with record Markdown structure left intact', () =>
   withRetrievalTest(async ({ database, records, entities, assets, pages, retrieval }) => {
-    const syncId = await createRecordSync({ database });
-    const record = deliveredRecord({
+    const record = recordFixture({
       content: {
         body: '# Orchard meeting\n\nOpening paragraph.\n\n## Decisions\n\n> We **negotiated** access.\n\n- Distinctive first item\n- Tailneedle far beyond the introduction\n\n[Visiblelabel](https://hidden-destination.example) ![Photoalt](https://hidden-image.example)\n\n`excludedinline`\n\n```\nexcludedfence\n```',
         sourceUrl: 'https://private-source.example/hidden-source',
         sourceCreatedAt: '2021-03-04T00:00:00Z',
-        participants: [
-          {
-            name: 'Samantha Wells',
-            roles: ['organizer'],
-            identities: [{ namespace: 'email', id: 'unindexedidentity@example.net' }],
-          },
-        ],
-        attributes: {
-          subject: 'Orchard planning',
-          tags: ['irrigation', 'budget'],
-          nested: { secret: 'nestedignored' },
-        },
       },
     });
-    expect(await acceptRecords({ records, syncId, deliveries: [record] })).toEqual({
-      state: 'accepted',
-    });
+    await writeRecords({ records, values: [record] });
     await createEntity({
       entities,
       readableId: 'grower',
@@ -567,7 +532,6 @@ test('all four types are searchable, with record Markdown structure left intact'
       'visiblelabel',
       'photoalt',
       'negotiating',
-      'samantha',
       'calendar',
     ]) {
       const result = await retrieval.search({
@@ -639,219 +603,29 @@ test('all four types are searchable, with record Markdown structure left intact'
     }
   }));
 
-test('record metadata can be discovered lexically and used to filter candidates before top K', () =>
-  withRetrievalTest(async ({ database, records, entities, retrieval }) => {
-    const syncId = await createRecordSync({ database });
-    const otherSync = await createRecordSync({ database, ownerId: OWNER_B });
-    const deliveries = [
-      ['mail-1', 'gmail', 'email', 'Alex Morgan'],
-      ['mail-2', 'gmail', 'email', 'Samantha Wells'],
-      ['notes-3', 'granola', 'meeting', 'Samantha Wells'],
-      ['change-4', 'github', 'pull_request', 'Samantha Wells'],
-    ].map(([id, provider, kind, name]) => ({
-      ...deliveredRecord({
-        id,
-        content: {
-          body: 'Scopeword discussed here.',
-          participants: [{ name: name!, roles: [], identities: [] }],
-        },
-      }),
-      provider: provider!,
-      kind: kind!,
-    }));
-    await acceptRecords({ records, syncId, deliveries });
-    await acceptRecords({ records, syncId: otherSync, ownerId: OWNER_B, deliveries });
-    await createEntity({
-      entities,
-      readableId: 'scopeword',
-      name: 'Scopeword',
-      description: 'Scopeword.',
-    });
-    const search = (record: { provider?: string; kind?: string; participantName?: string }) =>
-      retrieval.search({ ownerId: OWNER_A, query: 'scopeword', limit: 1, filters: { record } });
-    await database`pragma query_only = on`;
-    try {
-      expect(await search({ provider: 'gmail' })).toMatchObject({
-        totalMatches: 2,
-        truncated: true,
-      });
-      expect(await search({ kind: 'email' })).toMatchObject({ totalMatches: 2, truncated: true });
-      expect(await search({ participantName: 'samantha wells' })).toMatchObject({
-        totalMatches: 3,
-      });
-      for (const [provider, kind, recordId] of [
-        ['gmail', 'email', 'mail-2'],
-        ['granola', 'meeting', 'notes-3'],
-        ['github', 'pull_request', 'change-4'],
+test('native provider and kind filters select records before top K and isolate owners', () =>
+  withRetrievalTest(async ({ records, retrieval }) => {
+    for (const ownerId of [OWNER_A, OWNER_B]) {
+      for (const [id, provider, kind] of [
+        ['mail-1', 'gmail', 'email'],
+        ['mail-2', 'gmail', 'email'],
+        ['notes-3', 'granola', 'meeting'],
       ]) {
-        expect(await search({ provider, kind, participantName: 'Samantha Wells' })).toMatchObject({
-          results: [{ resourceType: 'record', record: { recordId } }],
-          totalMatches: 1,
-          truncated: false,
+        await writeRecords({
+          records,
+          ownerId,
+          values: [recordFixture({ id, provider, kind, content: { body: 'Scopeword' } })],
         });
       }
-      for (const record of [
-        { provider: 'gmail', kind: 'meeting' },
-        { participantName: 'Samantha' },
-        { participantName: "Samantha Wells' OR 1=1 --" },
-        { provider: 'missing' },
-      ]) {
-        expect(await search(record)).toEqual({ results: [], totalMatches: 0, truncated: false });
-      }
-      expect(
-        await retrieval.search({
-          ownerId: OWNER_A,
-          query: 'scopeword',
-          limit: 1,
-          resourceTypes: ['entity'],
-          filters: { record: { provider: 'gmail' } },
-        }),
-      ).toEqual({ results: [], totalMatches: 0, truncated: false });
-      expect(
-        await retrieval.search({
-          ownerId: OWNER_A,
-          query: 'gmail granola github Samantha',
-          limit: 10,
-          resourceTypes: ['record'],
-        }),
-      ).toMatchObject({ totalMatches: 4, truncated: false });
-    } finally {
-      await database`pragma query_only = off`;
     }
-
-    const revised = {
-      ...deliveredRecord({
-        id: 'notes-3',
-        revision: 2,
-        content: {
-          body: 'Scopeword updated.',
-          participants: [{ name: 'Alex Morgan', roles: [], identities: [] }],
-        },
-      }),
-      provider: 'granola',
-    };
-    await acceptRecords({ records, syncId, deliveries: [revised, deliveries[2]!] });
-    expect(await search({ provider: 'granola', participantName: 'Samantha Wells' })).toMatchObject({
-      totalMatches: 0,
-    });
-    expect(await search({ provider: 'granola', participantName: 'Alex Morgan' })).toMatchObject({
+    const search = (record: { provider?: string; kind?: string }) =>
+      retrieval.search({ ownerId: OWNER_A, query: 'scopeword', limit: 1, filters: { record } });
+    expect(await search({ provider: 'gmail' })).toMatchObject({ totalMatches: 2, truncated: true });
+    expect(await search({ provider: 'granola', kind: 'meeting' })).toMatchObject({
       totalMatches: 1,
+      results: [{ record: { source: { id: 'notes-3' } } }],
     });
-    await acceptRecords({
-      records,
-      syncId,
-      deliveries: [{ ...deliveredRecord({ id: 'notes-3', revision: 3 }), provider: 'granola' }],
-    });
-    expect(await search({ provider: 'granola' })).toMatchObject({ totalMatches: 0 });
-  }));
-
-test('record search tracks accepted revisions atomically, rejects conflicting metadata, and isolates owners', () =>
-  withRetrievalTest(async ({ database, records, retrieval }) => {
-    const syncId = await createRecordSync({ database });
-    const otherSync = await createRecordSync({ database, ownerId: OWNER_B });
-    const initial = deliveredRecord({
-      content: {
-        body: 'Originalneedle imported without an H1.',
-        attributes: { subject: 'Oldmetadata' },
-      },
-    });
-    expect(await acceptRecords({ records, syncId, deliveries: [initial] })).toEqual({
-      state: 'accepted',
-    });
-    await acceptRecords({ records, syncId: otherSync, ownerId: OWNER_B, deliveries: [initial] });
-    const search = (query: string) =>
-      retrieval.search({ ownerId: OWNER_A, query, resourceTypes: ['record'], limit: 10 });
-    const first = (await search('originalneedle')).results[0];
-    if (first?.resourceType !== 'record') {
-      throw new Error('Missing record search result');
-    }
-    const readableId = first.record.readableId;
-    expect(first).not.toHaveProperty('title');
-    expect(await records.findResource({ ownerId: OWNER_B, readableId })).toBeNull();
-
-    const stored = await records.findResource({ ownerId: OWNER_A, readableId });
-    expect(stored?.record.content).toMatchObject({
-      attributes: { subject: 'Oldmetadata' },
-    });
-    // An identical replay preserves both canonical content and its searchable projection.
-    await acceptRecords({ records, syncId, deliveries: [initial] });
-    expect(await records.findResource({ ownerId: OWNER_A, readableId })).toEqual(stored);
-    expect((await search('originalneedle')).results).toHaveLength(1);
-
-    const updated = deliveredRecord({
-      revision: 2,
-      content: { body: 'Replacementneedle.', attributes: { subject: 'Newmetadata' } },
-    });
-    expect(await acceptRecords({ records, syncId, deliveries: [updated, initial] })).toEqual({
-      state: 'accepted',
-    });
-    expect((await search('originalneedle oldmetadata')).results).toEqual([]);
-    expect((await search('replacementneedle newmetadata')).results).toHaveLength(1);
-    const conflicting = structuredClone(updated);
-    if (conflicting.operation === 'deleted') {
-      throw new Error('Expected current content');
-    }
-    conflicting.content.attributes = { subject: 'Conflictingmetadata' };
-    expect(
-      await acceptRecords({
-        records,
-        syncId,
-        deliveries: [
-          deliveredRecord({ id: 'rollback', content: { body: 'Rollbackneedle' } }),
-          conflicting,
-        ],
-      }),
-    ).toEqual({ state: 'conflict' });
-    expect((await search('rollbackneedle conflictingmetadata')).results).toEqual([]);
-    expect((await search('replacementneedle')).results).toHaveLength(1);
-    await database`
-      create trigger "fail_record_search_projection" before insert on "hypermedia_search_document"
-      when new."resource_type" = 'record'
-      begin select raise(abort, 'simulated index write failure'); end
-    `;
-    await expect(
-      acceptRecords({
-        records,
-        syncId,
-        deliveries: [deliveredRecord({ revision: 3, content: { body: 'Failedindexneedle' } })],
-      }),
-    ).rejects.toThrow('simulated index write failure');
-    expect((await records.findResource({ ownerId: OWNER_A, readableId }))?.markdown).toBe(
-      'Replacementneedle.',
-    );
-    expect((await search('failedindexneedle')).results).toEqual([]);
-    expect((await search('replacementneedle')).results).toHaveLength(1);
-    await database`drop trigger "fail_record_search_projection"`;
-    // Revoking a delivery credential does not archive its previously received evidence.
-    await database`update "record_sync" set "revoked_at" = ${NOW} where "id" = ${syncId}`;
-    expect((await search('replacementneedle')).results).toHaveLength(1);
-    await database`update "record_sync" set "revoked_at" = null where "id" = ${syncId}`;
-    expect(
-      await acceptRecords({
-        records,
-        syncId,
-        deliveries: [deliveredRecord({ revision: 3 }), updated],
-      }),
-    ).toEqual({ state: 'accepted' });
-    expect((await search('replacementneedle newmetadata')).results).toEqual([]);
-    expect(await records.findResource({ ownerId: OWNER_A, readableId })).toBeNull();
-    await acceptRecords({
-      records,
-      syncId,
-      deliveries: [
-        deliveredRecord({
-          revision: 4,
-          content: { title: 'Restored source', body: 'Reviveneedle only.' },
-        }),
-      ],
-    });
-    expect((await search('replacementneedle originalneedle')).results).toEqual([]);
-    expect((await search('reviveneedle')).results).toMatchObject([
-      { record: { readableId, title: 'Restored source' }, matchExcerpt: 'Reviveneedle only.' },
-    ]);
-    expect(
-      (await retrieval.search({ ownerId: OWNER_B, query: 'originalneedle', limit: 10 })).results,
-    ).toHaveLength(1);
+    expect(await search({ provider: 'gmail', kind: 'meeting' })).toMatchObject({ totalMatches: 0 });
   }));
 
 test('page search applies the current interval contract before taking top K', () =>
@@ -905,16 +679,14 @@ test('page search applies the current interval contract before taking top K', ()
 
 test('source titles share the page title field and outrank body-only record matches', () =>
   withRetrievalTest(async ({ database, records, pages, retrieval }) => {
-    const syncId = await createRecordSync({ database });
-    await acceptRecords({
+    await writeRecords({
       records,
-      syncId,
-      deliveries: [
-        deliveredRecord({
+      values: [
+        recordFixture({
           id: 'first',
           content: { title: 'Photometry', body: 'Ordinary source text.' },
         }),
-        deliveredRecord({
+        recordFixture({
           id: 'second',
           content: { title: 'Ordinary', body: 'Photometry source text.' },
         }),
@@ -944,24 +716,23 @@ test('source titles share the page title field and outrank body-only record matc
         limit: 10,
       });
     expect((await search()).results).toMatchObject([
-      { record: { title: 'Photometry', recordId: 'first' }, matchExcerpt: 'Photometry' },
+      { record: { title: 'Photometry', source: { id: 'first' } }, matchExcerpt: 'Photometry' },
       {
-        record: { title: 'Ordinary', recordId: 'second' },
+        record: { title: 'Ordinary', source: { id: 'second' } },
         matchExcerpt: expect.stringContaining('Photometry'),
       },
     ]);
-    await acceptRecords({
+    await writeRecords({
       records,
-      syncId,
-      deliveries: [
-        deliveredRecord({
+      values: [
+        recordFixture({
           id: 'first',
           revision: 2,
           content: { title: 'Spectrometry', body: 'Ordinary source text.' },
         }),
       ],
     });
-    expect((await search()).results).toMatchObject([{ record: { recordId: 'second' } }]);
+    expect((await search()).results).toMatchObject([{ record: { source: { id: 'second' } } }]);
     expect(
       (await retrieval.search({ ownerId: OWNER_A, query: 'spectrom', limit: 1 })).results,
     ).toMatchObject([{ record: { title: 'Spectrometry' }, matchExcerpt: 'Spectrometry' }]);
@@ -969,16 +740,14 @@ test('source titles share the page title field and outrank body-only record matc
 
 test('persistent search contains no stored text and hydrates only the top K files', () =>
   withRetrievalTest(async ({ database, records, pages, retrieval, storage }) => {
-    const syncId = await createRecordSync({ database });
-    await acceptRecords({
+    await writeRecords({
       records,
-      syncId,
-      deliveries: [
-        deliveredRecord({
+      values: [
+        recordFixture({
           id: 'first',
           content: { title: 'Hydration', body: 'Source-only text one.' },
         }),
-        deliveredRecord({
+        recordFixture({
           id: 'second',
           content: { title: 'Hydration', body: 'Source-only text two.' },
         }),
@@ -997,7 +766,6 @@ test('persistent search contains no stored text and hydrates only the top K file
       'owner_id',
       'resource_type',
       'readable_id',
-      'participant_names',
     ]);
     const content = await database<
       Array<{ label: null; summary: null; body: null; metadata: null }>
@@ -1024,11 +792,10 @@ test('persistent search contains no stored text and hydrates only the top K file
   }));
 
 test('snippets use native stemming, prefixes, accents and clustered body matches for pages and records', () =>
-  withRetrievalTest(async ({ database, records, pages, retrieval }) => {
-    const syncId = await createRecordSync({ database });
+  withRetrievalTest(async ({ records, pages, retrieval }) => {
     const contextRepetitions = 80;
     const body = `Negotiated only. ${'Background context. '.repeat(contextRepetitions)}At the café, we negotiated superconductivity together. ${'Later material. '.repeat(contextRepetitions)}`;
-    await acceptRecords({ records, syncId, deliveries: [deliveredRecord({ content: { body } })] });
+    await writeRecords({ records, values: [recordFixture({ content: { body } })] });
     await pages.create({
       ownerId: OWNER_A,
       actor: { kind: 'owner' },
@@ -1059,24 +826,21 @@ test('snippets use native stemming, prefixes, accents and clustered body matches
   }));
 
 test('record snippets and metadata remain pinned when an update or deletion follows ranking', () =>
-  withRetrievalTest(async ({ database, records, retrieval, storage }) => {
-    const syncId = await createRecordSync({ database });
-    await acceptRecords({
+  withRetrievalTest(async ({ records, retrieval, storage }) => {
+    await writeRecords({
       records,
-      syncId,
-      deliveries: [
-        deliveredRecord({
+      values: [
+        recordFixture({
           content: { title: 'Original title', body: 'Raceword original evidence.' },
         }),
       ],
     });
     const exists = storage.exists.bind(storage);
     const update = spyOn(storage, 'exists').mockImplementationOnce(async (key) => {
-      await acceptRecords({
+      await writeRecords({
         records,
-        syncId,
-        deliveries: [
-          deliveredRecord({
+        values: [
+          recordFixture({
             revision: 2,
             content: { title: 'Revised title', body: 'Raceword replacement evidence.' },
           }),
@@ -1096,7 +860,7 @@ test('record snippets and metadata remain pinned when an update or deletion foll
       { record: { title: 'Revised title' }, matchExcerpt: 'Raceword replacement evidence.' },
     ]);
     const deletion = spyOn(storage, 'exists').mockImplementationOnce(async (key) => {
-      await acceptRecords({ records, syncId, deliveries: [deliveredRecord({ revision: 3 })] });
+      await writeRecords({ records, values: [recordFixture({ revision: 3 })] });
       return exists(key);
     });
     try {
@@ -1163,11 +927,9 @@ test('page snippets stay on the ranked revision through updates and archival', (
 
 test('missing or corrupt selected record files fail closed instead of returning misleading snippets', () =>
   withRetrievalTest(async ({ database, records, retrieval, storage }) => {
-    const syncId = await createRecordSync({ database });
-    await acceptRecords({
+    await writeRecords({
       records,
-      syncId,
-      deliveries: [deliveredRecord({ content: { body: 'Integrityneedle original evidence.' } })],
+      values: [recordFixture({ content: { body: 'Integrityneedle original evidence.' } })],
     });
     const rows = await database<
       Array<{ storageKey: string }>
@@ -1184,14 +946,12 @@ test('missing or corrupt selected record files fail closed instead of returning 
   }));
 
 test('record snippets stay compact even when one matching token is very long', () =>
-  withRetrievalTest(async ({ database, records, retrieval }) => {
-    const syncId = await createRecordSync({ database });
+  withRetrievalTest(async ({ records, retrieval }) => {
     const longTokenLength = 5_000;
-    await acceptRecords({
+    await writeRecords({
       records,
-      syncId,
-      deliveries: [
-        deliveredRecord({
+      values: [
+        recordFixture({
           content: {
             body: `Longtokenneedle${'x'.repeat(longTokenLength)}`,
           },

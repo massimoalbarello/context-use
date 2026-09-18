@@ -25,8 +25,8 @@ import { KnowledgePagesService } from '#backend/services/knowledge-pages/service
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import {
+  unusedApiKeysService,
   unusedAssetFacesService,
-  unusedRecordSyncsService,
   unusedRecordsService,
 } from '../../support/app.ts';
 import { createTestHypermediaRetrievalService } from '../../support/hypermedia-retrieval.ts';
@@ -129,7 +129,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       pagesService: new KnowledgePagesService({ pages: pagesRepository, storage }),
       profilesService: new KnowledgeProfilesService(new KnowledgeProfilesRepository(database)),
       recordsService: unusedRecordsService,
-      syncsService: unusedRecordSyncsService,
+      apiKeysService: unusedApiKeysService,
     });
 
     const pngBytes = Buffer.from(

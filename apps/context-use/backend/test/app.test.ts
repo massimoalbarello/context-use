@@ -2,11 +2,7 @@ import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import { createApp } from '#backend/app.ts';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
-import { MAX_RECORD_DELIVERY_BATCH_RECORDS } from '#backend/models/records/delivery-contract.generated.ts';
-import {
-  RECORD_DELIVERY_ROUTE_PATH,
-  RECORD_SYNC_SECURITY_SCHEME,
-} from '#backend/routes/api/records/delivery-controller.ts';
+import { API_KEY_SECURITY_SCHEME } from '#backend/routes/api/api-keys/model.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
@@ -27,8 +23,6 @@ import {
 function unexpectedCall(): never {
   throw new Error('Unexpected dependency call');
 }
-
-const SHA256_HEX_LENGTH = 64;
 
 test('createApp uses supplied dependencies without production bootstrap', async () => {
   let healthChecks = 0;
@@ -97,19 +91,20 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     mcpServerUrl: testMcpServerUrl,
     mcpTransport: unusedMcpTransport,
     recordsService: {
-      accept: () => {
+      remove: unexpectedCall,
+      upsert: () => {
         acceptedRecordDeliveries += 1;
-        return Promise.resolve({ state: 'accepted' });
+        return Promise.resolve({ state: 'created', readableId: 'native-record' });
       },
       findResource: unexpectedCall,
       listResources: unexpectedCall,
       filterOptions: unexpectedCall,
     },
-    syncsService: {
+    apiKeysService: {
       authenticate: async ({ apiKey }) =>
         apiKey === deliveryApiKey
           ? {
-              syncId: '01991f43-0c00-7000-8000-000000000011',
+              keyId: '01991f43-0c00-7000-8000-000000000011',
               ownerId: 'context-use-owner',
             }
           : null,
@@ -136,31 +131,14 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   );
   expect(graphResponse.status).toBe(StatusMap.Unauthorized);
 
-  const batchId = '01991f43-0c00-7000-8000-000000000012';
   const receiverResponse = await app.handle(
-    new Request('http://localhost/api/records/batch', {
+    new Request('http://localhost/api/records', {
       method: 'POST',
-      headers: {
-        authorization: `Bearer ${deliveryApiKey}`,
-        'content-type': 'application/json',
-        'idempotency-key': batchId,
-      },
+      headers: { authorization: `Bearer ${deliveryApiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({
-        version: 1,
-        batchId,
-        records: [
-          {
-            eventId: '01991f43-0c00-7000-8000-000000000013',
-            provider: 'github',
-            sourceId: 'github-account',
-            kind: 'pull-request',
-            id: 'opaque-pr-id',
-            revision: 1,
-            operation: 'deleted',
-            contentHash: 'a'.repeat(SHA256_HEX_LENGTH),
-            committedAt: '2026-09-08T12:00:00.000Z',
-          },
-        ],
+        source: { provider: 'github', kind: 'pull-request', id: '1' },
+        title: 'Title',
+        body: 'Body',
       }),
     }),
   );
@@ -203,23 +181,15 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   expect(openApi.paths?.['/api/hypermedia/neighborhoods']).toBeUndefined();
   expect(openApi.paths?.['/api/hypermedia/pages']).toBeUndefined();
   expect(openApi.paths?.['/api/hypermedia/search']?.get).toBeDefined();
-  expect(openApi.components?.securitySchemes?.[RECORD_SYNC_SECURITY_SCHEME]).toMatchObject({
+  expect(openApi.components?.securitySchemes?.[API_KEY_SECURITY_SCHEME]).toMatchObject({
     type: 'http',
     scheme: 'bearer',
   });
-  const receiverOperation = openApi.paths?.[RECORD_DELIVERY_ROUTE_PATH]?.post;
-  expect(receiverOperation?.security).toContainEqual({ [RECORD_SYNC_SECURITY_SCHEME]: [] });
-  expect(
-    receiverOperation?.requestBody?.content?.['application/json']?.schema?.properties?.records
-      ?.maxItems,
-  ).toBe(MAX_RECORD_DELIVERY_BATCH_RECORDS);
-  const requiredHeaderNames = receiverOperation?.parameters
-    ?.filter((parameter) => parameter.in === 'header' && parameter.required)
-    .map((parameter) => parameter.name?.toLowerCase());
-  expect(requiredHeaderNames).toEqual(
-    expect.arrayContaining(['authorization', 'content-type', 'idempotency-key']),
-  );
-  for (const statusCode of ['200', '400', '401', '409', '413', '415', '500']) {
+  const receiverOperation = openApi.paths?.['/api/records']?.post;
+  expect(receiverOperation?.security).toContainEqual({ [API_KEY_SECURITY_SCHEME]: [] });
+  expect(receiverOperation?.requestBody?.content?.['application/json']).toBeDefined();
+  expect(openApi.paths?.['/api/records/batch']).toBeUndefined();
+  for (const statusCode of ['200', '401', '409']) {
     expect(receiverOperation?.responses).toHaveProperty(statusCode);
   }
 

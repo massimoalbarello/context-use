@@ -97,14 +97,11 @@ test('HTTP search maps pipeline results to compact typed previews without intern
         record: {
           readableId: 'meeting',
           title: 'Meeting',
-          provider: 'granola',
-          kind: 'meeting',
-          recordId: 'source-meeting',
-          sync: { readableId: 'notes', name: 'Notes' },
-          participantNames: ['Luca'],
           sourceCreatedAt: timestamp,
           sourceUpdatedAt: null,
           ...dates,
+          source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
+          occurredAt: null,
         },
       },
     ],
@@ -137,7 +134,7 @@ test('HTTP search maps pipeline results to compact typed previews without intern
       {
         resourceType: 'record',
         address: 'context-use://record/meeting',
-        record: { participantNames: ['Luca'], provider: 'granola', kind: 'meeting' },
+        record: { source: { provider: 'granola', kind: 'meeting' } },
       },
     ],
   });
@@ -160,7 +157,6 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
           record: {
             provider: 'granola',
             kind: 'meeting',
-            participantName: 'Luca',
             createdFrom: '2026-01-01T00:00:00.000Z',
             createdTo: '2026-02-01T00:00:00.000Z',
             updatedFrom: '2026-03-01T00:00:00.000Z',
@@ -180,7 +176,6 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
     assetKind: 'entity_image',
     recordProvider: ' granola ',
     recordKind: ' meeting ',
-    participantName: ' Luca ',
     recordCreatedFrom: '2025-12-31T19:00:00-05:00',
     recordCreatedTo: '2026-02-01T00:00:00Z',
     recordUpdatedFrom: '2026-03-01T00:00:00Z',

@@ -1,10 +1,7 @@
-import hashlib
 import json
 import os
 import re
 import time
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -12,7 +9,6 @@ APP_URL = os.environ["CONTEXT_USE_APP_URL"]
 EXPECTED_ORIGIN = f"{urlparse(APP_URL).scheme}://{urlparse(APP_URL).netloc}"
 FIXTURE_FOLDER = Path(os.environ["CONTEXT_USE_SEED_FOLDER"])
 UI_TIMEOUT_SECONDS = 30
-RECORD_BATCH_SIZE = 20
 
 
 def read_seed_json(relative_path):
@@ -32,7 +28,6 @@ ENTITIES = [
 ]
 ASSETS = read_seed_json("assets/index.json")
 RECORDS = read_seed_json("records/index.json")
-SYNCS = read_seed_json("syncs/index.json")
 
 
 def wait_until(predicate, failure_message, timeout_seconds=UI_TIMEOUT_SECONDS):
@@ -179,59 +174,26 @@ def update_page(readable_id, expected_revision_number, markdown, temporal_covera
         raise RuntimeError("Updated page did not create the expected revision")
 
 
-def create_records(api_key, source):
-    committed_at = datetime.now(timezone.utc).isoformat()
-    records = []
+def create_records(api_key):
     for record in RECORDS:
-        if record["provider"] != source["provider"]:
-            continue
-        content = {**record["content"], "body": read_seed_text(record["path"])}
-        # The fixtures contain only strings, booleans, small integers, objects and arrays;
-        # sorted compact UTF-8 JSON is canonical for this deliberately narrow content.
-        canonical = json.dumps(
-            content, sort_keys=True, ensure_ascii=False, separators=(",", ":")
-        )
-        records.append({
-            "eventId": str(uuid.uuid4()),
-            "provider": record["provider"],
-            "sourceId": source["sourceId"],
-            "kind": record["kind"],
-            "id": record["id"],
-            "revision": 1,
-            "operation": "added",
-            "contentHash": hashlib.sha256(canonical.encode()).hexdigest(),
-            "committedAt": committed_at,
-            "content": content,
-        })
-    # Keep each browser-harness message below its transport size limit as the seed grows.
-    for start in range(0, len(records), RECORD_BATCH_SIZE):
-        envelope = {
-            "version": 1,
-            "batchId": str(uuid.uuid4()),
-            "records": records[start:start + RECORD_BATCH_SIZE],
-        }
-        api_request(
-            "POST",
-            "/api/records/batch",
-            envelope,
-            api_key=api_key,
-            headers={"idempotency-key": envelope["batchId"]},
-        )
+        payload = {key: value for key, value in record.items() if key != "path"}
+        payload["body"] = read_seed_text(record["path"])
+        api_request("POST", "/api/records", payload, api_key=api_key)
 
 
 def resolve_record_addresses():
-    # Record addresses are allocated by the server and include the sync identity.
+    # Record addresses are allocated by Context Use from the source identity.
     # Resolve from authenticated output rather than duplicating its ID algorithm.
     addresses = {}
     offset = 0
     while True:
         page = api_request("GET", f"/api/records?limit=50&offset={offset}")
         for record in page["items"]:
-            addresses[record["recordId"]] = record["readableId"]
+            addresses[record["source"]["id"]] = record["readableId"]
         if page["nextOffset"] is None:
             break
         offset = page["nextOffset"]
-    if set(addresses) != {record["id"] for record in RECORDS}:
+    if set(addresses) != {record["source"]["id"] for record in RECORDS}:
         raise RuntimeError("Imported records did not match the fixture")
     return addresses
 
@@ -271,12 +233,11 @@ def seed_isolated_data():
         create_asset(asset)
         if asset.get("entityReadableId"):
             assign_entity_image(asset)
-    for source in SYNCS:
-        sync = api_request("POST", "/api/syncs", {"name": source["name"]})
-        try:
-            create_records(sync["apiKey"], source)
-        finally:
-            api_request("PUT", f"/api/syncs/{sync['sync']['readableId']}/revoke")
+    credential = api_request("POST", "/api/api-keys", {"name": "Development seeding"})
+    try:
+        create_records(credential["apiKey"])
+    finally:
+        api_request("PUT", f"/api/api-keys/{credential['key']['readableId']}/revoke")
     record_addresses = resolve_record_addresses()
     page_count = seed_pages(record_addresses)
 

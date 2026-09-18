@@ -38,7 +38,7 @@ const EXPECTED_PEOPLE = 11;
 const EXPECTED_ORGANIZATIONS = 7;
 const EXPECTED_UNTYPED_ENTITIES = 12;
 const EXPECTED_RECORDS = 55;
-const EXPECTED_SYNCS = 3;
+const EXPECTED_PROVIDERS = 3;
 const EXPECTED_ASSETS = 35;
 const TEST_TIMEOUT_MS = 30_000;
 
@@ -89,14 +89,17 @@ async function fingerprint(folder: string) {
 
 test('the story is connected and each checkpoint cites only sources already available then', async () => {
   const fixtures = resolve(import.meta.dir, '../fixtures');
-  const records: { id: string; content: { sourceUpdatedAt: string } }[] = await Bun.file(
+  const records: { source: { id: string }; sourceUpdatedAt: string }[] = await Bun.file(
     join(fixtures, 'records/index.json'),
   ).json();
   const snapshots: { readableId: string; path: string; asOf: string }[] = await Bun.file(
     join(fixtures, 'pages/index.json'),
   ).json();
   const recordDates = new Map(
-    records.map(({ id, content }) => [id, content.sourceUpdatedAt.slice(0, 'YYYY-MM-DD'.length)]),
+    records.map(({ source, sourceUpdatedAt }) => [
+      source.id,
+      sourceUpdatedAt.slice(0, 'YYYY-MM-DD'.length),
+    ]),
   );
   const latestLinks = new Map<string, string[]>();
   const citedRecords = new Set<string>();
@@ -201,7 +204,7 @@ test(
           '/entities/new',
           '/assets/new',
           '/settings',
-          '/settings/syncs',
+          '/settings/api-keys',
           '/settings/faces',
           '/test.js',
         ]) {
@@ -308,10 +311,10 @@ test(
           providers: ['gmail', 'granola', 'slack'],
           kinds: ['meeting', 'thread'],
         });
-        const syncIds = new Set<string>();
-        for (const [provider, kind, syncName] of [
-          ['gmail', 'thread', 'Gmail · Steve’s inbox'],
-          ['slack', 'thread', 'Slack · Apple workspace'],
+        const providers = new Set<string>();
+        for (const [provider, kind] of [
+          ['gmail', 'thread'],
+          ['slack', 'thread'],
           ['granola', 'meeting', 'Granola · Steve’s meetings'],
         ]) {
           const result = (await (
@@ -320,17 +323,15 @@ test(
           expect(result.items.length).toBeGreaterThan(0);
           expect(result.nextOffset).toBeNull();
           for (const record of result.items) {
-            expect(record).toMatchObject({ provider, kind, sync: { name: syncName } });
-            syncIds.add(record.sync.readableId);
+            expect(record).toMatchObject({ source: { provider, kind } });
+            providers.add(record.source.provider);
             const detail = (await (
               await read(`/api/records/${record.readableId}`)
             ).json()) as Static<typeof RecordSchema>;
-            expect(detail.participantNames).toContain('Steve Jobs');
-            expect(detail.participantNames.length).toBeGreaterThan(1);
-            expect(detail.backlinks.length, record.recordId).toBeGreaterThan(0);
+            expect(detail.backlinks.length, record.source.id).toBeGreaterThan(0);
           }
         }
-        expect(syncIds.size).toBe(EXPECTED_SYNCS);
+        expect(providers.size).toBe(EXPECTED_PROVIDERS);
 
         // Follow one decision across services, then back to the explanation that cites it.
         const credit = (await (
@@ -395,9 +396,9 @@ test(
           '/api/face-recognition/retry',
           '/api/face-recognition/model/check',
           '/api/profile',
-          '/api/records/batch',
-          '/api/syncs',
-          '/api/syncs/research/revoke',
+          '/api/records',
+          '/api/api-keys',
+          '/api/api-keys/research/revoke',
           '/api/mcp/clients',
           '/api/auth/sign-out',
           '/api/auth/passkey/generate-register-options',
@@ -426,7 +427,7 @@ test(
         for (const path of [
           '/api/auth/sign-out',
           '/api/auth/passkey/generate-register-options',
-          '/api/syncs',
+          '/api/api-keys',
           '/api/mcp/clients',
           '/api/owner-registration',
           '/mcp',

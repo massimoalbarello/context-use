@@ -33,7 +33,7 @@ export type HypermediaRetrievalResult =
     }
   | {
       resourceType: 'record';
-      record: RecordSummary & { participantNames: string[] };
+      record: RecordSummary;
       matchExcerpt: string | null;
     };
 
@@ -52,5 +52,5 @@ export interface HypermediaRetrievalFilters {
   };
   asset?: { kind?: 'entity_image' };
   /** When present, restrict retrieval to records satisfying every supplied field. */
-  record?: RecordSourceFilters & { participantName?: string };
+  record?: RecordSourceFilters;
 }

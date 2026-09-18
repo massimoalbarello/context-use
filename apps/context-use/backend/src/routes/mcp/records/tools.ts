@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { recordAddress, recordReadableId } from '#backend/models/readable-ids/addresses.ts';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { McpReadableIdSchema, RecordAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
   McpKnowledgePageSummarySchema,
@@ -10,23 +11,6 @@ import {
 import { MCP_READ_TOOL_ANNOTATIONS } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { RecordResourcesServiceContract } from '#backend/services/records/service.ts';
-
-const RecordMetadataSchema = z.object({
-  provider: z.string(),
-  sourceUrl: z.string().optional(),
-  sourceCreatedAt: z.string().optional(),
-  sourceUpdatedAt: z.string().optional(),
-  participants: z
-    .array(
-      z.object({
-        name: z.string().optional(),
-        roles: z.array(z.string()),
-        identities: z.array(z.object({ namespace: z.string(), id: z.string() })),
-      }),
-    )
-    .optional(),
-  attributes: z.record(z.string(), z.unknown()).optional(),
-});
 
 export function registerRecordTools({
   server,
@@ -47,13 +31,8 @@ export function registerRecordTools({
       outputSchema: z.object({
         address: RecordAddressSchema,
         readableId: McpReadableIdSchema,
-        title: z.string(),
-        kind: z.string(),
-        recordId: z.string(),
-        sync: z.object({ readableId: McpReadableIdSchema, name: z.string() }),
-        markdown: z.string(),
+        ...RecordInputSchema.shape,
         backlinks: z.array(McpKnowledgePageSummarySchema),
-        metadata: RecordMetadataSchema,
       }),
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
@@ -67,19 +46,12 @@ export function registerRecordTools({
             address: recordAddress(record.readableId),
             readableId: record.readableId,
             title: record.title,
-            kind: record.kind,
-            recordId: record.recordId,
-            sync: { readableId: record.sync.readableId, name: record.sync.name },
-            markdown: record.markdown,
+            source: record.source,
+            body: record.body,
+            occurredAt: record.occurredAt,
+            sourceCreatedAt: record.sourceCreatedAt,
+            sourceUpdatedAt: record.sourceUpdatedAt,
             backlinks: record.backlinks.map(mcpKnowledgePageSummary),
-            metadata: {
-              provider: record.provider,
-              sourceUrl: record.record.content.sourceUrl,
-              sourceCreatedAt: record.record.content.sourceCreatedAt,
-              sourceUpdatedAt: record.record.content.sourceUpdatedAt,
-              participants: record.record.content.participants,
-              attributes: record.record.content.attributes,
-            },
           })
         : mcpToolError({ code: 'not_found', message: 'Record not found.' });
     },

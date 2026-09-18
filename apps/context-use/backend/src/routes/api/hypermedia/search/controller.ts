@@ -52,7 +52,6 @@ export function createHypermediaSearchController({
         const hasRecordFilter =
           query.recordProvider !== undefined ||
           query.recordKind !== undefined ||
-          query.participantName !== undefined ||
           query.recordCreatedFrom !== undefined ||
           query.recordCreatedTo !== undefined ||
           query.recordUpdatedFrom !== undefined ||
@@ -70,7 +69,6 @@ export function createHypermediaSearchController({
               ? {
                   provider: query.recordProvider?.trim(),
                   kind: query.recordKind?.trim(),
-                  participantName: query.participantName?.trim(),
                   createdFrom: query.recordCreatedFrom?.toISOString(),
                   createdTo: query.recordCreatedTo?.toISOString(),
                   updatedFrom: query.recordUpdatedFrom?.toISOString(),

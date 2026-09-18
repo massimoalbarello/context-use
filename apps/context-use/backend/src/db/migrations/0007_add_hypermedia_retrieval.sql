@@ -3,11 +3,9 @@ create table "hypermedia_search_document" (
   "owner_id" text not null,
   "resource_type" text not null,
   "readable_id" text not null,
-  "participant_names" text not null default '[]',
   unique ("owner_id", "resource_type", "readable_id"),
   foreign key ("owner_id") references "auth_user" ("id") on delete cascade,
-  check ("resource_type" in ('entity', 'knowledge_page', 'asset', 'record')),
-  check (json_valid("participant_names") and json_type("participant_names") = 'array')
+  check ("resource_type" in ('entity', 'knowledge_page', 'asset', 'record'))
 );
 
 create virtual table "hypermedia_search_fts" using fts5(

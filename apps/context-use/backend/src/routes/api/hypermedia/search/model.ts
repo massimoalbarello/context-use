@@ -62,7 +62,6 @@ export const HypermediaSearchQuerySchema = t.Object({
   assetKind: t.Optional(t.Literal('entity_image')),
   recordProvider: RecordFilterValueSchema,
   recordKind: RecordFilterValueSchema,
-  participantName: RecordFilterValueSchema,
   recordCreatedFrom: RecordListQuerySchema.properties.createdFrom,
   recordCreatedTo: RecordListQuerySchema.properties.createdTo,
   recordUpdatedFrom: RecordListQuerySchema.properties.updatedFrom,
@@ -93,7 +92,6 @@ export const HypermediaSearchSchema = t.Object({
         resourceType: t.Literal('record'),
         record: t.Object({
           ...RecordSummarySchema.properties,
-          participantNames: t.Array(t.String()),
         }),
       }),
     ]),
@@ -133,7 +131,6 @@ export function hypermediaSearchResultResponse(result: HypermediaRetrievalResult
         address: recordAddress(result.record.readableId),
         record: {
           ...recordSummaryResponse(result.record),
-          participantNames: result.record.participantNames,
         },
       };
   }

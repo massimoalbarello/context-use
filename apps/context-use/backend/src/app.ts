@@ -4,11 +4,8 @@ import { type Auth, sessionSecuritySchemes } from '#backend/lib/auth/better-auth
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import type { McpTransportContract } from '#backend/lib/mcp/transport.ts';
 import { createRequestResponsePlugin } from '#backend/lib/request-response.ts';
+import { apiKeySecuritySchemes } from '#backend/routes/api/api-keys/model.ts';
 import { createApiController } from '#backend/routes/api/controller.ts';
-import {
-  createRecordDeliveryController,
-  recordSyncSecuritySchemes,
-} from '#backend/routes/api/records/delivery-controller.ts';
 import { createAuthDiscoveryController } from '#backend/routes/auth-discovery/controller.ts';
 import {
   createFrontendAssetsController,
@@ -17,6 +14,10 @@ import {
 import type { AssetTransferCapabilitiesContract } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#backend/routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#backend/routes/mcp/controller.ts';
+import type {
+  ApiKeyAuthenticationContract,
+  ApiKeysServiceContract,
+} from '#backend/services/api-keys/service.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
@@ -28,13 +29,9 @@ import type { KnowledgeProfilesServiceContract } from '#backend/services/knowled
 import type { McpClientAuthorizationsServiceContract } from '#backend/services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
 import type {
-  RecordDeliveryAcceptanceContract,
   RecordResourcesServiceContract,
+  RecordsIngestionContract,
 } from '#backend/services/records/service.ts';
-import type {
-  RecordSyncAuthenticationContract,
-  RecordSyncsServiceContract,
-} from '#backend/services/syncs/service.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
@@ -56,7 +53,7 @@ export function createApp({
   pagesService,
   profilesService,
   recordsService,
-  syncsService,
+  apiKeysService,
 }: {
   auth: Auth;
   assetsService: AssetsServiceContract;
@@ -72,8 +69,8 @@ export function createApp({
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
-  recordsService: RecordDeliveryAcceptanceContract & RecordResourcesServiceContract;
-  syncsService: RecordSyncAuthenticationContract & RecordSyncsServiceContract;
+  recordsService: RecordsIngestionContract & RecordResourcesServiceContract;
+  apiKeysService: ApiKeyAuthenticationContract & ApiKeysServiceContract;
 }) {
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
@@ -128,14 +125,14 @@ export function createApp({
               description: 'Bounded resource neighborhoods and their connected knowledge pages.',
             },
             {
-              name: 'Syncs',
-              description: 'External services authorized to deliver records.',
+              name: 'API keys',
+              description: 'Credentials authorized to access native write APIs.',
             },
           ],
           components: {
             securitySchemes: {
               ...sessionSecuritySchemes,
-              ...recordSyncSecuritySchemes,
+              ...apiKeySecuritySchemes,
             },
           },
         },
@@ -169,10 +166,9 @@ export function createApp({
         pagesService,
         profilesService,
         recordsService,
-        syncsService,
+        apiKeysService,
       }),
     )
-    .use(createRecordDeliveryController({ recordsService, syncsService }))
     .onStop(() => mcpTransport.close())
     .use(createFrontendFallbackController({ frontendAssetsService }));
 }

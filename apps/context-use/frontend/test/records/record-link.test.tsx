@@ -9,21 +9,19 @@ import {
 } from '@tanstack/react-router';
 import { cleanup, render, screen } from '@testing-library/react';
 import { RecordCardContent, RecordLink } from '../../src/components/records/record-link';
-import type { ExternalRecordSummary } from '../../src/queries/records';
+import type { ContextRecordSummary } from '../../src/queries/records';
 
 afterEach(cleanup);
 
-const record: ExternalRecordSummary = {
+const record: ContextRecordSummary = {
   readableId: 'context-use-pr-57-a1b2c3',
   title: 'context-use #57: Describe records clearly',
-  provider: 'github',
   sourceCreatedAt: '2026-09-01T10:00:00Z',
   sourceUpdatedAt: null,
-  kind: 'pull-request',
-  recordId: '57',
-  sync: { readableId: 'example-sync-a1b2c3', name: 'Example sync' },
   createdAt: new Date('2026-09-09T11:00:00.000Z'),
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
+  source: { provider: 'github', kind: 'pull-request', id: '57', url: null },
+  occurredAt: null,
 };
 
 test('record cards identify their content, provider, and kind', () => {
@@ -33,9 +31,8 @@ test('record cards identify their content, provider, and kind', () => {
   expect(screen.getByText('github · pull-request')).toBeTruthy();
   expect(screen.queryByText('Not provided')).toBeNull();
   expect(document.querySelector('time')).toBeNull();
-  expect(screen.queryByText(record.recordId)).toBeNull();
+  expect(screen.queryByText(record.source.id)).toBeNull();
   expect(screen.queryByText('Synced by Example sync')).toBeNull();
-  expect(screen.queryByText(record.sync.readableId)).toBeNull();
 });
 
 test('record links navigate by local readable ID and expose their selected state', async () => {
@@ -54,7 +51,7 @@ test('record links navigate by local readable ID and expose their selected state
   await router.load();
   render(<RouterProvider router={router} />);
 
-  const link = screen.getByRole('link', { name: new RegExp(record.kind, 'i') });
+  const link = screen.getByRole('link', { name: new RegExp(record.source.kind, 'i') });
   expect(link.getAttribute('href')).toBe(
     `/records/${record.readableId}?provider=github&sortBy=kind&view=preview`,
   );

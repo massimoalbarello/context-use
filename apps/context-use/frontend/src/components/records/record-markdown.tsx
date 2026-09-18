@@ -11,7 +11,7 @@ export function externalRecordUrl(url: string): string {
   }
 }
 
-function ExternalRecordLink({ href, children }: { href?: string; children: ReactNode }) {
+function ContextRecordLink({ href, children }: { href?: string; children: ReactNode }) {
   if (!href) {
     return <span>{children}</span>;
   }
@@ -27,16 +27,14 @@ function ExternalRecordLink({ href, children }: { href?: string; children: React
   );
 }
 
-export function ExternalRecordMarkdown({ markdown, label }: { markdown: string; label: string }) {
+export function ContextRecordMarkdown({ markdown, label }: { markdown: string; label: string }) {
   return (
     <article className="py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
         skipHtml
         urlTransform={externalRecordUrl}
         components={{
-          a: ({ href, children }) => (
-            <ExternalRecordLink href={href}>{children}</ExternalRecordLink>
-          ),
+          a: ({ href, children }) => <ContextRecordLink href={href}>{children}</ContextRecordLink>,
           img: ({ alt }) =>
             alt ? <span className="text-muted-foreground text-sm">Image: {alt}</span> : null,
           h1: ({ children, node }) =>

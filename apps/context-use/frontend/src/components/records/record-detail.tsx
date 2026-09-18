@@ -1,11 +1,11 @@
 import { useRecord } from '../../lib/hooks/use-records';
-import type { ExternalRecord } from '../../queries/records';
+import type { ContextRecord } from '../../queries/records';
 import { DetailHeader, DetailShell } from '../knowledge/detail-shell';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceList } from '../knowledge/resource-list';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
-import { ExternalRecordMarkdown } from '../records/external-record-markdown';
+import { ContextRecordMarkdown } from '../records/record-markdown';
 import { RecordTimestamp } from '../records/record-timestamp';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -50,7 +50,7 @@ export function RecordDetail({
       <DetailHeader>
         <ResourceDetailHeading
           actions={null}
-          context={<Badge variant="secondary">Synced by {record.sync.name}</Badge>}
+          context={<Badge variant="secondary">{record.source.provider}</Badge>}
         >
           Record
         </ResourceDetailHeading>
@@ -71,7 +71,7 @@ export function RecordDetail({
         </TabsList>
         <TabsContent value="preview" className="pt-7">
           <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{record.title}</h1>
-          <ExternalRecordMarkdown markdown={record.markdown} label={record.title} />
+          <ContextRecordMarkdown markdown={record.body} label={record.title} />
         </TabsContent>
         <TabsContent value="metadata" className="py-7">
           <RecordMetadata record={record} />
@@ -98,7 +98,7 @@ export function RecordDetail({
   );
 }
 
-export function RecordMetadata({ record }: { record: ExternalRecord }) {
+export function RecordMetadata({ record }: { record: ContextRecord }) {
   return (
     <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
       <div className="sm:col-span-2">
@@ -107,15 +107,17 @@ export function RecordMetadata({ record }: { record: ExternalRecord }) {
       </div>
       <div>
         <dt className="text-muted-foreground">Provider</dt>
-        <dd>{record.provider}</dd>
+        <dd>{record.source.provider}</dd>
       </div>
       <div>
         <dt className="text-muted-foreground">Data kind</dt>
-        <dd>{record.kind}</dd>
+        <dd>{record.source.kind}</dd>
       </div>
       <div className="sm:col-span-2">
-        <dt className="text-muted-foreground">Participants</dt>
-        <dd>{record.participantNames.join(', ') || 'Not provided'}</dd>
+        <dt className="text-muted-foreground">Occurred at</dt>
+        <dd>
+          <RecordTimestamp value={record.occurredAt} />
+        </dd>
       </div>
       <div>
         <dt className="text-muted-foreground">Source created</dt>
@@ -143,7 +145,7 @@ export function RecordMetadata({ record }: { record: ExternalRecord }) {
       </div>
       <div className="sm:col-span-2">
         <dt className="text-muted-foreground">Source record ID</dt>
-        <dd className="break-all font-mono text-xs">{record.recordId}</dd>
+        <dd className="break-all font-mono text-xs">{record.source.id}</dd>
       </div>
     </dl>
   );

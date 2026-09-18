@@ -3,13 +3,13 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import {
-  CreateRecordSyncBodySchema,
-  CreateRecordSyncResponseSchema,
-  RecordSyncListSchema,
-  RecordSyncParamsSchema,
-  recordSyncResponse,
-} from '#backend/routes/api/syncs/model.ts';
-import type { RecordSyncsServiceContract } from '#backend/services/syncs/service.ts';
+  ApiKeyListSchema,
+  ApiKeyParamsSchema,
+  apiKeyResponse,
+  CreateApiKeyBodySchema,
+  CreateApiKeyResponseSchema,
+} from '#backend/routes/api/api-keys/model.ts';
+import type { ApiKeysServiceContract } from '#backend/services/api-keys/service.ts';
 
 const errorResponses = {
   [StatusMap['Bad Request']]: ErrorResponseSchema,
@@ -18,75 +18,75 @@ const errorResponses = {
   [StatusMap['Not Found']]: ErrorResponseSchema,
 };
 
-export function createRecordSyncsController({
+export function createApiKeysController({
   auth,
-  syncsService,
+  apiKeysService,
 }: {
   auth: Auth;
-  syncsService: RecordSyncsServiceContract;
+  apiKeysService: ApiKeysServiceContract;
 }) {
   return new Elysia()
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: errorResponses })
     .get(
-      '/syncs',
+      '/api-keys',
       async ({ user, status }) => {
-        const result = await syncsService.list({ actorId: user.id });
+        const result = await apiKeysService.list({ actorId: user.id });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
-        return status(StatusMap.OK, { items: result.syncs.map(recordSyncResponse) });
+        return status(StatusMap.OK, { items: result.keys.map(apiKeyResponse) });
       },
       {
-        detail: { tags: ['Syncs'], summary: 'List record syncs' },
-        response: { [StatusMap.OK]: RecordSyncListSchema },
+        detail: { tags: ['API keys'], summary: 'List API keys' },
+        response: { [StatusMap.OK]: ApiKeyListSchema },
       },
     )
     .post(
-      '/syncs',
+      '/api-keys',
       async ({ body, user, status }) => {
-        const result = await syncsService.create({ actorId: user.id, name: body.name });
+        const result = await apiKeysService.create({ actorId: user.id, name: body.name });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         if (result.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid sync name' });
+          return status(StatusMap['Bad Request'], { error: 'Invalid key name' });
         }
         if (result.state === 'name_conflict') {
-          return status(StatusMap.Conflict, { error: 'An active sync already uses this name' });
+          return status(StatusMap.Conflict, { error: 'An active key already uses this name' });
         }
         return status(StatusMap.Created, {
-          sync: recordSyncResponse(result.sync),
+          key: apiKeyResponse(result.key),
           apiKey: result.apiKey,
         });
       },
       {
-        detail: { tags: ['Syncs'], summary: 'Create a record sync and issue its API key' },
-        body: CreateRecordSyncBodySchema,
+        detail: { tags: ['API keys'], summary: 'Create an API key' },
+        body: CreateApiKeyBodySchema,
         response: {
-          [StatusMap.Created]: CreateRecordSyncResponseSchema,
+          [StatusMap.Created]: CreateApiKeyResponseSchema,
           [StatusMap.Conflict]: ErrorResponseSchema,
         },
       },
     )
     .put(
-      '/syncs/:syncReadableId/revoke',
+      '/api-keys/:keyReadableId/revoke',
       async ({ params, user, status }) => {
-        const result = await syncsService.revoke({
+        const result = await apiKeysService.revoke({
           actorId: user.id,
-          readableId: params.syncReadableId,
+          readableId: params.keyReadableId,
         });
         if (result.state === 'forbidden') {
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         if (result.state === 'not_found') {
-          return status(StatusMap['Not Found'], { error: 'Sync not found' });
+          return status(StatusMap['Not Found'], { error: 'API key not found' });
         }
         return status(StatusMap['No Content'], undefined);
       },
       {
-        detail: { tags: ['Syncs'], summary: 'Revoke a record sync API key' },
-        params: RecordSyncParamsSchema,
+        detail: { tags: ['API keys'], summary: 'Revoke an API key' },
+        params: ApiKeyParamsSchema,
         response: { [StatusMap['No Content']]: t.Void() },
       },
     );

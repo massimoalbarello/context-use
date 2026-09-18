@@ -8,7 +8,7 @@ import type { Asset } from '../../src/queries/assets';
 import type { EntityDetail } from '../../src/queries/entities';
 import type { KnowledgePage } from '../../src/queries/pages';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
-import type { ExternalRecord } from '../../src/queries/records';
+import type { ContextRecord } from '../../src/queries/records';
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
 
@@ -38,20 +38,17 @@ async function renderResourceBrowser(path = '/pages') {
     usages: [],
     depicts: [],
   };
-  const record: ExternalRecord = {
+  const record: ContextRecord = {
     readableId: 'research',
     title: 'Research notes',
-    provider: 'notion',
-    kind: 'note',
     sourceCreatedAt: null,
     sourceUpdatedAt: null,
-    recordId: 'source-record',
-    sync: { readableId: 'research-sync', name: 'Research sync' },
     createdAt: timestamp,
     updatedAt: timestamp,
-    markdown: 'Research source content.',
-    participantNames: [],
+    body: 'Research source content.',
     backlinks: [],
+    source: { provider: 'notion', kind: 'note', id: 'source-record', url: null },
+    occurredAt: null,
   };
   const page: KnowledgePage = {
     readableId: 'launch',
@@ -68,8 +65,8 @@ async function renderResourceBrowser(path = '/pages') {
       {
         readableId: record.readableId,
         title: record.title,
-        provider: record.provider,
-        kind: record.kind,
+        provider: record.source.provider,
+        kind: record.source.kind,
         available: true,
       },
     ],

@@ -2,9 +2,9 @@ import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Plus, RefreshCwOff } from 'lucide-react';
 import { useId, useState } from 'react';
-import { MAX_SYNC_NAME_LENGTH } from '#backend/models/syncs/model.ts';
+import { MAX_API_KEY_NAME_LENGTH } from '#backend/models/api-keys/model.ts';
 import { submitThenChangeValidation } from '../../lib/form-validation';
-import type { CreatedRecordSync, RecordSync } from '../../queries/syncs';
+import type { ApiKey, CreatedApiKey } from '../../queries/api-keys';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -24,14 +24,14 @@ type CopyState = 'idle' | 'copied' | 'failed';
 function validateName({ value }: { value: string }): string | undefined {
   const length = value.trim().length;
   if (length === 0) {
-    return 'Enter a name for this sync.';
+    return 'Enter a name for this key.';
   }
-  if (length > MAX_SYNC_NAME_LENGTH) {
-    return `Use ${MAX_SYNC_NAME_LENGTH} characters or fewer.`;
+  if (length > MAX_API_KEY_NAME_LENGTH) {
+    return `Use ${MAX_API_KEY_NAME_LENGTH} characters or fewer.`;
   }
 }
 
-export function CopyableSyncValue({
+export function CopyableValue({
   label,
   value,
 }: {
@@ -82,7 +82,7 @@ export function CopyableSyncValue({
   );
 }
 
-export function CreateSyncForm({
+export function CreateApiKeyForm({
   pending,
   error,
   onSubmit,
@@ -111,12 +111,12 @@ export function CreateSyncForm({
       <form.Field name="name" validators={{ onDynamic: validateName }}>
         {(field) => (
           <Field data-invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel htmlFor={nameInputId}>Sync name</FieldLabel>
+            <FieldLabel htmlFor={nameInputId}>Key name</FieldLabel>
             <Input
               id={nameInputId}
               name={field.name}
               value={field.state.value}
-              maxLength={MAX_SYNC_NAME_LENGTH}
+              maxLength={MAX_API_KEY_NAME_LENGTH}
               placeholder="Engineering activity"
               onBlur={field.handleBlur}
               onChange={(event) => field.handleChange(event.target.value)}
@@ -133,19 +133,19 @@ export function CreateSyncForm({
         </Button>
         <Button type="submit" size="lg" disabled={pending}>
           <Plus data-icon="inline-start" aria-hidden="true" />
-          {pending ? 'Adding…' : 'Add sync'}
+          {pending ? 'Adding…' : 'Create API key'}
         </Button>
       </div>
     </form>
   );
 }
 
-export function NewSyncCredential({
+export function NewApiKeyCredential({
   created,
   recordEndpoint,
   onDone,
 }: {
-  created: CreatedRecordSync;
+  created: CreatedApiKey;
   recordEndpoint: string;
   onDone: () => void;
 }) {
@@ -153,13 +153,13 @@ export function NewSyncCredential({
     <Card className="border border-primary/30 bg-primary/5 ring-0">
       <CardContent className="grid gap-5">
         <div className="grid gap-1">
-          <h3 className="font-semibold text-lg">Save the API key for {created.sync.name}</h3>
+          <h3 className="font-semibold text-lg">Save the API key for {created.key.name}</h3>
           <p className="text-muted-foreground text-sm leading-relaxed">
             Copy these now. The API key won’t be shown again.
           </p>
         </div>
-        <CopyableSyncValue label="Record endpoint" value={recordEndpoint} />
-        <CopyableSyncValue label="API key" value={created.apiKey} />
+        <CopyableValue label="Record endpoint" value={recordEndpoint} />
+        <CopyableValue label="API key" value={created.apiKey} />
         <div>
           <Button type="button" size="lg" onClick={onDone}>
             I saved the key
@@ -170,20 +170,21 @@ export function NewSyncCredential({
   );
 }
 
-function SyncCreatedAt({ sync }: { sync: RecordSync }) {
+function ApiKeyCreatedAt({ credential }: { credential: ApiKey }) {
   return (
     <p className="mt-1 text-muted-foreground text-sm">
-      Created <time dateTime={sync.createdAt}>{new Date(sync.createdAt).toLocaleString()}</time>
+      Created{' '}
+      <time dateTime={credential.createdAt}>{new Date(credential.createdAt).toLocaleString()}</time>
     </p>
   );
 }
 
-function RevokeSyncAction({
-  sync,
+function RevokeApiKeyAction({
+  credential,
   pending,
   onConfirm,
 }: {
-  sync: RecordSync;
+  credential: ApiKey;
   pending: boolean;
   onConfirm: () => void;
 }) {
@@ -198,17 +199,17 @@ function RevokeSyncAction({
         }
       />
       <AlertDialogContent>
-        <AlertDialogTitle>Revoke {sync.name}?</AlertDialogTitle>
+        <AlertDialogTitle>Revoke {credential.name}?</AlertDialogTitle>
         <AlertDialogDescription>
-          Its API key will stop authorizing deliveries immediately. Records already received from
-          this sync will remain available.
+          Its API key will stop authorizing requests immediately. Existing records will remain
+          available.
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="outline">Cancel</Button>} />
           <AlertDialogClose
             render={
               <Button variant="destructive" onClick={onConfirm}>
-                Revoke sync
+                Revoke API key
               </Button>
             }
           />
@@ -218,8 +219,8 @@ function RevokeSyncAction({
   );
 }
 
-export function SyncSettings({
-  syncs,
+export function ApiKeySettings({
+  keys,
   created,
   recordEndpoint,
   creating,
@@ -230,8 +231,8 @@ export function SyncSettings({
   onResetCreate,
   onRevoke,
 }: {
-  syncs: RecordSync[];
-  created: CreatedRecordSync | undefined;
+  keys: ApiKey[];
+  created: CreatedApiKey | undefined;
   recordEndpoint: string;
   creating: boolean;
   createError: Error | null;
@@ -239,11 +240,11 @@ export function SyncSettings({
   revokeError: Error | null;
   onCreate: (name: string) => void;
   onResetCreate: () => void;
-  onRevoke: (syncReadableId: string) => void;
+  onRevoke: (keyReadableId: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const authorized = syncs.filter((sync) => sync.revokedAt === null);
-  const revoked = syncs.filter((sync) => sync.revokedAt !== null);
+  const authorized = keys.filter((credential) => credential.revokedAt === null);
+  const revoked = keys.filter((credential) => credential.revokedAt !== null);
 
   function closeCreation() {
     onResetCreate();
@@ -252,10 +253,10 @@ export function SyncSettings({
 
   return (
     <div className="grid gap-8">
-      <section className="grid gap-4" aria-labelledby="authorized-syncs-heading">
+      <section className="grid gap-4" aria-labelledby="authorized-keys-heading">
         <div className="flex items-center justify-between gap-4">
-          <h2 id="authorized-syncs-heading" className="font-semibold text-xl">
-            Authorized syncs
+          <h2 id="authorized-keys-heading" className="font-semibold text-xl">
+            Active keys
           </h2>
           {!adding && !created && (
             <Button
@@ -267,18 +268,18 @@ export function SyncSettings({
               }}
             >
               <Plus data-icon="inline-start" aria-hidden="true" />
-              Add sync
+              Create API key
             </Button>
           )}
         </div>
         {created ? (
-          <NewSyncCredential
+          <NewApiKeyCredential
             created={created}
             recordEndpoint={recordEndpoint}
             onDone={closeCreation}
           />
         ) : adding ? (
-          <CreateSyncForm
+          <CreateApiKeyForm
             pending={creating}
             error={createError}
             onSubmit={onCreate}
@@ -286,19 +287,19 @@ export function SyncSettings({
           />
         ) : null}
         {authorized.length === 0 ? (
-          <p className="text-muted-foreground">No authorized syncs.</p>
+          <p className="text-muted-foreground">No active API keys.</p>
         ) : (
-          authorized.map((sync) => (
-            <Card key={sync.readableId}>
+          authorized.map((credential) => (
+            <Card key={credential.readableId}>
               <CardContent className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                 <div className="min-w-0">
-                  <strong>{sync.name}</strong>
-                  <SyncCreatedAt sync={sync} />
+                  <strong>{credential.name}</strong>
+                  <ApiKeyCreatedAt credential={credential} />
                 </div>
-                <RevokeSyncAction
-                  sync={sync}
-                  pending={revokingReadableId === sync.readableId}
-                  onConfirm={() => onRevoke(sync.readableId)}
+                <RevokeApiKeyAction
+                  credential={credential}
+                  pending={revokingReadableId === credential.readableId}
+                  onConfirm={() => onRevoke(credential.readableId)}
                 />
               </CardContent>
             </Card>
@@ -307,15 +308,15 @@ export function SyncSettings({
         {revokeError && <FieldError>{revokeError.message}</FieldError>}
       </section>
       {revoked.length > 0 && (
-        <section className="grid gap-4" aria-labelledby="revoked-syncs-heading">
-          <h2 id="revoked-syncs-heading" className="font-semibold text-xl">
-            Revoked syncs
+        <section className="grid gap-4" aria-labelledby="revoked-keys-heading">
+          <h2 id="revoked-keys-heading" className="font-semibold text-xl">
+            Revoked API keys
           </h2>
-          {revoked.map((sync) => (
-            <Card key={sync.readableId}>
+          {revoked.map((credential) => (
+            <Card key={credential.readableId}>
               <CardContent className="flex items-center justify-between gap-3">
                 <div>
-                  <strong>{sync.name}</strong>
+                  <strong>{credential.name}</strong>
                   <p className="text-muted-foreground text-sm">API key revoked</p>
                 </div>
                 <Badge variant="secondary">Revoked</Badge>

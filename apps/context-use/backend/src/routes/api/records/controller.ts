@@ -60,7 +60,7 @@ export function createRecordsController({
         });
       },
       {
-        detail: { tags: ['Records'], summary: 'List active externally synced records' },
+        detail: { tags: ['Records'], summary: 'List records' },
         query: RecordListQuerySchema,
         response: {
           [StatusMap.OK]: RecordListSchema,

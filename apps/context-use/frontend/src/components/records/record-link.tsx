@@ -1,11 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { FileInput } from 'lucide-react';
 import type { ReactNode } from 'react';
-import type { ExternalRecordSummary } from '../../queries/records';
+import type { ContextRecordSummary } from '../../queries/records';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
 
-type RecordIdentity = Pick<ExternalRecordSummary, 'readableId' | 'title' | 'provider' | 'kind'>;
+type RecordIdentity = Pick<ContextRecordSummary, 'readableId' | 'title'> & {
+  source: Pick<ContextRecordSummary['source'], 'provider' | 'kind'>;
+};
 
 export function RecordCardContent({ record }: { record: RecordIdentity }) {
   return (
@@ -24,7 +26,7 @@ export function RecordCardContent({ record }: { record: RecordIdentity }) {
           {record.title}
         </strong>
         <small className="truncate text-muted-foreground text-xs leading-relaxed">
-          {record.provider} · {record.kind}
+          {record.source.provider} · {record.source.kind}
         </small>
       </span>
     </>

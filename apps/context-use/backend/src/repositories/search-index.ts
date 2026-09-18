@@ -11,7 +11,6 @@ export async function replaceSearchDocument({
   summary = '',
   body = '',
   metadata = '',
-  participantNames = [],
 }: {
   db: SQL;
   ownerId: string;
@@ -21,13 +20,12 @@ export async function replaceSearchDocument({
   summary?: string;
   body?: string;
   metadata?: string;
-  participantNames?: string[];
 }): Promise<void> {
   const rows = await db<Array<{ id: number }>>`
-    insert into "hypermedia_search_document" ("owner_id", "resource_type", "readable_id", "participant_names")
-    values (${ownerId}, ${resourceType}, ${readableId}, ${JSON.stringify(participantNames)})
+    insert into "hypermedia_search_document" ("owner_id", "resource_type", "readable_id")
+    values (${ownerId}, ${resourceType}, ${readableId})
     on conflict ("owner_id", "resource_type", "readable_id") do update set
-      "participant_names" = excluded."participant_names"
+      "readable_id" = excluded."readable_id"
     returning "id"
   `;
   const row = rows[0];

@@ -1,7 +1,7 @@
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
+import { isUuidV7, normalizeApiKeyName } from '#backend/models/api-keys/model.ts';
 import { readableIdFrom, readableIdWithSuffix } from '#backend/models/readable-ids/model.ts';
-import { isUuidV7, normalizeSyncName } from '#backend/models/syncs/model.ts';
-import type { RecordSyncsRepositoryContract } from '#backend/repositories/syncs/repository.ts';
+import type { ApiKeysRepositoryContract } from '#backend/repositories/api-keys/repository.ts';
 
 const READABLE_ID_SUFFIX_LENGTH = 24;
 const MAX_IDENTITY_ATTEMPTS = 3;
@@ -10,21 +10,21 @@ function sha256(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
 }
 
-export class RecordSyncsService {
-  private readonly syncs: RecordSyncsRepositoryContract;
+export class ApiKeysService {
+  private readonly keys: ApiKeysRepositoryContract;
   private readonly now: () => Date;
   private readonly createUuidV7: () => string;
 
   constructor({
-    syncs,
+    keys,
     now = () => new Date(),
     createUuidV7 = () => Bun.randomUUIDv7(),
   }: {
-    syncs: RecordSyncsRepositoryContract;
+    keys: ApiKeysRepositoryContract;
     now?: () => Date;
     createUuidV7?: () => string;
   }) {
-    this.syncs = syncs;
+    this.keys = keys;
     this.now = now;
     this.createUuidV7 = createUuidV7;
   }
@@ -37,7 +37,7 @@ export class RecordSyncsService {
     if (!this.isOwner(actorId)) {
       return { state: 'forbidden' as const };
     }
-    const name = normalizeSyncName(rawName);
+    const name = normalizeApiKeyName(rawName);
     if (!name) {
       return { state: 'invalid' as const };
     }
@@ -46,9 +46,9 @@ export class RecordSyncsService {
       const id = this.createUuidV7();
       const apiKey = this.createUuidV7();
       if (!isUuidV7(id) || !isUuidV7(apiKey)) {
-        throw new Error('Record sync identifiers must be UUIDv7 values');
+        throw new Error('API key identifiers must be UUIDv7 values');
       }
-      const result = await this.syncs.create({
+      const result = await this.keys.create({
         id,
         ownerId: actorId,
         readableId: readableIdWithSuffix({
@@ -60,27 +60,27 @@ export class RecordSyncsService {
         createdAt: this.now().toISOString(),
       });
       if (result.state === 'created') {
-        return { state: 'created' as const, sync: result.sync, apiKey };
+        return { state: 'created' as const, key: result.key, apiKey };
       }
       if (result.state === 'name_conflict') {
         return { state: 'name_conflict' as const };
       }
     }
-    throw new Error('Could not allocate a unique record sync identity');
+    throw new Error('Could not allocate a unique API key identity');
   }
 
   async list({ actorId }: { actorId: string }) {
     if (!this.isOwner(actorId)) {
       return { state: 'forbidden' as const };
     }
-    return { state: 'found' as const, syncs: await this.syncs.list({ ownerId: actorId }) };
+    return { state: 'found' as const, keys: await this.keys.list({ ownerId: actorId }) };
   }
 
   async revoke({ actorId, readableId }: { actorId: string; readableId: string }) {
     if (!this.isOwner(actorId)) {
       return { state: 'forbidden' as const };
     }
-    const revoked = await this.syncs.revoke({
+    const revoked = await this.keys.revoke({
       ownerId: actorId,
       readableId,
       revokedAt: this.now().toISOString(),
@@ -92,9 +92,9 @@ export class RecordSyncsService {
     if (!isUuidV7(apiKey)) {
       return null;
     }
-    return await this.syncs.authenticateApiKeyFingerprint({ apiKeySha256: sha256(apiKey) });
+    return await this.keys.authenticateApiKeyFingerprint({ apiKeySha256: sha256(apiKey) });
   }
 }
 
-export type RecordSyncsServiceContract = Pick<RecordSyncsService, 'create' | 'list' | 'revoke'>;
-export type RecordSyncAuthenticationContract = Pick<RecordSyncsService, 'authenticate'>;
+export type ApiKeysServiceContract = Pick<ApiKeysService, 'create' | 'list' | 'revoke'>;
+export type ApiKeyAuthenticationContract = Pick<ApiKeysService, 'authenticate'>;

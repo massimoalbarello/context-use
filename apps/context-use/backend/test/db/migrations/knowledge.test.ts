@@ -28,7 +28,7 @@ const MCP_CLIENT_AUTHORIZATION_MIGRATION = new URL(
   import.meta.url,
 );
 const RECORD_MIGRATION = new URL(
-  '../../../src/db/migrations/0006_add_record_syncs_and_records.sql',
+  '../../../src/db/migrations/0006_add_api_keys_and_records.sql',
   import.meta.url,
 );
 const CONTENT_HASH_LENGTH = 64;

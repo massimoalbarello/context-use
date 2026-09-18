@@ -1,22 +1,15 @@
 import { join, resolve } from 'node:path';
-import canonicalize from 'canonicalize';
 import { createSqliteDatabase, createSynchronousSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import type { FaceAnalyzer } from '#backend/lib/face-analysis/analyzer.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { EntityType } from '#backend/models/entities/model.ts';
-import {
-  type DeliveredRecord,
-  MAX_RECORD_DELIVERY_BATCH_RECORDS,
-} from '#backend/models/records/delivery-contract.generated.ts';
-import { RecordSyncsRepository } from '#backend/repositories/syncs/repository.ts';
-import { RecordSyncsService } from '#backend/services/syncs/service.ts';
+import type { RecordInput } from '#backend/models/records/model.ts';
 import { DEMO_OWNER_ID } from './identity';
 import { createDemoResources } from './resources';
 
 const FIXTURES = resolve(import.meta.dir, './fixtures');
-const RECORD_LIST_LIMIT = 50;
 type EntityFixture = {
   readableId: string;
   name: string;
@@ -30,12 +23,8 @@ type AssetFixture = {
   expectedMediaType?: string;
   entityReadableId?: string;
 };
-type RecordFixture = Pick<DeliveredRecord, 'id' | 'provider' | 'kind'> & {
-  path: string;
-  content: Omit<Extract<DeliveredRecord, { operation: 'added' }>['content'], 'body'>;
-};
+type RecordFixture = Omit<RecordInput, 'body'> & { path: string };
 type PageFixture = { readableId: string; path: string; temporalCoverage: string | null };
-type SyncFixture = { provider: string; sourceId: string; name: string };
 
 function fixture(path: string) {
   return Bun.file(join(FIXTURES, path));
@@ -87,7 +76,7 @@ export async function seedDemoSnapshot({
       }
     }
     await seedAssets(resources);
-    const recordAddresses = await seedRecords({ resources, database });
+    const recordAddresses = await seedRecords(resources);
     await seedPages({ resources, recordAddresses });
     await resources.facesService.close();
     resources = undefined;
@@ -144,80 +133,18 @@ async function seedAssets(resources: Resources) {
   }
 }
 
-async function seedRecords({
-  resources,
-  database,
-}: {
-  resources: Resources;
-  database: Awaited<ReturnType<typeof createSqliteDatabase>>;
-}) {
-  const syncs = new RecordSyncsService({ syncs: new RecordSyncsRepository(database) });
+async function seedRecords(resources: Resources) {
   const fixtures: RecordFixture[] = await fixture('records/index.json').json();
-  const sources: SyncFixture[] = await fixture('syncs/index.json').json();
-  for (const source of sources) {
-    const created = await syncs.create({ actorId: DEMO_OWNER_ID, name: source.name });
-    if (created.state !== 'created') {
-      throw new Error(`Demo sync ${source.name}: ${created.state}`);
-    }
-    try {
-      const principal = await syncs.authenticate({ apiKey: created.apiKey });
-      if (!principal) {
-        throw new Error(`Demo sync ${source.name} could not be resolved`);
-      }
-      const records: DeliveredRecord[] = await Promise.all(
-        fixtures
-          .filter((record) => record.provider === source.provider)
-          .map(async (record) => {
-            const content = { ...record.content, body: await fixture(record.path).text() };
-            return {
-              eventId: Bun.randomUUIDv7(),
-              provider: record.provider,
-              sourceId: source.sourceId,
-              kind: record.kind,
-              id: record.id,
-              revision: 1,
-              operation: 'added',
-              contentHash: new Bun.CryptoHasher('sha256')
-                .update(canonicalize(content)!)
-                .digest('hex'),
-              committedAt: new Date().toISOString(),
-              content,
-            };
-          }),
-      );
-      for (let start = 0; start < records.length; start += MAX_RECORD_DELIVERY_BATCH_RECORDS) {
-        const result = await resources.recordsService.accept({
-          ownerId: DEMO_OWNER_ID,
-          syncId: principal.syncId,
-          envelope: {
-            version: 1,
-            batchId: Bun.randomUUIDv7(),
-            records: records.slice(start, start + MAX_RECORD_DELIVERY_BATCH_RECORDS),
-          },
-        });
-        if (result.state !== 'accepted') {
-          throw new Error(`Demo records from ${source.name}: ${result.state}`);
-        }
-      }
-    } finally {
-      await syncs.revoke({ actorId: DEMO_OWNER_ID, readableId: created.sync.readableId });
-    }
-  }
   const addresses = new Map<string, string>();
-  let offset: number | null = 0;
-  while (offset !== null) {
-    const page = await resources.recordsService.listResources({
+  for (const { path, ...record } of fixtures) {
+    const result = await resources.recordsService.upsert({
       ownerId: DEMO_OWNER_ID,
-      limit: RECORD_LIST_LIMIT,
-      offset,
+      record: { ...record, body: await fixture(path).text() },
     });
-    for (const record of page.items) {
-      addresses.set(record.recordId, record.readableId);
+    if (result.state !== 'created') {
+      throw new Error(`Demo record ${record.source.id}: ${result.state}`);
     }
-    offset = page.nextOffset;
-  }
-  if (addresses.size !== fixtures.length) {
-    throw new Error('Demo record import is incomplete');
+    addresses.set(record.source.id, result.readableId);
   }
   return addresses;
 }

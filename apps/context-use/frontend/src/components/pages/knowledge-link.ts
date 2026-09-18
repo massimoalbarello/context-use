@@ -2,7 +2,7 @@ import { isEmbeddableAsset } from '../../lib/asset-presentation';
 import type { AssetSummary } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
-import type { ExternalRecordSummary } from '../../queries/records';
+import type { ContextRecordSummary } from '../../queries/records';
 
 export type ActiveKnowledgeLink = {
   start: number;
@@ -12,7 +12,7 @@ export type ActiveKnowledgeLink = {
 
 export type KnowledgeLinkTarget =
   | { kind: 'entity'; entity: Pick<EntitySummary, 'name' | 'readableId'> }
-  | { kind: 'record'; record: Pick<ExternalRecordSummary, 'title' | 'readableId'> }
+  | { kind: 'record'; record: Pick<ContextRecordSummary, 'title' | 'readableId'> }
   | { kind: 'page'; page: Pick<KnowledgePageSummary, 'title' | 'readableId'> }
   | { kind: 'asset'; asset: Pick<AssetSummary, 'name' | 'readableId' | 'mediaType'> };
 
