@@ -161,7 +161,6 @@ export class ManagedSyncsService {
           description: provider.description,
           oauthApp: {
             configured: oauth.configured,
-            clientId: oauth.clientId,
             callbackUrl: oauth.expectedRedirectUri,
             createAppUrl: provider.oauth.createAppUrl,
           },

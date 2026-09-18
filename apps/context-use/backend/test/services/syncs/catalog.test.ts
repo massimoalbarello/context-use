@@ -64,7 +64,6 @@ test('provider registrations share management and destination code while deliver
           service,
           auth: [],
           oauthClient: {
-            clientId: null,
             configured: true,
             customClientAvailable: false,
             expectedRedirectUri: 'https://host/api/open-sync/oauth/callback',

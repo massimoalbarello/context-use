@@ -11,7 +11,6 @@ export const ManagedSyncListSchema = t.Array(
     description: t.String(),
     oauthApp: t.Object({
       configured: t.Boolean(),
-      clientId: t.Nullable(t.String()),
       callbackUrl: t.String(),
       createAppUrl: t.String(),
     }),

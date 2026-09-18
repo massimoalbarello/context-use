@@ -29,7 +29,6 @@ export interface SyncProviderSummary {
   description: string;
   oauthApp: {
     configured: boolean;
-    clientId: string | null;
     callbackUrl: string;
     createAppUrl: string;
   };

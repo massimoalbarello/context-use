@@ -15,7 +15,6 @@ test('app setup guides creation before collecting credentials and clears the sub
       createAppUrl="https://github.com/settings/applications/new"
       callbackUrl={callbackUrl}
       configured={false}
-      clientId={null}
       pending={false}
       error={null}
       onSave={save}
@@ -48,14 +47,13 @@ test('app setup guides creation before collecting credentials and clears the sub
   expect(secret.value).toBe('');
 });
 
-test('editing a saved app prefills its client ID, leaves its secret empty, and leaves instructions and recovery available', async () => {
+test('editing a configured app requests both credentials and keeps setup instructions available', async () => {
   const view = render(
     <OAuthAppSetup
       providerName="GitHub"
       createAppUrl="https://github.com/settings/applications/new"
       callbackUrl={callbackUrl}
       configured
-      clientId="saved-client"
       pending={false}
       error={new Error('Could not save your GitHub app.')}
       onSave={() => {}}
@@ -64,7 +62,7 @@ test('editing a saved app prefills its client ID, leaves its secret empty, and l
   );
   const user = userEvent.setup({ document });
   expect((view.getByLabelText('Client secret') as HTMLInputElement).value).toBe('');
-  expect((view.getByLabelText('Client ID') as HTMLInputElement).value).toBe('saved-client');
+  expect((view.getByLabelText('Client ID') as HTMLInputElement).value).toBe('');
   expect(view.getByRole('alert').textContent).toContain('Could not save');
   await user.click(view.getByRole('button', { name: 'Setup instructions' }));
   expect(view.getByLabelText('Authorization callback URL')).toBeTruthy();

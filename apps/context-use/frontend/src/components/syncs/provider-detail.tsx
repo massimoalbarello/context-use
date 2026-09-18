@@ -3,8 +3,6 @@ import { useState } from 'react';
 import type { OAuthAppCredentials, SyncProvider } from '../../queries/managed-syncs';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
-import { Field, FieldLabel } from '../ui/field';
-import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { ManagedSyncCard } from './managed-sync-card';
 import { OAuthAppSetup } from './oauth-app-setup';
@@ -102,7 +100,6 @@ function OAuthAppPanel(input: {
         createAppUrl={provider.oauthApp.createAppUrl}
         callbackUrl={provider.oauthApp.callbackUrl}
         configured={provider.oauthApp.configured}
-        clientId={provider.oauthApp.clientId}
         pending={input.pending}
         error={input.error}
         onCancel={() => setEditing(false)}
@@ -134,18 +131,7 @@ function OAuthAppPanel(input: {
       >
         OAuth app
       </ResourceDetailHeading>
-      {provider.oauthApp.configured && (
-        <div className="grid max-w-xl gap-5">
-          <Field>
-            <FieldLabel>Client ID</FieldLabel>
-            <Input aria-label="Client ID" readOnly value={provider.oauthApp.clientId ?? ''} />
-          </Field>
-          <Field>
-            <FieldLabel>Client secret</FieldLabel>
-            <Input aria-label="Client secret" readOnly type="password" value="••••••••" />
-          </Field>
-        </div>
-      )}
+      {provider.oauthApp.configured && <p className="text-muted-foreground">Configured</p>}
     </section>
   );
 }

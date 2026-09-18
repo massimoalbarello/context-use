@@ -53,8 +53,5 @@
     "bun": "1.4.0",
     "node": ">=22.14.0"
   },
-  "packageManager": "bun@1.4.0",
-  "patchedDependencies": {
-    "@oomol-lab/open-connector@1.6.0": "patches/@oomol-lab%2Fopen-connector@1.6.0.patch"
-  }
+  "packageManager": "bun@1.4.0"
 }

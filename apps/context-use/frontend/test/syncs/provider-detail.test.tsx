@@ -15,7 +15,7 @@ import { syncProviderSearch } from '../../src/routes/syncs.$providerId';
 import { providerFixture } from './fixture';
 
 afterEach(cleanup);
-test('Authorization combines OAuth app and account, masks the saved secret, and remains restorable', async () => {
+test('Authorization separates configured app status from account connection and remains restorable', async () => {
   const connect = mock(() => {});
   const root = createRootRoute();
   const route = createRoute({
@@ -41,10 +41,10 @@ test('Authorization combines OAuth app and account, masks the saved secret, and 
         authorizationFailed={false}
         onAction={() => {}}
         onConnect={connect}
-        onSaveApp={({ clientId }) => {
+        onSaveApp={() => {
           setProvider({
             ...provider,
-            oauthApp: { ...provider.oauthApp, configured: true, clientId },
+            oauthApp: { ...provider.oauthApp, configured: true },
             syncs: provider.syncs.map((sync) => ({ ...sync, state: 'disconnected' })),
           });
           return Promise.resolve();
@@ -68,19 +68,17 @@ test('Authorization combines OAuth app and account, masks the saved secret, and 
   await user.type(view.getByLabelText('Client secret'), 'secret');
   await user.click(view.getByRole('button', { name: 'Save OAuth app' }));
   expect(await view.findByRole('button', { name: 'Edit OAuth app' })).toBeTruthy();
-  expect((view.getByLabelText('Client ID') as HTMLInputElement).value).toBe('client');
-  const masked = view.getByLabelText('Client secret') as HTMLInputElement;
-  expect(masked.type).toBe('password');
-  expect(masked.readOnly).toBe(true);
-  expect(masked.value).toBe('••••••••');
+  expect(view.getByText('Configured')).toBeTruthy();
+  expect(view.queryByLabelText('Client ID')).toBeNull();
+  expect(view.queryByLabelText('Client secret')).toBeNull();
   expect(view.queryByLabelText('Authorization callback URL')).toBeNull();
   await user.click(view.getByRole('button', { name: 'Edit OAuth app' }));
-  expect((view.getByLabelText('Client ID') as HTMLInputElement).value).toBe('client');
+  expect((view.getByLabelText('Client ID') as HTMLInputElement).value).toBe('');
   expect((view.getByLabelText('Client secret') as HTMLInputElement).value).toBe('');
   await user.type(view.getByLabelText('Client secret'), 'discarded-secret');
   await user.click(view.getByRole('button', { name: 'Cancel' }));
   expect(view.getByRole('button', { name: 'Edit OAuth app' })).toBeTruthy();
-  expect((view.getByLabelText('Client secret') as HTMLInputElement).value).toBe('••••••••');
+  expect(view.queryByLabelText('Client secret')).toBeNull();
   expect(view.container.innerHTML).not.toContain('discarded-secret');
   await waitFor(() => expect(router.state.location.search).toEqual({ tab: 'authorization' }));
   expect(view.queryByText('Not connected')).toBeNull();
@@ -98,10 +96,9 @@ test('Authorization combines OAuth app and account, masks the saved secret, and 
   );
 });
 
-test('a connected account appears alongside the app and its saved client ID', async () => {
+test('a connected account appears alongside the configured app', async () => {
   const provider = providerFixture();
   provider.oauthApp.configured = true;
-  provider.oauthApp.clientId = 'saved-client';
   provider.account = { name: 'octocat', status: 'connected' };
   const props = {
     provider,
@@ -117,7 +114,7 @@ test('a connected account appears alongside the app and its saved client ID', as
   };
   const view = render(<ProviderDetail {...props} />);
   expect(view.queryByLabelText('Authorization callback URL')).toBeNull();
-  expect((view.getByLabelText('Client ID') as HTMLInputElement).value).toBe('saved-client');
+  expect(view.getByText('Configured')).toBeTruthy();
   expect(view.getByText('octocat')).toBeTruthy();
   const user = userEvent.setup({ document });
   await user.click(view.getByRole('button', { name: 'Edit OAuth app' }));

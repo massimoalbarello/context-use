@@ -183,9 +183,6 @@
       },
     },
   },
-  "patchedDependencies": {
-    "@oomol-lab/open-connector@1.6.0": "patches/@oomol-lab%2Fopen-connector@1.6.0.patch",
-  },
   "catalog": {
     "@better-auth/passkey": "^1.7.2",
     "better-auth": "^1.7.2",

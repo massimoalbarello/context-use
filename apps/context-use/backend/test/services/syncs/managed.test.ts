@@ -51,7 +51,6 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
           service: 'github',
           auth: [],
           oauthClient: {
-            clientId: null,
             configured,
             customClientAvailable: false,
             expectedRedirectUri: 'https://host/api/open-sync/oauth/callback',

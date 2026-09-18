@@ -37,10 +37,10 @@ test('OAuth app credentials persist through the installed package without becomi
       expect(status.syncs[0]?.state).toBe('disconnected');
       expect(status.oauthApp).toMatchObject({
         configured: true,
-        clientId: 'synthetic-client',
         callbackUrl: 'https://context.example/api/open-sync/oauth/callback',
       });
       expect(status.account.name).toBeNull();
+      expect(status.oauthApp).not.toHaveProperty('clientId');
       expect(JSON.stringify(status)).not.toContain('synthetic-secret');
     } finally {
       await first.close();
@@ -52,7 +52,9 @@ test('OAuth app credentials persist through the installed package without becomi
         sync: restarted,
         countRecords: () => Promise.resolve(0),
       });
-      expect((await service.list(actor))[0]?.oauthApp.clientId).toBe('synthetic-client');
+      expect((await service.list(actor))[0]?.oauthApp.configured).toBe(true);
+      const persistedAuthorization = new URL((await service.connect(actor)).authorizationUrl!);
+      expect(persistedAuthorization.searchParams.get('client_id')).toBe('synthetic-client');
       expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('disconnected');
       await service.configureApp({
         ...actor,
@@ -60,7 +62,7 @@ test('OAuth app credentials persist through the installed package without becomi
         clientSecret: 'updated-secret',
       });
       const status = await service.list(actor);
-      expect(status[0]?.oauthApp.clientId).toBe('updated-client');
+      expect(status[0]?.oauthApp.configured).toBe(true);
       expect(JSON.stringify(status)).not.toContain('updated-secret');
       const authorization = new URL((await service.connect(actor)).authorizationUrl!);
       expect(authorization.origin).toBe('https://github.com');

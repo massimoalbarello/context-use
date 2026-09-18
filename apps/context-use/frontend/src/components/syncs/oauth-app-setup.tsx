@@ -15,7 +15,6 @@ export function OAuthAppSetup(input: {
   createAppUrl: string;
   callbackUrl: string;
   configured: boolean;
-  clientId: string | null;
   pending: boolean;
   error: Error | null;
   onSave: (credentials: OAuthAppCredentials) => void;
@@ -26,7 +25,7 @@ export function OAuthAppSetup(input: {
   );
   const fieldId = useId();
   const form = useForm({
-    defaultValues: { clientId: input.clientId ?? '', clientSecret: '' },
+    defaultValues: { clientId: '', clientSecret: '' },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
       input.onSave({ clientId: value.clientId.trim(), clientSecret: value.clientSecret.trim() });
