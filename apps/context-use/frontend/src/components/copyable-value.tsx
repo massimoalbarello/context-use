@@ -1,12 +1,13 @@
 import { Button } from '@repo/ui/button';
 import { Check, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Field, FieldError, FieldLabel } from './ui/field';
 import { Input } from './ui/input';
 
 type CopyState = 'idle' | 'copied' | 'failed';
 
 export function CopyableValue({ label, value }: { label: string; value: string }) {
+  const inputId = useId();
   const [copyState, setCopyState] = useState<CopyState>('idle');
 
   async function copyValue() {
@@ -20,11 +21,11 @@ export function CopyableValue({ label, value }: { label: string; value: string }
 
   return (
     <Field>
-      <FieldLabel>{label}</FieldLabel>
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
       <div className="flex items-center gap-2">
         <Input
+          id={inputId}
           className="font-mono"
-          aria-label={label}
           readOnly
           value={value}
           onFocus={(event) => event.currentTarget.select()}
