@@ -1,10 +1,11 @@
 import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
-import { Check, Copy, Plus, RefreshCwOff } from 'lucide-react';
+import { Plus, RefreshCwOff } from 'lucide-react';
 import { useId, useState } from 'react';
 import { MAX_API_KEY_NAME_LENGTH } from '#backend/models/api-keys/model.ts';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { ApiKey, CreatedApiKey } from '../../queries/api-keys';
+import { CopyableValue } from '../copyable-value';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -19,8 +20,6 @@ import { Card, CardContent } from '../ui/card';
 import { Field, FieldError, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 
-type CopyState = 'idle' | 'copied' | 'failed';
-
 function validateName({ value }: { value: string }): string | undefined {
   const length = value.trim().length;
   if (length === 0) {
@@ -29,57 +28,6 @@ function validateName({ value }: { value: string }): string | undefined {
   if (length > MAX_API_KEY_NAME_LENGTH) {
     return `Use ${MAX_API_KEY_NAME_LENGTH} characters or fewer.`;
   }
-}
-
-export function CopyableValue({
-  label,
-  value,
-}: {
-  label: 'Record endpoint' | 'API key';
-  value: string;
-}) {
-  const [copyState, setCopyState] = useState<CopyState>('idle');
-
-  async function copyValue() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopyState('copied');
-    } catch {
-      setCopyState('failed');
-    }
-  }
-
-  return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <div className="flex items-center gap-2">
-        <Input
-          className="font-mono"
-          aria-label={label}
-          readOnly
-          value={value}
-          onFocus={(event) => event.currentTarget.select()}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={`Copy ${label}`}
-          onClick={copyValue}
-        >
-          {copyState === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-        </Button>
-      </div>
-      {copyState === 'failed' && (
-        <FieldError>
-          Could not access the clipboard. Select the value and copy it manually.
-        </FieldError>
-      )}
-      <span className="sr-only" aria-live="polite">
-        {copyState === 'copied' ? `${label} copied.` : ''}
-      </span>
-    </Field>
-  );
 }
 
 export function CreateApiKeyForm({

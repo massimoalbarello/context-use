@@ -1,5 +1,6 @@
 import type { Database } from 'bun:sqlite';
 import { join } from 'node:path';
+import { createOpenSync, type OpenSyncRuntime } from '@context-use/open-sync';
 import type { SQL } from 'bun';
 import { createApp } from '#backend/app.ts';
 import {
@@ -11,6 +12,7 @@ import { runMigrations } from '#backend/db/migrate.ts';
 import { loadAuthSecret } from '#backend/lib/auth/auth-secret.ts';
 import { createAuth, mcpServerUrl } from '#backend/lib/auth/better-auth.ts';
 import { fetchClientMetadataResource } from '#backend/lib/auth/client-metadata-resource.ts';
+import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { loadEnv } from '#backend/lib/env.ts';
 import { LocalFaceAnalyzer } from '#backend/lib/face-analysis/local-analyzer.ts';
 import { createLogger } from '#backend/lib/logger.ts';
@@ -20,6 +22,7 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.ts';
+import { LOCAL_RECORD_DESTINATION } from '#backend/models/syncs/managed.ts';
 import { ApiKeysRepository } from '#backend/repositories/api-keys/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
@@ -35,6 +38,7 @@ import { OwnerRegistrationRepository } from '#backend/repositories/owner-registr
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { AssetTransferCapabilities } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
+import { syncProviderLocation } from '#backend/routes/sync-callbacks.ts';
 import { ApiKeysService } from '#backend/services/api-keys/service.ts';
 import { AssetFacesService } from '#backend/services/assets/faces.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
@@ -48,6 +52,11 @@ import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/s
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
+import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
+import { localRecordDestination } from '#backend/services/syncs/destination.ts';
+import { syncEventLogger } from '#backend/services/syncs/logging.ts';
+import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
+import { syncProviders } from '#backend/services/syncs/providers/index.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;
@@ -67,6 +76,7 @@ if (authSecret.source.kind === 'environment') {
   logger.info(`using auth secret from ${authSecret.source.path}`);
 }
 const database = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+let sync: OpenSyncRuntime | undefined;
 let recordsDatabase: SQL | undefined;
 let retrievalDatabase: SQL | undefined;
 let facesDatabase: Database | undefined;
@@ -152,7 +162,37 @@ try {
     fetchClientMetadataResource,
   });
 
+  const catalog = new SyncCatalog(syncProviders);
+  sync = await createOpenSync({
+    onEvent: syncEventLogger(createLogger('sync')),
+    dataDirectory: join(env.DATA_FOLDER, 'open-sync'),
+    publicUrl: new URL('/api/open-sync', env.BASE_URL).href,
+    authorize: async (request) => {
+      const session = await auth.getSession({ headers: request.headers });
+      return session?.user.id === OWNER_USER_ID
+        ? { actorId: session.user.id, ownerId: session.user.id }
+        : null;
+    },
+    canConfigureProviders: (scope) =>
+      Promise.resolve(scope.actorId === OWNER_USER_ID && scope.actorId === scope.ownerId),
+    authorizationRedirect: ({ service, outcome }) =>
+      syncProviderLocation({ providerId: service, outcome }),
+    definitions: catalog.definitions,
+    destinationTypes: {
+      [LOCAL_RECORD_DESTINATION]: localRecordDestination({
+        upsertRecord: (input) => recordsService.upsert(input),
+        ownerId: OWNER_USER_ID,
+        definitions: catalog.definitions,
+      }),
+    },
+  });
+  const managedSyncsService = new ManagedSyncsService({
+    sync,
+    catalog,
+  });
   const app = createApp({
+    managedSyncsService,
+    syncFetch: sync.fetch,
     auth,
     assetsService,
     assetTransferCapabilities,
@@ -170,6 +210,7 @@ try {
     recordsService,
     apiKeysService,
   }).onStop(async () => {
+    await sync?.close();
     await facesService.close();
     await faceAnalyzer.close();
     await Promise.all([
@@ -188,7 +229,14 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
   facesService.startProcessing();
+  sync.start();
+  const stop = () => {
+    void app.stop();
+  };
+  process.once('SIGTERM', stop);
+  process.once('SIGINT', stop);
 } catch (error) {
+  await sync?.close();
   await faceAnalyzer.close();
   await Promise.all([
     database.close(),

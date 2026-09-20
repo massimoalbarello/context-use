@@ -71,9 +71,11 @@ test(
         process.execPath,
         '-e',
         `
+    import { getOpenSyncBuildOptions } from '@context-use/open-sync/build';
     const graphs = {};
     for (const entry of ${JSON.stringify(entries)}) {
-      const result = await Bun.build({ entrypoints: [entry], target: 'bun', metafile: true });
+      const external = entry === 'backend/src/main.ts' ? getOpenSyncBuildOptions().external : [];
+      const result = await Bun.build({ entrypoints: [entry], external, target: 'bun', metafile: true });
       if (!result.success) throw new AggregateError(result.logs);
       graphs[entry] = Object.keys(result.metafile.inputs);
     }
@@ -82,8 +84,9 @@ test(
       ],
       { cwd: root, stdout: 'pipe', stderr: 'inherit' },
     );
-    const graphs: Record<string, string[]> = JSON.parse(await new Response(child.stdout).text());
+    const output = await new Response(child.stdout).text();
     expect(await child.exited).toBe(0);
+    const graphs: Record<string, string[]> = JSON.parse(output);
     const instance = graphs['backend/src/main.ts']!;
     expect(instance.some((path) => path.endsWith('/lib/auth/better-auth.ts'))).toBe(true);
     expect(instance.filter((path) => /(^|\/)(demo|landing|fixtures)\//.test(path))).toEqual([]);

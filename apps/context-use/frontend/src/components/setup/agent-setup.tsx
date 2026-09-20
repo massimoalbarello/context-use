@@ -1,14 +1,12 @@
 import { Button, buttonVariants } from '@repo/ui/button';
-import { Check, ChevronDown, Copy } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useId, useState } from 'react';
 import claudeLogoUrl from '../../assets/claude.svg';
 import { CopyablePrompt } from '../copyable-prompt';
+import { CopyableValue } from '../copyable-value';
 import { Card, CardContent } from '../ui/card';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import INITIAL_CONTEXT_PROMPT from './initial-context-prompt.md?raw';
 
-type CopyState = 'idle' | 'copied' | 'failed';
 const MCP_SERVER_NAME = 'Context Use';
 
 export function agentConnectionHelpPrompt(mcpServerUrl: string): string {
@@ -19,72 +17,12 @@ export function initialContextPrompt(): string {
   return INITIAL_CONTEXT_PROMPT.trim();
 }
 
-function CopyableConnectionValue({
-  copyLabel,
-  label,
-  value,
-}: {
-  copyLabel: string;
-  label: string;
-  value: string;
-}) {
-  const inputId = useId();
-  const [copyState, setCopyState] = useState<CopyState>('idle');
-
-  async function copyValue() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopyState('copied');
-    } catch {
-      setCopyState('failed');
-    }
-  }
-
-  return (
-    <div className="grid gap-2">
-      <Label htmlFor={inputId} className="text-muted-foreground text-xs">
-        {label}
-      </Label>
-      <div className="flex items-center gap-2">
-        <Input
-          id={inputId}
-          className="font-mono"
-          readOnly
-          value={value}
-          onFocus={(event) => event.currentTarget.select()}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label={copyLabel}
-          onClick={copyValue}
-        >
-          {copyState === 'copied' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-        </Button>
-      </div>
-      {copyState === 'failed' && (
-        <p className="text-destructive text-sm" role="alert">
-          Could not access the clipboard. Select the value and copy it manually.
-        </p>
-      )}
-      <span className="sr-only" aria-live="polite">
-        {copyState === 'copied' ? `${label} copied.` : ''}
-      </span>
-    </div>
-  );
-}
-
 function McpServerDetails({ serverUrl }: { serverUrl: string }) {
   return (
     <Card>
       <CardContent className="grid gap-4">
-        <CopyableConnectionValue
-          copyLabel="Copy server name"
-          label="Server name"
-          value={MCP_SERVER_NAME}
-        />
-        <CopyableConnectionValue copyLabel="Copy server URL" label="Server URL" value={serverUrl} />
+        <CopyableValue label="Server name" value={MCP_SERVER_NAME} />
+        <CopyableValue label="Server URL" value={serverUrl} />
       </CardContent>
     </Card>
   );

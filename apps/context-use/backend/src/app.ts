@@ -14,6 +14,7 @@ import {
 import type { AssetTransferCapabilitiesContract } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#backend/routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#backend/routes/mcp/controller.ts';
+import { createSyncCallbacks, type SyncFetch } from '#backend/routes/sync-callbacks.ts';
 import type {
   ApiKeyAuthenticationContract,
   ApiKeysServiceContract,
@@ -32,6 +33,7 @@ import type {
   RecordResourcesServiceContract,
   RecordsIngestionContract,
 } from '#backend/services/records/service.ts';
+import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 
 // Pinned rather than left to the plugin's default: the frontend links to it and the dev
 // server proxies it.
@@ -54,8 +56,12 @@ export function createApp({
   profilesService,
   recordsService,
   apiKeysService,
+  managedSyncsService,
+  syncFetch,
 }: {
   auth: Auth;
+  syncFetch: SyncFetch;
+  managedSyncsService: ManagedSyncsServiceContract;
   assetsService: AssetsServiceContract;
   assetTransferCapabilities: AssetTransferCapabilitiesContract;
   frontendAssetsService: FrontendAssetsServiceContract;
@@ -138,6 +144,7 @@ export function createApp({
         },
       }),
     )
+    .use(createSyncCallbacks({ auth, fetch: syncFetch, syncs: managedSyncsService }))
     .use(createAuthDiscoveryController({ auth }))
     .use(
       createAssetTransferController({
@@ -167,6 +174,7 @@ export function createApp({
         profilesService,
         recordsService,
         apiKeysService,
+        managedSyncsService,
       }),
     )
     .onStop(() => mcpTransport.close())

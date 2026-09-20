@@ -1,7 +1,7 @@
 import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
 
-type ResourceName = 'entity' | 'page' | 'asset' | 'client';
+type ResourceName = 'entity' | 'page' | 'asset' | 'client' | 'OAuth app';
 
 type ResourceDetailActionsProps = { resource: ResourceName } & (
   | {
