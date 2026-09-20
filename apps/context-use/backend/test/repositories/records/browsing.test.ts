@@ -225,24 +225,3 @@ test('record keyword retrieval applies source date bounds before top K', async (
     ).toEqual([]);
   });
 });
-
-test('record counts filter owner, provider, kinds, and deleted records independently of delivery', async () => {
-  await withRecords(async ({ repository, service }) => {
-    const input = { ownerId: OWNER_ID, provider: 'github', kinds: ['issue', 'pull-request'] };
-    await service.upsert({
-      ownerId: SECOND_OWNER_ID,
-      record: record({ id: 'a', provider: 'github', kind: 'issue' }),
-    });
-    expect(await repository.countResources(input)).toBe(2);
-    expect(await repository.countResources({ ...input, kinds: ['pull-request'] })).toBe(1);
-    expect(await repository.countResources({ ...input, kinds: [] })).toBe(0);
-    expect(await repository.countResources({ ...input, provider: 'slack' })).toBe(0);
-    expect(await repository.countResources({ ...input, ownerId: SECOND_OWNER_ID })).toBe(1);
-    await service.remove({
-      ownerId: OWNER_ID,
-      source: { provider: 'github', kind: 'issue', id: 'a' },
-      sourceUpdatedAt: RECEIVED_AT.toISOString(),
-    });
-    expect(await repository.countResources(input)).toBe(1);
-  });
-});

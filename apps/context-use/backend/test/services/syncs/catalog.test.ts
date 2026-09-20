@@ -76,7 +76,6 @@ test('provider registrations share management and destination code while deliver
   const service = new ManagedSyncsService({
     catalog,
     sync: { api: runtime.api, providers },
-    countRecords: () => Promise.resolve(0),
   });
   const actor = { actorId: OWNER_USER_ID };
   const scope = { ...actor, ownerId: OWNER_USER_ID };

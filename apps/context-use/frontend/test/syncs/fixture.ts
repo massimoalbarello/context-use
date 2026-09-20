@@ -19,7 +19,6 @@ export function providerFixture(): SyncProvider {
         kinds: ['pull-request'],
         intervalMs: 900_000,
         state: 'setup-required',
-        recordCount: 0,
         lastSyncedAt: null,
         nextSyncAt: null,
         message: 'Set up your OAuth app to get started.',

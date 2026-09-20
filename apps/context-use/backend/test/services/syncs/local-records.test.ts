@@ -73,13 +73,6 @@ test('installed npm engine stores searchable local records through existing serv
           readableId: listing.items[0]!.readableId,
         });
         expect(resource?.body).toContain('Keep **useful context**.');
-        expect(
-          await records.countResources({
-            ownerId: OWNER_USER_ID,
-            provider: 'github',
-            kinds: ['pull-request'],
-          }),
-        ).toBe(1);
         expect(await new ApiKeysRepository(database).list({ ownerId: OWNER_USER_ID })).toEqual([]);
         const canonical = githubRecord(pull({ id: 'PR_replay' }));
         const delivery: Delivery = {
@@ -174,13 +167,6 @@ test('installed npm engine stores searchable local records through existing serv
           }),
         ).toEqual({ status: 'accepted' });
 
-        expect(
-          await records.countResources({
-            ownerId: OWNER_USER_ID,
-            provider: 'github',
-            kinds: ['pull-request'],
-          }),
-        ).toBe(2);
         expect(
           await destination.deliver({ ...input, scope: { actorId: 'other', ownerId: 'other' } }),
         ).toEqual({ status: 'rejected', code: 'invalid_source' });

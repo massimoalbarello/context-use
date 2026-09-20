@@ -188,7 +188,6 @@ try {
   });
   const managedSyncsService = new ManagedSyncsService({
     sync,
-    countRecords: (input) => recordsService.countResources(input),
     catalog,
   });
   const app = createApp({

@@ -17,7 +17,6 @@ export interface ManagedSyncSummary {
   kinds: string[];
   intervalMs: number;
   state: ManagedSyncState;
-  recordCount: number;
   lastSyncedAt: string | null;
   nextSyncAt: string | null;
   message: string;

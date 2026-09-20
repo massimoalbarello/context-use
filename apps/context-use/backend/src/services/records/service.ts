@@ -12,7 +12,6 @@ import {
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
 import type {
-  CountRecordsInput,
   ListRecordsInput,
   RecordsRepositoryContract,
 } from '#backend/repositories/records/repository.ts';
@@ -99,9 +98,6 @@ export class RecordsService {
       receivedAt: this.now().toISOString(),
     });
     return publication.result;
-  }
-  countResources(input: CountRecordsInput) {
-    return this.records.countResources(input);
   }
   listResources(input: ListRecordsInput) {
     return this.records.listResources(input);

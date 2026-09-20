@@ -27,7 +27,6 @@ export const ManagedSyncListSchema = t.Array(
         kinds: t.Array(t.String()),
         intervalMs: t.Integer(),
         state: t.UnionEnum(MANAGED_SYNC_STATES),
-        recordCount: t.Integer(),
         lastSyncedAt: t.Nullable(t.String()),
         nextSyncAt: t.Nullable(t.String()),
         message: t.String(),

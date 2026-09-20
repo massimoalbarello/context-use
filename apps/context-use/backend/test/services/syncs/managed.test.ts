@@ -73,7 +73,6 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
   const service = new ManagedSyncsService({
     catalog: new SyncCatalog(syncProviders),
     sync: { api: runtime.api, providers },
-    countRecords: () => Promise.resolve(0),
   });
   const actor = { actorId: OWNER_USER_ID, providerId: 'github' };
   try {

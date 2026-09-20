@@ -18,7 +18,6 @@ test('sync controls use registered provider, kind, and schedule metadata', async
     provider: 'calendar',
     kinds: ['event'],
     state: 'ready' as const,
-    recordCount: 1,
     intervalMs: 300_000,
   };
   const action = mock(() => {});

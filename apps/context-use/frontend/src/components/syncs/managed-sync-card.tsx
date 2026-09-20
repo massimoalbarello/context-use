@@ -38,11 +38,7 @@ export function ManagedSyncCard(input: {
       )}
       {connected && (
         <>
-          <dl className="grid gap-5 sm:grid-cols-3">
-            <div>
-              <dt className="text-muted-foreground text-xs">Records saved</dt>
-              <dd className="mt-1 font-medium tabular-nums">{sync.recordCount.toLocaleString()}</dd>
-            </div>
+          <dl className="grid gap-5 sm:grid-cols-2">
             <div>
               <dt className="text-muted-foreground text-xs">Last synced</dt>
               <dd className="mt-1 text-sm">

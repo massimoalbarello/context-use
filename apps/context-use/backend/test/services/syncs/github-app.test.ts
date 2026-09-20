@@ -25,7 +25,6 @@ test('OAuth app credentials persist through the installed package without becomi
       const service = new ManagedSyncsService({
         catalog: new SyncCatalog(syncProviders),
         sync: first,
-        countRecords: () => Promise.resolve(0),
       });
       expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('setup-required');
       await service.configureApp({
@@ -50,7 +49,6 @@ test('OAuth app credentials persist through the installed package without becomi
       const service = new ManagedSyncsService({
         catalog: new SyncCatalog(syncProviders),
         sync: restarted,
-        countRecords: () => Promise.resolve(0),
       });
       expect((await service.list(actor))[0]?.oauthApp.configured).toBe(true);
       const persistedAuthorization = new URL((await service.connect(actor)).authorizationUrl!);

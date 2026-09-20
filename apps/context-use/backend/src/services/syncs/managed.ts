@@ -7,7 +7,6 @@ import type {
   SyncProviderSummary,
 } from '#backend/models/syncs/managed.ts';
 import { LOCAL_RECORD_DESTINATION } from '#backend/models/syncs/managed.ts';
-import type { CountRecordsInput } from '#backend/repositories/records/repository.ts';
 import type { ContextSync, SyncCatalog, SyncProvider } from './catalog.ts';
 
 const HEALTHY_STATES = new Set([
@@ -61,7 +60,6 @@ export class ManagedSyncsService {
   constructor(
     private readonly input: {
       sync: Pick<OpenSyncRuntime, 'api' | 'providers'>;
-      countRecords(input: CountRecordsInput): Promise<number>;
       catalog: SyncCatalog;
     },
   ) {}
@@ -114,47 +112,37 @@ export class ManagedSyncsService {
           throw new BadRequestError('OAuth app setup is unavailable.');
         }
         const connection = status.connections[0];
-        const syncs = await Promise.all(
-          provider.syncs.map(async (sync): Promise<ManagedSyncSummary> => {
-            const installation = installations.find(
-              (item) => item.definition.id === sync.registration.definition.id,
-            );
-            const bound = status.connections.find(
-              (item) => item.id === installation?.connection?.id,
-            );
-            const recordCount = await this.input.countRecords({
-              ownerId: scope.ownerId,
-              provider: provider.id,
-              kinds: Object.keys(sync.registration.definition.kinds),
-            });
-            const runs = installation
-              ? this.input.sync.api.runs({ ...scope, id: installation.id }).runs
-              : [];
-            const lastSuccess = runs.find((run) => run.state === 'succeeded');
-            return {
-              key: sync.key,
-              name: sync.name,
-              description: sync.description,
-              provider: provider.id,
-              kinds: Object.keys(sync.registration.definition.kinds),
-              intervalMs: sync.intervalMs,
-              ...managedState({
-                configured: oauth.configured,
-                connected: Boolean(connection),
-                connectionActive: bound?.status === 'active',
-                installation,
-                queue: queues.get(installation?.id ?? '') ?? { blocked: [], pending: 0 },
-              }),
-              recordCount,
-              lastSyncedAt: lastSuccess?.completedAt
-                ? new Date(lastSuccess.completedAt).toISOString()
-                : null,
-              nextSyncAt: installation?.enabled
-                ? new Date(installation.nextDueAt).toISOString()
-                : null,
-            };
-          }),
-        );
+        const syncs = provider.syncs.map((sync): ManagedSyncSummary => {
+          const installation = installations.find(
+            (item) => item.definition.id === sync.registration.definition.id,
+          );
+          const bound = status.connections.find((item) => item.id === installation?.connection?.id);
+          const runs = installation
+            ? this.input.sync.api.runs({ ...scope, id: installation.id }).runs
+            : [];
+          const lastSuccess = runs.find((run) => run.state === 'succeeded');
+          return {
+            key: sync.key,
+            name: sync.name,
+            description: sync.description,
+            provider: provider.id,
+            kinds: Object.keys(sync.registration.definition.kinds),
+            intervalMs: sync.intervalMs,
+            ...managedState({
+              configured: oauth.configured,
+              connected: Boolean(connection),
+              connectionActive: bound?.status === 'active',
+              installation,
+              queue: queues.get(installation?.id ?? '') ?? { blocked: [], pending: 0 },
+            }),
+            lastSyncedAt: lastSuccess?.completedAt
+              ? new Date(lastSuccess.completedAt).toISOString()
+              : null,
+            nextSyncAt: installation?.enabled
+              ? new Date(installation.nextDueAt).toISOString()
+              : null,
+          };
+        });
         return {
           id: provider.id,
           name: provider.name,
