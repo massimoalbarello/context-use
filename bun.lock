@@ -31,7 +31,7 @@
         "@better-auth/mcp": "^1.7.2",
         "@better-auth/oauth-provider": "^1.7.2",
         "@better-auth/passkey": "catalog:",
-        "@context-use/open-sync": "0.1.0",
+        "@context-use/open-sync": "0.2.0",
         "@context-use/openclaw-memory": "workspace:*",
         "@elysiajs/eden": "^1.4.9",
         "@elysiajs/openapi": "^1.4.15",
@@ -353,7 +353,7 @@
 
     "@commitlint/types": ["@commitlint/types@21.2.0", "", { "dependencies": { "conventional-commits-parser": "^7.0.0", "picocolors": "^1.1.1" } }, "sha512-7zVFCDB2reMvJH5dmbKnOQPjZEvjdJTH8jc0U/PIPU1r3/+vf5pD1HlfitV2MWsWXrvu7u39iY1lyLUPOaN0Gw=="],
 
-    "@context-use/open-sync": ["@context-use/open-sync@0.1.0", "", { "dependencies": { "@cfworker/json-schema": "4.1.1", "@oomol-lab/open-connector": "1.6.0", "elysia": "^1.4.30" } }, "sha512-7K0h3Dswvb0M5UwOUTEH4S6VIqBI4XncZW6gs86yENw7kqvjeEYygx7Kfd0Qn5Zt+YdHOoPY5zMlfW8ibQ0obQ=="],
+    "@context-use/open-sync": ["@context-use/open-sync@0.2.0", "", { "dependencies": { "@cfworker/json-schema": "4.1.1", "@oomol-lab/open-connector": "1.6.0", "elysia": "^1.4.30" } }, "sha512-BQqtu+xKBcZVVGAO/rRFdPS+Ub/nlFBqEdewN0kcDdKaamqSecS10/gPnaHa8Fvcolq+zuVvNIw8qS/KNeGbaQ=="],
 
     "@context-use/openclaw-memory": ["@context-use/openclaw-memory@workspace:packages/openclaw-memory"],
 
