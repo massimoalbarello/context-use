@@ -63,7 +63,7 @@ test(
 );
 
 test(
-  'runtime bundles preserve instance, demo, and landing isolation',
+  'runtime bundles preserve target isolation and include only the GitHub provider',
   async () => {
     const entries = ['backend/src/main.ts', 'demo/main.ts', '../landing/src/server.ts'];
     const child = Bun.spawn(
@@ -71,23 +71,52 @@ test(
         process.execPath,
         '-e',
         `
-    import { getOpenSyncBuildOptions } from '@context-use/open-sync/build';
+    import { readdir } from 'node:fs/promises';
+    import { join } from 'node:path';
+    import { prepareSyncBuild } from './backend/scripts/shared/build-sync.ts';
     const graphs = {};
-    for (const entry of ${JSON.stringify(entries)}) {
-      const external = entry === 'backend/src/main.ts' ? getOpenSyncBuildOptions().external : [];
-      const result = await Bun.build({ entrypoints: [entry], external, target: 'bun', metafile: true });
-      if (!result.success) throw new AggregateError(result.logs);
-      graphs[entry] = Object.keys(result.metafile.inputs);
+    const syncBuild = await prepareSyncBuild();
+    try {
+      for (const entry of ${JSON.stringify(entries)}) {
+        const options = entry === 'backend/src/main.ts'
+          ? { external: syncBuild.external, plugins: syncBuild.plugins } : {};
+        const result = await Bun.build({ entrypoints: [entry], ...options, target: 'bun', metafile: true });
+        if (!result.success) throw new AggregateError(result.logs);
+        graphs[entry] = Object.keys(result.metafile.inputs);
+      }
+      const assets = syncBuild.assets[0];
+      const catalog = await Bun.file(join(assets, 'catalog/apps-index.json')).json();
+      console.log(JSON.stringify({
+        graphs,
+        catalogFiles: await readdir(join(assets, 'catalog/apps')),
+        catalogProviders: catalog.providers.map(entry => entry.provider.service),
+      }));
+    } finally {
+      await syncBuild.dispose();
     }
-    console.log(JSON.stringify(graphs));
   `,
       ],
       { cwd: root, stdout: 'pipe', stderr: 'inherit' },
     );
     const output = await new Response(child.stdout).text();
     expect(await child.exited).toBe(0);
-    const graphs: Record<string, string[]> = JSON.parse(output);
+    const {
+      graphs,
+      catalogFiles,
+      catalogProviders,
+    }: {
+      graphs: Record<string, string[]>;
+      catalogFiles: string[];
+      catalogProviders: string[];
+    } = JSON.parse(output);
     const instance = graphs['backend/src/main.ts']!;
+    expect(catalogFiles).toEqual(['github.json']);
+    expect(catalogProviders).toEqual(['github']);
+    const connectorProviders = instance.flatMap((path) => {
+      const match = path.match(/\/open-connector\/src\/providers\/([^/]+)\//);
+      return match ? [match[1]!] : [];
+    });
+    expect([...new Set(connectorProviders)]).toEqual(['github']);
     expect(instance.some((path) => path.endsWith('/lib/auth/better-auth.ts'))).toBe(true);
     expect(instance.filter((path) => /(^|\/)(demo|landing|fixtures)\//.test(path))).toEqual([]);
     expect(
