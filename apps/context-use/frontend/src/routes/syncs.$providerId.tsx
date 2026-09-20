@@ -27,7 +27,10 @@ function SyncProviderRoute() {
   const { providerId } = Route.useParams();
   const { tab, authorization } = Route.useSearch();
   const navigate = Route.useNavigate();
-  const query = useQuery(managedSyncsQueryOptions);
+  const query = useQuery({
+    ...managedSyncsQueryOptions,
+    refetchInterval: tab === 'sync' ? managedSyncsQueryOptions.refetchInterval : false,
+  });
   const connect = useConnectSyncProvider();
   const configure = useConfigureOAuthApp();
   const update = useUpdateManagedSync();

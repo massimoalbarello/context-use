@@ -7,7 +7,8 @@ export type SyncProvider = NonNullable<
 >[number];
 export type ManagedSync = SyncProvider['syncs'][number];
 export const managedSyncsQueryKey = ['managed-syncs'] as const;
-const REFRESH_MS = 5000;
+const SYNCING_REFRESH_MS = 5000;
+const IDLE_REFRESH_MS = 60_000;
 export const managedSyncsQueryOptions = queryOptions({
   queryKey: managedSyncsQueryKey,
   queryFn: async () => {
@@ -17,7 +18,15 @@ export const managedSyncsQueryOptions = queryOptions({
     }
     return data;
   },
-  refetchInterval: REFRESH_MS,
+  refetchInterval: (query) => {
+    const syncs = query.state.data?.flatMap((provider) => provider.syncs) ?? [];
+    if (syncs.some((sync) => sync.state === 'syncing')) {
+      return SYNCING_REFRESH_MS;
+    }
+    return syncs.some((sync) => sync.state === 'ready' || sync.state === 'error')
+      ? IDLE_REFRESH_MS
+      : false;
+  },
 });
 export type OAuthAppCredentials = Parameters<
   ReturnType<typeof api.api.syncs.managed.providers>['app']['post']
