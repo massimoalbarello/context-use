@@ -27,7 +27,7 @@ test('resource changes persist their message and actor atomically, excluding no-
       entities.create({ ...original, change: { ...original.change, message: ' ' } }),
     ).rejects.toThrow();
     expect(await entities.find({ ownerId: 'owner', readableId: 'acme' })).toBeNull();
-    expect(await database`select * from "resource_change"`).toEqual([]);
+    expect(await database`select * from "resource_change"`).toHaveLength(0);
     await entities.create(original);
     await entities.update({ ...original, updatedAt: now });
     await entities.update({

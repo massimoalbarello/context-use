@@ -614,9 +614,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
             before: current.temporalCoverage,
             after: temporal.expression,
           }),
-          ...(current.contentHash !== input.contentHash
-            ? ['Content updated']
-            : []),
+          ...(current.contentHash !== input.contentHash ? ['Content updated'] : []),
         ],
         revisionNumber,
         createdAt: input.updatedAt,

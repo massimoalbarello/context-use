@@ -7,7 +7,7 @@ import { withChangeMessage } from '#backend/routes/change-message.ts';
 
 function fixture() {
   let writes = 0;
-  const write = (body: { changeMessage: string }) => {
+  const write = <T extends { changeMessage: string }>(body: T) => {
     writes++;
     return body;
   };
