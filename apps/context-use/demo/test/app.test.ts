@@ -187,6 +187,7 @@ test(
           '/api/entities/steve-jobs',
           '/api/entities/steve-jobs/images',
           '/api/pages/my-work-from-ipod-to-iphone',
+          '/api/pages/my-work-from-ipod-to-iphone/diff?from=0&to=1',
           '/api/pages/my-work-from-ipod-to-iphone/preview',
           '/api/assets/steve-presenting-iphone',
           '/api/assets/steve-presenting-iphone/content',
@@ -301,6 +302,14 @@ test(
           await (await read('/api/assets/synthetic-ipod-demo-checklist/faces')).json(),
         ).toMatchObject({ state: 'unsupported', faces: [] });
         expect(page.revisions.length).toBeGreaterThan(1);
+        const comparison = await read(`/api/pages/${page.readableId}/diff?from=1&to=2`);
+        expect(comparison.status).toBe(StatusMap.OK);
+        expect(comparison.headers.get('cache-control')).toBe('no-store');
+        expect(await comparison.json()).toMatchObject({
+          from: 1,
+          to: 2,
+          hunks: expect.any(Array),
+        });
         const records = (await (await read('/api/records?limit=50')).json()) as Static<
           typeof RecordListSchema
         >;
@@ -381,6 +390,7 @@ test(
           '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',
+          '/api/pages/my-work-from-ipod-to-iphone/diff?from=0&to=1',
           '/api/pages/my-work-from-ipod-to-iphone/archive',
           '/api/entities',
           '/api/entities/steve-jobs',
