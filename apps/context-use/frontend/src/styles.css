@@ -2,18 +2,3 @@
 @import "@repo/ui/theme.css";
 @source "./";
 @source "../../../../packages/ui/src";
-
-:root {
-  --diff-added: oklch(0.42 0.13 145);
-  --diff-removed: oklch(0.46 0.19 25);
-}
-
-.dark {
-  --diff-added: oklch(0.78 0.17 150);
-  --diff-removed: oklch(0.8 0.14 25);
-}
-
-@theme inline {
-  --color-diff-added: var(--diff-added);
-  --color-diff-removed: var(--diff-removed);
-}
