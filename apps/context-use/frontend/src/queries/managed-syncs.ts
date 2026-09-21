@@ -28,22 +28,25 @@ export const managedSyncsQueryOptions = queryOptions({
       : false;
   },
 });
-export type OAuthAppCredentials = Parameters<
-  ReturnType<typeof api.api.syncs.managed.providers>['app']['post']
->[0];
+export type OAuthAppCredentials = Omit<
+  Parameters<ReturnType<typeof api.api.syncs.managed.providers>['app']['post']>[0],
+  'changeMessage'
+>;
 export async function configureOAuthApp(input: {
   providerId: string;
   credentials: OAuthAppCredentials;
 }) {
   const { error } = await api.api.syncs.managed
     .providers({ providerId: input.providerId })
-    .app.post(input.credentials);
+    .app.post({ ...input.credentials, changeMessage: 'Configured sync provider credentials' });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
 }
 export async function connectSyncProvider(providerId: string) {
-  const { data, error } = await api.api.syncs.managed.providers({ providerId }).connect.post();
+  const { data, error } = await api.api.syncs.managed.providers({ providerId }).connect.post({
+    changeMessage: 'Connected a sync provider',
+  });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -53,7 +56,12 @@ export async function updateManagedSync(input: {
   key: string;
   action: 'pause' | 'resume' | 'run';
 }) {
-  const { error } = await api.api.syncs.managed({ key: input.key }).post({ action: input.action });
+  const { error } = await api.api.syncs.managed({ key: input.key }).post({
+    action: input.action,
+    changeMessage: { pause: 'Paused a sync', resume: 'Resumed a sync', run: 'Requested a sync' }[
+      input.action
+    ],
+  });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

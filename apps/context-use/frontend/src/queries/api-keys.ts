@@ -22,7 +22,7 @@ export const apiKeysQueryOptions = queryOptions({
 });
 
 export async function createApiKey(input: { name: string }) {
-  const { data, error } = await apiKeys.post(input);
+  const { data, error } = await apiKeys.post({ ...input, changeMessage: 'Created an API key' });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -30,7 +30,9 @@ export async function createApiKey(input: { name: string }) {
 }
 
 export async function revokeApiKey(input: { keyReadableId: string }): Promise<void> {
-  const { error } = await apiKeys({ keyReadableId: input.keyReadableId }).revoke.put();
+  const { error } = await apiKeys({ keyReadableId: input.keyReadableId }).revoke.put({
+    changeMessage: 'Revoked an API key',
+  });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

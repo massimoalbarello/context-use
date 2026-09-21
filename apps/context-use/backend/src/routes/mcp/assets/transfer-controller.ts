@@ -95,8 +95,16 @@ export function createAssetTransferController({
           );
         }
 
-        const { principal, name, allowDuplicate } = consumed.capability;
+        const { principal, name, allowDuplicate, changeMessage } = consumed.capability;
         const result = await assetsService.create({
+          change: {
+            actor: {
+              kind: 'mcp_client',
+              clientAuthorizationId: principal.clientAuthorizationId,
+              name: principal.clientAuthorizationName,
+            },
+            message: changeMessage,
+          },
           ownerId: principal.ownerId,
           name,
           file: body.blob,

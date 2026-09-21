@@ -13,6 +13,7 @@ import {
   entityAddress,
   entityReadableId,
 } from '#backend/models/readable-ids/addresses.ts';
+import { withChangeMessage } from '#backend/routes/change-message.ts';
 import { AssetAddressSchema, EntityAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
   McpEntitySchema,
@@ -155,14 +156,25 @@ export function registerEntityTools({
       title: 'Create entity',
       description:
         'Create one entity identity, optionally assigning an existing image asset. Set isSelf true only to create the knowledge base owner entity during initial setup; that role can be created only once and is always typed as Person. If the derived address already exists, returns an explicit conflict that may be retried with allowDuplicate.',
-      inputSchema: CreateEntityInputSchema,
+      inputSchema: withChangeMessage(CreateEntityInputSchema),
       outputSchema: CreateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ isSelf, imageAssetAddress, ...input }) => {
+    async ({ isSelf, imageAssetAddress, changeMessage, ...input }) => {
       let readableId: string;
       if (isSelf) {
-        const result = await profilesService.create({ ownerId: principal.ownerId, ...input });
+        const result = await profilesService.create({
+          change: {
+            actor: {
+              kind: 'mcp_client',
+              clientAuthorizationId: principal.clientAuthorizationId,
+              name: principal.clientAuthorizationName,
+            },
+            message: changeMessage,
+          },
+          ownerId: principal.ownerId,
+          ...input,
+        });
         if (result.state === 'profile_exists') {
           return mcpToolError({
             code: 'self_entity_exists',
@@ -179,7 +191,18 @@ export function registerEntityTools({
         }
         readableId = result.profile.selfEntity.readableId;
       } else {
-        const result = await entitiesService.create({ ownerId: principal.ownerId, ...input });
+        const result = await entitiesService.create({
+          change: {
+            actor: {
+              kind: 'mcp_client',
+              clientAuthorizationId: principal.clientAuthorizationId,
+              name: principal.clientAuthorizationName,
+            },
+            message: changeMessage,
+          },
+          ownerId: principal.ownerId,
+          ...input,
+        });
         if (result.state === 'name_conflict') {
           return mcpToolError({
             code: 'entity_name_conflict',
@@ -194,6 +217,14 @@ export function registerEntityTools({
       const address = entityAddress(readableId);
       if (imageAssetAddress) {
         const imageResult = await entitiesService.setImage({
+          change: {
+            actor: {
+              kind: 'mcp_client',
+              clientAuthorizationId: principal.clientAuthorizationId,
+              name: principal.clientAuthorizationName,
+            },
+            message: changeMessage,
+          },
           ownerId: principal.ownerId,
           readableId,
           assetReadableId: assetReadableId(imageAssetAddress),
@@ -263,14 +294,22 @@ export function registerEntityTools({
     {
       title: 'Update entity',
       description: `Update the name, description, optional entity type, and optionally the image of one active entity at its exact address. ${ENTITY_IMAGE_UPDATE_DESCRIPTION}`,
-      inputSchema: UpdateEntityInputSchema,
+      inputSchema: withChangeMessage(UpdateEntityInputSchema),
       outputSchema: UpdateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, name, description, entityType, imageAssetAddress }) => {
+    async ({ address, name, description, entityType, imageAssetAddress, changeMessage }) => {
       const readableId = entityReadableId(address);
       if (imageAssetAddress === null) {
         const entity = await entitiesService.removeImage({
+          change: {
+            actor: {
+              kind: 'mcp_client',
+              clientAuthorizationId: principal.clientAuthorizationId,
+              name: principal.clientAuthorizationName,
+            },
+            message: changeMessage,
+          },
           ownerId: principal.ownerId,
           readableId,
         });
@@ -279,6 +318,14 @@ export function registerEntityTools({
         }
       } else if (imageAssetAddress !== undefined) {
         const result = await entitiesService.setImage({
+          change: {
+            actor: {
+              kind: 'mcp_client',
+              clientAuthorizationId: principal.clientAuthorizationId,
+              name: principal.clientAuthorizationName,
+            },
+            message: changeMessage,
+          },
           ownerId: principal.ownerId,
           readableId,
           assetReadableId: assetReadableId(imageAssetAddress),
@@ -288,6 +335,14 @@ export function registerEntityTools({
         }
       }
       const entity = await entitiesService.update({
+        change: {
+          actor: {
+            kind: 'mcp_client',
+            clientAuthorizationId: principal.clientAuthorizationId,
+            name: principal.clientAuthorizationName,
+          },
+          message: changeMessage,
+        },
         ownerId: principal.ownerId,
         readableId,
         name,
@@ -306,12 +361,20 @@ export function registerEntityTools({
       title: 'Archive entity',
       description:
         'Archive one entity. This is destructive and succeeds only when existing domain rules allow it.',
-      inputSchema: EntityAddressInputSchema,
+      inputSchema: withChangeMessage(EntityAddressInputSchema),
       outputSchema: ArchiveEntityOutputSchema,
       annotations: MCP_ARCHIVE_TOOL_ANNOTATIONS,
     },
-    async ({ address }) => {
+    async ({ address, changeMessage }) => {
       const result = await entitiesService.archive({
+        change: {
+          actor: {
+            kind: 'mcp_client',
+            clientAuthorizationId: principal.clientAuthorizationId,
+            name: principal.clientAuthorizationName,
+          },
+          message: changeMessage,
+        },
         ownerId: principal.ownerId,
         readableId: entityReadableId(address),
       });

@@ -2,6 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { ResourceNameConflictSchema } from '#backend/routes/api/model.ts';
 import {
   CreateKnowledgeProfileBodySchema,
@@ -18,6 +19,7 @@ export function createKnowledgeProfileController({
   profilesService: KnowledgeProfilesServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({
       auth: true,
@@ -26,7 +28,11 @@ export function createKnowledgeProfileController({
     .post(
       '/profile',
       async ({ body, user, status }) => {
-        const result = await profilesService.create({ ownerId: user.id, ...body });
+        const result = await profilesService.create({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          ownerId: user.id,
+          ...body,
+        });
         if (result.state === 'created') {
           return status(StatusMap.Created, knowledgeProfileResponse(result.profile));
         }
@@ -40,6 +46,7 @@ export function createKnowledgeProfileController({
         return status(StatusMap.Conflict, { error: 'The owner entity already exists' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Profile'], summary: 'Create the knowledge base owner entity' },
         body: CreateKnowledgeProfileBodySchema,
         response: {

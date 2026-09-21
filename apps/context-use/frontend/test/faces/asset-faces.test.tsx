@@ -3,8 +3,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AssetFaces } from '../../src/components/faces/asset-faces';
+import type { api } from '../../src/lib/api';
 import type { EntityPage } from '../../src/queries/entities';
-import type { AnnotationInput, AssetFaces as AssetFacesData } from '../../src/queries/faces';
+import type { AssetFaces as AssetFacesData } from '../../src/queries/faces';
+
+type AnnotationBody = Parameters<
+  ReturnType<ReturnType<typeof api.api.assets>['faces']>['annotation']['put']
+>[0];
 
 function renderFaces(handleRequest: (request: Request) => Promise<Response>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -52,14 +57,14 @@ test('face boxes support keyboard review and dismissed detections can be restore
       },
     ],
   };
-  const decisions: AnnotationInput['body'][] = [];
+  const decisions: AnnotationBody[] = [];
   const { view, dispose } = renderFaces(async (request) => {
     const path = new URL(request.url).pathname;
     if (path === '/api/entities') {
       return Response.json({ items: [], total: 0, nextOffset: null } satisfies EntityPage);
     }
     if (path === '/api/assets/group-photo/faces/face-one/annotation') {
-      const body: AnnotationInput['body'] = await request.json();
+      const body: AnnotationBody = await request.json();
       decisions.push(body);
       result = {
         ...result,
@@ -95,7 +100,10 @@ test('face boxes support keyboard review and dismissed detections can be restore
     await user.click(view.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(view.queryByRole('dialog')).toBeNull());
     expect(view.getByRole('button', { name: 'Review face: Unknown' })).toBeTruthy();
-    expect(decisions).toEqual([{ decision: 'dismissed' }, { decision: 'unknown' }]);
+    expect(decisions).toEqual([
+      { decision: 'dismissed', changeMessage: 'Corrected face identification in this image' },
+      { decision: 'unknown', changeMessage: 'Corrected face identification in this image' },
+    ]);
   } finally {
     dispose();
   }

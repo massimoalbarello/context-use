@@ -49,9 +49,17 @@ async function withRecords(
 test('identity is owner + provider + kind + source ID; identical bodies do not merge unrelated items', async () => {
   await withRecords(async ({ service }) => {
     const input = { ownerId: 'owner-a', record: record() };
-    const first = await service.upsert(input);
+    const first = await service.upsert({
+      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      ...input,
+    });
     expect(first.state).toBe('created');
-    expect(await service.upsert(input)).toEqual({
+    expect(
+      await service.upsert({
+        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        ...input,
+      }),
+    ).toEqual({
       state: 'unchanged',
       readableId: first.readableId,
     });
@@ -60,9 +68,15 @@ test('identity is owner + provider + kind + source ID; identical bodies do not m
       { provider: 'github', kind: 'issue', id: 'PR_1' },
       { provider: 'gitlab', kind: 'pull-request', id: 'PR_1' },
     ]) {
-      expect((await service.upsert({ ...input, record: record({ source }) })).state).toBe(
-        'created',
-      );
+      expect(
+        (
+          await service.upsert({
+            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            ...input,
+            record: record({ source }),
+          })
+        ).state,
+      ).toBe('created');
     }
     expect(
       (await service.listResources({ ownerId: 'owner-a', limit: 10, offset: 0 })).items,
@@ -70,7 +84,15 @@ test('identity is owner + provider + kind + source ID; identical bodies do not m
     expect(
       await service.findResource({ ownerId: 'owner-b', readableId: first.readableId }),
     ).toBeNull();
-    expect((await service.upsert({ ...input, ownerId: 'owner-b' })).state).toBe('created');
+    expect(
+      (
+        await service.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...input,
+          ownerId: 'owner-b',
+        })
+      ).state,
+    ).toBe('created');
     expect(
       (await service.listResources({ ownerId: 'owner-b', limit: 10, offset: 0 })).items,
     ).toHaveLength(1);
@@ -80,8 +102,17 @@ test('identity is owner + provider + kind + source ID; identical bodies do not m
 test('orders normalized source timestamps and rejects ambiguous changes without overwriting data', async () => {
   await withRecords(async ({ service }) => {
     const original = record({ sourceUpdatedAt: '2026-09-08T10:00:00+02:00' });
-    const first = await service.upsert({ ownerId: 'owner-a', record: original });
-    const write = (value: RecordInput) => service.upsert({ ownerId: 'owner-a', record: value });
+    const first = await service.upsert({
+      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      ownerId: 'owner-a',
+      record: original,
+    });
+    const write = (value: RecordInput) =>
+      service.upsert({
+        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        ownerId: 'owner-a',
+        record: value,
+      });
     expect((await write(record())).state).toBe('unchanged');
     expect((await write(record({ body: 'Ambiguous' }))).state).toBe('conflict');
     expect((await write(record({ body: 'Unversioned', sourceUpdatedAt: null }))).state).toBe(
@@ -112,15 +143,41 @@ test('orders normalized source timestamps and rejects ambiguous changes without 
 test('deletions hide records and search matches, and stale replays cannot resurrect them', async () => {
   await withRecords(async ({ service, database, storage }) => {
     const input = record();
-    const first = await service.upsert({ ownerId: 'owner-a', record: input });
+    const first = await service.upsert({
+      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      ownerId: 'owner-a',
+      record: input,
+    });
     const retrieval = createTestHypermediaRetrievalService({ database, storage });
     const search = () =>
       retrieval.search({ ownerId: 'owner-a', query: 'Originalneedle', limit: 5 });
     expect((await search()).results).toHaveLength(1);
     const deletion = { ownerId: 'owner-a', source: input.source, sourceUpdatedAt: NEXT };
-    expect((await service.remove(deletion)).state).toBe('updated');
-    expect((await service.remove(deletion)).state).toBe('unchanged');
-    expect((await service.upsert({ ownerId: 'owner-a', record: input })).state).toBe('stale');
+    expect(
+      (
+        await service.remove({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...deletion,
+        })
+      ).state,
+    ).toBe('updated');
+    expect(
+      (
+        await service.remove({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...deletion,
+        })
+      ).state,
+    ).toBe('unchanged');
+    expect(
+      (
+        await service.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ownerId: 'owner-a',
+          record: input,
+        })
+      ).state,
+    ).toBe('stale');
     expect(
       await service.findResource({ ownerId: 'owner-a', readableId: first.readableId }),
     ).toBeNull();
@@ -130,8 +187,13 @@ test('deletions hide records and search matches, and stale replays cannot resurr
       kinds: [],
     });
     expect(
-      (await service.upsert({ ownerId: 'owner-a', record: record({ sourceUpdatedAt: LAST }) }))
-        .state,
+      (
+        await service.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ownerId: 'owner-a',
+          record: record({ sourceUpdatedAt: LAST }),
+        })
+      ).state,
     ).toBe('updated');
     expect((await search()).results).toHaveLength(1);
   });
@@ -139,11 +201,16 @@ test('deletions hide records and search matches, and stale replays cannot resurr
 
 test('storage integrity and search publication fail atomically; unpublished files are discarded', async () => {
   await withRecords(async ({ service, database, storage, dataFolder }) => {
-    const first = await service.upsert({ ownerId: 'owner-a', record: record() });
+    const first = await service.upsert({
+      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      ownerId: 'owner-a',
+      record: record(),
+    });
     const retrieval = createTestHypermediaRetrievalService({ database, storage });
     await database`create trigger "fail_record_index" before insert on "hypermedia_search_document" when new."resource_type" = 'record' begin select raise(abort, 'index unavailable'); end`;
     await expect(
       service.upsert({
+        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
         ownerId: 'owner-a',
         record: record({ body: 'Failedneedle', sourceUpdatedAt: NEXT }),
       }),
@@ -174,11 +241,28 @@ test('independent writers deduplicate concurrently and converge on the newest so
     try {
       const other = new RecordsService({ records: new RecordsRepository(otherDatabase), storage });
       const input = { ownerId: 'owner-a', record: record() };
-      const results = await Promise.all([service.upsert(input), other.upsert(input)]);
+      const results = await Promise.all([
+        service.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...input,
+        }),
+        other.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...input,
+        }),
+      ]);
       expect(results.map((result) => result.state).sort()).toEqual(['created', 'unchanged']);
       await Promise.all([
-        service.upsert({ ...input, record: record({ body: 'Middle', sourceUpdatedAt: NEXT }) }),
-        other.upsert({ ...input, record: record({ body: 'Newest', sourceUpdatedAt: LAST }) }),
+        service.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...input,
+          record: record({ body: 'Middle', sourceUpdatedAt: NEXT }),
+        }),
+        other.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ...input,
+          record: record({ body: 'Newest', sourceUpdatedAt: LAST }),
+        }),
       ]);
       expect(
         (await service.findResource({ ownerId: 'owner-a', readableId: results[0]!.readableId }))
@@ -198,7 +282,13 @@ test('all callers validate the native schema, including local service calls', as
       { ...record(), participants: [] },
       record({ source: { provider: '', kind: 'note', id: '1' } }),
     ]) {
-      await expect(service.upsert({ ownerId: 'owner-a', record: invalid })).rejects.toThrow();
+      await expect(
+        service.upsert({
+          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          ownerId: 'owner-a',
+          record: invalid,
+        }),
+      ).rejects.toThrow();
     }
     expect(
       (await service.listResources({ ownerId: 'owner-a', limit: 10, offset: 0 })).items,
@@ -219,7 +309,13 @@ test.each(['throw', 'short'] as const)(
         return bytes;
       });
       try {
-        await expect(service.upsert({ ownerId: 'owner-a', record: record() })).rejects.toThrow();
+        await expect(
+          service.upsert({
+            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            ownerId: 'owner-a',
+            record: record(),
+          }),
+        ).rejects.toThrow();
         expect(
           (await service.listResources({ ownerId: 'owner-a', limit: 10, offset: 0 })).items,
         ).toEqual([]);

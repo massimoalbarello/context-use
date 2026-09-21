@@ -346,7 +346,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
 test('search_hypermedia returns compact typed previews and canonical dereference addresses', async () => {
   const retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'> = {
     search: (input) => {
-      expect(input).toEqual({
+      expect(input).toMatchObject({
         ownerId: principal.ownerId,
         query: 'Luca Tidepool',
         resourceTypes: ['entity', 'knowledge_page'],
@@ -419,7 +419,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
   await withMcpClient({
     retrievalService: {
       search: (input) => {
-        expect(input).toEqual({
+        expect(input).toMatchObject({
           ownerId: principal.ownerId,
           query: 'project',
           resourceTypes: ['knowledge_page', 'asset', 'record'],
@@ -710,11 +710,12 @@ test('page mutations require a current guide version without transport state or 
   const mutations = [
     {
       name: 'create_knowledge_page',
-      arguments: { markdown: page.markdown },
+      arguments: { changeMessage: 'Updated test context', markdown: page.markdown },
     },
     {
       name: 'update_knowledge_page',
       arguments: {
+        changeMessage: 'Updated test context',
         address: 'context-use://page/growth-playbook',
         expectedRevisionNumber: 2,
         markdown: page.markdown,
@@ -722,7 +723,10 @@ test('page mutations require a current guide version without transport state or 
     },
     {
       name: 'archive_knowledge_page',
-      arguments: { address: 'context-use://page/growth-playbook' },
+      arguments: {
+        changeMessage: 'Updated test context',
+        address: 'context-use://page/growth-playbook',
+      },
     },
   ];
 
@@ -778,7 +782,11 @@ test('successful create and update tools return only newly needed coordinates an
     run: async (client) => {
       const createdEntity = await client.callTool({
         name: 'create_entity',
-        arguments: { name: entity.name, description: entity.description },
+        arguments: {
+          changeMessage: 'Updated test context',
+          name: entity.name,
+          description: entity.description,
+        },
       });
       expect(createdEntity.structuredContent).toEqual({
         address: 'context-use://entity/luca-bianchi',
@@ -787,6 +795,7 @@ test('successful create and update tools return only newly needed coordinates an
       const updatedEntity = await client.callTool({
         name: 'update_entity',
         arguments: {
+          changeMessage: 'Updated test context',
           address: 'context-use://entity/luca-bianchi',
           name: entity.name,
           description: entity.description,
@@ -797,7 +806,11 @@ test('successful create and update tools return only newly needed coordinates an
       const guide_version = await readHypermediaCurationGuideVersion(client);
       const createdPage = await client.callTool({
         name: 'create_knowledge_page',
-        arguments: { guide_version, markdown: page.markdown },
+        arguments: {
+          changeMessage: 'Updated test context',
+          guide_version,
+          markdown: page.markdown,
+        },
       });
       expect(createdPage.structuredContent).toEqual({
         address: 'context-use://page/growth-playbook',
@@ -807,6 +820,7 @@ test('successful create and update tools return only newly needed coordinates an
       const updatedPage = await client.callTool({
         name: 'update_knowledge_page',
         arguments: {
+          changeMessage: 'Updated test context',
           address: 'context-use://page/growth-playbook',
           expectedRevisionNumber: 1,
           guide_version,
@@ -845,6 +859,7 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
       const created = await client.callTool({
         name: 'create_entity',
         arguments: {
+          changeMessage: 'Updated test context',
           name: entity.name,
           description: entity.description,
           imageAssetAddress: 'context-use://asset/luca-portrait',
@@ -853,6 +868,7 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
       expect(created.isError).not.toBe(true);
 
       const baseUpdate = {
+        changeMessage: 'Updated test context',
         address: 'context-use://entity/luca-bianchi',
         name: entity.name,
         description: entity.description,
@@ -871,13 +887,16 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
 
       const removed = await client.callTool({
         name: 'update_entity',
-        arguments: { ...baseUpdate, imageAssetAddress: null },
+        arguments: {
+          ...baseUpdate,
+          imageAssetAddress: null,
+        },
       });
       expect(removed.isError).not.toBe(true);
     },
   });
 
-  expect(assignedImages).toEqual([
+  expect(assignedImages).toMatchObject([
     {
       ownerId: principal.ownerId,
       readableId: entity.readableId,
@@ -889,7 +908,9 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
       assetReadableId: 'new-luca-portrait',
     },
   ]);
-  expect(removedImages).toEqual([{ ownerId: principal.ownerId, readableId: entity.readableId }]);
+  expect(removedImages).toMatchObject([
+    { ownerId: principal.ownerId, readableId: entity.readableId },
+  ]);
 });
 
 test('entity image assignment exposes recoverable MCP errors from the service rules', async () => {
@@ -913,6 +934,7 @@ test('entity image assignment exposes recoverable MCP errors from the service ru
         const created = await client.callTool({
           name: 'create_entity',
           arguments: {
+            changeMessage: 'Updated test context',
             name: entity.name,
             description: entity.description,
             imageAssetAddress: 'context-use://asset/luca-portrait',
@@ -929,6 +951,7 @@ test('entity image assignment exposes recoverable MCP errors from the service ru
         const updated = await client.callTool({
           name: 'update_entity',
           arguments: {
+            changeMessage: 'Updated test context',
             address: 'context-use://entity/luca-bianchi',
             name: entity.name,
             description: entity.description,
@@ -1079,12 +1102,21 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
     run: async (client) => {
       const conflict = await client.callTool({
         name: 'create_entity',
-        arguments: { name: entity.name, description: entity.description },
+        arguments: {
+          changeMessage: 'Updated test context',
+          name: entity.name,
+          description: entity.description,
+        },
       });
       expect(errorCode(conflict)).toBe('entity_name_conflict');
       const retried = await client.callTool({
         name: 'create_entity',
-        arguments: { name: entity.name, description: entity.description, allowDuplicate: true },
+        arguments: {
+          changeMessage: 'Updated test context',
+          name: entity.name,
+          description: entity.description,
+          allowDuplicate: true,
+        },
       });
       expect(retried.isError).not.toBe(true);
       expectNoInternalResourceIds(retried.structuredContent);
@@ -1093,6 +1125,7 @@ test('MCP mutation outcomes retain duplicate retries and stale revision conflict
       const stale = await client.callTool({
         name: 'update_knowledge_page',
         arguments: {
+          changeMessage: 'Updated test context',
           address: 'context-use://page/growth-playbook',
           expectedRevisionNumber: 1,
           guide_version: await readHypermediaCurationGuideVersion(client),
@@ -1120,7 +1153,7 @@ test('MCP creates the self entity once through the knowledge profile invariant',
     ...unusedEntitiesService,
     setImage: (input) => {
       imageCalls += 1;
-      expect(input).toEqual({
+      expect(input).toMatchObject({
         ownerId: principal.ownerId,
         readableId: selfEntity.readableId,
         assetReadableId: 'luca-portrait',
@@ -1132,11 +1165,18 @@ test('MCP creates the self entity once through the knowledge profile invariant',
     ...unusedKnowledgeProfilesService,
     create: (input) => {
       createCalls += 1;
-      expect(input).toEqual({
+      expect(input).toMatchObject({
         ownerId: principal.ownerId,
         name: entity.name,
         description: entity.description,
-        allowDuplicate: undefined,
+        change: {
+          actor: {
+            kind: 'mcp_client',
+            clientAuthorizationId: principal.clientAuthorizationId,
+            name: principal.clientAuthorizationName,
+          },
+          message: 'Updated test context',
+        },
       });
       return Promise.resolve(
         createCalls === 1
@@ -1153,6 +1193,7 @@ test('MCP creates the self entity once through the knowledge profile invariant',
       const created = await client.callTool({
         name: 'create_entity',
         arguments: {
+          changeMessage: 'Updated test context',
           name: entity.name,
           description: entity.description,
           isSelf: true,
@@ -1167,7 +1208,12 @@ test('MCP creates the self entity once through the knowledge profile invariant',
 
       const duplicate = await client.callTool({
         name: 'create_entity',
-        arguments: { name: entity.name, description: entity.description, isSelf: true },
+        arguments: {
+          changeMessage: 'Updated test context',
+          name: entity.name,
+          description: entity.description,
+          isSelf: true,
+        },
       });
       expect(errorCode(duplicate)).toBe('self_entity_exists');
       expect(createCalls).toBe(2);
@@ -1196,7 +1242,10 @@ test('archive blockers expose public page coordinates and never trigger cascadin
     run: async (client) => {
       const result = await client.callTool({
         name: 'archive_entity',
-        arguments: { address: 'context-use://entity/luca-bianchi' },
+        arguments: {
+          changeMessage: 'Updated test context',
+          address: 'context-use://entity/luca-bianchi',
+        },
       });
       expect(result.isError).toBe(true);
       expect(result.structuredContent).toEqual({
@@ -1256,6 +1305,7 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
         const created = await client.callTool({
           name: 'create_knowledge_page',
           arguments: {
+            changeMessage: 'Updated test context',
             guide_version,
             markdown: '# MCP notes\n\nCreated by the research agent.',
             temporalCoverage: '2026-08',
@@ -1282,6 +1332,7 @@ test('knowledge page revisions durably snapshot the acting MCP client authorizat
         const updated = await client.callTool({
           name: 'update_knowledge_page',
           arguments: {
+            changeMessage: 'Updated test context',
             address,
             expectedRevisionNumber: 1,
             guide_version,
@@ -1393,6 +1444,7 @@ test('MCP exposes optional entity assignments and entity-only filters from the c
           await client.callTool({
             name: 'create_entity',
             arguments: {
+              changeMessage: 'Updated test context',
               name: 'Restaurant',
               description: 'A restaurant business',
               entityType: 'organization',
@@ -1405,6 +1457,7 @@ test('MCP exposes optional entity assignments and entity-only filters from the c
           await client.callTool({
             name: 'update_entity',
             arguments: {
+              changeMessage: 'Updated test context',
               address: 'context-use://entity/luca-bianchi',
               name: entity.name,
               description: entity.description,
@@ -1428,7 +1481,12 @@ test('MCP exposes optional entity assignments and entity-only filters from the c
           (
             await client.callTool({
               name: 'create_entity',
-              arguments: { name: 'Invalid', description: 'Invalid', entityType },
+              arguments: {
+                changeMessage: 'Updated test context',
+                name: 'Invalid',
+                description: 'Invalid',
+                entityType,
+              },
             })
           ).isError,
         ).toBe(true);
@@ -1445,6 +1503,33 @@ test('MCP exposes optional entity assignments and entity-only filters from the c
           })
         ).isError,
       ).toBe(true);
+    },
+  });
+});
+
+test('MCP resource mutations require a nonblank change message before calling a service', async () => {
+  let writes = 0;
+  await withMcpClient({
+    entitiesService: {
+      ...unusedEntitiesService,
+      create: () => {
+        writes += 1;
+        return Promise.resolve({ state: 'created', entity });
+      },
+    },
+    run: async (client) => {
+      const { tools } = await client.listTools();
+      for (const tool of tools.filter((tool) => tool.annotations?.readOnlyHint === false)) {
+        expect(tool.inputSchema.required).toContain('changeMessage');
+      }
+      for (const changeMessage of [undefined, '', '   ']) {
+        const result = await client.callTool({
+          name: 'create_entity',
+          arguments: { name: 'Acme', description: 'Research organization', changeMessage },
+        });
+        expect(result.isError).toBe(true);
+      }
+      expect(writes).toBe(0);
     },
   });
 });

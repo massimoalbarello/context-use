@@ -7,11 +7,13 @@ import {
   type EntityTypeFilter,
   SELF_ENTITY_TYPE,
 } from '#backend/models/entities/model.ts';
+import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type { KnowledgePageReference } from '#backend/models/knowledge-pages/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom, entityTypeFrom } from '#backend/views/entities/entity-view.ts';
 import { retireInvalidPortraitReference } from '../faces/portrait-links.ts';
+import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export type SetEntityImageResult =
@@ -28,6 +30,7 @@ export interface EntityRepositoryContract {
     description: string;
     entityType?: EntityType | null;
     createdAt: string;
+    change: ChangeContext;
   }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }>;
   list(input: {
     ownerId: string;
@@ -43,22 +46,26 @@ export interface EntityRepositoryContract {
     description: string;
     entityType?: EntityType | null;
     updatedAt: string;
+    change: ChangeContext;
   }): Promise<Entity | null>;
   setImage(input: {
     ownerId: string;
     readableId: string;
     assetId: string;
     updatedAt: string;
+    change: ChangeContext;
   }): Promise<SetEntityImageResult>;
   removeImage(input: {
     ownerId: string;
     readableId: string;
     updatedAt: string;
+    change: ChangeContext;
   }): Promise<Entity | null>;
   archive(input: {
     ownerId: string;
     readableId: string;
     archivedAt: string;
+    change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference> | { state: 'self_entity' }>;
 }
 
@@ -77,6 +84,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
     description: string;
     entityType?: EntityType | null;
     createdAt: string;
+    change: ChangeContext;
   }): Promise<{ state: 'created'; entity: Entity } | { state: 'readable_id_conflict' }> {
     return this.sql.begin(async (db) => {
       const rows = await db.CreateEntity`
@@ -102,6 +110,17 @@ export class EntitiesRepository implements EntityRepositoryContract {
         readableId: input.readableId,
         label: input.name,
         summary: input.description,
+      });
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'entity',
+        readableId: input.readableId,
+        name: input.name,
+        action: 'created',
+        details: [input.description],
+        createdAt: input.createdAt,
       });
       return {
         state: 'created' as const,
@@ -208,6 +227,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
     description,
     entityType,
     updatedAt,
+    change,
   }: {
     ownerId: string;
     readableId: string;
@@ -215,8 +235,10 @@ export class EntitiesRepository implements EntityRepositoryContract {
     description: string;
     entityType?: EntityType | null;
     updatedAt: string;
+    change: ChangeContext;
   }): Promise<Entity | null> {
     return this.sql.begin(async (db) => {
+      const previous = await this.findWith({ db, ownerId, readableId });
       const rows = await db.UpdateEntityIdentity`
         /* @notNull id */
         update "entity"
@@ -247,7 +269,32 @@ export class EntitiesRepository implements EntityRepositoryContract {
         label: name,
         summary: description,
       });
-      return this.findWith({ db, ownerId, readableId });
+      const entity = await this.findWith({ db, ownerId, readableId });
+      if (entity && previous) {
+        const details = [
+          ...changedText({ label: 'Name', before: previous.name, after: entity.name }),
+          ...changedText({
+            label: 'Description',
+            before: previous.description,
+            after: entity.description,
+          }),
+          ...changedText({ label: 'Type', before: previous.entityType, after: entity.entityType }),
+        ];
+        if (details.length) {
+          await recordChange({
+            db,
+            ownerId,
+            change,
+            resourceType: 'entity',
+            readableId,
+            name: entity.name,
+            action: 'updated',
+            details,
+            createdAt: updatedAt,
+          });
+        }
+      }
+      return entity;
     });
   }
 
@@ -256,13 +303,16 @@ export class EntitiesRepository implements EntityRepositoryContract {
     readableId,
     assetId,
     updatedAt,
+    change,
   }: {
     ownerId: string;
     readableId: string;
     assetId: string;
     updatedAt: string;
+    change: ChangeContext;
   }): Promise<SetEntityImageResult> {
     return this.sql.begin(async (db) => {
+      const previous = await this.findWith({ db, ownerId, readableId });
       const rows = await db.SetEntityImage`
         /* @notNull entityId */
         update "entity" as entity
@@ -294,6 +344,23 @@ export class EntitiesRepository implements EntityRepositoryContract {
       }
       await retireInvalidPortraitReference({ db, ownerId, entityId: rows[0].entityId });
       const entity = await this.findWith({ db, ownerId, readableId });
+      if (entity && previous?.image?.readableId !== entity.image?.readableId) {
+        await recordChange({
+          db,
+          ownerId,
+          change,
+          resourceType: 'entity',
+          readableId,
+          name: entity.name,
+          action: 'updated',
+          details: changedText({
+            label: 'Image',
+            before: previous?.image?.name ?? null,
+            after: entity.image?.name ?? null,
+          }),
+          createdAt: updatedAt,
+        });
+      }
       return entity ? { state: 'updated' as const, entity } : { state: 'not_found' as const };
     });
   }
@@ -302,12 +369,15 @@ export class EntitiesRepository implements EntityRepositoryContract {
     ownerId,
     readableId,
     updatedAt,
+    change,
   }: {
     ownerId: string;
     readableId: string;
     updatedAt: string;
+    change: ChangeContext;
   }): Promise<Entity | null> {
     return this.sql.begin(async (db) => {
+      const previous = await this.findWith({ db, ownerId, readableId });
       const targets = await db.RemoveEntityImage`
         /* @notNull id */
         update "entity"
@@ -320,6 +390,19 @@ export class EntitiesRepository implements EntityRepositoryContract {
         return null;
       }
       await retireInvalidPortraitReference({ db, ownerId, entityId: targets[0].id });
+      if (previous?.image) {
+        await recordChange({
+          db,
+          ownerId,
+          change,
+          resourceType: 'entity',
+          readableId,
+          name: previous.name,
+          action: 'updated',
+          details: [`Removed image “${previous.image.name}”`],
+          createdAt: updatedAt,
+        });
+      }
       return this.findWith({ db, ownerId, readableId });
     });
   }
@@ -328,10 +411,12 @@ export class EntitiesRepository implements EntityRepositoryContract {
     ownerId,
     readableId,
     archivedAt,
+    change,
   }: {
     ownerId: string;
     readableId: string;
     archivedAt: string;
+    change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference> | { state: 'self_entity' }> {
     return this.sql.begin(async (db) => {
       const targets = await db.FindEntityArchiveTarget`
@@ -362,6 +447,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
       if (blockers.length > 0) {
         return { state: 'resource_in_use' as const, blockers };
       }
+      const previous = await this.findWith({ db, ownerId, readableId });
       await db`
         update "entity"
         set "archived_at" = ${archivedAt}
@@ -373,6 +459,19 @@ export class EntitiesRepository implements EntityRepositoryContract {
         where "owner_id" = ${ownerId} and "resource_type" = 'entity'
           and "readable_id" = ${readableId}
       `;
+      if (previous) {
+        await recordChange({
+          db,
+          ownerId,
+          change,
+          resourceType: 'entity',
+          readableId,
+          name: previous.name,
+          action: 'archived',
+          details: [previous.description],
+          createdAt: archivedAt,
+        });
+      }
       return { state: 'archived' } as const;
     });
   }

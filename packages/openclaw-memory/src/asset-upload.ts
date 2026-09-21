@@ -157,7 +157,14 @@ export async function uploadAttachment(input: {
         return existing;
       }
       const request = TransferSchema.extend({ method: z.literal('PUT') }).parse(
-        await call({ client, name: 'create_asset_upload', args: { name: input.name } }),
+        await call({
+          client,
+          name: 'create_asset_upload',
+          args: {
+            name: input.name,
+            changeMessage: 'Saved an attachment from the conversation',
+          },
+        }),
       );
       const response = await transfer({
         request,

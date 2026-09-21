@@ -2,6 +2,7 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#backend/lib/pagination.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
+import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type {
   KnowledgePageAssetUsage,
   KnowledgePageIntervalFilter,
@@ -21,6 +22,7 @@ import type {
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom } from '#backend/views/entities/entity-view.ts';
+import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgePagesRepositoryContract {
@@ -44,6 +46,7 @@ export interface KnowledgePagesRepositoryContract {
     sizeBytes: number;
     links: KnowledgePageLinkSet;
     actor: KnowledgePageRevisionActor;
+    message: string;
     createdAt: string;
   }): Promise<
     | { state: 'created'; page: StoredKnowledgePage }
@@ -64,6 +67,7 @@ export interface KnowledgePagesRepositoryContract {
     sizeBytes: number;
     links: KnowledgePageLinkSet;
     actor: KnowledgePageRevisionActor;
+    message: string;
     updatedAt: string;
   }): Promise<
     | { state: 'updated'; page: StoredKnowledgePage }
@@ -93,6 +97,7 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     readableId: string;
     archivedAt: string;
+    change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference>>;
   detail(input: { ownerId: string; readableId: string }): Promise<{
     page: StoredKnowledgePage;
@@ -404,6 +409,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     sizeBytes: number;
     links: KnowledgePageLinkSet;
     actor: KnowledgePageRevisionActor;
+    message: string;
     createdAt: string;
   }): Promise<
     | { state: 'created'; page: StoredKnowledgePage }
@@ -471,6 +477,18 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         body: input.searchableText,
       });
 
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: { actor: input.actor, message: input.message },
+        resourceType: 'page',
+        readableId: input.readableId,
+        name: input.title,
+        action: 'created',
+        details: input.excerpt ? [input.excerpt] : [],
+        revisionNumber: 1,
+        createdAt: input.createdAt,
+      });
       return {
         state: 'created' as const,
         page: {
@@ -506,6 +524,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     sizeBytes: number;
     links: KnowledgePageLinkSet;
     actor: KnowledgePageRevisionActor;
+    message: string;
     updatedAt: string;
   }): Promise<
     | { state: 'updated'; page: StoredKnowledgePage }
@@ -579,6 +598,28 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         label: input.title,
         summary: input.excerpt,
         body: input.searchableText,
+      });
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: { actor: input.actor, message: input.message },
+        resourceType: 'page',
+        readableId: input.readableId,
+        name: input.title,
+        action: 'updated',
+        details: [
+          ...changedText({ label: 'Title', before: current.title, after: input.title }),
+          ...changedText({
+            label: 'Time coverage',
+            before: current.temporalCoverage,
+            after: temporal.expression,
+          }),
+          ...(current.contentHash !== input.contentHash
+            ? ['Content updated']
+            : []),
+        ],
+        revisionNumber,
+        createdAt: input.updatedAt,
       });
       return {
         state: 'updated' as const,
@@ -817,10 +858,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId,
     readableId,
     archivedAt,
+    change,
   }: {
     ownerId: string;
     readableId: string;
     archivedAt: string;
+    change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference>> {
     return this.sql.begin(async (db) => {
       const targets = await db.FindKnowledgePageArchiveTarget`
@@ -845,6 +888,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       if (blockers.length > 0) {
         return { state: 'resource_in_use' as const, blockers };
       }
+      const previous = await findCurrentKnowledgePage({ db, ownerId, readableId });
       await deleteLinks({ db, ownerId, revisionId: target.currentRevisionId });
       await db`
         update "knowledge_page"
@@ -856,6 +900,19 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         where "owner_id" = ${ownerId} and "resource_type" = 'knowledge_page'
           and "readable_id" = ${readableId}
       `;
+      if (previous) {
+        await recordChange({
+          db,
+          ownerId,
+          change,
+          resourceType: 'page',
+          readableId,
+          name: previous.title,
+          action: 'archived',
+          details: [],
+          createdAt: archivedAt,
+        });
+      }
       return { state: 'archived' } as const;
     });
   }

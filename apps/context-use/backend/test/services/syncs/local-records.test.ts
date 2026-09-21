@@ -136,7 +136,13 @@ test('installed npm engine stores searchable local records through existing serv
             },
           }),
         ).toEqual({ status: 'accepted' });
-        expect(await records.upsert({ ownerId: OWNER_USER_ID, record: canonical })).toMatchObject({
+        expect(
+          await records.upsert({
+            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            ownerId: OWNER_USER_ID,
+            record: canonical,
+          }),
+        ).toMatchObject({
           state: 'unchanged',
         });
         const withData = (record: typeof canonical): Delivery => ({

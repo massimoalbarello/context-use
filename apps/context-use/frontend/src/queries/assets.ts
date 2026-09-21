@@ -11,10 +11,15 @@ export type Asset = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.assets>['get']>>['data']
 >;
 
-export type CreateAssetVariables = Parameters<typeof api.api.assets.post>[0];
+export type CreateAssetVariables = Omit<
+  Parameters<typeof api.api.assets.post>[0],
+  'changeMessage'
+> & { changeMessage?: string };
 export type UpdateAssetVariables = {
   readableId: string;
-  body: Parameters<ReturnType<typeof api.api.assets>['put']>[0];
+  body: Omit<Parameters<ReturnType<typeof api.api.assets>['put']>[0], 'changeMessage'> & {
+    changeMessage?: string;
+  };
 };
 export type ArchiveAssetResult =
   | { state: 'archived' }
@@ -116,6 +121,7 @@ export function assetPreviewQueryOptions(readableId: string) {
 
 export async function createAsset(body: CreateAssetVariables): Promise<{ readableId: string }> {
   const { data, error } = await api.api.assets.post({
+    changeMessage: body.changeMessage?.trim() || `Added asset “${body.name}”`,
     name: body.name,
     file: body.file,
     ...(body.allowDuplicate === undefined ? {} : { allowDuplicate: body.allowDuplicate }),
@@ -130,7 +136,9 @@ export async function createAsset(body: CreateAssetVariables): Promise<{ readabl
 }
 
 export async function updateAsset({ readableId, body }: UpdateAssetVariables): Promise<void> {
-  const { error } = await api.api.assets({ assetReadableId: readableId }).put(body);
+  const { error } = await api.api
+    .assets({ assetReadableId: readableId })
+    .put({ ...body, changeMessage: body.changeMessage?.trim() || `Updated asset “${body.name}”` });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -141,7 +149,9 @@ export async function archiveAsset({
 }: {
   readableId: string;
 }): Promise<ArchiveAssetResult> {
-  const { error } = await api.api.assets({ assetReadableId: readableId }).archive.put();
+  const { error } = await api.api
+    .assets({ assetReadableId: readableId })
+    .archive.put({ changeMessage: 'Archived asset from the workspace' });
   if (error) {
     if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
       return { state: 'resource_in_use', blockers: error.value.blockers };

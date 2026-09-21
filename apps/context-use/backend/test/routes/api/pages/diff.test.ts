@@ -90,10 +90,19 @@ async function setup() {
         }),
       );
     const input = { ownerId: OWNER_ID, actor: { kind: 'owner' } as const };
-    expect((await service.create({ ...input, markdown: INITIAL })).state).toBe('saved');
+    expect(
+      (
+        await service.create({
+          message: 'Updated test knowledge',
+          ...input,
+          markdown: INITIAL,
+        })
+      ).state,
+    ).toBe('saved');
     expect(
       (
         await service.update({
+          message: 'Updated test knowledge',
           ...input,
           readableId: 'notes',
           expectedRevisionNumber: 1,
@@ -105,6 +114,7 @@ async function setup() {
     expect(
       (
         await service.update({
+          message: 'Updated test knowledge',
           ...input,
           readableId: 'notes',
           expectedRevisionNumber: 2,
@@ -175,6 +185,7 @@ test('the API compares exact historical revisions in either direction and an emp
       hunks: [{ lines: ['+# Notes', '+', '+Alpha', '+Unchanged'] }],
     });
     await context.service.update({
+      message: 'Updated test knowledge',
       ...context.input,
       readableId: 'notes',
       expectedRevisionNumber: LAST_REVISION,
@@ -189,6 +200,7 @@ test('the API compares exact historical revisions in either direction and an emp
       temporalCoverage: { from: '2026', to: null },
     });
     await context.service.update({
+      message: 'Updated test knowledge',
       ...context.input,
       readableId: 'notes',
       expectedRevisionNumber: LAST_REVISION + 1,
@@ -214,6 +226,7 @@ test('comparison enforces authentication, page ownership, revision bounds and ar
     expect(await foreign.json()).toEqual(await missing.json());
     // Even a matching readable ID cannot borrow revisions from another owner.
     await context.service.create({
+      message: 'Updated test knowledge',
       ownerId: OTHER_OWNER_ID,
       actor: { kind: 'owner' },
       markdown: '# Notes\n\nPrivate content',
@@ -239,9 +252,15 @@ test('comparison enforces authentication, page ownership, revision bounds and ar
     ]) {
       expect((await context.request({ query })).status).toBe(StatusMap['Bad Request']);
     }
-    expect((await context.service.archive({ ownerId: OWNER_ID, readableId: 'notes' })).state).toBe(
-      'archived',
-    );
+    expect(
+      (
+        await context.service.archive({
+          change: { actor: { kind: 'owner' }, message: 'Archived test page' },
+          ownerId: OWNER_ID,
+          readableId: 'notes',
+        })
+      ).state,
+    ).toBe('archived');
     expect((await context.request({ query: 'from=0&to=1' })).status).toBe(StatusMap['Not Found']);
   } finally {
     await context.dispose();

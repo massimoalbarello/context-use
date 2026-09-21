@@ -1,5 +1,6 @@
 import type { AssetPresentation, AssetSummary } from '#backend/models/assets/model.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
+import type { ChangeActor } from '#backend/models/history/model.ts';
 
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
 export const MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH = 280;
@@ -44,9 +45,7 @@ export type KnowledgePageRevisionAuthor =
   | { kind: 'owner'; name: string }
   | { kind: 'mcp_client'; name: string };
 
-export type KnowledgePageRevisionActor =
-  | { kind: 'owner' }
-  | { kind: 'mcp_client'; clientAuthorizationId: string; name: string };
+export type KnowledgePageRevisionActor = Extract<ChangeActor, { kind: 'owner' | 'mcp_client' }>;
 
 export interface KnowledgePageAssetUsage {
   asset: AssetSummary;

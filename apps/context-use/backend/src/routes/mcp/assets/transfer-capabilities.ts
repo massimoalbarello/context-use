@@ -15,6 +15,7 @@ export const MCP_ASSET_TRANSFER_CAPABILITY_HEADER = 'x-context-use-transfer-capa
 
 type UploadCapability = {
   kind: 'upload';
+  changeMessage: string;
   principal: McpClientAuthorizationPrincipal;
   name: string;
   allowDuplicate: boolean | undefined;
@@ -70,12 +71,14 @@ export class AssetTransferCapabilities {
   }
 
   issueUpload(input: {
+    changeMessage: string;
     principal: McpClientAuthorizationPrincipal;
     name: string;
     allowDuplicate?: boolean;
   }): IssuedCapability {
     return this.issue({
       kind: 'upload',
+      changeMessage: input.changeMessage,
       principal: input.principal,
       name: input.name,
       allowDuplicate: input.allowDuplicate,

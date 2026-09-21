@@ -3,6 +3,7 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import type { EntityDetail } from '#backend/models/entities/model.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   EntityParamsSchema,
   EntitySchema,
@@ -38,6 +39,7 @@ export function createEntityReadableIdController({
   entitiesService: EntitiesServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({
       auth: true,
@@ -69,6 +71,7 @@ export function createEntityReadableIdController({
       '/entities/:entityReadableId',
       async ({ body, params, user, status }) => {
         const entity = await entitiesService.update({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
           ...body,
@@ -78,6 +81,7 @@ export function createEntityReadableIdController({
           : status(StatusMap['Not Found'], { error: 'Entity not found' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Entities'], summary: 'Update an entity identity' },
         params: EntityParamsSchema,
         body: UpdateEntityBodySchema,
@@ -91,6 +95,7 @@ export function createEntityReadableIdController({
       '/entities/:entityReadableId/image',
       async ({ body, params, user, status }) => {
         const result = await entitiesService.setImage({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
           assetReadableId: body.assetReadableId,
@@ -111,6 +116,7 @@ export function createEntityReadableIdController({
         return status(StatusMap.OK, entityResponse(result.entity));
       },
       {
+        changeMessage: true,
         detail: { tags: ['Entities'], summary: 'Assign an image asset to an entity' },
         params: EntityParamsSchema,
         body: SetEntityImageBodySchema,
@@ -124,8 +130,9 @@ export function createEntityReadableIdController({
     )
     .delete(
       '/entities/:entityReadableId/image',
-      async ({ params, user, status }) => {
+      async ({ body, params, user, status }) => {
         const entity = await entitiesService.removeImage({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
         });
@@ -134,7 +141,9 @@ export function createEntityReadableIdController({
           : status(StatusMap['Not Found'], { error: 'Entity not found' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Entities'], summary: 'Remove an entity image' },
+
         params: EntityParamsSchema,
         response: {
           [StatusMap.OK]: EntitySchema,
@@ -144,8 +153,9 @@ export function createEntityReadableIdController({
     )
     .put(
       '/entities/:entityReadableId/archive',
-      async ({ params, user, status }) => {
+      async ({ body, params, user, status }) => {
         const result = await entitiesService.archive({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
         });
@@ -161,7 +171,9 @@ export function createEntityReadableIdController({
         return status(StatusMap['No Content'], undefined);
       },
       {
+        changeMessage: true,
         detail: { tags: ['Entities'], summary: 'Archive an entity' },
+
         params: EntityParamsSchema,
         response: {
           [StatusMap['No Content']]: t.Void(),

@@ -32,8 +32,13 @@ export const FaceParamsSchema = t.Object({
   faceReadableId: ReadableIdSchema,
 });
 export const FaceAnnotationBodySchema = t.Union([
-  t.Object({ decision: t.Literal('person'), entityReadableId: ReadableIdSchema }),
-  t.Object({ decision: t.UnionEnum(['automatic', 'unknown', 'dismissed']) }),
+  t.Object({
+    decision: t.Literal('person'),
+    entityReadableId: ReadableIdSchema,
+  }),
+  t.Object({
+    decision: t.UnionEnum(['automatic', 'unknown', 'dismissed']),
+  }),
 ]);
 export const FaceSettingsSchema = t.Object({
   model: t.Object({

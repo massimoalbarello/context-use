@@ -11,6 +11,7 @@ import {
   assetUsageResponse,
   UpdateAssetBodySchema,
 } from '#backend/routes/api/assets/model.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { PreviewRelationshipsQuerySchema } from '#backend/routes/api/model.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
@@ -23,6 +24,7 @@ export function createAssetReadableIdController({
   assetsService: AssetsServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .get(
@@ -73,6 +75,7 @@ export function createAssetReadableIdController({
       '/assets/:assetReadableId',
       async ({ body, params, user, status }) => {
         const asset = await assetsService.updateName({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.assetReadableId,
           name: body.name,
@@ -82,6 +85,7 @@ export function createAssetReadableIdController({
           : status(StatusMap['Not Found'], { error: 'Asset not found' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Assets'], summary: 'Rename an asset' },
         params: AssetParamsSchema,
         body: UpdateAssetBodySchema,
@@ -90,8 +94,9 @@ export function createAssetReadableIdController({
     )
     .put(
       '/assets/:assetReadableId/archive',
-      async ({ params, user, status }) => {
+      async ({ body, params, user, status }) => {
         const result = await assetsService.archive({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.assetReadableId,
         });
@@ -106,7 +111,9 @@ export function createAssetReadableIdController({
           : status(StatusMap['Not Found'], { error: 'Asset not found' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Assets'], summary: 'Archive an unused asset' },
+
         params: AssetParamsSchema,
         response: {
           [StatusMap['No Content']]: t.Void(),

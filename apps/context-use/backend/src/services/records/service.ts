@@ -1,6 +1,7 @@
 import canonicalize from 'canonicalize';
 import type { Storage } from '#backend/lib/storage/storage.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import { readableIdFrom, readableIdWithSuffix } from '#backend/models/readable-ids/model.ts';
 import {
   parseRecord,
@@ -48,9 +49,11 @@ export class RecordsService {
   async upsert({
     ownerId,
     record: input,
+    change,
   }: {
     ownerId: string;
     record: RecordInput;
+    change: ChangeContext;
   }): Promise<RecordWriteResult> {
     const record = parseRecord(input);
     const readableId = recordReadableId(record.source);
@@ -66,6 +69,7 @@ export class RecordsService {
       }
       const publication = await this.records.write({
         ownerId,
+        change,
         readableId,
         receivedAt: this.now().toISOString(),
         value: { record, storageKey, sizeBytes, contentHash: sha256(json) },
@@ -87,13 +91,15 @@ export class RecordsService {
   }
   async remove({
     ownerId,
+    change,
     ...input
-  }: RecordDeletion & { ownerId: string }): Promise<RecordWriteResult> {
+  }: RecordDeletion & { ownerId: string; change: ChangeContext }): Promise<RecordWriteResult> {
     const parsed = RecordDeletionSchema.parse(input);
     const deletion = { ...parsed, sourceUpdatedAt: new Date(parsed.sourceUpdatedAt).toISOString() };
     const publication = await this.records.write({
       ownerId,
       deletion,
+      change,
       readableId: recordReadableId(deletion.source),
       receivedAt: this.now().toISOString(),
     });

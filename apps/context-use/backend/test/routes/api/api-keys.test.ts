@@ -72,7 +72,10 @@ test('API key issuance stores only its hash and revocation removes authorization
         new Request('http://localhost/api/api-keys', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ name: 'Engineering activity' }),
+          body: JSON.stringify({
+            name: 'Engineering activity',
+            changeMessage: 'Create engineering API key',
+          }),
         }),
       );
       expect(createResponse.status).toBe(StatusMap.Created);
@@ -98,6 +101,7 @@ test('API key issuance stores only its hash and revocation removes authorization
       expect(JSON.stringify(stored)).not.toContain(API_KEY);
       expect(await service.authenticate({ apiKey: API_KEY })).toEqual({
         keyId: API_KEY_ID,
+        name: created.key.name,
         ownerId: OWNER_USER_ID,
       });
 
@@ -111,7 +115,10 @@ test('API key issuance stores only its hash and revocation removes authorization
         new Request('http://localhost/api/api-keys', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ name: 'Engineering activity' }),
+          body: JSON.stringify({
+            name: 'Engineering activity',
+            changeMessage: 'Create engineering API key',
+          }),
         }),
       );
       expect(duplicateNameResponse.status).toBe(StatusMap.Conflict);
@@ -119,6 +126,8 @@ test('API key issuance stores only its hash and revocation removes authorization
       const revokeResponse = await app.handle(
         new Request(`http://localhost/api/api-keys/${created.key.readableId}/revoke`, {
           method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ changeMessage: 'Revoke engineering API key' }),
         }),
       );
       expect(revokeResponse.status).toBe(StatusMap['No Content']);

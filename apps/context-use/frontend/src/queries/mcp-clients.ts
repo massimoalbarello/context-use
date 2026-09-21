@@ -39,7 +39,10 @@ export function mcpAuthorizationClientQueryOptions(clientId: string) {
 }
 
 export async function approveMcpClient(input: { clientId: string; name: string }) {
-  const { data, error } = await api.api.mcp.clients.post(input);
+  const { data, error } = await api.api.mcp.clients.post({
+    ...input,
+    changeMessage: 'Authorized an MCP client',
+  });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -51,7 +54,7 @@ export async function renameMcpClient(input: { clientAuthorizationId: string; na
     .clients({
       clientAuthorizationId: input.clientAuthorizationId,
     })
-    .patch({ name: input.name });
+    .patch({ name: input.name, changeMessage: 'Renamed an MCP client' });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -63,7 +66,7 @@ export async function archiveMcpClient(input: { clientAuthorizationId: string })
     .clients({
       clientAuthorizationId: input.clientAuthorizationId,
     })
-    .archive.put();
+    .archive.put({ changeMessage: 'Archived an MCP client' });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

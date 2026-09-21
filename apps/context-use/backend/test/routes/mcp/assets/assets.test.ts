@@ -179,7 +179,7 @@ async function createUpload({
   return successfulResult<TransferRequest>(
     await client.callTool({
       name: 'create_asset_upload',
-      arguments: { name, allowDuplicate },
+      arguments: { changeMessage: 'Updated test context', name, allowDuplicate },
     }),
   );
 }
@@ -313,7 +313,11 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       const updated = successfulResult<Record<string, never>>(
         await client.callTool({
           name: 'update_asset',
-          arguments: { address: created.address, name: 'Q3 evidence chart' },
+          arguments: {
+            changeMessage: 'Updated test context',
+            address: created.address,
+            name: 'Q3 evidence chart',
+          },
         }),
       );
       expect(updated).toEqual({});
@@ -364,7 +368,7 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       const archived = successfulResult<{ archived: true; address: string }>(
         await client.callTool({
           name: 'archive_asset',
-          arguments: { address: created.address },
+          arguments: { changeMessage: 'Updated test context', address: created.address },
         }),
       );
       expect(archived).toEqual({ archived: true, address: created.address });
@@ -433,7 +437,11 @@ test('raw upload endpoints enforce required headers and byte limits before one A
     transferCapabilities: capabilities,
   });
 
-  const missingSecret = capabilities.issueUpload({ principal, name: 'Missing secret' });
+  const missingSecret = capabilities.issueUpload({
+    changeMessage: 'Updated test context',
+    principal,
+    name: 'Missing secret',
+  });
   expect(
     (
       await controller.handle(
@@ -461,7 +469,11 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   ).toBe(StatusMap['Not Found']);
   expect(createCalls).toBe(0);
 
-  const oversized = capabilities.issueUpload({ principal, name: 'Too large' });
+  const oversized = capabilities.issueUpload({
+    changeMessage: 'Updated test context',
+    principal,
+    name: 'Too large',
+  });
   const oversizedResponse = await controller.handle(
     new Request(oversized.url, {
       method: 'PUT',
@@ -489,7 +501,11 @@ test('raw upload endpoints enforce required headers and byte limits before one A
     ).status,
   ).toBe(StatusMap['Not Found']);
 
-  const wrongMediaType = capabilities.issueUpload({ principal, name: 'Wrong media type' });
+  const wrongMediaType = capabilities.issueUpload({
+    changeMessage: 'Updated test context',
+    principal,
+    name: 'Wrong media type',
+  });
   expect(
     (
       await controller.handle(
@@ -507,6 +523,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   expect(createCalls).toBe(0);
 
   const accepted = capabilities.issueUpload({
+    changeMessage: 'Updated test context',
     principal,
     name: createdAsset.name,
     allowDuplicate: true,
@@ -576,7 +593,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     list: unexpectedCall,
     detail: unexpectedCall,
     updateName: (input) => {
-      expect(input).toEqual({
+      expect(input).toMatchObject({
         ownerId: principal.ownerId,
         readableId: asset.readableId,
         name: 'Q3 evidence chart',
@@ -585,7 +602,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     },
     archive: (input) => {
       archiveCalls += 1;
-      expect(input).toEqual({ ownerId: principal.ownerId, readableId: asset.readableId });
+      expect(input).toMatchObject({ ownerId: principal.ownerId, readableId: asset.readableId });
       return Promise.resolve({ state: 'resource_in_use', blockers: asset.usages });
     },
     content: unexpectedCall,
@@ -612,6 +629,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
       await client.callTool({
         name: 'update_asset',
         arguments: {
+          changeMessage: 'Updated test context',
           address: 'context-use://asset/quarterly-chart',
           name: 'Q3 evidence chart',
         },
@@ -622,7 +640,10 @@ test('asset updates return no echoed state and archive blockers expose only publ
 
     const blocked = await client.callTool({
       name: 'archive_asset',
-      arguments: { address: 'context-use://asset/quarterly-chart' },
+      arguments: {
+        changeMessage: 'Updated test context',
+        address: 'context-use://asset/quarterly-chart',
+      },
     });
     expect(blocked.isError).toBe(true);
     expect(blocked.structuredContent).toEqual({

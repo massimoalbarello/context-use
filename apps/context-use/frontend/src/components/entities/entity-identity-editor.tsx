@@ -6,6 +6,7 @@ import {
   MAX_ENTITY_DESCRIPTION_LENGTH,
   MAX_ENTITY_NAME_LENGTH,
 } from '#backend/models/entities/model.ts';
+import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
 import { submitThenChangeValidation } from '../../lib/form-validation';
 import type { EntitySummary } from '../../queries/entities';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
@@ -13,6 +14,7 @@ import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceNameInput } from '../knowledge/resource-name';
 import { Badge } from '../ui/badge';
 import { Field, FieldError, FieldGroup, FieldLabel } from '../ui/field';
+import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { EntityAvatar } from './entity-link';
 import { EntityTypeField } from './entity-type-field';
@@ -45,16 +47,18 @@ export function EntityIdentityEditor({
     name: string;
     description: string;
     entityType: EntityType | null;
+    changeMessage?: string;
   }) => void;
 }) {
   const form = useForm({
-    defaultValues: { name, description, entityType },
+    defaultValues: { name, description, entityType, changeMessage: '' },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) =>
       onSubmit({
         name: value.name.trim(),
         description: value.description.trim(),
         entityType: value.entityType,
+        changeMessage: value.changeMessage.trim() || undefined,
       }),
   });
 
@@ -153,6 +157,21 @@ export function EntityIdentityEditor({
             </form.Field>
           </div>
           {error && <FieldError>{error.message}</FieldError>}
+          <form.Field name="changeMessage">
+            {(field) => (
+              <Field className="mt-4">
+                <FieldLabel htmlFor="entity-change-message">Change summary (optional)</FieldLabel>
+                <Input
+                  id="entity-change-message"
+                  value={field.state.value}
+                  maxLength={MAX_CHANGE_MESSAGE_LENGTH}
+                  placeholder="What changed and why?"
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+              </Field>
+            )}
+          </form.Field>
         </FieldGroup>
       </div>
     </form>

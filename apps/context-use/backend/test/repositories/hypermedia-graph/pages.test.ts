@@ -34,6 +34,7 @@ test.each([
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     await entities.create({
+      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
       id: 'topic-id',
       ownerId: OWNER_A,
       createdAt: NOW,
@@ -49,6 +50,7 @@ test.each([
       ['Ongoing', '1969-12/..'],
     ] as const) {
       const result = await pages.create({
+        message: 'Updated test knowledge',
         ownerId: OWNER_A,
         actor: { kind: 'owner' },
         markdown: `# ${title}\n\nNeedle research involving [Topic](context-use://entity/topic).`,

@@ -107,7 +107,7 @@ export class ApiKeysRepository implements ApiKeysRepositoryContract {
   }): Promise<ApiKeyPrincipal | null> {
     const rows = await this.sql.AuthenticateApiKey`
       /* @notNull keyId ownerId */
-      select "id" as "keyId", "owner_id" as "ownerId"
+      select "id" as "keyId", "owner_id" as "ownerId", "name"
       from "api_key"
       where "api_key_sha256" = ${apiKeySha256} and "revoked_at" is null
       limit 1

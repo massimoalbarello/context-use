@@ -10,6 +10,7 @@ import {
   CreateAssetBodySchema,
 } from '#backend/routes/api/assets/model.ts';
 import { assetSummaryResponse } from '#backend/routes/api/assets/summary-model.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { DEFAULT_LIST_LIMIT, ResourceNameConflictSchema } from '#backend/routes/api/model.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 
@@ -21,12 +22,17 @@ export function createAssetsController({
   assetsService: AssetsServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .post(
       '/assets',
       async ({ body, user, status }) => {
-        const result = await assetsService.create({ ownerId: user.id, ...body });
+        const result = await assetsService.create({
+          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          ownerId: user.id,
+          ...body,
+        });
         if (result.state === 'created') {
           return status(StatusMap.Created, assetResponse(result.asset));
         }
@@ -40,6 +46,7 @@ export function createAssetsController({
         return status(StatusMap['Bad Request'], { error: result.message });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Assets'], summary: 'Upload an asset' },
         body: CreateAssetBodySchema,
         response: {

@@ -41,7 +41,11 @@ test('API keys and direct local writes share native identity; revocation cannot 
         occurredAt: NOW,
         sourceUpdatedAt: NOW,
       };
-      const local = await recordsService.upsert({ ownerId: OWNER_USER_ID, record });
+      const local = await recordsService.upsert({
+        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        ownerId: OWNER_USER_ID,
+        record,
+      });
       const post = ({ key, body = record }: { key: string | null; body?: unknown }) =>
         app.handle(
           new Request('http://localhost/api/records', {
@@ -50,7 +54,7 @@ test('API keys and direct local writes share native identity; revocation cannot 
               'content-type': 'application/json',
               ...(key ? { authorization: `Bearer ${key}` } : {}),
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ changeMessage: 'Imported test record', ...(body as object) }),
           }),
         );
       for (const key of [firstKey.apiKey, secondKey.apiKey]) {

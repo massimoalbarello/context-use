@@ -31,7 +31,7 @@ async function fixture() {
   type Rpc = {
     id?: number;
     method: string;
-    params?: { name: string; arguments: { name?: string } };
+    params?: { name: string; arguments: { name?: string; changeMessage?: string } };
   };
   const payloadFor = (input: { rpc: Rpc; origin: string }) => {
     const handlers: Record<string, () => unknown> = {
@@ -45,6 +45,9 @@ async function fixture() {
         },
       }),
       create_asset_upload: () => {
+        expect(input.rpc.params!.arguments.changeMessage).toBe(
+          'Saved an attachment from the conversation',
+        );
         name = input.rpc.params!.arguments.name!;
         return {
           method: 'PUT',

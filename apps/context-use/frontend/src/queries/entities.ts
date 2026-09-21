@@ -13,10 +13,15 @@ export type EntityDetail = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.entities>['get']>>['data']
 >;
 
-export type CreateEntityVariables = Parameters<typeof api.api.entities.post>[0];
+export type CreateEntityVariables = Omit<
+  Parameters<typeof api.api.entities.post>[0],
+  'changeMessage'
+> & { changeMessage?: string };
 export type UpdateEntityVariables = {
   readableId: string;
-  body: Parameters<ReturnType<typeof api.api.entities>['patch']>[0];
+  body: Omit<Parameters<ReturnType<typeof api.api.entities>['patch']>[0], 'changeMessage'> & {
+    changeMessage?: string;
+  };
 };
 export type ArchiveEntityVariables = { readableId: string };
 export type SetEntityImageVariables = { readableId: string; assetReadableId: string };
@@ -107,7 +112,10 @@ export function entityPreviewQueryOptions(readableId: string) {
 }
 
 export async function createEntity(body: CreateEntityVariables): Promise<{ readableId: string }> {
-  const { data, error } = await api.api.entities.post(body);
+  const { data, error } = await api.api.entities.post({
+    ...body,
+    changeMessage: body.changeMessage?.trim() || `Added entity “${body.name}”`,
+  });
   if (error) {
     if (error.status === ApiStatus.Conflict && 'nameConflict' in error.value) {
       throw new DuplicateResourceNameError(apiErrorMessage(error));
@@ -118,7 +126,10 @@ export async function createEntity(body: CreateEntityVariables): Promise<{ reada
 }
 
 export async function updateEntity({ readableId, body }: UpdateEntityVariables): Promise<void> {
-  const { error } = await api.api.entities({ entityReadableId: readableId }).patch(body);
+  const { error } = await api.api.entities({ entityReadableId: readableId }).patch({
+    ...body,
+    changeMessage: body.changeMessage?.trim() || `Updated entity “${body.name}”`,
+  });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -128,16 +139,19 @@ export async function setEntityImage({
   readableId,
   assetReadableId,
 }: SetEntityImageVariables): Promise<void> {
-  const { error } = await api.api
-    .entities({ entityReadableId: readableId })
-    .image.put({ assetReadableId });
+  const { error } = await api.api.entities({ entityReadableId: readableId }).image.put({
+    changeMessage: 'Assigned an image to the entity',
+    assetReadableId,
+  });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
 }
 
 export async function removeEntityImage({ readableId }: RemoveEntityImageVariables): Promise<void> {
-  const { error } = await api.api.entities({ entityReadableId: readableId }).image.delete();
+  const { error } = await api.api
+    .entities({ entityReadableId: readableId })
+    .image.delete({ changeMessage: 'Removed the entity image' });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -146,7 +160,9 @@ export async function removeEntityImage({ readableId }: RemoveEntityImageVariabl
 export async function archiveEntity({
   readableId,
 }: ArchiveEntityVariables): Promise<ArchiveEntityResult> {
-  const { error } = await api.api.entities({ entityReadableId: readableId }).archive.put();
+  const { error } = await api.api
+    .entities({ entityReadableId: readableId })
+    .archive.put({ changeMessage: 'Archived entity from the workspace' });
   if (error) {
     if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
       return { state: 'resource_in_use', blockers: error.value.blockers };

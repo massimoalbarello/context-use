@@ -200,7 +200,10 @@ for (const onboarding of [false, true]) {
         '/api/entities/alice/image',
         '/api/entities/alice/image',
       ]);
-      expect(world.writes.at(-1)?.body).toEqual({ assetReadableId: 'portrait' });
+      expect(world.writes.at(-1)?.body).toEqual({
+        assetReadableId: 'portrait',
+        changeMessage: 'Assigned an image to the entity',
+      });
       if (onboarding) {
         expect(world.writes.find((write) => write.path === '/api/profile')?.body).toMatchObject({
           entityType: 'person',

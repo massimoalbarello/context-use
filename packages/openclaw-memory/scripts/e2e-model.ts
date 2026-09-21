@@ -133,6 +133,7 @@ export function startModel() {
         {
           name: 'create_entity',
           arguments: {
+            changeMessage: 'Incorporated facts learned from the conversation',
             name: 'Rowan',
             description: 'The user.',
             entityType: { value: 'person' },
@@ -142,6 +143,7 @@ export function startModel() {
         {
           name: 'create_entity',
           arguments: {
+            changeMessage: 'Incorporated facts learned from the conversation',
             name: 'Mira',
             description: 'Rowan’s sister, studying architecture.',
             entityType: { value: 'person' },
@@ -150,6 +152,7 @@ export function startModel() {
         {
           name: 'create_knowledge_page',
           arguments: {
+            changeMessage: 'Incorporated facts learned from the conversation',
             guide_version: guideVersion,
             markdown:
               '# Mira’s studies\n\n[Rowan](context-use://entity/rowan) reported that their sister [Mira](context-use://entity/mira) studies architecture. Source: the current conversation.',
@@ -292,6 +295,7 @@ export function startModel() {
                   {
                     name: 'update_knowledge_page',
                     arguments: {
+                      changeMessage: 'Incorporated facts learned from the conversation',
                       guide_version: guide,
                       address: 'context-use://page/exhibition-visit',
                       expectedRevisionNumber: priorPage?.revisionNumber,
@@ -301,7 +305,16 @@ export function startModel() {
                 ]
               : []),
           ]
-        : [{ name: 'create_knowledge_page', arguments: { guide_version: guide, markdown } }]),
+        : [
+            {
+              name: 'create_knowledge_page',
+              arguments: {
+                changeMessage: 'Incorporated facts learned from the conversation',
+                guide_version: guide,
+                markdown,
+              },
+            },
+          ]),
       {
         name: 'read_knowledge_page',
         arguments: { address: 'context-use://page/exhibition-visit' },

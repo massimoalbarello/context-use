@@ -1,5 +1,6 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import type {
   NativeRecord,
@@ -13,6 +14,7 @@ import type {
 } from '#backend/models/records/model.ts';
 import { recordSearchText } from '#backend/models/records/search.ts';
 import type { Queries } from '#backend/queries.gen.ts';
+import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export type PreparedRecord = {
@@ -21,10 +23,12 @@ export type PreparedRecord = {
   contentHash: string;
   sizeBytes: number;
 };
-export type WriteRecordInput = { ownerId: string; readableId: string; receivedAt: string } & (
-  | { value: PreparedRecord; deletion?: never }
-  | { deletion: RecordDeletion; value?: never }
-);
+export type WriteRecordInput = {
+  change: ChangeContext;
+  ownerId: string;
+  readableId: string;
+  receivedAt: string;
+} & ({ value: PreparedRecord; deletion?: never } | { deletion: RecordDeletion; value?: never });
 export type ListRecordsInput = RecordListFilters & {
   ownerId: string;
   limit: number;
@@ -92,6 +96,60 @@ function existingWriteState({
   return sourceUpdatedAt === current.sourceUpdatedAt ? 'conflict' : null;
 }
 
+const RECORD_HISTORY_EXCERPT_LENGTH = 280;
+
+async function recordPublicationChange({
+  db,
+  input,
+  current,
+  readableId,
+  excerpt,
+}: {
+  db: TypedSQL<Queries>;
+  input: WriteRecordInput;
+  current: Queries['FindCurrentRecord'] | undefined;
+  readableId: string;
+  excerpt: string | undefined;
+}) {
+  const record = input.value?.record;
+  if (!record) {
+    if (!current || current.deletedAt) {
+      return;
+    }
+    await recordChange({
+      db,
+      ownerId: input.ownerId,
+      change: input.change,
+      resourceType: 'record',
+      readableId,
+      name: current.title ?? `${input.deletion!.source.provider} ${input.deletion!.source.kind}`,
+      action: 'deleted',
+      details: [`Removed by ${input.deletion!.source.provider}`],
+      createdAt: input.receivedAt,
+    });
+    return;
+  }
+  const details = [`${record.source.provider} · ${record.source.kind}`];
+  if (current) {
+    details.push(...changedText({ label: 'Title', before: current.title, after: record.title }));
+    details.push('Source content or metadata updated');
+  }
+  if (excerpt) {
+    details.push(excerpt.slice(0, RECORD_HISTORY_EXCERPT_LENGTH));
+  }
+  await recordChange({
+    db,
+    ownerId: input.ownerId,
+    change: input.change,
+    resourceType: 'record',
+    readableId,
+    name: record.title,
+    action: current && !current.deletedAt ? 'updated' : 'created',
+    details,
+    createdAt: input.receivedAt,
+  });
+}
+
 async function writeRecord({
   db,
   input,
@@ -103,7 +161,7 @@ async function writeRecord({
   const source = (record ?? input.deletion!).source;
   const sourceUpdatedAt = (record ?? input.deletion!).sourceUpdatedAt;
   const rows = await db.FindCurrentRecord`
-    select "readable_id" as "readableId", "source_updated_at" as "sourceUpdatedAt",
+    select "readable_id" as "readableId", "title", "source_updated_at" as "sourceUpdatedAt",
       "content_hash" as "contentHash", "deleted_at" as "deletedAt"
     from "record" where "owner_id" = ${input.ownerId} and "provider" = ${source.provider}
       and "kind" = ${source.kind} and "source_id" = ${source.id}
@@ -131,8 +189,10 @@ async function writeRecord({
       "deleted_at" = excluded."deleted_at", "storage_key" = excluded."storage_key", "content_hash" = excluded."content_hash",
       "size_bytes" = excluded."size_bytes", "updated_at" = excluded."updated_at"
   `;
+  let excerpt: string | undefined;
   if (record) {
     const text = recordSearchText(record);
+    excerpt = text.body;
     await replaceSearchDocument({
       db,
       ownerId: input.ownerId,
@@ -146,6 +206,7 @@ async function writeRecord({
       delete from "hypermedia_search_document" where "owner_id" = ${input.ownerId} and "resource_type" = 'record' and "readable_id" = ${readableId}
     `;
   }
+  await recordPublicationChange({ db, input, current, readableId, excerpt });
   return { result: { state: current ? 'updated' : 'created', readableId }, committed: true };
 }
 

@@ -85,7 +85,7 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
       new Request('http://host/api/syncs/managed/providers/github/connect', {
         method: 'POST',
         headers: { cookie: 'owner-session', origin, 'content-type': 'application/json' },
-        body: '{}',
+        body: JSON.stringify({ changeMessage: 'Connect GitHub sync' }),
       }),
     );
   expect((await post('http://attacker')).status).toBe(StatusMap.Forbidden);
@@ -97,13 +97,13 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   }: {
     origin: string;
     cookie?: string;
-    body?: unknown;
+    body?: Record<string, unknown>;
   }) =>
     app.handle(
       new Request('http://host/api/syncs/managed/providers/github/app', {
         method: 'POST',
         headers: { origin, ...(cookie ? { cookie } : {}), 'content-type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, changeMessage: 'Configure provider credentials' }),
       }),
     );
   expect((await saveApp({ origin: 'http://host' })).status).toBe(StatusMap.Unauthorized);

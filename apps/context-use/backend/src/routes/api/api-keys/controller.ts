@@ -9,6 +9,7 @@ import {
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
 } from '#backend/routes/api/api-keys/model.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import type { ApiKeysServiceContract } from '#backend/services/api-keys/service.ts';
 
 const errorResponses = {
@@ -26,6 +27,7 @@ export function createApiKeysController({
   apiKeysService: ApiKeysServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: errorResponses })
     .get(
@@ -61,6 +63,7 @@ export function createApiKeysController({
         });
       },
       {
+        changeMessage: true,
         detail: { tags: ['API keys'], summary: 'Create an API key' },
         body: CreateApiKeyBodySchema,
         response: {
@@ -85,6 +88,7 @@ export function createApiKeysController({
         return status(StatusMap['No Content'], undefined);
       },
       {
+        changeMessage: true,
         detail: { tags: ['API keys'], summary: 'Revoke an API key' },
         params: ApiKeyParamsSchema,
         response: { [StatusMap['No Content']]: t.Void() },

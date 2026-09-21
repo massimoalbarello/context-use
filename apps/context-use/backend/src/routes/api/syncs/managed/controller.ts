@@ -2,6 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema, ForbiddenError } from '#backend/lib/errors.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 import {
   ActionBodySchema,
@@ -15,6 +16,7 @@ export function createManagedSyncsController(input: {
   syncs: ManagedSyncsServiceContract;
 }) {
   return new Elysia({ prefix: '/syncs/managed' })
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth: input.auth }))
     .guard({
       auth: true,
@@ -54,6 +56,7 @@ export function createManagedSyncsController(input: {
         return null;
       },
       {
+        changeMessage: true,
         params: ProviderParamsSchema,
         body: OAuthAppBodySchema,
         response: { [StatusMap.OK]: t.Null() },
@@ -65,6 +68,7 @@ export function createManagedSyncsController(input: {
       ({ user, params }) =>
         input.syncs.connect({ actorId: user.id, providerId: params.providerId }),
       {
+        changeMessage: true,
         params: ProviderParamsSchema,
         response: { [StatusMap.OK]: t.Object({ authorizationUrl: t.Nullable(t.String()) }) },
         detail: { tags: ['Syncs'], summary: 'Connect an account and start its syncs' },
@@ -77,6 +81,7 @@ export function createManagedSyncsController(input: {
         return null;
       },
       {
+        changeMessage: true,
         params: t.Object({ key: t.String({ maxLength: 128 }) }),
         body: ActionBodySchema,
         response: { [StatusMap.OK]: t.Null() },
