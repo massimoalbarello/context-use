@@ -77,6 +77,7 @@ const unusedEntitiesService: EntitiesServiceContract = {
 };
 
 const unusedPagesService: KnowledgePagesServiceContract = {
+  diff: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   preview: unexpectedCall,

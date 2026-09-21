@@ -1,5 +1,6 @@
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
+import { diffPageMarkdown, type KnowledgePageDiff } from '#backend/models/knowledge-pages/diff.ts';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
@@ -170,6 +171,51 @@ export class KnowledgePagesService {
     };
   }
 
+  async diff(input: {
+    ownerId: string;
+    readableId: string;
+    from: number;
+    to: number;
+  }): Promise<
+    { state: 'compared'; diff: KnowledgePageDiff } | { state: 'not_found' } | { state: 'too_large' }
+  > {
+    const revisions = await this.pages.revisionsForComparison(input);
+    const before = revisions.find((revision) => revision.revisionNumber === input.from);
+    const after = revisions.find((revision) => revision.revisionNumber === input.to);
+    if ((!before && input.from !== 0) || !after) {
+      return { state: 'not_found' };
+    }
+    const markdown = await Promise.all(
+      revisions.map((revision) =>
+        readVerifiedText({
+          storage: this.storage,
+          ...revision,
+          label: `Knowledge page revision ${revision.revisionNumber}`,
+        }),
+      ),
+    );
+    const content = diffPageMarkdown({
+      before: before ? markdown[revisions.indexOf(before)]! : '',
+      after: markdown[revisions.indexOf(after)]!,
+    });
+    if (!content) {
+      return { state: 'too_large' };
+    }
+    const previousCoverage = before?.temporalCoverage ?? null;
+    return {
+      state: 'compared',
+      diff: {
+        from: input.from,
+        to: input.to,
+        ...content,
+        temporalCoverage:
+          previousCoverage === after.temporalCoverage
+            ? null
+            : { from: previousCoverage, to: after.temporalCoverage },
+      },
+    };
+  }
+
   async update(input: {
     ownerId: string;
     actor: KnowledgePageRevisionActor;
@@ -320,5 +366,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive'
+  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'diff'
 >;

@@ -15,6 +15,11 @@ import {
   resourceInUseResponse,
 } from '#backend/routes/api/resource-archiving/model.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
+import {
+  KnowledgePageDiffQuerySchema,
+  KnowledgePageDiffSchema,
+  knowledgePageDiffResponse,
+} from './diff/model.ts';
 
 export function createPageReadableIdController({
   auth,
@@ -29,6 +34,35 @@ export function createPageReadableIdController({
       auth: true,
       response: { [StatusMap.Unauthorized]: ErrorResponseSchema },
     })
+    .get(
+      '/pages/:pageReadableId/diff',
+      async ({ params, query, user, status }) => {
+        const result = await pagesService.diff({
+          ownerId: user.id,
+          readableId: params.pageReadableId,
+          ...query,
+        });
+        if (result.state === 'not_found') {
+          return status(StatusMap['Not Found'], { error: 'Knowledge page revision not found' });
+        }
+        if (result.state === 'too_large') {
+          return status(StatusMap['Unprocessable Content'], {
+            error: 'This comparison is too large to display.',
+          });
+        }
+        return status(StatusMap.OK, knowledgePageDiffResponse(result.diff));
+      },
+      {
+        detail: { tags: ['Pages'], summary: 'Compare two knowledge page revisions' },
+        params: KnowledgePageParamsSchema,
+        query: KnowledgePageDiffQuerySchema,
+        response: {
+          [StatusMap.OK]: KnowledgePageDiffSchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Unprocessable Content']]: ErrorResponseSchema,
+        },
+      },
+    )
     .get(
       '/pages/:pageReadableId/preview',
       async ({ params, user, status }) => {

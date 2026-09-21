@@ -12,6 +12,7 @@ import type {
   KnowledgePageRevisionSummary,
   KnowledgePageSummary,
   StoredKnowledgePage,
+  StoredKnowledgePageRevision,
 } from '#backend/models/knowledge-pages/model.ts';
 import type {
   ParsedTemporalCoverage,
@@ -23,6 +24,12 @@ import { entityFrom } from '#backend/views/entities/entity-view.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgePagesRepositoryContract {
+  revisionsForComparison(input: {
+    ownerId: string;
+    readableId: string;
+    from: number;
+    to: number;
+  }): Promise<StoredKnowledgePageRevision[]>;
   create(input: {
     pageId: string;
     revisionId: string;
@@ -730,6 +737,37 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       limit ${queryLimit}
     `;
     return rows.map(summaryFrom);
+  }
+
+  async revisionsForComparison({
+    ownerId,
+    readableId,
+    from,
+    to,
+  }: {
+    ownerId: string;
+    readableId: string;
+    from: number;
+    to: number;
+  }): Promise<StoredKnowledgePageRevision[]> {
+    const rows = await this.sql.FindKnowledgePageComparisonRevisions`
+      /* @notNull revisionNumber storageKey contentHash sizeBytes */
+      select revision."revision_number" as "revisionNumber",
+        revision."temporal_coverage" as "temporalCoverage",
+        revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
+        revision."size_bytes" as "sizeBytes"
+      from "knowledge_page" page
+      join "knowledge_page_revision" revision
+        on revision."page_id" = page."id" and revision."owner_id" = page."owner_id"
+      where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
+        and page."archived_at" is null
+        and revision."revision_number" in (${from}, ${to})
+    `;
+    return rows.map((row) => ({
+      ...row,
+      revisionNumber: Number(row.revisionNumber),
+      sizeBytes: Number(row.sizeBytes),
+    }));
   }
 
   async find({

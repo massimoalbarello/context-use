@@ -77,6 +77,11 @@ export interface StoredKnowledgePage extends KnowledgePageSummary {
   sizeBytes: number;
 }
 
+export type StoredKnowledgePageRevision = Pick<
+  StoredKnowledgePage,
+  'revisionNumber' | 'temporalCoverage' | 'storageKey' | 'contentHash' | 'sizeBytes'
+>;
+
 export interface KnowledgePageLinkSet {
   entityReadableIds: string[];
   recordReadableIds: string[];
