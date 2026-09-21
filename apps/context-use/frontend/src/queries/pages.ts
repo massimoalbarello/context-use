@@ -22,6 +22,9 @@ export type KnowledgePagePreview = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['preview']['get']>>['data']
 >;
 export type KnowledgePageReference = KnowledgePage['references'][number];
+export type KnowledgePageDiff = NonNullable<
+  Awaited<ReturnType<ReturnType<typeof api.api.pages>['diff']['get']>>['data']
+>;
 
 export type CreatePageVariables = Parameters<typeof api.api.pages.post>[0];
 export type UpdatePageVariables = {
@@ -37,6 +40,32 @@ export const pagesQueryKey = ['pages'] as const;
 export const pagesListQueryKey = [...pagesQueryKey, 'list'] as const;
 export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pagePreviewsQueryKey = [...pagesQueryKey, 'preview'] as const;
+export const pageDiffsQueryKey = [...pagesQueryKey, 'diff'] as const;
+
+export function pageDiffQueryOptions({
+  readableId,
+  from,
+  to,
+}: {
+  readableId: string;
+  from: number;
+  to: number;
+}) {
+  return queryOptions({
+    queryKey: [...pageDiffsQueryKey, readableId, { from, to }],
+    staleTime: Infinity,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await api.api.pages({ pageReadableId: readableId }).diff.get({
+        query: { from, to },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+  });
+}
 
 async function pageSearchPage({
   query,

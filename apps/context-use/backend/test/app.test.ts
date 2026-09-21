@@ -60,6 +60,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     archive: unexpectedCall,
   };
   const pagesService: KnowledgePagesServiceContract = {
+    diff: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
     preview: unexpectedCall,

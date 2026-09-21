@@ -72,6 +72,7 @@ const entitiesService: EntitiesServiceContract = {
 };
 const healthService: HealthServiceContract = { check: unexpectedCall };
 const pagesService: KnowledgePagesServiceContract = {
+  diff: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   preview: unexpectedCall,

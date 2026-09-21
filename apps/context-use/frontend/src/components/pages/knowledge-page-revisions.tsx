@@ -1,11 +1,15 @@
+import { Collapsible } from '@base-ui/react/collapsible';
+import { Button } from '@repo/ui/button';
+import { ChevronDown } from 'lucide-react';
 import type { KnowledgePage } from '../../queries/pages';
 import { Badge } from '../ui/badge';
+import { KnowledgePageRevisionComparison } from './knowledge-page-revision-comparison';
 import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 export function KnowledgePageRevisions({
   page,
 }: {
-  page: Pick<KnowledgePage, 'revisionNumber' | 'revisions'>;
+  page: Pick<KnowledgePage, 'readableId' | 'revisionNumber' | 'revisions'>;
 }) {
   return (
     <section className="py-7">
@@ -13,29 +17,54 @@ export function KnowledgePageRevisions({
         <h2 className="font-semibold text-lg">Revisions</h2>
         <Badge variant="secondary">{page.revisions.length}</Badge>
       </div>
-      <ol className="grid max-w-3xl list-none gap-2 p-0">
+      <ol className="grid max-w-4xl list-none gap-3 p-0">
         {page.revisions.map((revision) => (
-          <li className="rounded-xl bg-muted px-4 py-3" key={revision.revisionNumber}>
-            <div className="flex items-center gap-2">
-              <strong className="font-semibold text-sm">Revision {revision.revisionNumber}</strong>
-              {revision.revisionNumber === page.revisionNumber && (
-                <Badge variant="secondary">Current</Badge>
-              )}
+          <Collapsible.Root
+            render={<li />}
+            className="min-w-0 rounded-xl bg-muted/50 px-4 py-3"
+            defaultOpen={revision.revisionNumber === page.revisionNumber}
+            key={`${page.readableId}:${revision.revisionNumber}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <strong className="font-semibold text-sm">
+                    Revision {revision.revisionNumber}
+                  </strong>
+                  {revision.revisionNumber === page.revisionNumber && (
+                    <Badge variant="secondary">Current</Badge>
+                  )}
+                </div>
+                <p className="mt-1 break-words text-sm">{revision.title}</p>
+                {revision.temporalCoverage && (
+                  <TemporalCoverageLabel
+                    className="mt-1 text-xs"
+                    expression={revision.temporalCoverage}
+                  />
+                )}
+                <p className="mt-1 text-muted-foreground text-xs">
+                  Created by {revision.author.name} ·{' '}
+                  <time dateTime={revision.createdAt.toISOString()}>
+                    {revision.createdAt.toLocaleString()}
+                  </time>
+                </p>
+              </div>
+              <Collapsible.Trigger
+                render={<Button variant="ghost" size="sm" />}
+                className="group"
+                aria-label={`Changes in revision ${revision.revisionNumber}`}
+              >
+                Changes
+                <ChevronDown className="size-4 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none" />
+              </Collapsible.Trigger>
             </div>
-            <p className="mt-1 text-sm">{revision.title}</p>
-            {revision.temporalCoverage && (
-              <TemporalCoverageLabel
-                className="mt-1 text-xs"
-                expression={revision.temporalCoverage}
+            <Collapsible.Panel className="pt-4">
+              <KnowledgePageRevisionComparison
+                readableId={page.readableId}
+                revisionNumber={revision.revisionNumber}
               />
-            )}
-            <p className="mt-1 text-muted-foreground text-xs">
-              Created by {revision.author.name} ·{' '}
-              <time dateTime={revision.createdAt.toISOString()}>
-                {revision.createdAt.toLocaleString()}
-              </time>
-            </p>
-          </li>
+            </Collapsible.Panel>
+          </Collapsible.Root>
         ))}
       </ol>
     </section>
