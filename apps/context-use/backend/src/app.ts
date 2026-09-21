@@ -23,6 +23,7 @@ import type { AssetsServiceContract } from '#backend/services/assets/service.ts'
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
+import type { HistoryServiceContract } from '#backend/services/history/service.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
@@ -45,6 +46,7 @@ export function createApp({
   assetTransferCapabilities,
   frontendAssetsService,
   entitiesService,
+  historyService,
   healthService,
   graphService,
   retrievalService,
@@ -66,6 +68,7 @@ export function createApp({
   assetTransferCapabilities: AssetTransferCapabilitiesContract;
   frontendAssetsService: FrontendAssetsServiceContract;
   entitiesService: EntitiesServiceContract;
+  historyService: HistoryServiceContract;
   healthService: HealthServiceContract;
   graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
@@ -164,6 +167,7 @@ export function createApp({
         auth,
         assetsService,
         entitiesService,
+        historyService,
         healthService,
         graphService,
         retrievalService,

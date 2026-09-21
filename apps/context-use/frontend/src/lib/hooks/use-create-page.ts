@@ -1,6 +1,7 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assetDetailsQueryKey, assetPreviewsQueryKey } from '../../queries/assets';
 import { entitiesQueryKey } from '../../queries/entities';
+import { historyQueryKey } from '../../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
 import { mapQueryKey } from '../../queries/map';
 import { type CreatePageVariables, createPage, pagesQueryKey } from '../../queries/pages';
@@ -17,6 +18,7 @@ export function useCreatePage(): UseMutationResult<
     mutationFn: createPage,
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: historyQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
         queryClient.invalidateQueries({ queryKey: recordDetailsQueryKey }),
         queryClient.invalidateQueries({ queryKey: mapQueryKey }),

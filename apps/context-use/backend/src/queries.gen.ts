@@ -398,6 +398,22 @@ export interface IPingDatabaseResult {
     value: number;
 }
 
+/** Result of query `ListResourceHistory`. */
+export interface IListResourceHistoryResult {
+    sequence: number;
+    resourceType: string;
+    readableId: string;
+    name: string;
+    action: string;
+    message: string;
+    authorKind: string;
+    authorName: string;
+    details: string;
+    revisionNumber: number | null;
+    createdAt: string;
+    available: unknown;
+}
+
 /** Result of query `ListHypermediaNeighborhoods`. */
 export interface IListHypermediaNeighborhoodsResult {
     rowType: "anchor" | "neighbor" | "relationship";
@@ -907,6 +923,7 @@ export interface Queries {
     FaceAssetBatch: IFaceAssetBatchResult;
     ListPersonImages: IListPersonImagesResult;
     PingDatabase: IPingDatabaseResult;
+    ListResourceHistory: IListResourceHistoryResult;
     ListHypermediaNeighborhoods: IListHypermediaNeighborhoodsResult;
     ListHypermediaPages: IListHypermediaPagesResult;
     ListHypermediaPageEntities: IListHypermediaPageEntitiesResult;

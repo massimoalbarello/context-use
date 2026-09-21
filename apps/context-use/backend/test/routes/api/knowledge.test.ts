@@ -19,6 +19,7 @@ import { READABLE_ID_SUFFIX_LENGTH } from '#backend/models/readable-ids/model.ts
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
+import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
@@ -28,6 +29,7 @@ import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
+import { HistoryService } from '#backend/services/history/service.ts';
 import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
@@ -144,6 +146,7 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       storage,
     });
     const app = createApp({
+      historyService: new HistoryService(new HistoryRepository(database)),
       managedSyncsService: unusedManagedSyncsService,
       syncFetch: unusedSyncFetch,
       retrievalService: retrieval,
@@ -191,6 +194,13 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       );
       expect(response.status).toBe(StatusMap['Bad Request']);
     }
+    const emptyHistory = await app.handle(new Request('http://localhost/api/history'));
+    expect(await emptyHistory.json()).toEqual({ items: [], nextCursor: null });
+    const invalidCursor = await app.handle(
+      new Request('http://localhost/api/history?cursor=invalid'),
+    );
+    expect(invalidCursor.status).toBe(StatusMap['Bad Request']);
+
     const profileResponse = await app.handle(
       jsonRequest({
         method: 'POST',
@@ -1364,6 +1374,21 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       );
       expect(rejected.status).toBe(StatusMap['Bad Request']);
     }
+    const historyResponse = await app.handle(new Request('http://localhost/api/history?limit=1'));
+    expect(historyResponse.status).toBe(StatusMap.OK);
+    const historyPage = await historyResponse.json();
+    expect(historyPage.items).toHaveLength(1);
+    expect(historyPage.items[0].message.length).toBeGreaterThan(0);
+    expect(historyPage.nextCursor).toBeTypeOf('string');
+    const olderHistory = await app.handle(
+      new Request(
+        `http://localhost/api/history?limit=1&cursor=${encodeURIComponent(historyPage.nextCursor)}`,
+      ),
+    );
+    expect(olderHistory.status).toBe(StatusMap.OK);
+    expect((await olderHistory.json()).items[0].sequence).toBeLessThan(
+      historyPage.items[0].sequence,
+    );
   } finally {
     await database.close();
     await rm(dataFolder, { recursive: true, force: true });

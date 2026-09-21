@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as EntitiesRouteImport } from './routes/entities'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as PagesRouteImport } from './routes/pages'
@@ -52,6 +53,11 @@ const AssetsRoute = AssetsRouteImport.update({
 const EntitiesRoute = EntitiesRouteImport.update({
   id: '/entities',
   path: '/entities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
   '/entities': typeof EntitiesRouteWithChildren
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/pages': typeof PagesRouteWithChildren
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/setup': typeof SetupRoute
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRouteWithChildren
   '/entities': typeof EntitiesRouteWithChildren
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/pages': typeof PagesRouteWithChildren
@@ -279,6 +288,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/entities'
+    | '/history'
     | '/login'
     | '/map'
     | '/pages'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/history'
     | '/login'
     | '/map'
     | '/setup'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/entities'
+    | '/history'
     | '/login'
     | '/map'
     | '/pages'
@@ -367,6 +379,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsRoute: typeof AssetsRouteWithChildren
   EntitiesRoute: typeof EntitiesRouteWithChildren
+  HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   PagesRoute: typeof PagesRouteWithChildren
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/entities'
       fullPath: '/entities'
       preLoaderRoute: typeof EntitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -679,6 +699,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsRoute: AssetsRouteWithChildren,
   EntitiesRoute: EntitiesRouteWithChildren,
+  HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   PagesRoute: PagesRouteWithChildren,

@@ -35,6 +35,7 @@ import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/s
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import {
   unusedApiKeysService,
+  unusedHistoryService,
   unusedManagedSyncsService,
   unusedRecordsService,
   unusedSyncFetch,
@@ -182,6 +183,7 @@ async function fixture({ automatic = true } = {}) {
     protectMcpRequest: unusedMcpProtection,
   };
   const app = createApp({
+    historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,
     auth,

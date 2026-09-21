@@ -6,9 +6,11 @@ import { RevisionDiff } from './revision-diff';
 export function KnowledgePageRevisionComparison({
   readableId,
   revisionNumber,
+  label,
 }: {
   readableId: string;
   revisionNumber: number;
+  label?: string;
 }) {
   const comparison = useQuery(
     pageDiffQueryOptions({
@@ -36,5 +38,5 @@ export function KnowledgePageRevisionComparison({
       </p>
     );
   }
-  return <RevisionDiff diff={comparison.data} />;
+  return <RevisionDiff diff={comparison.data} label={label} />;
 }

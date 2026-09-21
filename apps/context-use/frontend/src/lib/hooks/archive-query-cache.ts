@@ -16,6 +16,7 @@ import {
   entityPreviewsQueryKey,
   entityQueryOptions,
 } from '../../queries/entities';
+import { historyQueryKey } from '../../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
 import { mapQueryKey } from '../../queries/map';
 import {
@@ -47,6 +48,7 @@ export function settleArchivedAssetQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: assetsListQueryKey });
+  void queryClient.invalidateQueries({ queryKey: historyQueryKey });
   void queryClient.invalidateQueries({ queryKey: assetSuggestionsQueryKey });
   void queryClient.invalidateQueries({ queryKey: mapQueryKey });
   void queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey });
@@ -72,6 +74,7 @@ export function settleArchivedEntityQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: entitiesListQueryKey });
+  void queryClient.invalidateQueries({ queryKey: historyQueryKey });
   void queryClient.invalidateQueries({ queryKey: mapQueryKey });
   void queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey });
 }
@@ -96,6 +99,7 @@ export function settleArchivedPageQueries({
   queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
   queryClient.removeQueries({ queryKey: previewQueryKey, exact: true });
   void queryClient.invalidateQueries({ queryKey: pagesListQueryKey });
+  void queryClient.invalidateQueries({ queryKey: historyQueryKey });
   void queryClient.invalidateQueries({ queryKey: mapQueryKey });
   void queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey });
   void queryClient.invalidateQueries({

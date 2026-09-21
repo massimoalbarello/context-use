@@ -27,6 +27,7 @@ import { OwnerRegistrationService } from '#backend/services/owner-registration/s
 import {
   unusedApiKeysService,
   unusedAssetFacesService,
+  unusedHistoryService,
   unusedManagedSyncsService,
   unusedRecordsService,
   unusedSyncFetch,
@@ -109,6 +110,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     const app = createApp({
+      historyService: unusedHistoryService,
       managedSyncsService: unusedManagedSyncsService,
       syncFetch: unusedSyncFetch,
       retrievalService: retrieval,
