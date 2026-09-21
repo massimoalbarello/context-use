@@ -57,7 +57,11 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
             missingFields: [],
           },
         },
-        connections: connections().map((connection) => ({ ...connection, status: 'active' })),
+        connections: connections().map((connection) => ({
+          ...connection,
+          status: 'active',
+          authType: 'oauth2' as const,
+        })),
       }),
     configure: ({ actorId, ownerId, values }) => {
       expect(actorId).toBe(OWNER_USER_ID);

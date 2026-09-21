@@ -42,6 +42,7 @@ test('provider registrations share management and destination code while deliver
     service: provider.id,
     account: `${provider.id}-account`,
     status: 'active',
+    authType: 'oauth2' as const,
   }));
   const providers: ProviderApi = {
     credentials: unexpected,
