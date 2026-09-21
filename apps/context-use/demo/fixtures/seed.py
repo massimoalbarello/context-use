@@ -236,11 +236,11 @@ def seed_isolated_data():
         create_asset(asset)
         if asset.get("entityReadableId"):
             assign_entity_image(asset)
-    credential = api_request("POST", "/api/api-keys", {"name": "Development seeding"})
+    credential = api_request("POST", "/api/api-keys", {"name": "Development seeding", "changeMessage": "Created a temporary key for development seeding"})
     try:
         create_records(credential["apiKey"])
     finally:
-        api_request("PUT", f"/api/api-keys/{credential['key']['readableId']}/revoke")
+        api_request("PUT", f"/api/api-keys/{credential['key']['readableId']}/revoke", {"changeMessage": "Revoked the temporary development seeding key"})
     record_addresses = resolve_record_addresses()
     page_count = seed_pages(record_addresses)
 
