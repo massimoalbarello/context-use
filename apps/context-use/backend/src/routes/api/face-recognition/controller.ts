@@ -3,6 +3,7 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import { assetSummaryResponse } from '#backend/routes/api/assets/summary-model.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
 import {
   FaceActionAcceptedSchema,
@@ -23,6 +24,7 @@ export function createFaceRecognitionController({
   faces: AssetFacesServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true })
     .get(
@@ -50,6 +52,7 @@ export function createFaceRecognitionController({
         return faceSettingsResponse(await faces.settings({ ownerId: user.id }));
       },
       {
+        changeMessage: true,
         body: UpdateFaceSettingsSchema,
         response: { 200: FaceSettingsSchema, 409: ErrorResponseSchema },
         detail: {
@@ -80,7 +83,10 @@ export function createFaceRecognitionController({
         await faces.retryFailed({ ownerId: user.id });
         return { accepted: true as const };
       },
-      { response: FaceActionAcceptedSchema },
+      {
+        changeMessage: true,
+        response: FaceActionAcceptedSchema,
+      },
     )
     .post(
       '/face-recognition/model/check',
@@ -88,6 +94,9 @@ export function createFaceRecognitionController({
         await faces.checkModel();
         return { accepted: true as const };
       },
-      { response: FaceActionAcceptedSchema },
+      {
+        changeMessage: true,
+        response: FaceActionAcceptedSchema,
+      },
     );
 }

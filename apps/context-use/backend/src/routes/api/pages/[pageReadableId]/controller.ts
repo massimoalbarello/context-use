@@ -2,6 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   KnowledgePageParamsSchema,
   KnowledgePagePreviewSchema,
@@ -29,6 +30,7 @@ export function createPageReadableIdController({
   pagesService: KnowledgePagesServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({
       auth: true,
@@ -107,6 +109,7 @@ export function createPageReadableIdController({
       '/pages/:pageReadableId',
       async ({ body, params, user, status }) => {
         const result = await pagesService.update({
+          message: body.changeMessage,
           ownerId: user.id,
           actor: { kind: 'owner' },
           readableId: params.pageReadableId,
@@ -134,6 +137,7 @@ export function createPageReadableIdController({
         return status(StatusMap['Internal Server Error'], { error: 'Page update failed' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Pages'], summary: 'Create a new knowledge page revision' },
         params: KnowledgePageParamsSchema,
         body: UpdateKnowledgePageBodySchema,
@@ -148,8 +152,9 @@ export function createPageReadableIdController({
     )
     .put(
       '/pages/:pageReadableId/archive',
-      async ({ params, user, status }) => {
+      async ({ body, params, user, status }) => {
         const result = await pagesService.archive({
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.pageReadableId,
         });
@@ -161,7 +166,9 @@ export function createPageReadableIdController({
           : status(StatusMap['Not Found'], { error: 'Knowledge page not found' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Pages'], summary: 'Archive a knowledge page' },
+
         params: KnowledgePageParamsSchema,
         response: {
           [StatusMap['No Content']]: t.Void(),

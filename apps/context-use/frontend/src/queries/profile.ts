@@ -3,7 +3,10 @@ import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 
 export type KnowledgeProfile = NonNullable<Awaited<ReturnType<typeof api.api.profile.get>>['data']>;
-export type CreateProfileVariables = Parameters<typeof api.api.profile.post>[0];
+export type CreateProfileVariables = Omit<
+  Parameters<typeof api.api.profile.post>[0],
+  'changeMessage'
+> & { changeMessage?: string };
 
 export const profileQueryKey = ['profile'] as const;
 
@@ -22,7 +25,10 @@ export const profileQueryOptions = queryOptions({
 });
 
 export async function createProfile(body: CreateProfileVariables): Promise<KnowledgeProfile> {
-  const { data, error } = await api.api.profile.post(body);
+  const { data, error } = await api.api.profile.post({
+    ...body,
+    changeMessage: body.changeMessage?.trim() || `Added profile “${body.name}”`,
+  });
   if (error) {
     if (error.status === ApiStatus.Conflict && 'nameConflict' in error.value) {
       throw new DuplicateResourceNameError(apiErrorMessage(error));

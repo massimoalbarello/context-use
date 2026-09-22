@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { assetAddress, assetReadableId } from '#backend/models/readable-ids/addresses.ts';
+import { withChangeMessage } from '#backend/routes/change-message.ts';
 import {
   McpAssetSchema,
   McpAssetSummarySchema,
@@ -52,7 +53,9 @@ const ReadAssetInputSchema = AssetAddressInputSchema.extend({
     .describe('Set true only when the immutable asset bytes are needed'),
 });
 
-const UpdateAssetInputSchema = AssetAddressInputSchema.extend({ name: AssetNameSchema });
+const UpdateAssetInputSchema = AssetAddressInputSchema.extend({
+  name: AssetNameSchema,
+});
 
 const AssetListOutputSchema = z.object({
   items: z.array(McpAssetSummarySchema),
@@ -97,12 +100,17 @@ export function registerAssetTools({
       title: 'Create asset upload',
       description:
         'Create a short-lived, single-use request for uploading one asset. Supply immutable bytes and a meaningful name. Do not infer unsupported identity, location, intent, or chronology from media content.',
-      inputSchema: CreateAssetUploadInputSchema,
+      inputSchema: withChangeMessage(CreateAssetUploadInputSchema),
       outputSchema: CreateAssetUploadOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    ({ name, allowDuplicate }) => {
-      const upload = transferCapabilities.issueUpload({ principal, name, allowDuplicate });
+    ({ name, allowDuplicate, changeMessage }) => {
+      const upload = transferCapabilities.issueUpload({
+        principal,
+        name,
+        allowDuplicate,
+        changeMessage,
+      });
       return mcpToolSuccess({
         method: 'PUT',
         url: upload.url,
@@ -189,12 +197,16 @@ export function registerAssetTools({
       title: 'Update asset',
       description:
         'Update the complete editable representation of one active asset, currently its meaningful name. The supplied bytes are immutable; create a new asset when content must change.',
-      inputSchema: UpdateAssetInputSchema,
+      inputSchema: withChangeMessage(UpdateAssetInputSchema),
       outputSchema: UpdateAssetOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, name }) => {
+    async ({ address, name, changeMessage }) => {
       const asset = await assetsService.updateName({
+        change: {
+          clientName: principal.clientAuthorizationName,
+          message: changeMessage,
+        },
         ownerId: principal.ownerId,
         readableId: assetReadableId(address),
         name,
@@ -211,13 +223,20 @@ export function registerAssetTools({
       title: 'Archive asset',
       description:
         'Archive one asset without deleting its immutable bytes. This is destructive and succeeds only when no active page or entity-image usage blocks it.',
-      inputSchema: AssetAddressInputSchema,
+      inputSchema: withChangeMessage(AssetAddressInputSchema),
       outputSchema: ArchiveAssetOutputSchema,
       annotations: MCP_ARCHIVE_TOOL_ANNOTATIONS,
     },
-    async ({ address }) => {
+    async ({ address, changeMessage }) => {
       const readableId = assetReadableId(address);
-      const result = await assetsService.archive({ ownerId: principal.ownerId, readableId });
+      const result = await assetsService.archive({
+        change: {
+          clientName: principal.clientAuthorizationName,
+          message: changeMessage,
+        },
+        ownerId: principal.ownerId,
+        readableId,
+      });
       if (result.state === 'not_found') {
         return mcpToolError({ code: 'not_found', message: 'Asset not found.' });
       }

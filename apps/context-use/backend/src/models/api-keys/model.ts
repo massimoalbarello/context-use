@@ -12,6 +12,7 @@ export type ApiKey = {
 
 export type ApiKeyPrincipal = {
   keyId: string;
+  name: string;
   ownerId: string;
 };
 

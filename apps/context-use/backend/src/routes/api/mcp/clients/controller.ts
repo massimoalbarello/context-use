@@ -2,6 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   ApproveMcpClientBodySchema,
   McpAuthorizationClientQuerySchema,
@@ -34,6 +35,7 @@ export function createMcpClientsController({
   mcpServerUrl: string;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true, response: errorResponses })
     .get(
@@ -76,6 +78,7 @@ export function createMcpClientsController({
         return status(StatusMap.Created, mcpClientResponse(result.clientAuthorization));
       },
       {
+        changeMessage: true,
         detail: { tags: ['MCP clients'], summary: 'Approve and name an MCP client' },
         body: ApproveMcpClientBodySchema,
         response: {
@@ -124,6 +127,7 @@ export function createMcpClientsController({
         return status(StatusMap.OK, mcpClientResponse(result.clientAuthorization));
       },
       {
+        changeMessage: true,
         detail: { tags: ['MCP clients'], summary: 'Rename an MCP client' },
         params: McpClientParamsSchema,
         body: RenameMcpClientBodySchema,
@@ -149,6 +153,7 @@ export function createMcpClientsController({
         return status(StatusMap['No Content'], undefined);
       },
       {
+        changeMessage: true,
         detail: { tags: ['MCP clients'], summary: 'Archive and revoke an MCP client' },
         params: McpClientParamsSchema,
         response: { [StatusMap['No Content']]: t.Void() },

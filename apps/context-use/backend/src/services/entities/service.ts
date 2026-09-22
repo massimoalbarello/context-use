@@ -5,6 +5,7 @@ import type {
   EntityType,
   EntityTypeFilter,
 } from '#backend/models/entities/model.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
@@ -40,6 +41,7 @@ export class EntitiesService {
   }
 
   create(input: {
+    change: ChangeContext;
     ownerId: string;
     name: string;
     description: string;
@@ -57,6 +59,7 @@ export class EntitiesService {
       .create({
         id: Bun.randomUUIDv7(),
         ownerId: input.ownerId,
+        change: input.change,
         readableId,
         name: input.name.trim(),
         description: input.description.trim(),
@@ -94,6 +97,7 @@ export class EntitiesService {
   }
 
   async update(input: {
+    change: ChangeContext;
     ownerId: string;
     readableId: string;
     name: string;
@@ -103,6 +107,7 @@ export class EntitiesService {
     const previous = input.entityType === 'person' ? await this.entities.find(input) : null;
     const entity = await this.entities.update({
       ownerId: input.ownerId,
+      change: input.change,
       readableId: input.readableId,
       name: input.name.trim(),
       description: input.description.trim(),
@@ -123,7 +128,12 @@ export class EntitiesService {
     return entity;
   }
 
-  async setImage(input: { ownerId: string; readableId: string; assetReadableId: string }) {
+  async setImage(input: {
+    change: ChangeContext;
+    ownerId: string;
+    readableId: string;
+    assetReadableId: string;
+  }) {
     const asset = await this.assets.find({
       ownerId: input.ownerId,
       readableId: input.assetReadableId,
@@ -136,6 +146,7 @@ export class EntitiesService {
     }
     const result = await this.entities.setImage({
       ownerId: input.ownerId,
+      change: input.change,
       readableId: input.readableId,
       assetId: asset.id,
       updatedAt: new Date().toISOString(),
@@ -149,13 +160,14 @@ export class EntitiesService {
     return result;
   }
 
-  removeImage(input: { ownerId: string; readableId: string }) {
+  removeImage(input: { change: ChangeContext; ownerId: string; readableId: string }) {
     return this.entities.removeImage({ ...input, updatedAt: new Date().toISOString() });
   }
 
-  archive(input: { ownerId: string; readableId: string }) {
+  archive(input: { change: ChangeContext; ownerId: string; readableId: string }) {
     return this.entities.archive({
       ownerId: input.ownerId,
+      change: input.change,
       readableId: input.readableId,
       archivedAt: new Date().toISOString(),
     });

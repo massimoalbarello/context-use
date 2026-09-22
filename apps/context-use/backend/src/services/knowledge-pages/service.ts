@@ -1,5 +1,6 @@
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import { diffPageMarkdown, type KnowledgePageDiff } from '#backend/models/knowledge-pages/diff.ts';
 import {
   InvalidKnowledgePageMarkdownError,
@@ -57,6 +58,7 @@ export class KnowledgePagesService {
   async create(input: {
     ownerId: string;
     actor: KnowledgePageRevisionActor;
+    message: string;
     markdown: string;
     temporalCoverage?: string | null;
     allowDuplicate?: boolean;
@@ -105,6 +107,7 @@ export class KnowledgePagesService {
         sizeBytes,
         links: parsed.links,
         actor: input.actor,
+        message: input.message,
         createdAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -219,6 +222,7 @@ export class KnowledgePagesService {
   async update(input: {
     ownerId: string;
     actor: KnowledgePageRevisionActor;
+    message: string;
     readableId: string;
     expectedRevisionNumber: number;
     markdown: string;
@@ -269,6 +273,7 @@ export class KnowledgePagesService {
         sizeBytes,
         links: parsed.links,
         actor: input.actor,
+        message: input.message,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -287,10 +292,12 @@ export class KnowledgePagesService {
   }
 
   archive(input: {
+    change: ChangeContext;
     ownerId: string;
     readableId: string;
   }): ReturnType<KnowledgePagesRepositoryContract['archive']> {
     return this.pages.archive({
+      change: input.change,
       ownerId: input.ownerId,
       readableId: input.readableId,
       archivedAt: new Date().toISOString(),

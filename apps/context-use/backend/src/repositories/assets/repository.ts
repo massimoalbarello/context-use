@@ -2,14 +2,16 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#backend/lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#backend/models/assets/model.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
+import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface AssetsRepositoryContract {
   create(
-    input: StoredAsset,
+    input: StoredAsset & { change: ChangeContext },
   ): Promise<{ state: 'created'; asset: StoredAsset } | { state: 'readable_id_conflict' }>;
   list(input: {
     ownerId: string;
@@ -24,12 +26,14 @@ export interface AssetsRepositoryContract {
     usageLimit?: number;
   }): Promise<Asset | null>;
   updateName(input: {
+    change: ChangeContext;
     ownerId: string;
     readableId: string;
     name: string;
     updatedAt: string;
   }): Promise<Asset | null>;
   archive(input: {
+    change: ChangeContext;
     ownerId: string;
     readableId: string;
     archivedAt: string;
@@ -55,7 +59,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     this.sql = withTypes<Queries>(sql);
   }
 
-  create(input: StoredAsset) {
+  create(input: StoredAsset & { change: ChangeContext }) {
     return this.sql.begin(async (db) => {
       const rows = await db.CreateAsset`
         /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
@@ -82,6 +86,17 @@ export class AssetsRepository implements AssetsRepositoryContract {
         readableId: input.readableId,
         label: input.name,
         metadata: [input.mediaType, input.extension].filter(Boolean).join(' '),
+      });
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'asset',
+        readableId: input.readableId,
+        name: input.name,
+        action: 'created',
+        details: [`${input.mediaType} · ${input.sizeBytes} bytes`],
+        createdAt: input.createdAt,
       });
       return { state: 'created' as const, asset: storedAssetFrom(rows[0]) };
     });
@@ -176,8 +191,17 @@ export class AssetsRepository implements AssetsRepositoryContract {
     };
   }
 
-  updateName(input: { ownerId: string; readableId: string; name: string; updatedAt: string }) {
+  updateName(input: {
+    change: ChangeContext;
+    ownerId: string;
+    readableId: string;
+    name: string;
+    updatedAt: string;
+  }) {
     return this.sql.begin(async (db) => {
+      const previous = await db.FindAssetChangeName`
+        select "name" from "asset" where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId} and "archived_at" is null
+      `;
       const rows = await db.UpdateAssetName`
         /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
         update "asset" set "name" = ${input.name}, "updated_at" = ${input.updatedAt}
@@ -199,6 +223,19 @@ export class AssetsRepository implements AssetsRepositoryContract {
         label: input.name,
         metadata: [rows[0].mediaType, rows[0].extension].filter(Boolean).join(' '),
       });
+      if (previous[0] && previous[0].name !== input.name) {
+        await recordChange({
+          db,
+          ownerId: input.ownerId,
+          change: input.change,
+          resourceType: 'asset',
+          readableId: input.readableId,
+          name: input.name,
+          action: 'updated',
+          details: [`Name: “${previous[0].name}” → “${input.name}”`],
+          createdAt: input.updatedAt,
+        });
+      }
       const asset = storedAssetFrom(rows[0]);
       return {
         ...this.summary(asset),
@@ -213,6 +250,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
   }
 
   archive(input: {
+    change: ChangeContext;
     ownerId: string;
     readableId: string;
     archivedAt: string;
@@ -220,7 +258,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     return this.sql.begin(async (db) => {
       const targets = await db.FindAssetArchiveTarget`
         /* @notNull id */
-        select "id", "archived_at" as "archivedAt" from "asset"
+        select "id", "name", "archived_at" as "archivedAt" from "asset"
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
       `;
       const target = targets[0];
@@ -247,6 +285,17 @@ export class AssetsRepository implements AssetsRepositoryContract {
         where "owner_id" = ${input.ownerId} and "resource_type" = 'asset'
           and "readable_id" = ${input.readableId}
       `;
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'asset',
+        readableId: input.readableId,
+        name: target.name,
+        action: 'archived',
+        details: [],
+        createdAt: input.archivedAt,
+      });
       return { state: 'archived' } as const;
     });
   }

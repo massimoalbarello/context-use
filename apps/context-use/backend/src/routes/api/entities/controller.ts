@@ -2,6 +2,7 @@ import { Elysia, StatusMap } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   CreateEntityBodySchema,
   EntityListQuerySchema,
@@ -20,6 +21,7 @@ export function createEntitiesController({
   entitiesService: EntitiesServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({
       auth: true,
@@ -28,7 +30,11 @@ export function createEntitiesController({
     .post(
       '/entities',
       async ({ body, user, status }) => {
-        const result = await entitiesService.create({ ownerId: user.id, ...body });
+        const result = await entitiesService.create({
+          change: { clientName: null, message: body.changeMessage },
+          ownerId: user.id,
+          ...body,
+        });
         if (result.state === 'name_conflict') {
           return status(StatusMap.Conflict, {
             error:
@@ -39,6 +45,7 @@ export function createEntitiesController({
         return status(StatusMap.Created, entityResponse(result.entity));
       },
       {
+        changeMessage: true,
         detail: { tags: ['Entities'], summary: 'Create an entity identity' },
         body: CreateEntityBodySchema,
         response: {

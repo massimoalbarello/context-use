@@ -2,6 +2,7 @@ import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
+import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
 import {
   MAX_TEMPORAL_COVERAGE_LENGTH,
   parseTemporalCoverage,
@@ -22,6 +23,7 @@ export type KnowledgePageFormValues = {
 type KnowledgePageFormSubmission = Omit<KnowledgePageFormValues, 'temporalCoverage'> & {
   temporalCoverage?: string | null;
   allowDuplicate?: boolean;
+  changeMessage?: string;
 };
 
 type KnowledgePageFormProps = {
@@ -67,6 +69,7 @@ export function KnowledgePageForm({
       markdown: initialValues.markdown,
       temporalCoverage: initialValues.temporalCoverage ?? '',
       allowDuplicate: false,
+      changeMessage: '',
     },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
@@ -76,6 +79,7 @@ export function KnowledgePageForm({
       });
       onSubmit({
         markdown: value.markdown.trim(),
+        changeMessage: value.changeMessage.trim() || undefined,
         ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
         allowDuplicate: value.allowDuplicate || undefined,
       });
@@ -159,6 +163,22 @@ export function KnowledgePageForm({
                 record, or use an asset; use H2 or lower headings for linkable sections.
               </FieldDescription>
               <FieldError>{field.state.meta.errors[0]}</FieldError>
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="changeMessage">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="page-change-message">Change summary (optional)</FieldLabel>
+              <Input
+                id="page-change-message"
+                value={field.state.value}
+                maxLength={MAX_CHANGE_MESSAGE_LENGTH}
+                placeholder="What changed and why?"
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
+              <FieldDescription>Shown in History alongside the changes.</FieldDescription>
             </Field>
           )}
         </form.Field>

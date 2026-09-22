@@ -8,6 +8,7 @@ import type { Storage } from '#backend/lib/storage/storage.ts';
 import type { StoredAsset } from '#backend/models/assets/model.ts';
 import type { AssetFaces, FaceDecision, FaceObservation } from '#backend/models/faces/model.ts';
 import type { FaceQueueFilter } from '#backend/models/faces/processing.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { AssetsRepositoryContract } from '#backend/repositories/assets/repository.ts';
 import type { EntityRepositoryContract } from '#backend/repositories/entities/repository.ts';
 import type {
@@ -365,6 +366,7 @@ export class AssetFacesService {
   async annotate(
     input: AssetInput & {
       faceReadableId: string;
+      change: ChangeContext;
       decision: FaceDecision;
       entityReadableId?: string;
     },
@@ -383,6 +385,7 @@ export class AssetFacesService {
     const updated = await this.repository.annotate({
       ownerId: input.ownerId,
       assetId: asset.id,
+      change: input.change,
       faceReadableId: input.faceReadableId,
       updatedAt: new Date().toISOString(),
       annotation:

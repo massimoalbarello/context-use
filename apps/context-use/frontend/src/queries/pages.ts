@@ -26,10 +26,15 @@ export type KnowledgePageDiff = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['diff']['get']>>['data']
 >;
 
-export type CreatePageVariables = Parameters<typeof api.api.pages.post>[0];
+export type CreatePageVariables = Omit<
+  Parameters<typeof api.api.pages.post>[0],
+  'changeMessage'
+> & { changeMessage?: string };
 export type UpdatePageVariables = {
   readableId: string;
-  body: Parameters<ReturnType<typeof api.api.pages>['put']>[0];
+  body: Omit<Parameters<ReturnType<typeof api.api.pages>['put']>[0], 'changeMessage'> & {
+    changeMessage?: string;
+  };
 };
 export type ArchivePageVariables = { readableId: string };
 export type ArchivePageResult =
@@ -142,7 +147,10 @@ export function pagePreviewQueryOptions(readableId: string) {
 }
 
 export async function createPage(body: CreatePageVariables): Promise<{ readableId: string }> {
-  const { data, error } = await api.api.pages.post(body);
+  const { data, error } = await api.api.pages.post({
+    ...body,
+    changeMessage: body.changeMessage?.trim() || `Added page`,
+  });
   if (error) {
     if (error.status === ApiStatus.Conflict && 'nameConflict' in error.value) {
       throw new DuplicateResourceNameError(apiErrorMessage(error));
@@ -153,7 +161,9 @@ export async function createPage(body: CreatePageVariables): Promise<{ readableI
 }
 
 export async function updatePage({ readableId, body }: UpdatePageVariables): Promise<void> {
-  const { error } = await api.api.pages({ pageReadableId: readableId }).put(body);
+  const { error } = await api.api
+    .pages({ pageReadableId: readableId })
+    .put({ ...body, changeMessage: body.changeMessage?.trim() || `Updated page` });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -162,7 +172,9 @@ export async function updatePage({ readableId, body }: UpdatePageVariables): Pro
 export async function archivePage({
   readableId,
 }: ArchivePageVariables): Promise<ArchivePageResult> {
-  const { error } = await api.api.pages({ pageReadableId: readableId }).archive.put();
+  const { error } = await api.api
+    .pages({ pageReadableId: readableId })
+    .archive.put({ changeMessage: 'Archived page from the workspace' });
   if (error) {
     if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
       return { state: 'resource_in_use', blockers: error.value.blockers };

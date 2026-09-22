@@ -77,10 +77,16 @@ function ownerAuth(): Auth {
 }
 
 function jsonRequest({ method, path, body }: { method: string; path: string; body?: unknown }) {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    body = { changeMessage: 'Updated test context', ...(body as object | undefined) };
+  }
   return new Request(`http://localhost/api${path}`, {
     method,
     headers: body === undefined ? undefined : { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body:
+      body === undefined
+        ? undefined
+        : JSON.stringify({ changeMessage: 'Updated test context', ...(body as object) }),
   });
 }
 
@@ -141,6 +147,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       'base64',
     );
     const form = new FormData();
+    form.set('changeMessage', 'Added test asset');
     form.set('name', 'Quarterly chart');
     form.set('file', new File([pngBytes], 'misleading.html', { type: 'text/html' }));
     const uploadResponse = await app.handle(
@@ -175,6 +182,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
 
     const pdfBytes = Buffer.from('%PDF-1.7\nasset preview');
     const pdfForm = new FormData();
+    pdfForm.set('changeMessage', 'Added test asset');
     pdfForm.set('name', 'Investment memo');
     pdfForm.set('file', new File([pdfBytes], 'investment-memo.pdf'));
     expect(
@@ -193,6 +201,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
 
     const mp4Bytes = Buffer.from('00000018667479706d703432000000006d70343169736f6d', 'hex');
     const mp4Form = new FormData();
+    mp4Form.set('changeMessage', 'Added test asset');
     mp4Form.set('name', 'Factory recording');
     mp4Form.set('file', new File([mp4Bytes], 'misleading.bin'));
     const mp4UploadResponse = await app.handle(

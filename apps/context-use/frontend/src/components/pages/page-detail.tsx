@@ -243,12 +243,13 @@ export function KnowledgePageDetail({
               )}
             </DetailHeader>
           )}
-          onSubmit={({ markdown, temporalCoverage }) =>
+          onSubmit={({ markdown, temporalCoverage, changeMessage }) =>
             updatePage.mutate(
               {
                 readableId: page.readableId,
                 body: {
                   expectedRevisionNumber: page.revisionNumber,
+                  changeMessage,
                   markdown,
                   ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
                 },

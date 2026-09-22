@@ -84,9 +84,14 @@ async function withRecords(
         }),
         record({ id: 'missing', provider: 'granola', kind: 'meeting' }),
       ]) {
-        await service.upsert({ ownerId: OWNER_ID, record: input });
+        await service.upsert({
+          change: { clientName: null, message: 'Updated test context' },
+          ownerId: OWNER_ID,
+          record: input,
+        });
       }
       await service.upsert({
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: SECOND_OWNER_ID,
         record: record({ id: 'private', provider: 'private-provider', kind: 'private-kind' }),
       });

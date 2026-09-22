@@ -3,6 +3,7 @@ import { matchFace, reconcileFaces } from '#backend/models/faces/matching.ts';
 import type { FaceBox, FaceDecision } from '#backend/models/faces/model.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
 import type { FaceAssetInput, FacesRepositoryContract, StoredFace } from './contract.ts';
+import { recordFaceAnnotationChange } from './history.ts';
 import { type FaceSqlite, withTypes } from './sqlite.ts';
 
 const WRITE_RETRY_MS = 10;
@@ -394,8 +395,8 @@ export class FacesRepository implements FacesRepositoryContract {
     return this.run(() =>
       this.sql.begin(() => {
         const targets = this.sql.FindFaceAnnotationTarget`
-        /* @notNull id */
-        select face."id" from "asset_face" face join "asset" asset on asset."id" = face."asset_id" and asset."owner_id" = face."owner_id"
+        /* @notNull id name readableId */
+        select face."id", face."annotation_decision" as "decision", face."annotation_entity_id" as "entityId", asset."name", asset."readable_id" as "readableId" from "asset_face" face join "asset" asset on asset."id" = face."asset_id" and asset."owner_id" = face."owner_id"
         where face."owner_id" = ${input.ownerId} and face."asset_id" = ${input.assetId} and face."readable_id" = ${input.faceReadableId}
           and asset."archived_at" is null and (${input.annotation?.entityId ?? null} is null or exists(
             select 1 from "entity" where "owner_id" = ${input.ownerId} and "id" = ${input.annotation?.entityId ?? null} and "entity_type" = 'person' and "archived_at" is null))
@@ -420,6 +421,7 @@ export class FacesRepository implements FacesRepositoryContract {
           this.invalidateEntityMatches({ ownerId: input.ownerId, entityId: reference.entityId });
         }
         this.replaceLinks(input);
+        recordFaceAnnotationChange({ database: this.database, input, face });
         return true;
       }),
     );

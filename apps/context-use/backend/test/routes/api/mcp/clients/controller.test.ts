@@ -67,7 +67,11 @@ test('duplicate client names are returned as conflicts', async () => {
     new Request('http://localhost/mcp/clients', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clientId: 'oauth-client', name: 'Codex' }),
+      body: JSON.stringify({
+        clientId: 'oauth-client',
+        name: 'Codex',
+        changeMessage: 'Authorize Codex',
+      }),
     }),
   );
   expect(approval.status).toBe(StatusMap.Conflict);
@@ -81,7 +85,7 @@ test('duplicate client names are returned as conflicts', async () => {
     new Request('http://localhost/mcp/clients/client-authorization', {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: 'Codex' }),
+      body: JSON.stringify({ name: 'Codex', changeMessage: 'Rename MCP client' }),
     }),
   );
   expect({ status: rename.status, body: await rename.json() }).toEqual({

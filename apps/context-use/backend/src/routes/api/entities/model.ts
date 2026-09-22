@@ -62,8 +62,12 @@ export const CreateEntityBodySchema = t.Object({
   ...EntityIdentityBodySchema.properties,
   allowDuplicate: t.Optional(t.Boolean()),
 });
-export const UpdateEntityBodySchema = EntityIdentityBodySchema;
-export const SetEntityImageBodySchema = t.Object({ assetReadableId: ReadableIdSchema });
+export const UpdateEntityBodySchema = t.Object({
+  ...EntityIdentityBodySchema.properties,
+});
+export const SetEntityImageBodySchema = t.Object({
+  assetReadableId: ReadableIdSchema,
+});
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
 export const EntityListQuerySchema = t.Object({
   entityType: t.Optional(EntityTypeFilterSchema),

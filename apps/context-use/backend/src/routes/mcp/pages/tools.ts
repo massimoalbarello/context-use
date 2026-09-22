@@ -4,6 +4,7 @@ import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { pageAddress, pageReadableId } from '#backend/models/readable-ids/addresses.ts';
+import { withChangeMessage } from '#backend/routes/change-message.ts';
 import { PageAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
   McpKnowledgePageSchema,
@@ -157,16 +158,21 @@ export function registerKnowledgePageTools({
       title: 'Create knowledge page',
       description:
         'Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
-      inputSchema: CreateKnowledgePageInputSchema,
+      inputSchema: withChangeMessage(CreateKnowledgePageInputSchema),
       outputSchema: GuidedCreateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ guide_version, ...input }) => {
+    async ({ guide_version, changeMessage, ...input }) => {
       const guideRequired = hypermediaCurationGuideRequired(guide_version);
       if (guideRequired) {
         return guideRequired;
       }
-      const result = await pagesService.create({ ownerId: principal.ownerId, actor, ...input });
+      const result = await pagesService.create({
+        message: changeMessage,
+        ownerId: principal.ownerId,
+        actor,
+        ...input,
+      });
       if (result.state === 'saved') {
         return mcpToolSuccess({
           address: pageAddress(result.page.readableId),
@@ -251,16 +257,24 @@ export function registerKnowledgePageTools({
     {
       title: 'Update knowledge page',
       description: `Create a new revision of one knowledge page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
-      inputSchema: UpdateKnowledgePageInputSchema,
+      inputSchema: withChangeMessage(UpdateKnowledgePageInputSchema),
       outputSchema: GuidedUpdateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
     },
-    async ({ address, expectedRevisionNumber, guide_version, markdown, temporalCoverage }) => {
+    async ({
+      address,
+      expectedRevisionNumber,
+      guide_version,
+      markdown,
+      temporalCoverage,
+      changeMessage,
+    }) => {
       const guideRequired = hypermediaCurationGuideRequired(guide_version);
       if (guideRequired) {
         return guideRequired;
       }
       const result = await pagesService.update({
+        message: changeMessage,
         ownerId: principal.ownerId,
         actor,
         readableId: pageReadableId(address),
@@ -299,16 +313,17 @@ export function registerKnowledgePageTools({
       title: 'Archive knowledge page',
       description:
         'Archive one knowledge page. This is destructive and succeeds only when no active inbound references block it.',
-      inputSchema: GuidedPageAddressInputSchema,
+      inputSchema: withChangeMessage(GuidedPageAddressInputSchema),
       outputSchema: GuidedArchiveKnowledgePageOutputSchema,
       annotations: MCP_ARCHIVE_TOOL_ANNOTATIONS,
     },
-    async ({ address, guide_version }) => {
+    async ({ address, guide_version, changeMessage }) => {
       const guideRequired = hypermediaCurationGuideRequired(guide_version);
       if (guideRequired) {
         return guideRequired;
       }
       const result = await pagesService.archive({
+        change: { clientName: principal.clientAuthorizationName, message: changeMessage },
         ownerId: principal.ownerId,
         readableId: pageReadableId(address),
       });

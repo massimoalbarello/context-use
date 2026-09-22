@@ -29,6 +29,7 @@ test('asset transfer capabilities preserve principal binding and reject expiry a
   });
 
   const upload = capabilities.issueUpload({
+    changeMessage: 'Updated test context',
     principal,
     name: 'Quarterly chart',
     allowDuplicate: true,
@@ -50,6 +51,7 @@ test('asset transfer capabilities preserve principal binding and reject expiry a
     state: 'valid',
     capability: {
       kind: 'upload',
+      changeMessage: 'Updated test context',
       principal,
       name: 'Quarterly chart',
       allowDuplicate: true,
@@ -68,7 +70,11 @@ test('asset transfer capabilities preserve principal binding and reject expiry a
     capabilities.consumeDownload({ requestId: 'download-request', secret: 'download-secret' }),
   ).toEqual({ state: 'invalid' });
 
-  capabilities.issueUpload({ principal, name: 'Expired asset' });
+  capabilities.issueUpload({
+    changeMessage: 'Updated test context',
+    principal,
+    name: 'Expired asset',
+  });
   now += CAPABILITY_LIFETIME_MILLISECONDS;
   expect(
     capabilities.consumeUpload({ requestId: 'expired-request', secret: 'expired-secret' }),

@@ -28,6 +28,7 @@ export interface IRevokeApiKeyResult {
 export interface IAuthenticateApiKeyResult {
     keyId: string;
     ownerId: string;
+    name: string;
 }
 
 /** Result of query `CreateAsset`. */
@@ -77,6 +78,11 @@ export interface IFindAssetResult {
     updatedAt: string;
 }
 
+/** Result of query `FindAssetChangeName`. */
+export interface IFindAssetChangeNameResult {
+    name: string;
+}
+
 /** Result of query `UpdateAssetName`. */
 export interface IUpdateAssetNameResult {
     id: string;
@@ -95,6 +101,7 @@ export interface IUpdateAssetNameResult {
 /** Result of query `FindAssetArchiveTarget`. */
 export interface IFindAssetArchiveTargetResult {
     id: string;
+    name: string;
     archivedAt: string | null;
 }
 
@@ -236,6 +243,15 @@ export interface IListActiveEntityMentioningPagesResult {
     updatedAt: string;
 }
 
+/** Result of query `FaceChangePerson`. */
+export interface IFaceChangePersonResult {
+    name: string;
+}
+
+/** Result of query `InsertFaceResourceChange`. */
+export interface IInsertFaceResourceChangeResult {
+}
+
 /** Result of query `ReadActivePortraitReference`. */
 export interface IReadActivePortraitReferenceResult {
     faceId: string;
@@ -342,6 +358,10 @@ export interface IReadPersonReferenceFaceResult {
 /** Result of query `FindFaceAnnotationTarget`. */
 export interface IFindFaceAnnotationTargetResult {
     id: string;
+    decision: string | null;
+    entityId: string | null;
+    name: string;
+    readableId: string;
 }
 
 /** Result of query `RetireCorrectedFaceReferences`. */
@@ -767,9 +787,14 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `InsertResourceChange`. */
+export interface IInsertResourceChangeResult {
+}
+
 /** Result of query `FindCurrentRecord`. */
 export interface IFindCurrentRecordResult {
     readableId: string | null;
+    title: string | null;
     sourceUpdatedAt: string | null;
     contentHash: string | null;
     deletedAt: string | null;
@@ -844,6 +869,7 @@ export interface Queries {
     ListAssets: IListAssetsResult;
     CountAssets: ICountAssetsResult;
     FindAsset: IFindAssetResult;
+    FindAssetChangeName: IFindAssetChangeNameResult;
     UpdateAssetName: IUpdateAssetNameResult;
     FindAssetArchiveTarget: IFindAssetArchiveTargetResult;
     RemoveAssetSearchDocument: IRemoveAssetSearchDocumentResult;
@@ -861,6 +887,8 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
+    FaceChangePerson: IFaceChangePersonResult;
+    InsertFaceResourceChange: IInsertFaceResourceChangeResult;
     ReadActivePortraitReference: IReadActivePortraitReferenceResult;
     ReadFaceObservations: IReadFaceObservationsResult;
     ReadFaceAnalysis: IReadFaceAnalysisResult;
@@ -913,6 +941,7 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    InsertResourceChange: IInsertResourceChangeResult;
     FindCurrentRecord: IFindCurrentRecordResult;
     WriteRecord: IWriteRecordResult;
     RemoveRecordSearchDocument: IRemoveRecordSearchDocumentResult;

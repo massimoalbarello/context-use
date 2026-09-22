@@ -56,6 +56,7 @@ export async function seedDemoSnapshot({
     });
     const profile: EntityFixture = await fixture('entities/steve-jobs.json').json();
     const createdProfile = await resources.profilesService.create({
+      change: { clientName: null, message: 'Added demo context' },
       ownerId: DEMO_OWNER_ID,
       ...profile,
     });
@@ -70,7 +71,11 @@ export async function seedDemoSnapshot({
       if (entity.readableId === profile.readableId) {
         continue;
       }
-      const created = await resources.entitiesService.create({ ownerId: DEMO_OWNER_ID, ...entity });
+      const created = await resources.entitiesService.create({
+        change: { clientName: null, message: 'Added demo context' },
+        ownerId: DEMO_OWNER_ID,
+        ...entity,
+      });
       if (created.state !== 'created' || created.entity.readableId !== entity.readableId) {
         throw new Error(`Demo entity: ${entity.readableId}`);
       }
@@ -98,6 +103,7 @@ async function seedAssets(resources: Resources) {
   const assets: AssetFixture[] = await fixture('assets/index.json').json();
   for (const asset of assets) {
     const created = await resources.assetsService.create({
+      change: { clientName: null, message: 'Added demo context' },
       ownerId: DEMO_OWNER_ID,
       name: asset.name,
       file: fixture(asset.path),
@@ -111,6 +117,7 @@ async function seedAssets(resources: Resources) {
     }
     if (asset.entityReadableId) {
       const updated = await resources.entitiesService.setImage({
+        change: { clientName: null, message: 'Added demo context' },
         ownerId: DEMO_OWNER_ID,
         readableId: asset.entityReadableId,
         assetReadableId: asset.readableId,
@@ -138,6 +145,7 @@ async function seedRecords(resources: Resources) {
   const addresses = new Map<string, string>();
   for (const { path, ...record } of fixtures) {
     const result = await resources.recordsService.upsert({
+      change: { clientName: null, message: 'Added demo context' },
       ownerId: DEMO_OWNER_ID,
       record: { ...record, body: await fixture(path).text() },
     });
@@ -173,6 +181,7 @@ async function seedPages({
     const input = {
       ownerId: DEMO_OWNER_ID,
       actor: { kind: 'owner' as const },
+      message: 'Curated demo knowledge',
       markdown,
       temporalCoverage: snapshot.temporalCoverage,
     };

@@ -43,6 +43,7 @@ async function graphFixture() {
       async entity({ readableId, ownerId = OWNER }: { readableId: string; ownerId?: string }) {
         expect(
           await entities.create({
+            change: { clientName: null, message: 'Updated test context' },
             id: Bun.randomUUIDv7(),
             ownerId,
             readableId,
@@ -65,6 +66,7 @@ async function graphFixture() {
       }) {
         expect(
           await pages.create({
+            message: 'Updated test knowledge',
             ownerId,
             actor: { kind: 'owner' },
             markdown: `# ${title}\n\n${body}`,
@@ -173,6 +175,7 @@ test('multi-anchor neighborhoods have independent ranks and cursors, deduplicate
     ).toBe(false);
 
     await fixture.pages.update({
+      message: 'Updated test knowledge',
       ownerId: OWNER,
       actor: { kind: 'owner' },
       readableId: 'second',
@@ -192,9 +195,22 @@ test('multi-anchor neighborhoods have independent ranks and cursors, deduplicate
       neighbors: [{ entity: anchor('beta').anchor, sharedPageCount: 1 }],
       nextPage: null,
     });
-    await fixture.pages.archive({ ownerId: OWNER, readableId: 'first' });
-    await fixture.pages.archive({ ownerId: OWNER, readableId: 'other-component' });
-    await fixture.entities.archive({ ownerId: OWNER, readableId: 'alpha', archivedAt: NOW });
+    await fixture.pages.archive({
+      change: { clientName: null, message: 'Updated test context' },
+      ownerId: OWNER,
+      readableId: 'first',
+    });
+    await fixture.pages.archive({
+      change: { clientName: null, message: 'Updated test context' },
+      ownerId: OWNER,
+      readableId: 'other-component',
+    });
+    await fixture.entities.archive({
+      change: { clientName: null, message: 'Updated test context' },
+      ownerId: OWNER,
+      readableId: 'alpha',
+      archivedAt: NOW,
+    });
     const archived = await fixture.graph.neighborhoods({
       ...input,
       anchors: [anchor('anchor'), anchor('alpha')],

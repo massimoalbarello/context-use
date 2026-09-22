@@ -95,8 +95,12 @@ export function createAssetTransferController({
           );
         }
 
-        const { principal, name, allowDuplicate } = consumed.capability;
+        const { principal, name, allowDuplicate, changeMessage } = consumed.capability;
         const result = await assetsService.create({
+          change: {
+            clientName: principal.clientAuthorizationName,
+            message: changeMessage,
+          },
           ownerId: principal.ownerId,
           name,
           file: body.blob,

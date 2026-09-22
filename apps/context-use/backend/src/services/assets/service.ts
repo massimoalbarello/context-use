@@ -6,6 +6,7 @@ import {
   MAX_ASSET_NAME_LENGTH,
   type StoredAsset,
 } from '#backend/models/assets/model.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
@@ -52,6 +53,7 @@ export class AssetsService {
   }
 
   private async persist(input: {
+    change: ChangeContext;
     ownerId: string;
     name: string;
     file: Blob;
@@ -97,7 +99,7 @@ export class AssetsService {
     };
     await this.storage.write(storageKey, new Blob([bytes], { type: media.mediaType }));
     try {
-      const result = await this.assets.create(stored);
+      const result = await this.assets.create({ ...stored, change: input.change });
       if (result.state === 'readable_id_conflict') {
         await this.storage.delete(storageKey);
         return { state: 'name_conflict' };
@@ -121,7 +123,7 @@ export class AssetsService {
     return this.assets.detail(input);
   }
 
-  updateName(input: { ownerId: string; readableId: string; name: string }) {
+  updateName(input: { change: ChangeContext; ownerId: string; readableId: string; name: string }) {
     const name = input.name.trim();
     if (name.length === 0 || name.length > MAX_ASSET_NAME_LENGTH) {
       return null;
@@ -129,7 +131,7 @@ export class AssetsService {
     return this.assets.updateName({ ...input, name, updatedAt: new Date().toISOString() });
   }
 
-  archive(input: { ownerId: string; readableId: string }) {
+  archive(input: { change: ChangeContext; ownerId: string; readableId: string }) {
     return this.assets.archive({ ...input, archivedAt: new Date().toISOString() });
   }
 

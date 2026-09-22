@@ -2,6 +2,8 @@ import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { API_KEY_SECURITY_SCHEME } from '#backend/routes/api/api-keys/model.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
+import { withChangeMessage } from '#backend/routes/change-message.ts';
 import type { ApiKeyAuthenticationContract } from '#backend/services/api-keys/service.ts';
 import type { RecordsIngestionContract } from '#backend/services/records/service.ts';
 
@@ -13,6 +15,7 @@ export function createRecordWriteController({
   apiKeysService: ApiKeyAuthenticationContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .resolve(async ({ request, status }) => {
       const header = request.headers.get('authorization');
       const principal = header?.startsWith('Bearer ')
@@ -26,7 +29,15 @@ export function createRecordWriteController({
     .post(
       '/records',
       async ({ body, principal, status }) => {
-        const result = await recordsService.upsert({ ownerId: principal.ownerId, record: body });
+        const { changeMessage, ...record } = body;
+        const result = await recordsService.upsert({
+          ownerId: principal.ownerId,
+          record,
+          change: {
+            clientName: principal.name,
+            message: changeMessage,
+          },
+        });
         if (result.state === 'conflict') {
           return status(StatusMap.Conflict, {
             error:
@@ -36,7 +47,8 @@ export function createRecordWriteController({
         return status(StatusMap.OK, { state: result.state, readableId: result.readableId });
       },
       {
-        body: RecordInputSchema,
+        changeMessage: true,
+        body: withChangeMessage(RecordInputSchema),
         response: {
           [StatusMap.OK]: t.Object({
             state: t.Union([

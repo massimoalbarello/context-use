@@ -1,3 +1,4 @@
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { KnowledgeProfile } from '#backend/models/knowledge-profiles/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
@@ -19,6 +20,7 @@ export class KnowledgeProfilesService {
   }
 
   async create(input: {
+    change: ChangeContext;
     ownerId: string;
     name: string;
     description: string;
@@ -34,6 +36,7 @@ export class KnowledgeProfilesService {
     const result = await this.profiles.create({
       ownerId: input.ownerId,
       entityId: Bun.randomUUIDv7(),
+      change: input.change,
       readableId,
       name: input.name.trim(),
       description: input.description.trim(),

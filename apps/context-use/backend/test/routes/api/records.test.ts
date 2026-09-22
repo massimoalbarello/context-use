@@ -86,8 +86,16 @@ async function writeRecords({
   for (const value of records) {
     const result =
       'body' in value
-        ? await service.upsert({ ownerId, record: value })
-        : await service.remove({ ownerId, ...value });
+        ? await service.upsert({
+            change: { clientName: null, message: 'Updated test context' },
+            ownerId,
+            record: value,
+          })
+        : await service.remove({
+            change: { clientName: null, message: 'Updated test context' },
+            ownerId,
+            ...value,
+          });
     expect(['created', 'updated']).toContain(result.state);
   }
 }
@@ -103,6 +111,7 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
         storage: createLocalStorage({ dataFolder }),
       });
       const own = await service.upsert({
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER_USER_ID,
         record: {
           source: {
@@ -117,6 +126,7 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
         },
       });
       const other = await service.upsert({
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OTHER_OWNER_ID,
         record: {
           source: { provider: 'github', kind: 'pull-request', id: '2' },
@@ -207,12 +217,23 @@ test('pages reference owner records across revisions, source deletion and archiv
         .use(createPageReadableIdController({ auth, pagesService: pages }))
         .use(createRecordsController({ auth, recordsService: records }))
         .use(createRecordReadableIdController({ auth, recordsService: records }));
-      const request = ({ method, path, body }: { method: string; path: string; body?: unknown }) =>
+      const request = ({
+        method,
+        path,
+        body,
+      }: {
+        method: string;
+        path: string;
+        body?: Record<string, unknown>;
+      }) =>
         app.handle(
           new Request(`http://localhost/api${path}`, {
             method,
             headers: { 'content-type': 'application/json' },
-            body: body === undefined ? undefined : JSON.stringify(body),
+            body:
+              method === 'GET'
+                ? undefined
+                : JSON.stringify({ changeMessage: 'Update source record references', ...body }),
           }),
         );
       const markdown = `# Source account\n\n[Source](context-use://record/${own.readableId}) and [source again](context-use://record/${own.readableId}).`;

@@ -113,6 +113,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
         apiKey === deliveryApiKey
           ? {
               keyId: '01991f43-0c00-7000-8000-000000000011',
+              name: 'Test key',
               ownerId: 'context-use-owner',
             }
           : null,
@@ -144,6 +145,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       method: 'POST',
       headers: { authorization: `Bearer ${deliveryApiKey}`, 'content-type': 'application/json' },
       body: JSON.stringify({
+        changeMessage: 'Imported test record',
         source: { provider: 'github', kind: 'pull-request', id: '1' },
         title: 'Title',
         body: 'Body',
@@ -194,6 +196,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     scheme: 'bearer',
   });
   const receiverOperation = openApi.paths?.['/api/records']?.post;
+  expectWriteMessages(openApi.paths ?? {});
   expect(receiverOperation?.security).toContainEqual({ [API_KEY_SECURITY_SCHEME]: [] });
   expect(receiverOperation?.requestBody?.content?.['application/json']).toBeDefined();
   expect(openApi.paths?.['/api/records/batch']).toBeUndefined();
@@ -207,3 +210,34 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     expect(await nonPostMcpResponse.json()).toEqual({ error: 'Not Found' });
   }
 });
+
+function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
+  type BodySchema = { required?: string[]; allOf?: BodySchema[] };
+  const requiresChangeMessage = (schema: BodySchema): boolean =>
+    schema.required?.includes('changeMessage') === true ||
+    schema.allOf?.some(requiresChangeMessage) === true;
+  let mutationContracts = 0;
+  for (const [path, operations] of Object.entries(paths)) {
+    if (!path.startsWith('/api/')) {
+      continue;
+    }
+    for (const [method, operation] of Object.entries(operations)) {
+      if (!['post', 'put', 'patch', 'delete'].includes(method)) {
+        continue;
+      }
+      const contract = operation as {
+        requestBody?: { content?: Record<string, { schema?: BodySchema }> };
+      };
+      const mediaTypes = Object.values(contract.requestBody?.content ?? {});
+      expect(
+        mediaTypes.length,
+        `${method} ${path} must publish its change message`,
+      ).toBeGreaterThan(0);
+      for (const media of mediaTypes) {
+        expect(requiresChangeMessage(media.schema ?? {}), `${method} ${path}`).toBe(true);
+      }
+      mutationContracts++;
+    }
+  }
+  expect(mutationContracts).toBeGreaterThan(0);
+}

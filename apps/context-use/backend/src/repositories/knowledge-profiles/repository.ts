@@ -1,13 +1,16 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { SELF_ENTITY_TYPE } from '#backend/models/entities/model.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { KnowledgeProfile } from '#backend/models/knowledge-profiles/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom, entityTypeFrom } from '#backend/views/entities/entity-view.ts';
+import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgeProfilesRepositoryContract {
   create(input: {
+    change: ChangeContext;
     ownerId: string;
     entityId: string;
     readableId: string;
@@ -38,6 +41,7 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
   }
 
   create(input: {
+    change: ChangeContext;
     ownerId: string;
     entityId: string;
     readableId: string;
@@ -86,6 +90,17 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
         readableId: input.readableId,
         label: input.name,
         summary: input.description,
+      });
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'entity',
+        readableId: input.readableId,
+        name: input.name,
+        action: 'created',
+        details: [input.description],
+        createdAt: input.createdAt,
       });
       return { state: 'created' as const, profile: createdProfileFrom(entity) };
     });

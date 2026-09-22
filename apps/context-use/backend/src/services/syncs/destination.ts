@@ -1,5 +1,6 @@
 import type { SyncRegistration } from '@context-use/open-sync/definition';
 import type { Delivery, DestinationType } from '@context-use/open-sync/delivery';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 import {
   type RecordInput,
   RecordInputSchema,
@@ -35,7 +36,11 @@ function deliveredRecords(input: {
 
 export function localRecordDestination(input: {
   ownerId: string;
-  upsertRecord(input: { ownerId: string; record: RecordInput }): Promise<RecordWriteResult>;
+  upsertRecord(input: {
+    ownerId: string;
+    record: RecordInput;
+    change: ChangeContext;
+  }): Promise<RecordWriteResult>;
   definitions: readonly SyncRegistration[];
 }): DestinationType {
   return {
@@ -58,7 +63,14 @@ export function localRecordDestination(input: {
       }
       for (const record of records) {
         signal.throwIfAborted();
-        const result = await input.upsertRecord({ ownerId: scope.ownerId, record });
+        const result = await input.upsertRecord({
+          ownerId: scope.ownerId,
+          record,
+          change: {
+            clientName: record.source.provider,
+            message: `Synced record from ${record.source.provider}`,
+          },
+        });
         if (result.state === 'conflict') {
           return { status: 'rejected', code: 'conflict' };
         }

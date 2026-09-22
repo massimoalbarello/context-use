@@ -6,6 +6,7 @@ import type {
   FaceObservation,
 } from '#backend/models/faces/model.ts';
 import type { FaceQueueFilter, FaceQueueItem } from '#backend/models/faces/processing.ts';
+import type { ChangeContext } from '#backend/models/history/model.ts';
 
 export type FaceAssetInput = { ownerId: string; assetId: string };
 export type AnalysisAttempt = FaceAssetInput & {
@@ -55,6 +56,7 @@ export interface FacesRepositoryContract {
   annotate(
     input: FaceAssetInput & {
       faceReadableId: string;
+      change: ChangeContext;
       annotation: FaceAnnotation | null;
       updatedAt: string;
     },

@@ -7,6 +7,7 @@ import {
   type TemporalBounds,
   temporalBoundsFrom,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
+import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { DEFAULT_LIST_LIMIT, ResourceNameConflictSchema } from '#backend/routes/api/model.ts';
 import {
   CreateKnowledgePageBodySchema,
@@ -26,6 +27,7 @@ export function createPagesController({
   pagesService: KnowledgePagesServiceContract;
 }) {
   return new Elysia()
+    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({
       auth: true,
@@ -35,6 +37,7 @@ export function createPagesController({
       '/pages',
       async ({ body, user, status }) => {
         const result = await pagesService.create({
+          message: body.changeMessage,
           ownerId: user.id,
           actor: { kind: 'owner' },
           ...body,
@@ -60,6 +63,7 @@ export function createPagesController({
         return status(StatusMap['Internal Server Error'], { error: 'Page creation failed' });
       },
       {
+        changeMessage: true,
         detail: { tags: ['Pages'], summary: 'Create a knowledge page' },
         body: CreateKnowledgePageBodySchema,
         response: {

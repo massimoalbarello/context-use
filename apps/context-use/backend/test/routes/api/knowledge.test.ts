@@ -107,10 +107,16 @@ function jsonRequest({
   path: string;
   body?: unknown;
 }): Request {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    body = { changeMessage: 'Updated test context', ...(body as object | undefined) };
+  }
   return new Request(`http://localhost/api${path}`, {
     method,
     headers: body === undefined ? undefined : { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body:
+      body === undefined
+        ? undefined
+        : JSON.stringify({ changeMessage: 'Updated test context', ...(body as object) }),
   });
 }
 
@@ -171,6 +177,20 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       apiKeysService: unusedApiKeysService,
     });
 
+    for (const changeMessage of [undefined, '', '   ']) {
+      const response = await app.handle(
+        new Request('http://localhost/api/entities', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            name: 'Rejected entity',
+            description: 'Must not be persisted',
+            changeMessage,
+          }),
+        }),
+      );
+      expect(response.status).toBe(StatusMap['Bad Request']);
+    }
     const profileResponse = await app.handle(
       jsonRequest({
         method: 'POST',
@@ -976,6 +996,7 @@ Revise the current knowledge instead of appending snapshots.`,
 
     expect(
       await entitiesRepository.archive({
+        change: { clientName: null, message: 'Archived test entity' },
         ownerId: 'someone-else',
         readableId: 'luca-bianchi',
         archivedAt: timestamp,
@@ -983,6 +1004,7 @@ Revise the current knowledge instead of appending snapshots.`,
     ).toEqual({ state: 'not_found' });
     expect(
       await pagesRepository.archive({
+        change: { clientName: null, message: 'Archived test page' },
         ownerId: 'someone-else',
         readableId: 'growth-playbook',
         archivedAt: timestamp,
