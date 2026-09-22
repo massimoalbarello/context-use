@@ -59,20 +59,44 @@ function entity({ ownerId, readableId }: { ownerId: string; readableId: string }
 }
 
 test('history is owner scoped and cursor paging survives new writes and equal timestamps', async () => {
-  await withHistory(async ({ entities, history }) => {
+  await withHistory(async ({ entities, history, records }) => {
     await entities.create(entity({ ownerId: 'owner-a', readableId: 'first' }));
+    await records.upsert({
+      ownerId: 'owner-a',
+      record: {
+        source: { provider: 'github', kind: 'issue', id: '1' },
+        title: 'Interleaved record',
+        body: 'Details',
+        sourceUpdatedAt: NOW,
+      },
+      change,
+    });
     await entities.create(entity({ ownerId: 'owner-b', readableId: 'private' }));
     await entities.create(entity({ ownerId: 'owner-a', readableId: 'second' }));
-    const first = await history.list({ ownerId: 'owner-a', limit: 1 });
+    const first = await history.list({ ownerId: 'owner-a', limit: 1, resourceType: 'entity' });
     expect(first.items.map((item) => item.name)).toEqual(['second']);
     expect(first.next).not.toBeNull();
     await entities.create(entity({ ownerId: 'owner-a', readableId: 'new-arrival' }));
-    const second = await history.list({ ownerId: 'owner-a', limit: 1, before: first.next! });
+    const second = await history.list({
+      ownerId: 'owner-a',
+      limit: 1,
+      before: first.next!,
+      resourceType: 'entity',
+    });
     expect(second.items.map((item) => item.name)).toEqual(['first']);
     expect(second.next).toBeNull();
     expect(
       (await history.list({ ownerId: 'owner-b', limit: 10 })).items.map((item) => item.name),
     ).toEqual(['private']);
+    expect(
+      (await history.list({ ownerId: 'owner-a', limit: 10, resourceType: 'record' })).items.map(
+        (item) => item.name,
+      ),
+    ).toEqual(['Interleaved record']);
+    expect(
+      (await history.list({ ownerId: 'owner-b', limit: 10, resourceType: 'record' })).items,
+    ).toEqual([]);
+    expect((await history.list({ ownerId: 'owner-a', limit: 10 })).items).toHaveLength(4);
   });
 });
 

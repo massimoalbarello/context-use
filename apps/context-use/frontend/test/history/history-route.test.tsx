@@ -1,11 +1,15 @@
 import { expect, spyOn, test } from 'bun:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  createMemoryHistory,
+  createRouter,
+  type Router,
+  RouterProvider,
+} from '@tanstack/react-router';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Session } from '../../src/lib/auth';
 import type { HistoryEntry, HistoryPage } from '../../src/queries/history';
-import type { KnowledgePageDiff } from '../../src/queries/pages';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
@@ -32,9 +36,11 @@ function entry(overrides: Partial<HistoryEntry> & { sequence: number }): History
 async function withHistory({
   read,
   run,
+  initialEntry = '/history',
 }: {
   read: (url: URL) => Response;
-  run: () => Promise<void>;
+  run: (router: Router<typeof routeTree>) => Promise<void>;
+  initialEntry?: string;
 }) {
   const session: Session = {
     session: {
@@ -76,7 +82,7 @@ async function withHistory({
       (...args: Parameters<typeof globalThis.fetch>) => {
         const request = new Request(args[0], args[1]);
         const url = new URL(request.url);
-        if (url.pathname === '/api/history' || url.pathname === '/api/pages/notes/diff') {
+        if (url.pathname === '/api/history') {
           return Promise.resolve(read(url));
         }
         return Promise.reject(new Error(`Unexpected request: ${url.pathname}`));
@@ -87,7 +93,7 @@ async function withHistory({
   const router = createRouter({
     routeTree,
     context: { queryClient: client },
-    history: createMemoryHistory({ initialEntries: ['/history'] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   });
   try {
     render(
@@ -95,7 +101,7 @@ async function withHistory({
         <RouterProvider router={router} />
       </QueryClientProvider>,
     );
-    await run();
+    await run(router);
   } finally {
     cleanup();
     client.clear();
@@ -175,56 +181,90 @@ test('History shows a recoverable initial error and an intentional empty state',
   });
 });
 
-test('History hides owner attribution and revision numbers while retaining client names and readable diffs', async () => {
-  const user = userEvent.setup();
-  const diff: KnowledgePageDiff = {
-    from: 1,
-    to: 2,
-    additions: 1,
-    deletions: 1,
-    temporalCoverage: null,
-    hunks: [
-      {
-        oldStart: 1,
-        oldLines: 1,
-        newStart: 1,
-        newLines: 1,
-        lines: ['-Original plan', '+Updated plan'],
-      },
-    ],
-  };
+test('History shows summaries without previews and links pages to revisions', async () => {
   await withHistory({
-    read: (url) =>
-      url.pathname.endsWith('/diff')
-        ? Response.json(diff)
-        : Response.json({
-            items: [
-              entry({
-                sequence: 2,
-                resourceType: 'page',
-                readableId: 'notes',
-                name: 'Project notes',
-                message: 'Clarified the next steps',
-                details: ['Content updated'],
-                pageRevisionNumber: 2,
-                clientName: null,
-              }),
-              entry({ sequence: 1 }),
-            ],
-            nextCursor: null,
-          } satisfies HistoryPage),
+    read: () =>
+      Response.json({
+        items: [
+          entry({
+            sequence: 2,
+            resourceType: 'page',
+            readableId: 'notes',
+            name: 'Project notes',
+            message: 'Clarified the next steps',
+            details: ['Content updated'],
+            pageRevisionNumber: 2,
+            clientName: null,
+          }),
+          entry({ sequence: 1 }),
+        ],
+        nextCursor: null,
+      } satisfies HistoryPage),
     run: async () => {
-      await screen.findByRole('heading', { name: 'Project notes', level: 3 });
+      const link = await screen.findByRole('link', { name: 'Project notes' });
+      expect(link.getAttribute('href')).toBe('/pages/notes?view=revisions');
       expect(screen.getByText('by Research assistant')).toBeTruthy();
-      const pageChange = screen
-        .getByRole('heading', { name: 'Project notes', level: 3 })
-        .closest('li')!;
-      expect(within(pageChange).queryByText(/^by\b/)).toBeNull();
+      expect(within(link.closest('li')!).queryByText(/^by\b/)).toBeNull();
+      expect(screen.getByText('Clarified the next steps')).toBeTruthy();
       expect(screen.queryByText('Content updated')).toBeNull();
-      await user.click(screen.getByRole('button', { name: 'View changes' }));
-      await screen.findByText('Updated plan');
-      expect(screen.getByText('Content updated')).toBeTruthy();
+      expect(screen.queryByText('Name: “Acme” → “Acme Incorporated”')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'View changes' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Refresh history' })).toBeNull();
       expect(screen.queryByText(/Revision \d/)).toBeNull();
+    },
+  });
+});
+
+test('History filters from the URL, paginates within the filter, and restores it on back navigation', async () => {
+  const user = userEvent.setup();
+  const requests: string[] = [];
+  await withHistory({
+    initialEntry: '/history?resourceType=page',
+    read: (url) => {
+      requests.push(url.search);
+      const type = url.searchParams.get('resourceType');
+      if (type === 'entity') {
+        expect(url.searchParams.has('cursor')).toBe(false);
+        return Response.json({ items: [], nextCursor: null } satisfies HistoryPage);
+      }
+      if (type === 'page') {
+        const older = url.searchParams.has('cursor');
+        if (older) expect(url.searchParams.get('cursor')).toBe('older-pages');
+        return Response.json({
+          items: [
+            entry({
+              sequence: older ? 2 : 3,
+              resourceType: 'page',
+              name: older ? 'Older page' : 'Newest page',
+            }),
+          ],
+          nextCursor: older ? null : 'older-pages',
+        } satisfies HistoryPage);
+      }
+      expect(type).toBeNull();
+      expect(url.searchParams.has('cursor')).toBe(false);
+      return Response.json({
+        items: [entry({ sequence: 4, name: 'All resource changes' })],
+        nextCursor: null,
+      } satisfies HistoryPage);
+    },
+    run: async (router) => {
+      await screen.findByRole('link', { name: 'Newest page' });
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      await screen.findByRole('link', { name: 'Older page' });
+      await user.click(screen.getByRole('combobox', { name: 'Resource type' }));
+      await user.click(screen.getByRole('option', { name: 'Entities' }));
+      await screen.findByText('No changes for this resource type yet');
+      expect(router.state.location.search.resourceType).toBe('entity');
+      expect(screen.queryByRole('link', { name: 'Newest page' })).toBeNull();
+      await act(async () => router.history.back());
+      await screen.findByRole('link', { name: 'Older page' });
+      expect(router.state.location.search.resourceType).toBe('page');
+      await user.click(screen.getByRole('combobox', { name: 'Resource type' }));
+      await user.click(screen.getByRole('option', { name: 'All resources' }));
+      await screen.findByRole('link', { name: 'All resource changes' });
+      expect(router.state.location.search.resourceType).toBeUndefined();
+      expect(requests).toHaveLength(4);
     },
   });
 });

@@ -5,7 +5,12 @@ import type { Queries } from '#backend/queries.gen.ts';
 
 export type HistoryPosition = { createdAt: string; sequence: number };
 export interface HistoryRepositoryContract {
-  list(input: { ownerId: string; limit: number; before?: HistoryPosition }): Promise<{
+  list(input: {
+    ownerId: string;
+    limit: number;
+    before?: HistoryPosition;
+    resourceType?: ResourceChange['resourceType'];
+  }): Promise<{
     items: ResourceChange[];
     next: HistoryPosition | null;
   }>;
@@ -21,11 +26,8 @@ export class HistoryRepository implements HistoryRepositoryContract {
     ownerId,
     limit,
     before,
-  }: {
-    ownerId: string;
-    limit: number;
-    before?: HistoryPosition;
-  }) {
+    resourceType,
+  }: Parameters<HistoryRepositoryContract['list']>[0]) {
     const rows = await this.sql.ListResourceHistory`
       /* @notNull sequence resourceType readableId name action message details createdAt available */
       select history."sequence", history."resource_type" as "resourceType", history."readable_id" as "readableId",
@@ -40,6 +42,7 @@ export class HistoryRepository implements HistoryRepositoryContract {
         end as "available"
       from "resource_change" history
       where history."owner_id" = ${ownerId}
+        and (${resourceType ?? null} is null or history."resource_type" = ${resourceType ?? null})
         and (${before?.createdAt ?? null} is null or history."created_at" < ${before?.createdAt ?? null}
           or (history."created_at" = ${before?.createdAt ?? null} and history."sequence" < ${before?.sequence ?? null}))
       order by history."created_at" desc, history."sequence" desc

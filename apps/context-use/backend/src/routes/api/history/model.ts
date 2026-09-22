@@ -1,6 +1,14 @@
 import { t } from 'elysia';
 
+const ResourceTypeSchema = t.Union([
+  t.Literal('entity'),
+  t.Literal('page'),
+  t.Literal('asset'),
+  t.Literal('record'),
+]);
+
 export const HistoryQuerySchema = t.Object({
+  resourceType: t.Optional(ResourceTypeSchema),
   limit: t.Optional(t.Integer({ minimum: 1, maximum: 100 })),
   cursor: t.Optional(t.String({ minLength: 1, maxLength: 256 })),
 });
@@ -9,12 +17,7 @@ export const HistoryPageSchema = t.Object({
   items: t.Array(
     t.Object({
       sequence: t.Integer(),
-      resourceType: t.Union([
-        t.Literal('entity'),
-        t.Literal('page'),
-        t.Literal('asset'),
-        t.Literal('record'),
-      ]),
+      resourceType: ResourceTypeSchema,
       readableId: t.String(),
       name: t.String(),
       action: t.Union([

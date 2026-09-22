@@ -200,6 +200,10 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       new Request('http://localhost/api/history?cursor=invalid'),
     );
     expect(invalidCursor.status).toBe(StatusMap['Bad Request']);
+    const invalidResourceType = await app.handle(
+      new Request('http://localhost/api/history?resourceType=unknown'),
+    );
+    expect(invalidResourceType.status).toBe(StatusMap['Bad Request']);
 
     const profileResponse = await app.handle(
       jsonRequest({
@@ -1389,6 +1393,22 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect((await olderHistory.json()).items[0].sequence).toBeLessThan(
       historyPage.items[0].sequence,
     );
+    const pageHistoryResponse = await app.handle(
+      new Request('http://localhost/api/history?resourceType=page&limit=1'),
+    );
+    expect(pageHistoryResponse.status).toBe(StatusMap.OK);
+    const pageHistory = await pageHistoryResponse.json();
+    expect(pageHistory.items).toHaveLength(1);
+    expect(pageHistory.items[0].resourceType).toBe('page');
+    const olderPageHistory = await app.handle(
+      new Request(
+        `http://localhost/api/history?resourceType=page&limit=1&cursor=${encodeURIComponent(pageHistory.nextCursor)}`,
+      ),
+    );
+    expect(olderPageHistory.status).toBe(StatusMap.OK);
+    const olderPage = (await olderPageHistory.json()).items[0];
+    expect(olderPage.resourceType).toBe('page');
+    expect(olderPage.sequence).toBeLessThan(pageHistory.items[0].sequence);
   } finally {
     await database.close();
     await rm(dataFolder, { recursive: true, force: true });

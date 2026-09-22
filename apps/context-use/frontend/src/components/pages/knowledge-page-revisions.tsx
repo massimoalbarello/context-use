@@ -62,11 +62,6 @@ export function KnowledgePageRevisions({
               <KnowledgePageRevisionComparison
                 readableId={page.readableId}
                 revisionNumber={revision.revisionNumber}
-                label={
-                  revision.revisionNumber === 1
-                    ? 'Page created'
-                    : `Revision ${revision.revisionNumber - 1} → ${revision.revisionNumber}`
-                }
               />
             </Collapsible.Panel>
           </Collapsible.Root>

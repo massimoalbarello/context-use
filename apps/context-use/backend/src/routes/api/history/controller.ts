@@ -50,6 +50,7 @@ export function createHistoryController({
         }
         const page = await historyService.list({
           ownerId: user.id,
+          resourceType: query.resourceType,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           before,
         });
