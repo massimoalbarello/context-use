@@ -96,7 +96,9 @@ test('history is owner scoped and cursor paging survives new writes and equal ti
     expect(
       (await history.list({ ownerId: 'owner-b', limit: 10, resourceType: 'record' })).items,
     ).toEqual([]);
-    expect((await history.list({ ownerId: 'owner-a', limit: 10 })).items).toHaveLength(4);
+    expect(
+      (await history.list({ ownerId: 'owner-a', limit: 10 })).items.map((item) => item.name),
+    ).toEqual(['new-arrival', 'second', 'Interleaved record', 'first']);
   });
 });
 

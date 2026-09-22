@@ -217,23 +217,22 @@ test('History shows summaries without previews and links pages to revisions', as
 
 test('History filters from the URL, paginates within the filter, and restores it on back navigation', async () => {
   const user = userEvent.setup();
-  const requests: string[] = [];
+  const requests: { resourceType: string | null; cursor: string | null }[] = [];
   await withHistory({
     initialEntry: '/history?resourceType=page',
     read: (url) => {
-      requests.push(url.search);
       const type = url.searchParams.get('resourceType');
+      requests.push({ resourceType: type, cursor: url.searchParams.get('cursor') });
       if (type === 'entity') {
         expect(url.searchParams.has('cursor')).toBe(false);
         return Response.json({ items: [], nextCursor: null } satisfies HistoryPage);
       }
       if (type === 'page') {
         const older = url.searchParams.has('cursor');
-        if (older) expect(url.searchParams.get('cursor')).toBe('older-pages');
         return Response.json({
           items: [
             entry({
-              sequence: older ? 2 : 3,
+              sequence: older ? 1 : 2,
               resourceType: 'page',
               name: older ? 'Older page' : 'Newest page',
             }),
@@ -257,14 +256,19 @@ test('History filters from the URL, paginates within the filter, and restores it
       await screen.findByText('No changes for this resource type yet');
       expect(router.state.location.search.resourceType).toBe('entity');
       expect(screen.queryByRole('link', { name: 'Newest page' })).toBeNull();
-      await act(async () => router.history.back());
+      act(() => router.history.back());
       await screen.findByRole('link', { name: 'Older page' });
       expect(router.state.location.search.resourceType).toBe('page');
       await user.click(screen.getByRole('combobox', { name: 'Resource type' }));
       await user.click(screen.getByRole('option', { name: 'All resources' }));
       await screen.findByRole('link', { name: 'All resource changes' });
       expect(router.state.location.search.resourceType).toBeUndefined();
-      expect(requests).toHaveLength(4);
+      expect(requests).toEqual([
+        { resourceType: 'page', cursor: null },
+        { resourceType: 'page', cursor: 'older-pages' },
+        { resourceType: 'entity', cursor: null },
+        { resourceType: null, cursor: null },
+      ]);
     },
   });
 });

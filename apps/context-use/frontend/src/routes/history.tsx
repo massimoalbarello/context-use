@@ -99,10 +99,52 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
   );
 }
 
+function HistoryResourceFilter() {
+  const { resourceType } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  return (
+    <Select<HistoryResourceType | 'all'>
+      value={resourceType ?? 'all'}
+      onValueChange={(value) =>
+        void navigate({
+          search: { resourceType: value === 'all' ? undefined : (value ?? undefined) },
+        })
+      }
+    >
+      <SelectTrigger className="w-40" aria-label="Resource type">
+        <SelectValue>{resourceType ? resources[resourceType].plural : 'All resources'}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All resources</SelectItem>
+        {Object.entries(resources).map(([value, resource]) => (
+          <SelectItem key={value} value={value}>
+            {resource.plural}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function HistoryEmptyState({ filtered }: { filtered: boolean }) {
+  return (
+    <div className="py-16 text-center">
+      <History className="mx-auto mb-4 size-8 text-muted-foreground" aria-hidden="true" />
+      <h2 className="font-medium">
+        {filtered ? 'No changes for this resource type yet' : 'Your next change starts the story'}
+      </h2>
+      <p className="mt-2 text-muted-foreground text-sm">
+        {filtered
+          ? 'Choose another resource type to see more changes.'
+          : 'Changes to pages, entities, assets, and records will appear here.'}
+      </p>
+    </div>
+  );
+}
+
 function HistoryRoute() {
   const { profile } = Route.useRouteContext();
   const { resourceType } = Route.useSearch();
-  const navigate = Route.useNavigate();
   const query = useInfiniteQuery(historyQueryOptions(resourceType));
   const days = new Map<string, { date: Date; entries: HistoryEntry[] }>();
   for (const page of query.data?.pages ?? []) {
@@ -132,28 +174,7 @@ function HistoryRoute() {
                   How your context changes, day by day. Newest first.
                 </p>
               </div>
-              <Select<HistoryResourceType | 'all'>
-                value={resourceType ?? 'all'}
-                onValueChange={(value) =>
-                  void navigate({
-                    search: { resourceType: value === 'all' ? undefined : (value ?? undefined) },
-                  })
-                }
-              >
-                <SelectTrigger className="w-40" aria-label="Resource type">
-                  <SelectValue>
-                    {resourceType ? resources[resourceType].plural : 'All resources'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All resources</SelectItem>
-                  {Object.entries(resources).map(([value, resource]) => (
-                    <SelectItem key={value} value={value}>
-                      {resource.plural}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <HistoryResourceFilter />
             </header>
             {query.isPending ? (
               <p role="status" className="text-muted-foreground text-sm">
@@ -167,19 +188,7 @@ function HistoryRoute() {
                 </Button>
               </div>
             ) : days.size === 0 ? (
-              <div className="py-16 text-center">
-                <History className="mx-auto mb-4 size-8 text-muted-foreground" aria-hidden="true" />
-                <h2 className="font-medium">
-                  {resourceType
-                    ? 'No changes for this resource type yet'
-                    : 'Your next change starts the story'}
-                </h2>
-                <p className="mt-2 text-muted-foreground text-sm">
-                  {resourceType
-                    ? 'Choose another resource type to see more changes.'
-                    : 'Changes to pages, entities, assets, and records will appear here.'}
-                </p>
-              </div>
+              <HistoryEmptyState filtered={Boolean(resourceType)} />
             ) : (
               <div className="space-y-8">
                 {Array.from(days, ([key, day]) => (
