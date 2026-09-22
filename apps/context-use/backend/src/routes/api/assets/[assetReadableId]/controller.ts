@@ -75,7 +75,7 @@ export function createAssetReadableIdController({
       '/assets/:assetReadableId',
       async ({ body, params, user, status }) => {
         const asset = await assetsService.updateName({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.assetReadableId,
           name: body.name,
@@ -96,7 +96,7 @@ export function createAssetReadableIdController({
       '/assets/:assetReadableId/archive',
       async ({ body, params, user, status }) => {
         const result = await assetsService.archive({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.assetReadableId,
         });

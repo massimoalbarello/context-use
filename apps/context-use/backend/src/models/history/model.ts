@@ -1,12 +1,6 @@
 export const MAX_CHANGE_MESSAGE_LENGTH = 280;
 
-export type ChangeActor =
-  | { kind: 'owner' }
-  | { kind: 'mcp_client'; clientAuthorizationId: string; name: string }
-  | { kind: 'sync'; name: string }
-  | { kind: 'api_key'; keyId: string; name: string };
-
-export type ChangeContext = { actor: ChangeActor; message: string };
+export type ChangeContext = { clientName: string | null; message: string };
 
 export type ResourceChange = {
   sequence: number;
@@ -15,9 +9,9 @@ export type ResourceChange = {
   name: string;
   action: 'created' | 'updated' | 'archived' | 'deleted';
   message: string;
-  author: { kind: ChangeActor['kind']; name: string };
+  clientName: string | null;
   details: string[];
-  revisionNumber: number | null;
+  pageRevisionNumber: number | null;
   createdAt: string;
   available: boolean;
 };

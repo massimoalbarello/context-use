@@ -6,11 +6,9 @@ create table "resource_change" (
   "name" text not null,
   "action" text not null check ("action" in ('created', 'updated', 'archived', 'deleted')),
   "message" text not null check (length(trim("message")) between 1 and 280),
-  "author_kind" text not null check ("author_kind" in ('owner', 'mcp_client', 'sync', 'api_key')),
-  "author_name" text not null,
-  "author_reference" text,
+  "client_name" text,
   "details" text not null check (json_valid("details") and json_type("details") = 'array'),
-  "revision_number" integer check ("revision_number" > 0),
+  "page_revision_number" integer check ("page_revision_number" > 0),
   "created_at" text not null
 );
 

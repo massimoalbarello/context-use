@@ -154,7 +154,7 @@ export function createPageReadableIdController({
       '/pages/:pageReadableId/archive',
       async ({ body, params, user, status }) => {
         const result = await pagesService.archive({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.pageReadableId,
         });

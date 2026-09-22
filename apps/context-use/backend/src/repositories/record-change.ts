@@ -19,35 +19,17 @@ export async function recordChange({
   ResourceChange,
   'resourceType' | 'readableId' | 'name' | 'action' | 'details' | 'createdAt'
 > & {
-    revisionNumber?: number;
+    pageRevisionNumber?: number;
   }): Promise<void> {
   const message = change.message.trim();
   if (!message || message.length > MAX_CHANGE_MESSAGE_LENGTH) {
     throw new Error('A short change message is required');
   }
-  let name: string;
-  if (change.actor.kind === 'owner') {
-    const rows = await db.FindChangeOwnerName`
-      select "name" from "auth_user" where "id" = ${ownerId}
-    `;
-    if (!rows[0]) {
-      throw new Error('Change owner could not be resolved');
-    }
-    name = rows[0].name;
-  } else {
-    name = change.actor.name;
-  }
-  const reference =
-    change.actor.kind === 'mcp_client'
-      ? change.actor.clientAuthorizationId
-      : change.actor.kind === 'api_key'
-        ? change.actor.keyId
-        : null;
   await db.InsertResourceChange`
     insert into "resource_change" ("owner_id", "resource_type", "readable_id", "name", "action",
-      "message", "author_kind", "author_name", "author_reference", "details", "revision_number", "created_at")
+      "message", "client_name", "details", "page_revision_number", "created_at")
     values (${ownerId}, ${event.resourceType}, ${event.readableId}, ${event.name}, ${event.action},
-      ${message}, ${change.actor.kind}, ${name}, ${reference}, ${JSON.stringify(event.details)},
-      ${event.revisionNumber ?? null}, ${event.createdAt})
+      ${message}, ${change.clientName}, ${JSON.stringify(event.details)},
+      ${event.pageRevisionNumber ?? null}, ${event.createdAt})
   `;
 }

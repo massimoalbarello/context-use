@@ -43,7 +43,7 @@ async function graphFixture() {
       async entity({ readableId, ownerId = OWNER }: { readableId: string; ownerId?: string }) {
         expect(
           await entities.create({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             id: Bun.randomUUIDv7(),
             ownerId,
             readableId,
@@ -196,17 +196,17 @@ test('multi-anchor neighborhoods have independent ranks and cursors, deduplicate
       nextPage: null,
     });
     await fixture.pages.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: 'first',
     });
     await fixture.pages.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: 'other-component',
     });
     await fixture.entities.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: 'alpha',
       archivedAt: NOW,

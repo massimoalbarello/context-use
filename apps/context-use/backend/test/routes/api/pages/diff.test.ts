@@ -123,7 +123,7 @@ async function setup() {
         })
       ).state,
     ).toBe('saved');
-    return { request, service, repository, storage, dispose, input };
+    return { request, service, repository, storage, database, dispose, input };
   } catch (error) {
     await dispose();
     throw error;
@@ -133,6 +133,16 @@ async function setup() {
 test('the API compares exact historical revisions in either direction and an empty baseline', async () => {
   const context = await setup();
   try {
+    const changes = await context.database`
+      select "page_revision_number", "client_name" from "resource_change"
+      where "owner_id" = ${OWNER_ID} and "resource_type" = 'page' and "readable_id" = 'notes'
+      order by "sequence"
+    `;
+    expect(changes).toEqual([
+      { page_revision_number: 1, client_name: null },
+      { page_revision_number: 2, client_name: null },
+      { page_revision_number: LAST_REVISION, client_name: null },
+    ]);
     const response = await context.request({ query: 'from=1&to=3' });
     expect(response.status).toBe(StatusMap.OK);
     const diff: KnowledgePageDiff = await response.json();
@@ -255,7 +265,7 @@ test('comparison enforces authentication, page ownership, revision bounds and ar
     expect(
       (
         await context.service.archive({
-          change: { actor: { kind: 'owner' }, message: 'Archived test page' },
+          change: { clientName: null, message: 'Archived test page' },
           ownerId: OWNER_ID,
           readableId: 'notes',
         })

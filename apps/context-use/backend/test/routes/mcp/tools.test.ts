@@ -11,6 +11,7 @@ import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-re
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
+import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
 import type {
   KnowledgePage,
   KnowledgePageReference,
@@ -1170,11 +1171,7 @@ test('MCP creates the self entity once through the knowledge profile invariant',
         name: entity.name,
         description: entity.description,
         change: {
-          actor: {
-            kind: 'mcp_client',
-            clientAuthorizationId: principal.clientAuthorizationId,
-            name: principal.clientAuthorizationName,
-          },
+          clientName: principal.clientAuthorizationName,
           message: 'Updated test context',
         },
       });
@@ -1521,6 +1518,11 @@ test('MCP resource mutations require a nonblank change message before calling a 
       const { tools } = await client.listTools();
       for (const tool of tools.filter((tool) => tool.annotations?.readOnlyHint === false)) {
         expect(tool.inputSchema.required).toContain('changeMessage');
+        expect(tool.inputSchema.properties?.changeMessage).toMatchObject({
+          type: 'string',
+          maxLength: MAX_CHANGE_MESSAGE_LENGTH,
+          description: expect.stringContaining('For example:'),
+        });
       }
       for (const changeMessage of [undefined, '', '   ']) {
         const result = await client.callTool({

@@ -67,7 +67,7 @@ export function localRecordDestination(input: {
           ownerId: scope.ownerId,
           record,
           change: {
-            actor: { kind: 'sync', name: record.source.provider },
+            clientName: record.source.provider,
             message: `Synced record from ${record.source.provider}`,
           },
         });

@@ -31,7 +31,7 @@ export function createEntitiesController({
       '/entities',
       async ({ body, user, status }) => {
         const result = await entitiesService.create({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           ...body,
         });

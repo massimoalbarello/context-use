@@ -6,7 +6,7 @@ import { createSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 
-test('resource changes persist their message and actor atomically, excluding no-ops', async () => {
+test('resource changes persist their message and client name atomically, excluding no-ops', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'context-use-change-message-'));
   const database = await createSqliteDatabase({ dataFolder: folder });
   const now = '2026-09-21T12:00:00.000Z';
@@ -21,7 +21,7 @@ test('resource changes persist their message and actor atomically, excluding no-
       name: 'Acme',
       description: 'A research organization',
       createdAt: now,
-      change: { actor: { kind: 'owner' as const }, message: 'Added our research partner' },
+      change: { clientName: null, message: 'Added our research partner' },
     };
     await expect(
       entities.create({ ...original, change: { ...original.change, message: ' ' } }),
@@ -35,7 +35,7 @@ test('resource changes persist their message and actor atomically, excluding no-
       name: 'Acme Incorporated',
       updatedAt: now,
       change: {
-        actor: { kind: 'mcp_client', name: 'Research assistant', clientAuthorizationId: 'client' },
+        clientName: 'Research assistant',
         message: 'Corrected the registered company name',
       },
     });
@@ -46,30 +46,27 @@ test('resource changes persist their message and actor atomically, excluding no-
       change: { ...original.change, message: 'Ended the research partnership' },
     });
     const changes =
-      await database`select "owner_id", "name", "message", "author_kind", "author_name", "action" from "resource_change" order by "sequence"`;
+      await database`select "owner_id", "name", "message", "client_name", "action" from "resource_change" order by "sequence"`;
     expect(changes).toEqual([
       {
         owner_id: 'owner',
         name: 'Acme',
         message: 'Added our research partner',
-        author_kind: 'owner',
-        author_name: 'Rowan',
+        client_name: null,
         action: 'created',
       },
       {
         owner_id: 'owner',
         name: 'Acme Incorporated',
         message: 'Corrected the registered company name',
-        author_kind: 'mcp_client',
-        author_name: 'Research assistant',
+        client_name: 'Research assistant',
         action: 'updated',
       },
       {
         owner_id: 'owner',
         name: 'Acme Incorporated',
         message: 'Ended the research partnership',
-        author_kind: 'owner',
-        author_name: 'Rowan',
+        client_name: null,
         action: 'archived',
       },
     ]);

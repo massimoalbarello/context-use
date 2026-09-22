@@ -68,12 +68,12 @@ async function writeRecords({
     const result =
       'body' in value
         ? await records.upsert({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             ownerId,
             record: value,
           })
         : await records.remove({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             ownerId,
             ...value,
           });
@@ -154,7 +154,7 @@ async function createEntity({
   description: string;
 }): Promise<void> {
   const result = await entities.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     id: `${ownerId}-${readableId}`,
     ownerId,
     readableId,
@@ -175,7 +175,7 @@ async function createAsset({
   name: string;
 }): Promise<void> {
   const result = await assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     id: `asset-${readableId}`,
     ownerId: OWNER_A,
     readableId,
@@ -204,7 +204,7 @@ test('concurrent searches coexist with canonical writes on a read-only connectio
       search(),
       search(),
       entities.update({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER_A,
         readableId: 'target',
         name: 'Target',
@@ -391,7 +391,7 @@ test('retrieval isolates owners, replaces changed documents, and excludes archiv
     ).toEqual([]);
 
     const updatedEntity = await entities.update({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       readableId: 'observatory',
       name: 'Private Nebula Observatory',
@@ -411,7 +411,7 @@ test('retrieval isolates owners, replaces changed documents, and excludes archiv
       }),
     ]);
     const archived = await entities.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       readableId: 'observatory',
       archivedAt: NOW,
@@ -423,7 +423,7 @@ test('retrieval isolates owners, replaces changed documents, and excludes archiv
 
     await createAsset({ assets, readableId: 'field-notes', name: 'Obsolete codename notes' });
     const renamed = await assets.updateName({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       readableId: 'field-notes',
       name: 'Current codename notes',
@@ -442,7 +442,7 @@ test('retrieval isolates owners, replaces changed documents, and excludes archiv
       }),
     ]);
     const archivedAsset = await assets.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       readableId: 'field-notes',
       archivedAt: NOW,
@@ -590,7 +590,7 @@ test('all four types are searchable, with record Markdown structure left intact'
     });
     expect(media.results).toHaveLength(1);
     await assets.updateName({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       readableId: 'orchard-map',
       name: 'Renamed map',
@@ -939,7 +939,7 @@ test('page snippets stay on the ranked revision through updates and archival', (
       expect(
         (
           await pages.archive({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             ownerId: OWNER_A,
             readableId: page.page.readableId,
           })
@@ -1014,7 +1014,7 @@ test('entity types filter candidates before ranking, counts, and pagination whil
       ownerId?: string;
     }) => {
       const result = await entities.create({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         id: `${ownerId}-${readableId}`,
         ownerId,
         readableId,
@@ -1034,7 +1034,7 @@ test('entity types filter candidates before ranking, counts, and pagination whil
     await create({ readableId: 'needle-private-person', entityType: 'person', ownerId: OWNER_B });
     await create({ readableId: 'needle-archived-person', entityType: 'person' });
     await entities.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       readableId: 'needle-archived-person',
       archivedAt: NOW,
@@ -1110,7 +1110,7 @@ test('entity type updates preserve omissions, clear null, and immediately affect
     expect(
       (
         await entities.update({
-          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          change: { clientName: null, message: 'Updated test context' },
           ...update,
           entityType: 'person',
         })
@@ -1119,14 +1119,14 @@ test('entity type updates preserve omissions, clear null, and immediately affect
     expect(
       (
         await entities.update({
-          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          change: { clientName: null, message: 'Updated test context' },
           ...update,
         })
       )?.entityType,
     ).toBe('person');
     expect(
       await entities.update({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ...update,
         ownerId: OWNER_B,
         entityType: 'location',
@@ -1136,7 +1136,7 @@ test('entity type updates preserve omissions, clear null, and immediately affect
     expect(
       (
         await entities.update({
-          change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+          change: { clientName: null, message: 'Updated test context' },
           ...update,
           entityType: null,
         })
@@ -1165,7 +1165,7 @@ test('self entities are created as people and cannot leave the people filter thr
   withRetrievalTest(async ({ database, entities, retrieval }) => {
     const profiles = new KnowledgeProfilesRepository(database);
     const created = await profiles.create({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER_A,
       entityId: 'self-entity',
       readableId: 'owner',
@@ -1179,7 +1179,7 @@ test('self entities are created as people and cannot leave the people filter thr
     });
     for (const entityType of [undefined, null, 'location', 'organization'] as const) {
       const updated = await entities.update({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER_A,
         readableId: 'owner',
         name: 'Updated Owner',

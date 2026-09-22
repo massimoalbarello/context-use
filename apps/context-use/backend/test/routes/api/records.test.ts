@@ -87,12 +87,12 @@ async function writeRecords({
     const result =
       'body' in value
         ? await service.upsert({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             ownerId,
             record: value,
           })
         : await service.remove({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             ownerId,
             ...value,
           });
@@ -111,7 +111,7 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
         storage: createLocalStorage({ dataFolder }),
       });
       const own = await service.upsert({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER_USER_ID,
         record: {
           source: {
@@ -126,7 +126,7 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
         },
       });
       const other = await service.upsert({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OTHER_OWNER_ID,
         record: {
           source: { provider: 'github', kind: 'pull-request', id: '2' },

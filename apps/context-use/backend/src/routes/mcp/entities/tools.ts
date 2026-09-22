@@ -165,11 +165,7 @@ export function registerEntityTools({
       if (isSelf) {
         const result = await profilesService.create({
           change: {
-            actor: {
-              kind: 'mcp_client',
-              clientAuthorizationId: principal.clientAuthorizationId,
-              name: principal.clientAuthorizationName,
-            },
+            clientName: principal.clientAuthorizationName,
             message: changeMessage,
           },
           ownerId: principal.ownerId,
@@ -193,11 +189,7 @@ export function registerEntityTools({
       } else {
         const result = await entitiesService.create({
           change: {
-            actor: {
-              kind: 'mcp_client',
-              clientAuthorizationId: principal.clientAuthorizationId,
-              name: principal.clientAuthorizationName,
-            },
+            clientName: principal.clientAuthorizationName,
             message: changeMessage,
           },
           ownerId: principal.ownerId,
@@ -218,11 +210,7 @@ export function registerEntityTools({
       if (imageAssetAddress) {
         const imageResult = await entitiesService.setImage({
           change: {
-            actor: {
-              kind: 'mcp_client',
-              clientAuthorizationId: principal.clientAuthorizationId,
-              name: principal.clientAuthorizationName,
-            },
+            clientName: principal.clientAuthorizationName,
             message: changeMessage,
           },
           ownerId: principal.ownerId,
@@ -303,11 +291,7 @@ export function registerEntityTools({
       if (imageAssetAddress === null) {
         const entity = await entitiesService.removeImage({
           change: {
-            actor: {
-              kind: 'mcp_client',
-              clientAuthorizationId: principal.clientAuthorizationId,
-              name: principal.clientAuthorizationName,
-            },
+            clientName: principal.clientAuthorizationName,
             message: changeMessage,
           },
           ownerId: principal.ownerId,
@@ -319,11 +303,7 @@ export function registerEntityTools({
       } else if (imageAssetAddress !== undefined) {
         const result = await entitiesService.setImage({
           change: {
-            actor: {
-              kind: 'mcp_client',
-              clientAuthorizationId: principal.clientAuthorizationId,
-              name: principal.clientAuthorizationName,
-            },
+            clientName: principal.clientAuthorizationName,
             message: changeMessage,
           },
           ownerId: principal.ownerId,
@@ -336,11 +316,7 @@ export function registerEntityTools({
       }
       const entity = await entitiesService.update({
         change: {
-          actor: {
-            kind: 'mcp_client',
-            clientAuthorizationId: principal.clientAuthorizationId,
-            name: principal.clientAuthorizationName,
-          },
+          clientName: principal.clientAuthorizationName,
           message: changeMessage,
         },
         ownerId: principal.ownerId,
@@ -368,11 +344,7 @@ export function registerEntityTools({
     async ({ address, changeMessage }) => {
       const result = await entitiesService.archive({
         change: {
-          actor: {
-            kind: 'mcp_client',
-            clientAuthorizationId: principal.clientAuthorizationId,
-            name: principal.clientAuthorizationName,
-          },
+          clientName: principal.clientAuthorizationName,
           message: changeMessage,
         },
         ownerId: principal.ownerId,

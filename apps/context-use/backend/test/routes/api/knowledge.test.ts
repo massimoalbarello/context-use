@@ -996,7 +996,7 @@ Revise the current knowledge instead of appending snapshots.`,
 
     expect(
       await entitiesRepository.archive({
-        change: { actor: { kind: 'owner' }, message: 'Archived test entity' },
+        change: { clientName: null, message: 'Archived test entity' },
         ownerId: 'someone-else',
         readableId: 'luca-bianchi',
         archivedAt: timestamp,
@@ -1004,7 +1004,7 @@ Revise the current knowledge instead of appending snapshots.`,
     ).toEqual({ state: 'not_found' });
     expect(
       await pagesRepository.archive({
-        change: { actor: { kind: 'owner' }, message: 'Archived test page' },
+        change: { clientName: null, message: 'Archived test page' },
         ownerId: 'someone-else',
         readableId: 'growth-playbook',
         archivedAt: timestamp,

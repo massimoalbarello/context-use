@@ -71,7 +71,7 @@ export function createEntityReadableIdController({
       '/entities/:entityReadableId',
       async ({ body, params, user, status }) => {
         const entity = await entitiesService.update({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
           ...body,
@@ -95,7 +95,7 @@ export function createEntityReadableIdController({
       '/entities/:entityReadableId/image',
       async ({ body, params, user, status }) => {
         const result = await entitiesService.setImage({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
           assetReadableId: body.assetReadableId,
@@ -132,7 +132,7 @@ export function createEntityReadableIdController({
       '/entities/:entityReadableId/image',
       async ({ body, params, user, status }) => {
         const entity = await entitiesService.removeImage({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
         });
@@ -155,7 +155,7 @@ export function createEntityReadableIdController({
       '/entities/:entityReadableId/archive',
       async ({ body, params, user, status }) => {
         const result = await entitiesService.archive({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.entityReadableId,
         });

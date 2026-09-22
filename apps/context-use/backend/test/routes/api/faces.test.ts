@@ -235,7 +235,7 @@ async function fixture({ automatic = true } = {}) {
     },
     async upload(name: string): Promise<Asset> {
       const result = await assets.create({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER,
         name,
         file: Bun.file(PHOTO_PATH),
@@ -261,7 +261,7 @@ async function fixture({ automatic = true } = {}) {
     },
     async assignPortrait(input: { personReadableId: string; assetReadableId: string }) {
       const result = await entities.setImage({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER,
         readableId: input.personReadableId,
         assetReadableId: input.assetReadableId,
@@ -280,7 +280,7 @@ async function fixture({ automatic = true } = {}) {
     },
     async person(name = 'Alice'): Promise<Entity> {
       const result = await entities.create({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER,
         name,
         description: 'Test person',
@@ -393,7 +393,7 @@ test('a confirmed face can become the same person’s portrait and match earlier
   const input = { ownerId: OWNER, readableId: portrait.readableId };
   const face = (await context.faces.detail(input))!.faces[0]!;
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'person',
@@ -417,7 +417,7 @@ test('changing an entity with an image to Person enrolls its portrait and matche
   const photo = await context.upload('Earlier photo');
   const portrait = await context.upload('Portrait');
   const created = await context.entities.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'Unclassified entity',
     description: 'An entity with an image',
@@ -428,7 +428,7 @@ test('changing an entity with an image to Person enrolls its portrait and matche
   }
   const person = created.entity;
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: person.readableId,
     assetReadableId: portrait.readableId,
@@ -468,7 +468,7 @@ test('threshold saves affect subsequent matches; explicit re-matching preserves 
   expect((await context.faces.detail(input))!.faces[0]!.entity).toBeNull();
   for (const decision of ['person', 'unknown', 'dismissed'] as const) {
     await context.faces.annotate({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: face.readableId,
       decision,
@@ -478,7 +478,7 @@ test('threshold saves affect subsequent matches; explicit re-matching preserves 
     expect((await context.faces.detail(input))!.faces[0]!.decision).toBe(decision);
   }
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'automatic',
@@ -531,7 +531,7 @@ test.each([
     const input = { ownerId: OWNER, readableId: photo.readableId };
     const original = (await context.faces.detail(input))!.faces[0]!;
     await context.faces.annotate({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: original.readableId,
       decision: 'person',
@@ -626,7 +626,7 @@ test('reprocessing retains corrections when detections move or disappear, includ
     await Bun.sleep(1);
   }
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'person',
@@ -740,7 +740,7 @@ test('reviewing a face selects it in a group portrait; leaving it unknown does n
   context.analyzer.next = [detectedFace(), { ...detectedFace([0, 1]), box: SECOND_BOX }];
   const portrait = await context.upload('Group portrait');
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: person.readableId,
     assetReadableId: portrait.readableId,
@@ -749,7 +749,7 @@ test('reviewing a face selects it in a group portrait; leaving it unknown does n
   const face = (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!
     .faces[0]!;
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: portrait.readableId,
     faceReadableId: face.readableId,
@@ -761,7 +761,7 @@ test('reviewing a face selects it in a group portrait; leaving it unknown does n
   const input = { ownerId: OWNER, readableId: photo.readableId };
   expect((await context.faces.detail(input))!.faces[0]!.entity?.readableId).toBe(person.readableId);
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: portrait.readableId,
     faceReadableId: face.readableId,
@@ -787,7 +787,7 @@ test.each(['unknown', 'dismissed', 'person'] as const)(
     const face = (await context.faces.detail(input))!.faces[0]!;
     const otherPerson = decision === 'person' ? await context.person('Bob') : null;
     await context.faces.annotate({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: face.readableId,
       decision,
@@ -848,7 +848,7 @@ test('saving an upload finishes while inference is still running', async () => {
   context.analyzer.wait = deferred.promise;
   try {
     const result = await context.assets.create({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       name: 'Immediate save',
       file: Bun.file(PHOTO_PATH),
@@ -878,18 +878,18 @@ test('choosing a different person for a reused portrait retires its previous ref
   const face = (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!
     .faces[0]!;
   await context.entities.removeImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: first.readableId,
   });
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: second.readableId,
     assetReadableId: portrait.readableId,
   });
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: portrait.readableId,
     faceReadableId: face.readableId,
@@ -897,12 +897,12 @@ test('choosing a different person for a reused portrait retires its previous ref
     entityReadableId: second.readableId,
   });
   await context.entities.removeImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: second.readableId,
   });
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: first.readableId,
     assetReadableId: portrait.readableId,
@@ -930,7 +930,7 @@ test('face corrections wait for a concurrent canonical writer without holding a 
   });
   await started.promise;
   const correction = context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: photo.readableId,
     faceReadableId: face.readableId,
@@ -988,7 +988,7 @@ test('a failed replacement portrait removes automatic links immediately while pr
   const faces = (await context.faces.detail(input))!.faces;
   expect((await context.assets.detail(input))!.depicts).toHaveLength(1);
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: faces[0]!.readableId,
     decision: 'person',
@@ -997,7 +997,7 @@ test('a failed replacement portrait removes automatic links immediately while pr
   context.analyzer.failure = new Error('Replacement cannot be analyzed');
   const replacement = await context.upload('Failed replacement');
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: person.readableId,
     assetReadableId: replacement.readableId,
@@ -1023,13 +1023,13 @@ test('a failed replacement portrait removes automatic links immediately while pr
     >`select "source" from "asset_depicts_entity" where "owner_id" = ${OWNER} and "asset_id" = ${photo.id}`,
   ).toEqual([{ source: 'confirmed' }]);
   await context.entities.removeImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: person.readableId,
   });
   expect((await context.assets.detail(input))!.depicts).toHaveLength(1);
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: faces[0]!.readableId,
     decision: 'dismissed',
@@ -1049,14 +1049,14 @@ test('person type changes and resource archives hide stored links without erasin
   const input = { ownerId: OWNER, readableId: photo.readableId };
   const face = (await context.faces.detail(input))!.faces[0]!;
   await context.faces.annotate({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'person',
     entityReadableId: person.readableId,
   });
   await context.entities.update({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: person.readableId,
     name: person.name,
@@ -1076,7 +1076,7 @@ test('person type changes and resource archives hide stored links without erasin
     }))!.items,
   ).toEqual([]);
   await context.entities.update({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: person.readableId,
     name: person.name,
@@ -1088,7 +1088,7 @@ test('person type changes and resource archives hide stored links without erasin
   ]);
   expect(
     await context.assets.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ...input,
     }),
   ).toMatchObject({ state: 'archived' });
@@ -1101,7 +1101,7 @@ test('person type changes and resource archives hide stored links without erasin
   ).not.toContain(photo.readableId);
   expect(
     await context.entities.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: person.readableId,
     }),
@@ -1127,7 +1127,7 @@ test('face and portrait mutations roll back together with their link changes', a
   );
   await expect(
     context.faces.annotate({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: face.readableId,
       decision: 'unknown',
@@ -1139,7 +1139,7 @@ test('face and portrait mutations roll back together with their link changes', a
   });
   await expect(
     context.entities.removeImage({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: person.readableId,
     }),
@@ -1161,7 +1161,7 @@ test('face rows and stored links reject invalid decisions, embeddings, and cross
   const [face] = await context.repository.observations({ ownerId: OWNER, assetId: photo.id });
   const person = await context.person();
   const otherPerson = await context.entities.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OTHER_OWNER,
     name: 'Other owner person',
     description: 'A person belonging to another owner',
@@ -1219,13 +1219,13 @@ test('busy uploads and repeated analysis requests drain without keeping the brow
   const release = Promise.withResolvers<void>();
   context.analyzer.wait = release.promise;
   const first = await context.assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'A running image',
     file: Bun.file(PHOTO_PATH),
   });
   const second = await context.assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'B waiting image',
     file: Bun.file(PHOTO_PATH),
@@ -1274,14 +1274,14 @@ test('busy uploads and repeated analysis requests drain without keeping the brow
 test('the worker recovers saved and interrupted images after restart and skips archived assets', async () => {
   await using context = await fixture({ automatic: false });
   const saved = await context.assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'Saved before wake-up',
     file: Bun.file(PHOTO_PATH),
   });
   const interrupted = await context.upload('Interrupted image');
   const archived = await context.assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'Archived image',
     file: Bun.file(PHOTO_PATH),
@@ -1290,7 +1290,7 @@ test('the worker recovers saved and interrupted images after restart and skips a
     throw new Error('Upload failed');
   }
   await context.assets.archive({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: archived.asset.readableId,
   });
@@ -1378,7 +1378,7 @@ test('images remain queued while the model is unavailable and resume after a suc
     return available ? Promise.resolve() : Promise.reject(new Error('Model unavailable'));
   };
   const saved = await context.assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'Waiting for model',
     file: Bun.file(PHOTO_PATH),
@@ -1405,7 +1405,7 @@ test('images remain queued while the model is unavailable and resume after a suc
 test('a model check excludes direct analysis and keeps queued images pending until it completes', async () => {
   await using context = await fixture({ automatic: false });
   const saved = await context.assets.create({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     name: 'Waiting for exclusive engine access',
     file: Bun.file(PHOTO_PATH),
@@ -1484,7 +1484,7 @@ test('assigned portraits appear immediately while analysis is still running', as
   context.analyzer.wait = release.promise;
   try {
     const portrait = await context.assets.create({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       name: 'Pending portrait',
       file: Bun.file(PHOTO_PATH),
@@ -1495,7 +1495,7 @@ test('assigned portraits appear immediately while analysis is still running', as
     const person = await context.person();
     expect(
       await context.entities.setImage({
-        change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+        change: { clientName: null, message: 'Updated test context' },
         ownerId: OWNER,
         readableId: person.readableId,
         assetReadableId: portrait.asset.readableId,
@@ -1522,42 +1522,42 @@ test('portrait-only appearances follow replacement, removal, and person archivin
   const images = () =>
     context.faces.images({ ownerId: OWNER, entityReadableId: person.readableId, offset: 0 });
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     assetReadableId: first.readableId,
   });
   expect((await images())!.items.map((asset) => asset.readableId)).toEqual([first.readableId]);
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     assetReadableId: second.readableId,
   });
   expect((await images())!.items.map((asset) => asset.readableId)).toEqual([second.readableId]);
   await context.entities.removeImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
   });
   expect((await images())!.items).toEqual([]);
   await context.entities.setImage({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
     assetReadableId: second.readableId,
   });
   expect(
     await context.assets.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: second.readableId,
     }),
   ).toMatchObject({ state: 'resource_in_use' });
   await context.entities.archive({
-    change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+    change: { clientName: null, message: 'Updated test context' },
     ...input,
   });
   expect(await images()).toBeNull();
   expect(
     await context.assets.archive({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       ownerId: OWNER,
       readableId: second.readableId,
     }),

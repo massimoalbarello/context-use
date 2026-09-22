@@ -56,7 +56,7 @@ export async function seedDemoSnapshot({
     });
     const profile: EntityFixture = await fixture('entities/steve-jobs.json').json();
     const createdProfile = await resources.profilesService.create({
-      change: { actor: { kind: 'owner' }, message: 'Added demo context' },
+      change: { clientName: null, message: 'Added demo context' },
       ownerId: DEMO_OWNER_ID,
       ...profile,
     });
@@ -72,7 +72,7 @@ export async function seedDemoSnapshot({
         continue;
       }
       const created = await resources.entitiesService.create({
-        change: { actor: { kind: 'owner' }, message: 'Added demo context' },
+        change: { clientName: null, message: 'Added demo context' },
         ownerId: DEMO_OWNER_ID,
         ...entity,
       });
@@ -103,7 +103,7 @@ async function seedAssets(resources: Resources) {
   const assets: AssetFixture[] = await fixture('assets/index.json').json();
   for (const asset of assets) {
     const created = await resources.assetsService.create({
-      change: { actor: { kind: 'owner' }, message: 'Added demo context' },
+      change: { clientName: null, message: 'Added demo context' },
       ownerId: DEMO_OWNER_ID,
       name: asset.name,
       file: fixture(asset.path),
@@ -117,7 +117,7 @@ async function seedAssets(resources: Resources) {
     }
     if (asset.entityReadableId) {
       const updated = await resources.entitiesService.setImage({
-        change: { actor: { kind: 'owner' }, message: 'Added demo context' },
+        change: { clientName: null, message: 'Added demo context' },
         ownerId: DEMO_OWNER_ID,
         readableId: asset.entityReadableId,
         assetReadableId: asset.readableId,
@@ -145,7 +145,7 @@ async function seedRecords(resources: Resources) {
   const addresses = new Map<string, string>();
   for (const { path, ...record } of fixtures) {
     const result = await resources.recordsService.upsert({
-      change: { actor: { kind: 'owner' }, message: 'Added demo context' },
+      change: { clientName: null, message: 'Added demo context' },
       ownerId: DEMO_OWNER_ID,
       record: { ...record, body: await fixture(path).text() },
     });

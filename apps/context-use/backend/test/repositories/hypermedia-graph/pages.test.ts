@@ -34,7 +34,7 @@ test.each([
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     await entities.create({
-      change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+      change: { clientName: null, message: 'Updated test context' },
       id: 'topic-id',
       ownerId: OWNER_A,
       createdAt: NOW,

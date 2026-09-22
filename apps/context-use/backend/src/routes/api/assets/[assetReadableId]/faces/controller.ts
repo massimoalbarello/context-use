@@ -62,7 +62,7 @@ export function createAssetFacesController({
       '/assets/:assetReadableId/faces/:faceReadableId/annotation',
       async ({ params, body, user, status }) => {
         const updated = await faces.annotate({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.assetReadableId,
           faceReadableId: params.faceReadableId,

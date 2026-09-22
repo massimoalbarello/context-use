@@ -323,7 +323,7 @@ export function registerKnowledgePageTools({
         return guideRequired;
       }
       const result = await pagesService.archive({
-        change: { actor, message: changeMessage },
+        change: { clientName: principal.clientAuthorizationName, message: changeMessage },
         ownerId: principal.ownerId,
         readableId: pageReadableId(address),
       });

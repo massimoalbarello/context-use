@@ -204,11 +204,7 @@ export function registerAssetTools({
     async ({ address, name, changeMessage }) => {
       const asset = await assetsService.updateName({
         change: {
-          actor: {
-            kind: 'mcp_client',
-            clientAuthorizationId: principal.clientAuthorizationId,
-            name: principal.clientAuthorizationName,
-          },
+          clientName: principal.clientAuthorizationName,
           message: changeMessage,
         },
         ownerId: principal.ownerId,
@@ -235,11 +231,7 @@ export function registerAssetTools({
       const readableId = assetReadableId(address);
       const result = await assetsService.archive({
         change: {
-          actor: {
-            kind: 'mcp_client',
-            clientAuthorizationId: principal.clientAuthorizationId,
-            name: principal.clientAuthorizationName,
-          },
+          clientName: principal.clientAuthorizationName,
           message: changeMessage,
         },
         ownerId: principal.ownerId,

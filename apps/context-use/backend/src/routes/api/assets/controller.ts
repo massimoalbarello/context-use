@@ -29,7 +29,7 @@ export function createAssetsController({
       '/assets',
       async ({ body, user, status }) => {
         const result = await assetsService.create({
-          change: { actor: { kind: 'owner' }, message: body.changeMessage },
+          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           ...body,
         });

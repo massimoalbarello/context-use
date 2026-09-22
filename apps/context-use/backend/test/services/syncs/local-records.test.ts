@@ -138,7 +138,7 @@ test('installed npm engine stores searchable local records through existing serv
         ).toEqual({ status: 'accepted' });
         expect(
           await records.upsert({
-            change: { actor: { kind: 'owner' }, message: 'Updated test context' },
+            change: { clientName: null, message: 'Updated test context' },
             ownerId: OWNER_USER_ID,
             record: canonical,
           }),

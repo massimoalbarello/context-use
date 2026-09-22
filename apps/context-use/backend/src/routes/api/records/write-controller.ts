@@ -34,7 +34,7 @@ export function createRecordWriteController({
           ownerId: principal.ownerId,
           record,
           change: {
-            actor: { kind: 'api_key', keyId: principal.keyId, name: principal.name },
+            clientName: principal.name,
             message: changeMessage,
           },
         });

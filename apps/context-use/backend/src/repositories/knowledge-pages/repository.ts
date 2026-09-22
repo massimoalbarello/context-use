@@ -480,13 +480,16 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await recordChange({
         db,
         ownerId: input.ownerId,
-        change: { actor: input.actor, message: input.message },
+        change: {
+          clientName: input.actor.kind === 'owner' ? null : input.actor.name,
+          message: input.message,
+        },
         resourceType: 'page',
         readableId: input.readableId,
         name: input.title,
         action: 'created',
         details: input.excerpt ? [input.excerpt] : [],
-        revisionNumber: 1,
+        pageRevisionNumber: 1,
         createdAt: input.createdAt,
       });
       return {
@@ -602,7 +605,10 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       await recordChange({
         db,
         ownerId: input.ownerId,
-        change: { actor: input.actor, message: input.message },
+        change: {
+          clientName: input.actor.kind === 'owner' ? null : input.actor.name,
+          message: input.message,
+        },
         resourceType: 'page',
         readableId: input.readableId,
         name: input.title,
@@ -616,7 +622,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           }),
           ...(current.contentHash !== input.contentHash ? ['Content updated'] : []),
         ],
-        revisionNumber,
+        pageRevisionNumber: revisionNumber,
         createdAt: input.updatedAt,
       });
       return {

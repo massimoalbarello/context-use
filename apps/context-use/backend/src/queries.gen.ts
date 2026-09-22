@@ -243,11 +243,6 @@ export interface IListActiveEntityMentioningPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `FaceChangeAuthor`. */
-export interface IFaceChangeAuthorResult {
-    name: string;
-}
-
 /** Result of query `FaceChangePerson`. */
 export interface IFaceChangePersonResult {
     name: string;
@@ -792,11 +787,6 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
-/** Result of query `FindChangeOwnerName`. */
-export interface IFindChangeOwnerNameResult {
-    name: string;
-}
-
 /** Result of query `InsertResourceChange`. */
 export interface IInsertResourceChangeResult {
 }
@@ -897,7 +887,6 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
-    FaceChangeAuthor: IFaceChangeAuthorResult;
     FaceChangePerson: IFaceChangePersonResult;
     InsertFaceResourceChange: IInsertFaceResourceChangeResult;
     ReadActivePortraitReference: IReadActivePortraitReferenceResult;
@@ -952,7 +941,6 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
-    FindChangeOwnerName: IFindChangeOwnerNameResult;
     InsertResourceChange: IInsertResourceChangeResult;
     FindCurrentRecord: IFindCurrentRecordResult;
     WriteRecord: IWriteRecordResult;
