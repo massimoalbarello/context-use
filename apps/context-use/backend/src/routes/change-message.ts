@@ -8,11 +8,8 @@ export const ChangeMessageSchema = z
   .regex(/\S/, 'Describe the change briefly')
   .trim()
   .describe(
-    `Write one short sentence (up to ${MAX_CHANGE_MESSAGE_LENGTH} characters) describing the concrete change to this resource. ` +
-      'Include why when known; do not invent a reason. Name the changed fact or content, rather than ' +
-      'using generic text such as "Updated page". For example: "Corrected Acme’s legal name to match the registry" ' +
-      'or "Added the launch date from the announcement". Write for the owner reading their change history; ' +
-      'omit tool names, internal identifiers, and secrets.',
+    `Briefly describe what changed and why, if known (max ${MAX_CHANGE_MESSAGE_LENGTH} characters). ` +
+      'For example: "Corrected Acme’s legal name".',
   );
 
 export const ChangeMessageBodySchema = z.object({ changeMessage: ChangeMessageSchema });
