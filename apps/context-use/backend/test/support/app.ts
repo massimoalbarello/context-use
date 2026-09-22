@@ -3,6 +3,7 @@ import type {
   ApiKeysServiceContract,
 } from '#backend/services/api-keys/service.ts';
 import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
+import type { HistoryServiceContract } from '#backend/services/history/service.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type {
   RecordResourcesServiceContract,
@@ -58,3 +59,5 @@ export const unusedManagedSyncsService: ManagedSyncsServiceContract = {
   update: unexpectedCall,
 };
 export const unusedSyncFetch = () => Promise.resolve(new Response(null, { status: 404 }));
+
+export const unusedHistoryService: HistoryServiceContract = { list: unexpectedCall };

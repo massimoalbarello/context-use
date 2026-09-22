@@ -8,6 +8,7 @@ import {
   setEntityImage,
 } from '../../queries/entities';
 import { facesQueryKey } from '../../queries/faces';
+import { historyQueryKey } from '../../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
 import { mapQueryKey } from '../../queries/map';
 import { pagesQueryKey } from '../../queries/pages';
@@ -23,6 +24,7 @@ function useEntityImageMutation<TVariables>({
     mutationFn,
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: historyQueryKey }),
         queryClient.invalidateQueries({ queryKey: facesQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),

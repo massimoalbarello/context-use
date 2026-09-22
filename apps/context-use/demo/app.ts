@@ -8,6 +8,7 @@ import { createEntityImagesController } from '#backend/routes/api/entities/[enti
 import { createEntitiesController } from '#backend/routes/api/entities/controller.ts';
 import { createFaceRecognitionController } from '#backend/routes/api/face-recognition/controller.ts';
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
+import { createHistoryController } from '#backend/routes/api/history/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
 import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
@@ -23,6 +24,7 @@ import type { createDemoResources } from './resources';
 // public automatically. Auth, MCP and record-write controllers aren't mounted.
 const READ_API_ROUTES = new Set([
   '/api/health',
+  '/api/history',
   '/api/profile',
   '/api/entities',
   '/api/entities/:entityReadableId',
@@ -72,6 +74,7 @@ function isWorkspacePath(path: string): boolean {
   return (
     path === '/' ||
     path === '/map' ||
+    path === '/history' ||
     path === '/settings' ||
     path === '/settings/api-keys' ||
     path === '/settings/faces' ||
@@ -91,6 +94,7 @@ export function createDemoApp({
   const faceDependencies = { auth, faces: resources.assetsService.faces };
   const api = new Elysia({ prefix: '/api' })
     .onError(elysiaErrorHandler)
+    .use(createHistoryController(dependencies))
     .use(createAssetsController(dependencies))
     .use(createAssetReadableIdController(dependencies))
     .use(createAssetFacesController(faceDependencies))

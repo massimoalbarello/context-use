@@ -8,6 +8,7 @@ import { createAuthController } from '#backend/routes/api/auth/controller.ts';
 import { createEntityReadableIdController } from '#backend/routes/api/entities/[entityReadableId]/controller.ts';
 import { createEntitiesController } from '#backend/routes/api/entities/controller.ts';
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
+import { createHistoryController } from '#backend/routes/api/history/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
 import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createMcpClientsController } from '#backend/routes/api/mcp/clients/controller.ts';
@@ -25,6 +26,7 @@ import type {
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
+import type { HistoryServiceContract } from '#backend/services/history/service.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
@@ -46,6 +48,7 @@ export function createApiController({
   auth,
   assetsService,
   entitiesService,
+  historyService,
   healthService,
   graphService,
   retrievalService,
@@ -62,6 +65,7 @@ export function createApiController({
   managedSyncsService: ManagedSyncsServiceContract;
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
+  historyService: HistoryServiceContract;
   healthService: HealthServiceContract;
   graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
@@ -100,5 +104,6 @@ export function createApiController({
     .use(createManagedSyncsController({ auth, syncs: managedSyncsService }))
     .use(createApiKeysController({ auth, apiKeysService }))
     .use(createKnowledgeProfileController({ auth, profilesService }))
+    .use(createHistoryController({ auth, historyService }))
     .use(createHealthController({ healthService }));
 }

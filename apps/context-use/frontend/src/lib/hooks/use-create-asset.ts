@@ -1,6 +1,7 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assetsQueryKey, type CreateAssetVariables, createAsset } from '../../queries/assets';
 import { facesQueryKey } from '../../queries/faces';
+import { historyQueryKey } from '../../queries/history';
 
 export function useCreateAsset(): UseMutationResult<
   { readableId: string },
@@ -12,6 +13,7 @@ export function useCreateAsset(): UseMutationResult<
     mutationFn: createAsset,
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: historyQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetsQueryKey }),
         queryClient.invalidateQueries({ queryKey: facesQueryKey }),
       ]);

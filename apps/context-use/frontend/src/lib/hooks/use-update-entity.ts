@@ -1,6 +1,7 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { entitiesQueryKey, type UpdateEntityVariables, updateEntity } from '../../queries/entities';
 import { facesQueryKey } from '../../queries/faces';
+import { historyQueryKey } from '../../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
 import { mapQueryKey } from '../../queries/map';
 import { pagesQueryKey } from '../../queries/pages';
@@ -13,6 +14,7 @@ export function useUpdateEntity(): UseMutationResult<void, Error, UpdateEntityVa
     mutationFn: updateEntity,
     onSuccess: async () => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: historyQueryKey }),
         queryClient.invalidateQueries({ queryKey: facesQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: mapQueryKey }),

@@ -22,6 +22,7 @@ import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { assetsQueryKey, createAsset } from '../queries/assets';
 import { createEntity, entitiesQueryKey, setEntityImage } from '../queries/entities';
 import { facesQueryKey } from '../queries/faces';
+import { historyQueryKey } from '../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../queries/knowledge-suggestions';
 import { mapQueryKey } from '../queries/map';
 import { createProfile, profileQueryKey, profileQueryOptions } from '../queries/profile';
@@ -77,6 +78,7 @@ function NewEntityRoute() {
           entitiesQueryKey,
           assetsQueryKey,
           facesQueryKey,
+          historyQueryKey,
           mapQueryKey,
           knowledgeSuggestionsQueryKey,
           profileQueryKey,

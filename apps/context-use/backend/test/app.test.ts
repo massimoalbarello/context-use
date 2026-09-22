@@ -12,6 +12,7 @@ import type { KnowledgeProfilesServiceContract } from '#backend/services/knowled
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
 import {
   unusedAssetFacesService,
+  unusedHistoryService,
   unusedHypermediaGraphService,
   unusedManagedSyncsService,
   unusedSyncFetch,
@@ -85,6 +86,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
 
   const app = createApp({
+    historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,
     auth,

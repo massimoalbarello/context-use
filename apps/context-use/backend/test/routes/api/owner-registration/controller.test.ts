@@ -19,6 +19,7 @@ import { OwnerRegistrationService } from '#backend/services/owner-registration/s
 import {
   unusedApiKeysService,
   unusedAssetFacesService,
+  unusedHistoryService,
   unusedHypermediaGraphService,
   unusedManagedSyncsService,
   unusedRecordsService,
@@ -95,6 +96,7 @@ test('owner registration API exposes only complete registration states', async (
       migrations: new Map([['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)]]),
     });
     const app = createApp({
+      historyService: unusedHistoryService,
       managedSyncsService: unusedManagedSyncsService,
       syncFetch: unusedSyncFetch,
       auth,
