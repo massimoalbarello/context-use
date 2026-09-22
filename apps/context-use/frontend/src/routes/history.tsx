@@ -59,7 +59,7 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
         <span className="font-medium">
           {actions[entry.action]} {resource.label.toLowerCase()}
         </span>
-        {entry.author.kind !== 'owner' && <span>by {entry.author.name}</span>}
+        {entry.clientName !== null && <span>by {entry.clientName}</span>}
         <time className="ml-auto tabular-nums" dateTime={entry.createdAt.toISOString()}>
           {entry.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </time>
@@ -84,7 +84,7 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
           <ChangeDetails details={entry.details} />
         </div>
       )}
-      {entry.resourceType === 'page' && entry.revisionNumber !== null && entry.available && (
+      {entry.resourceType === 'page' && entry.pageRevisionNumber !== null && entry.available && (
         <Collapsible.Root className="mt-2">
           <Collapsible.Trigger
             render={<Button variant="ghost" size="sm" />}
@@ -97,7 +97,7 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
             <ChangeDetails details={entry.details} />
             <KnowledgePageRevisionComparison
               readableId={entry.readableId}
-              revisionNumber={entry.revisionNumber}
+              revisionNumber={entry.pageRevisionNumber}
             />
           </Collapsible.Panel>
         </Collapsible.Root>

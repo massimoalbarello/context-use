@@ -20,9 +20,9 @@ function entry(overrides: Partial<HistoryEntry> & { sequence: number }): History
     name: `Person ${sequence}`,
     action: 'updated',
     message: 'Corrected the organization name',
-    author: { kind: 'mcp_client', name: 'Research assistant' },
+    clientName: 'Research assistant',
     details: ['Name: “Acme” → “Acme Incorporated”'],
-    revisionNumber: null,
+    pageRevisionNumber: null,
     createdAt: TODAY,
     available: true,
     ...rest,
@@ -206,8 +206,8 @@ test('History hides owner attribution and revision numbers while retaining clien
                 name: 'Project notes',
                 message: 'Clarified the next steps',
                 details: ['Content updated'],
-                revisionNumber: 2,
-                author: { kind: 'owner', name: 'Private owner attribution' },
+                pageRevisionNumber: 2,
+                clientName: null,
               }),
               entry({ sequence: 1 }),
             ],
@@ -216,13 +216,15 @@ test('History hides owner attribution and revision numbers while retaining clien
     run: async () => {
       await screen.findByRole('heading', { name: 'Project notes', level: 3 });
       expect(screen.getByText('by Research assistant')).toBeTruthy();
-      expect(screen.queryByText(/Private owner attribution/)).toBeNull();
+      const pageChange = screen
+        .getByRole('heading', { name: 'Project notes', level: 3 })
+        .closest('li')!;
+      expect(within(pageChange).queryByText(/^by\b/)).toBeNull();
       expect(screen.queryByText('Content updated')).toBeNull();
       await user.click(screen.getByRole('button', { name: 'View changes' }));
       await screen.findByText('Updated plan');
       expect(screen.getByText('Content updated')).toBeTruthy();
       expect(screen.queryByText(/Revision \d/)).toBeNull();
-      expect(screen.queryByText(/Private owner attribution/)).toBeNull();
     },
   });
 });

@@ -27,10 +27,10 @@ export class HistoryRepository implements HistoryRepositoryContract {
     before?: HistoryPosition;
   }) {
     const rows = await this.sql.ListResourceHistory`
-      /* @notNull sequence resourceType readableId name action message authorKind authorName details createdAt available */
+      /* @notNull sequence resourceType readableId name action message details createdAt available */
       select history."sequence", history."resource_type" as "resourceType", history."readable_id" as "readableId",
-        history."name", history."action", history."message", history."author_kind" as "authorKind",
-        history."author_name" as "authorName", history."details", history."revision_number" as "revisionNumber",
+        history."name", history."action", history."message", history."client_name" as "clientName",
+        history."details", history."page_revision_number" as "pageRevisionNumber",
         history."created_at" as "createdAt",
         case history."resource_type"
           when 'entity' then exists (select 1 from "entity" where "owner_id" = ${ownerId} and "readable_id" = history."readable_id" and "archived_at" is null)
@@ -52,9 +52,9 @@ export class HistoryRepository implements HistoryRepositoryContract {
       name: row.name,
       action: row.action as ResourceChange['action'],
       message: row.message,
-      author: { kind: row.authorKind as ResourceChange['author']['kind'], name: row.authorName },
+      clientName: row.clientName,
       details: JSON.parse(row.details) as string[],
-      revisionNumber: row.revisionNumber === null ? null : Number(row.revisionNumber),
+      pageRevisionNumber: row.pageRevisionNumber === null ? null : Number(row.pageRevisionNumber),
       createdAt: row.createdAt,
       available: Boolean(row.available),
     }));

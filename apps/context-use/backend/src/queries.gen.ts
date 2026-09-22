@@ -406,10 +406,9 @@ export interface IListResourceHistoryResult {
     name: string;
     action: string;
     message: string;
-    authorKind: string;
-    authorName: string;
+    clientName: string | null;
     details: string;
-    revisionNumber: number | null;
+    pageRevisionNumber: number | null;
     createdAt: string;
     available: unknown;
 }

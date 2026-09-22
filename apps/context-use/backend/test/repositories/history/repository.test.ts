@@ -13,7 +13,7 @@ import { RecordsService } from '#backend/services/records/service.ts';
 
 const NOW = '2026-09-21T12:00:00.000Z';
 const change: ChangeContext = {
-  actor: { kind: 'owner' },
+  clientName: null,
   message: 'Corrected the company identity',
 };
 
