@@ -1,7 +1,9 @@
 import type { SyncContext } from '@context-use/open-sync/definition';
 import type { JsonObject } from '@context-use/open-sync/json';
 export const now = '2026-09-17T12:00:00.000Z';
-export function pull(input: { id?: string; title?: string; updatedAt?: string } = {}): JsonObject {
+export function pull(
+  input: { id?: string; title?: string; createdAt?: string; updatedAt?: string } = {},
+): JsonObject {
   return {
     id: input.id ?? 'PR_one',
     number: 1,
@@ -10,7 +12,7 @@ export function pull(input: { id?: string; title?: string; updatedAt?: string } 
     url: 'https://github.com/example/project/pull/1',
     state: 'OPEN',
     isDraft: false,
-    createdAt: now,
+    createdAt: input.createdAt ?? now,
     updatedAt: input.updatedAt ?? now,
     repository: { nameWithOwner: 'example/project' },
     author: { id: 'U_owner', login: 'octocat' },
@@ -48,7 +50,12 @@ export function githubContext(input: {
   };
   return {
     config: {},
-    checkpoint: input.checkpoint ?? { accountId: null, cursor: null },
+    checkpoint: input.checkpoint ?? {
+      accountId: null,
+      cursor: null,
+      cycleStartedAt: null,
+      watermark: null,
+    },
     syncId: 'sync',
     signal: input.signal ?? new AbortController().signal,
     provider: { post: input.post, get: unexpected, action: unexpected },
