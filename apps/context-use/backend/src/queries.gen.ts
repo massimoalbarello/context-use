@@ -806,6 +806,14 @@ export interface IReadOwnerRegistrationStateResult {
 export interface IInsertResourceChangeResult {
 }
 
+/** Result of query `AdvanceRecordSyncRevision`. */
+export interface IAdvanceRecordSyncRevisionResult {
+}
+
+/** Result of query `WriteRecord`. */
+export interface IWriteRecordResult {
+}
+
 /** Result of query `FindCurrentRecord`. */
 export interface IFindCurrentRecordResult {
     readableId: string | null;
@@ -813,10 +821,7 @@ export interface IFindCurrentRecordResult {
     sourceUpdatedAt: string | null;
     contentHash: string | null;
     deletedAt: string | null;
-}
-
-/** Result of query `WriteRecord`. */
-export interface IWriteRecordResult {
+    syncRevision: number;
 }
 
 /** Result of query `RemoveRecordSearchDocument`. */
@@ -958,8 +963,9 @@ export interface Queries {
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
     InsertResourceChange: IInsertResourceChangeResult;
-    FindCurrentRecord: IFindCurrentRecordResult;
+    AdvanceRecordSyncRevision: IAdvanceRecordSyncRevisionResult;
     WriteRecord: IWriteRecordResult;
+    FindCurrentRecord: IFindCurrentRecordResult;
     RemoveRecordSearchDocument: IRemoveRecordSearchDocumentResult;
     ListRecordResources: IListRecordResourcesResult;
     RecordFilterOptions: IRecordFilterOptionsResult;

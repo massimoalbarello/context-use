@@ -31,7 +31,7 @@ export function ManagedSyncCard(input: {
           {stateLabels[sync.state]}
         </Badge>
       </div>
-      {(sync.state === 'error' || sync.state === 'syncing' || !connected) && (
+      {sync.state !== 'ready' && (
         <p role="status" className="text-muted-foreground text-sm">
           {sync.message}
         </p>

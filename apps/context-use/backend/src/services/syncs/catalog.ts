@@ -1,18 +1,6 @@
-import type {
-  SyncContext,
-  SyncDefinition,
-  SyncPage,
-  SyncRegistration,
-} from '@context-use/open-sync/definition';
-import { z } from 'zod';
+import type { SyncRegistration } from '@context-use/open-sync/definition';
 import { NotFoundError } from '#backend/lib/errors.ts';
-import { type RecordInput, RecordInputSchema } from '#backend/models/records/model.ts';
 
-export interface RecordSyncPage extends Omit<SyncPage, 'deliverable'> {
-  deliverable: {
-    records: { operation: 'upsert'; kind: string; id: string; data: RecordInput }[];
-  };
-}
 export interface ContextSync {
   key: string;
   name: string;
@@ -26,31 +14,6 @@ export interface SyncProvider {
   description: string;
   oauth: { createAppUrl: string; authorizationOptionIds: string[] };
   syncs: readonly ContextSync[];
-}
-
-export function defineRecordSync(input: {
-  key: string;
-  name: string;
-  description: string;
-  intervalMs: number;
-  definition: Omit<SyncDefinition, 'kinds'>;
-  kinds: readonly string[];
-  run(context: SyncContext): AsyncIterable<RecordSyncPage>;
-}): ContextSync {
-  const schema = JSON.parse(JSON.stringify(z.toJSONSchema(RecordInputSchema, { io: 'input' })));
-  return {
-    key: input.key,
-    name: input.name,
-    description: input.description,
-    intervalMs: input.intervalMs,
-    registration: {
-      definition: {
-        ...input.definition,
-        kinds: Object.fromEntries(input.kinds.map((kind) => [kind, schema])),
-      },
-      load: () => ({ run: input.run }),
-    },
-  };
 }
 
 export class SyncCatalog {

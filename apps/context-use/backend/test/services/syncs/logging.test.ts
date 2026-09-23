@@ -10,7 +10,7 @@ import { page } from './github-fixture.ts';
 
 type Event = Parameters<NonNullable<OpenSyncOptions['onEvent']>>[0];
 
-test('SDK logs identify the owner and installation, distinguish request errors, and survive a broken log sink', async () => {
+test('SDK logs identify the owner and sync, distinguish request errors, and survive a broken log sink', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'context-use-sync-logging-'));
   const logs: { level: string; event: Event }[] = [];
   let fail = true;
@@ -19,7 +19,6 @@ test('SDK logs identify the owner and installation, distinguish request errors, 
     definitions: [githubPullRequests.registration],
     destinationTypes: {
       local: {
-        version: '1',
         configSchema: { type: 'object' },
         deliver: () => Promise.resolve({ status: 'accepted' }),
       },
@@ -49,43 +48,27 @@ test('SDK logs identify the owner and installation, distinguish request errors, 
   });
   const scope = { actorId: 'owner', ownerId: 'owner' };
   try {
-    const destination = runtime.api.createDestination({ ...scope, type: 'local', config: {} });
-    const installation = await runtime.api.createInstallation({
+    const sync = await runtime.api.createSync({
       ...scope,
-      definition: githubPullRequests.registration.definition,
+      definition: githubPullRequests.registration.definition.id,
       connection: { id: 'connection', service: 'github' },
-      destinationId: destination.id,
+      destination: { type: 'local', input: {} },
       config: {},
     });
     await runtime.tick();
     expect(logs).toContainEqual({
       level: 'error',
       event: expect.objectContaining({
-        code: 'definition_log',
+        code: 'source_http_429',
         ownerId: scope.ownerId,
-        installationId: installation.id,
-        fields: expect.objectContaining({
-          outcome: 'graphql_error',
-          errors: [{ type: 'RATE_LIMITED' }],
-        }),
+        syncId: sync.id,
+        fields: expect.objectContaining({ httpStatus: 429 }),
       }),
-    });
-    expect(logs).toContainEqual({
-      level: 'error',
-      event: { code: 'execution_failed', ownerId: scope.ownerId, installationId: installation.id },
     });
     fail = false;
-    runtime.api.queueRun({ ...scope, id: installation.id });
+    runtime.api.runNow({ ...scope, id: sync.id });
     await runtime.tick();
-    expect(runtime.api.installations(scope)[0]?.status).toBe('succeeded');
-    expect(logs).toContainEqual({
-      level: 'info',
-      event: expect.objectContaining({
-        ownerId: scope.ownerId,
-        installationId: installation.id,
-        fields: expect.objectContaining({ outcome: 'success' }),
-      }),
-    });
+    expect(runtime.api.syncs(scope)[0]?.status).toBe('succeeded');
   } finally {
     await runtime.close();
     await rm(directory, { recursive: true, force: true });

@@ -1,3 +1,4 @@
+import type { SyncContext } from '@context-use/open-sync/definition';
 import type { JsonObject } from '@context-use/open-sync/json';
 export const now = '2026-09-17T12:00:00.000Z';
 export function pull(input: { id?: string; title?: string; updatedAt?: string } = {}): JsonObject {
@@ -34,5 +35,23 @@ export function page(
         },
       },
     },
+  };
+}
+
+export function githubContext(input: {
+  post: SyncContext['provider']['post'];
+  checkpoint?: SyncContext['checkpoint'];
+  signal?: AbortSignal;
+}): SyncContext {
+  const unexpected = () => {
+    throw new Error('Unexpected provider or asset operation');
+  };
+  return {
+    config: {},
+    checkpoint: input.checkpoint ?? { accountId: null, cursor: null },
+    syncId: 'sync',
+    signal: input.signal ?? new AbortController().signal,
+    provider: { post: input.post, get: unexpected, action: unexpected },
+    assets: { capture: unexpected, unavailable: unexpected },
   };
 }
