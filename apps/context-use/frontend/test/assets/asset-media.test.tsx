@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { AssetFileActions } from '../../src/components/assets/asset-file-actions';
 import { AssetMedia } from '../../src/components/assets/asset-media';
-import { MAX_DOCUMENT_PREVIEW_BYTES } from '../../src/queries/assets';
+import { assetDocumentQueryOptions, MAX_DOCUMENT_PREVIEW_BYTES } from '../../src/queries/assets';
 
 const asset = { readableId: 'sample-file', name: 'Sample file', mediaType: 'text/plain' };
 
@@ -24,6 +24,7 @@ function preview({
   );
   return {
     view,
+    client,
     dispose() {
       cleanup();
       client.clear();
@@ -33,13 +34,16 @@ function preview({
 }
 
 test('text is visible and markup stays inert', async () => {
-  const { view, dispose } = preview({
+  const { view, dispose, client } = preview({
     mediaType: 'text/plain',
     response: new Response('<script>alert(1)</script>\nChecklist'),
   });
   try {
     expect(await view.findByText('<script>alert(1)</script> Checklist')).toBeTruthy();
     expect(view.container.querySelector('script')).toBeNull();
+    const bytes = await client.fetchQuery(assetDocumentQueryOptions(asset.readableId));
+    expect(bytes.buffer.resizable).toBe(false);
+    expect(new TextDecoder().decode(bytes)).toBe('<script>alert(1)</script>\nChecklist');
     expect(view.getByRole('link', { name: 'Download' }).getAttribute('href')).toBe(
       '/api/assets/sample-file/content?download=true',
     );

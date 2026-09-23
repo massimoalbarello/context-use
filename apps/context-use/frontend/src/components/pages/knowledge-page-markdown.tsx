@@ -1,45 +1,16 @@
 import { cn } from '@repo/ui/class-names';
-import { isValidElement, type ReactNode, useContext } from 'react';
+import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
-import { assetContentUrl } from '../../lib/asset-presentation';
+import { internalLink } from '../../lib/internal-link';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
-import { AssetLink } from '../assets/asset-link';
+import { AssetMarkdownImage, AssetMarkdownLink } from '../assets/asset-markdown';
 import { EntityLink } from '../entities/entity-link';
-import { ResourceNavigation } from '../knowledge/resource-navigation';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
 
-type InternalLink =
-  | { kind: 'entity'; readableId: string }
-  | { kind: 'page'; readableId: string; fragment: string | undefined }
-  | { kind: 'asset'; readableId: string }
-  | { kind: 'record'; readableId: string };
-
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
 type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;
-
-function internalLink(href: string): InternalLink | null {
-  const match =
-    /^context-use:\/\/(entity|page|asset|record)\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:#([a-z0-9]+(?:-[a-z0-9]+)*))?$/.exec(
-      href,
-    );
-  if (!match?.[1] || !match[2]) {
-    return null;
-  }
-  if (match[1] === 'record' && !match[3]) {
-    return { kind: 'record', readableId: match[2] };
-  }
-  if (match[1] !== 'page' && match[3]) {
-    return null;
-  }
-  if (match[1] === 'entity') {
-    return { kind: 'entity', readableId: match[2] };
-  }
-  return match[1] === 'page'
-    ? { kind: 'page', readableId: match[2], fragment: match[3] }
-    : { kind: 'asset', readableId: match[2] };
-}
 
 function textContent(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -88,7 +59,6 @@ function MarkdownLink({
   mentions: EntityMention[];
   recordReferences: RecordReference[];
 }) {
-  const navigation = useContext(ResourceNavigation);
   const target = href ? internalLink(href) : null;
   if (target?.kind === 'entity') {
     return (
@@ -137,24 +107,7 @@ function MarkdownLink({
     );
   }
   if (target?.kind === 'asset') {
-    if (!navigation) {
-      return (
-        <a
-          className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
-          href={assetContentUrl(target.readableId)}
-        >
-          {children}
-        </a>
-      );
-    }
-    return (
-      <AssetLink
-        asset={{ readableId: target.readableId, name: textContent(children) }}
-        presentation="inline"
-      >
-        {children}
-      </AssetLink>
-    );
+    return <AssetMarkdownLink readableId={target.readableId}>{children}</AssetMarkdownLink>;
   }
   return (
     <a
@@ -171,13 +124,7 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
   if (target?.kind !== 'asset') {
     return null;
   }
-  return (
-    <img
-      className="my-7 max-h-[36rem] w-full rounded-xl bg-muted object-contain"
-      src={assetContentUrl(target.readableId)}
-      alt={alt ?? ''}
-    />
-  );
+  return <AssetMarkdownImage readableId={target.readableId} alt={alt} />;
 }
 
 export function KnowledgePageMarkdown({

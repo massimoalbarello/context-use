@@ -2,6 +2,7 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
+import { InvalidRecordAssetError, type RecordAssetUsage } from '#backend/models/records/assets.ts';
 import type {
   NativeRecord,
   RecordDeletion,
@@ -20,6 +21,7 @@ import { replaceSearchDocument } from '../search-index.ts';
 
 export type PreparedRecord = {
   record: NativeRecord;
+  assetUsages: RecordAssetUsage[];
   storageKey: string;
   contentHash: string;
   sizeBytes: number;
@@ -210,6 +212,28 @@ async function publishRecord({
   `;
 }
 
+async function replaceRecordAssetUsages(input: {
+  db: TypedSQL<Queries>;
+  write: WriteRecordInput;
+  readableId: string;
+}) {
+  const { db, write, readableId } = input;
+  await db.RemoveRecordAssetUsages`
+    delete from "record_asset_usage" where "owner_id" = ${write.ownerId} and "record_readable_id" = ${readableId}
+  `;
+  for (const usage of write.value?.assetUsages ?? []) {
+    const rows = await db.AddRecordAssetUsage`
+      insert into "record_asset_usage" ("owner_id", "record_readable_id", "asset_id", "presentation")
+      select ${write.ownerId}, ${readableId}, "id", ${usage.presentation} from "asset"
+      where "owner_id" = ${write.ownerId} and "readable_id" = ${usage.readableId} and "archived_at" is null
+      returning "asset_id" as "assetId"
+    `;
+    if (!rows.length) {
+      throw new InvalidRecordAssetError();
+    }
+  }
+}
+
 async function writeRecord({
   db,
   input,
@@ -241,6 +265,7 @@ async function writeRecord({
     return skipped(skip);
   }
   await publishRecord({ db, input, readableId });
+  await replaceRecordAssetUsages({ db, write: input, readableId });
   let excerpt: string | undefined;
   if (record) {
     const text = recordSearchText(record);

@@ -16,3 +16,11 @@ Keep the transitions visible. A jump between prepared screens would hide the ver
 - Tony verifies music resumes after the call and prepares the crew reset checklist.
 - Phil checks the June availability language and carrier wording.
 - Steve rehearses the reveal without treating tomorrow’s announcement as shipment.
+
+## Rehearsal materials
+
+![Original iPhone front view](context-use://asset/original-iphone-front-view)
+
+[Rehearsal checklist](context-use://asset/synthetic-iphone-rehearsal-checklist)
+
+[Rehearsal handout](context-use://asset/synthetic-iphone-rehearsal-handout)

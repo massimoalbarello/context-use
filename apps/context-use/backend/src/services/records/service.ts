@@ -3,6 +3,7 @@ import type { Storage } from '#backend/lib/storage/storage.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import { readableIdFrom, readableIdWithSuffix } from '#backend/models/readable-ids/model.ts';
+import { recordAssetUsages } from '#backend/models/records/assets.ts';
 import {
   parseRecord,
   type RecordDeletion,
@@ -61,6 +62,7 @@ export class RecordsService {
     sync?: RecordSyncRevision;
   }): Promise<RecordWriteResult> {
     const record = parseRecord(input);
+    const assetUsages = recordAssetUsages(record.body);
     const readableId = recordReadableId({ source: record.source, syncId: sync?.syncId });
     const storageKey = `${encodeURIComponent(ownerId)}/records/${readableId}/${Bun.randomUUIDv7()}.json`;
     const json = canonicalize(record)!;
@@ -78,7 +80,7 @@ export class RecordsService {
         sync,
         readableId,
         receivedAt: this.now().toISOString(),
-        value: { record, storageKey, sizeBytes, contentHash: sha256(json) },
+        value: { record, assetUsages, storageKey, sizeBytes, contentHash: sha256(json) },
       });
       if (publication.committed) {
         unusedKeys.delete(storageKey);

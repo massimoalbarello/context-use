@@ -1,7 +1,14 @@
+import { assetKey } from '@context-use/open-sync/assets';
 import type { SyncRegistration } from '@context-use/open-sync/definition';
-import type { Deliverable, DestinationType } from '@context-use/open-sync/delivery';
+import type { Deliverable, DeliveryResult, DestinationType } from '@context-use/open-sync/delivery';
 import { z } from 'zod';
+import {
+  type AssetImport,
+  MAX_ASSET_BYTES,
+  MAX_ASSET_NAME_LENGTH,
+} from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
+import { InvalidRecordAssetError } from '#backend/models/records/assets.ts';
 import {
   type RecordInput,
   RecordInputSchema,
@@ -9,8 +16,8 @@ import {
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
 
-// The current local destination stores readable summaries; captured attachments require a
-// durable host asset mapping before this contract can accept them.
+import { importedAssetReadableId, mapRecordAssets } from './record-assets.ts';
+
 const summarySchema = z.object({ title: z.string(), url: z.string().optional() });
 
 // Validate the complete batch before publishing; every publication commits its own revision.
@@ -18,6 +25,7 @@ function deliveredRecords(input: {
   deliverable: Deliverable;
   registration: SyncRegistration;
   provider: string;
+  assets: ReadonlyMap<string, { readableId: string; name: string }>;
 }) {
   const records = [];
   for (const record of input.deliverable.records) {
@@ -37,7 +45,11 @@ function deliveredRecords(input: {
     const parsed = RecordInputSchema.safeParse({
       source: { provider: input.provider, kind: record.kind, id: record.id, url: summary.data.url },
       title: summary.data.title,
-      body: record.content.body,
+      body: mapRecordAssets({
+        body: record.content.body,
+        assetRefs: record.assetRefs ?? {},
+        assets: input.assets,
+      }),
       occurredAt: record.createdAt,
       sourceCreatedAt: record.createdAt,
       sourceUpdatedAt: record.updatedAt,
@@ -50,8 +62,46 @@ function deliveredRecords(input: {
   return records;
 }
 
+class InvalidDeliveryError extends Error {
+  constructor(readonly code: string) {
+    super(code);
+  }
+}
+
+function deliveredAssets(deliverable: Deliverable) {
+  const assets = new Map<string, AssetImport>();
+  for (const asset of deliverable.assets) {
+    if ('unavailable' in asset) {
+      throw new InvalidDeliveryError('asset_unavailable');
+    }
+    const name = asset.name.trim();
+    if (
+      !name ||
+      name.length > MAX_ASSET_NAME_LENGTH ||
+      asset.size < 1 ||
+      asset.size > MAX_ASSET_BYTES
+    ) {
+      throw new InvalidDeliveryError('unsupported_asset');
+    }
+    assets.set(assetKey(asset), {
+      ownerId: deliverable.ownerId,
+      readableId: importedAssetReadableId({ ...deliverable, asset }),
+      name,
+      sizeBytes: asset.size,
+      contentHash: asset.sha256,
+    });
+  }
+  return assets;
+}
+
 export function localRecordDestination(input: {
   ownerId: string;
+  importAsset(input: {
+    asset: AssetImport;
+    read(): Promise<ReadableStream<Uint8Array>>;
+    signal: AbortSignal;
+    change: ChangeContext;
+  }): Promise<{ state: 'ready'; readableId: string } | { state: 'conflict' }>;
   upsertRecord(input: {
     ownerId: string;
     record: RecordInput;
@@ -60,6 +110,48 @@ export function localRecordDestination(input: {
   }): Promise<RecordWriteResult>;
   definitions: readonly SyncRegistration[];
 }): DestinationType {
+  async function publish({
+    deliverable,
+    provider,
+    records,
+    assets,
+    signal,
+  }: {
+    deliverable: Deliverable;
+    provider: string;
+    records: NonNullable<ReturnType<typeof deliveredRecords>>;
+    assets: Map<string, AssetImport>;
+    signal: AbortSignal;
+  }): Promise<DeliveryResult> {
+    const change = { clientName: provider, message: `Synced record from ${provider}` };
+    // Finish every asset before the first record. Replays reuse these immutable local assets.
+    for (const asset of deliverable.assets) {
+      signal.throwIfAborted();
+      const result = await input.importAsset({
+        asset: assets.get(assetKey(asset))!,
+        read: () => deliverable.openAsset(asset),
+        signal,
+        change,
+      });
+      if (result.state === 'conflict') {
+        return { status: 'rejected', code: 'asset_conflict' };
+      }
+    }
+    for (const { record, revision } of records) {
+      signal.throwIfAborted();
+      const result = await input.upsertRecord({
+        ownerId: deliverable.ownerId,
+        record,
+        sync: { syncId: deliverable.syncId, revision },
+        change,
+      });
+      if (result.state === 'conflict') {
+        return { status: 'rejected', code: 'conflict' };
+      }
+    }
+    signal.throwIfAborted();
+    return { status: 'accepted' };
+  }
   return {
     configSchema: { type: 'object', additionalProperties: false },
     async deliver({ deliverable, scope, signal }) {
@@ -67,44 +159,38 @@ export function localRecordDestination(input: {
       const registration = input.definitions.find(
         ({ definition }) => definition.id === deliverable.definition,
       );
+      const provider = registration?.definition.provider?.service;
       if (
         deliverable.ownerId !== scope.ownerId ||
         scope.ownerId !== input.ownerId ||
         !registration ||
+        !provider ||
         !deliverable.syncId
       ) {
         return { status: 'rejected', code: 'invalid_source' };
       }
-      if (
-        deliverable.assets.length ||
-        deliverable.records.some(
-          (record) => record.operation === 'upsert' && Object.keys(record.assetRefs ?? {}).length,
-        )
-      ) {
-        return { status: 'rejected', code: 'unsupported_assets' };
+      let assets: Map<string, AssetImport>;
+      let records: ReturnType<typeof deliveredRecords>;
+      try {
+        assets = deliveredAssets(deliverable);
+        records = deliveredRecords({ deliverable, registration, provider, assets });
+      } catch (error) {
+        return {
+          status: 'rejected',
+          code: error instanceof InvalidDeliveryError ? error.code : 'invalid_asset_reference',
+        };
       }
-      const provider = registration.definition.provider?.service;
-      if (!provider) {
-        return { status: 'rejected', code: 'invalid_source' };
-      }
-      const records = deliveredRecords({ deliverable, registration, provider });
       if (!records) {
         return { status: 'rejected', code: 'invalid_record' };
       }
-      for (const { record, revision } of records) {
-        signal.throwIfAborted();
-        const result = await input.upsertRecord({
-          ownerId: scope.ownerId,
-          record,
-          sync: { syncId: deliverable.syncId, revision },
-          change: { clientName: provider, message: `Synced record from ${provider}` },
-        });
-        if (result.state === 'conflict') {
-          return { status: 'rejected', code: 'conflict' };
+      try {
+        return await publish({ deliverable, provider, records, assets, signal });
+      } catch (error) {
+        if (error instanceof InvalidRecordAssetError) {
+          return { status: 'rejected', code: 'invalid_asset_reference' };
         }
+        throw error;
       }
-      signal.throwIfAborted();
-      return { status: 'accepted' };
     },
   };
 }

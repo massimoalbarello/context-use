@@ -41,6 +41,7 @@ async function store(input: { database: SQL; dataFolder: string }) {
     storage: createLocalStorage(input),
   });
   const destination = localRecordDestination({
+    importAsset: unexpected,
     ownerId: OWNER_USER_ID,
     upsertRecord: (value) => records.upsert(value),
     definitions: [definition],
@@ -328,6 +329,7 @@ test('partial publication and a lost acknowledgement replay after restart withou
       let loseAcknowledgement = true;
       const seenIds: string[] = [];
       const receiver = localRecordDestination({
+        importAsset: unexpected,
         ownerId: OWNER_USER_ID,
         definitions: [definition],
         upsertRecord: (value) => {
@@ -447,7 +449,7 @@ test('partial publication and a lost acknowledgement replay after restart withou
   });
 });
 
-test('unsupported assets, deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
+test('unavailable assets, deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       const host = await store(input);
@@ -476,6 +478,7 @@ test('unsupported assets, deletes, malformed batches and cancellation cannot ack
       expect((await host.list()).items).toEqual([]);
       const abort = new AbortController();
       const cancelled = localRecordDestination({
+        importAsset: unexpected,
         ownerId: OWNER_USER_ID,
         definitions: [definition],
         upsertRecord: async (value) => {

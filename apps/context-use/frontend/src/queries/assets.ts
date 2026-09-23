@@ -179,7 +179,8 @@ export function assetDocumentQueryOptions(readableId: string) {
         const buffer = await getStreamAsArrayBuffer(response.body, {
           maxBuffer: MAX_DOCUMENT_PREVIEW_BYTES,
         });
-        return new Uint8Array(buffer);
+        // Browser document decoders require fixed-size buffers, while get-stream may return a resizable one.
+        return new Uint8Array(buffer).slice();
       } catch (error) {
         if (error instanceof MaxBufferError) {
           throw new Error('This file is too large to preview.');

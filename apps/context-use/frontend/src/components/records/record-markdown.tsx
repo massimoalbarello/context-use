@@ -1,6 +1,8 @@
 import { cn } from '@repo/ui/class-names';
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { internalLink } from '../../lib/internal-link';
+import { AssetMarkdownImage, AssetMarkdownLink } from '../assets/asset-markdown';
 
 export function externalRecordUrl(url: string): string {
   try {
@@ -12,6 +14,10 @@ export function externalRecordUrl(url: string): string {
 }
 
 function ContextRecordLink({ href, children }: { href?: string; children: ReactNode }) {
+  const asset = href ? internalLink(href) : null;
+  if (asset?.kind === 'asset') {
+    return <AssetMarkdownLink readableId={asset.readableId}>{children}</AssetMarkdownLink>;
+  }
   if (!href) {
     return <span>{children}</span>;
   }
@@ -32,11 +38,17 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
     <article className="py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
         skipHtml
-        urlTransform={externalRecordUrl}
+        urlTransform={(url) => (internalLink(url)?.kind === 'asset' ? url : externalRecordUrl(url))}
         components={{
           a: ({ href, children }) => <ContextRecordLink href={href}>{children}</ContextRecordLink>,
-          img: ({ alt }) =>
-            alt ? <span className="text-muted-foreground text-sm">Image: {alt}</span> : null,
+          img: ({ src, alt }) => {
+            const asset = src ? internalLink(src) : null;
+            return asset?.kind === 'asset' ? (
+              <AssetMarkdownImage readableId={asset.readableId} alt={alt} />
+            ) : alt ? (
+              <span className="text-muted-foreground text-sm">Image: {alt}</span>
+            ) : null;
+          },
           h1: ({ children, node }) =>
             node?.position?.start.line === 1 && children === label ? null : (
               <h2 className="mb-7 font-semibold text-2xl tracking-tight">{children}</h2>

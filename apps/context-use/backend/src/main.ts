@@ -183,6 +183,7 @@ try {
     destinationTypes: {
       [LOCAL_RECORD_DESTINATION]: localRecordDestination({
         upsertRecord: (input) => recordsService.upsert(input),
+        importAsset: (input) => assetsService.import(input),
         ownerId: OWNER_USER_ID,
         definitions: catalog.definitions,
       }),
