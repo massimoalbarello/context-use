@@ -248,10 +248,10 @@ export class AssetsRepository implements AssetsRepositoryContract {
     readableId: string;
     archivedAt: string;
   }): Promise<ArchiveResult<AssetUsage>> {
-    return this.sql.begin(async (db) => {
+    return this.sql.begin('immediate', async (db) => {
       const targets = await db.FindAssetArchiveTarget`
         /* @notNull id */
-        select "id", "name", "archived_at" as "archivedAt" from "asset"
+        select "id", "name", "archived_at" as "archivedAt", asset."published_at" as "publishedAt" from "asset" asset
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
       `;
       const target = targets[0];
@@ -260,6 +260,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
       }
       if (target.archivedAt) {
         return { state: 'archived' } as const;
+      }
+      if (target.publishedAt) {
+        return { state: 'resource_published' } as const;
       }
       const blockers = await this.listActiveUsages({
         db,

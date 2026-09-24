@@ -836,12 +836,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     archivedAt: string;
     change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference>> {
-    return this.sql.begin(async (db) => {
+    return this.sql.begin('immediate', async (db) => {
       const targets = await db.FindKnowledgePageArchiveTarget`
         /* @notNull id currentRevisionId */
         select "id", "current_revision_id" as "currentRevisionId",
-          "archived_at" as "archivedAt"
-        from "knowledge_page"
+          "archived_at" as "archivedAt", page."published_at" as "publishedAt"
+        from "knowledge_page" page
         where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
       `;
       const target = targets[0];
@@ -850,6 +850,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       }
       if (target.archivedAt) {
         return { state: 'archived' } as const;
+      }
+      if (target.publishedAt) {
+        return { state: 'resource_published' } as const;
       }
       const blockers = await this.listActiveReferringPages({
         db,

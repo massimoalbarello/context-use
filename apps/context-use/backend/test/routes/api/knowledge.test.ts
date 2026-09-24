@@ -1113,6 +1113,28 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
         .temporalCoverage,
     ).toBe('2025-03/..');
 
+    await database`
+      update "entity" set "public_id" = 'entity_archive-guard', "published_at" = ${timestamp} where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
+    `;
+    const publishedEntityArchive = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/entities/luca-bianchi/archive' }),
+    );
+    expect(publishedEntityArchive.status).toBe(StatusMap.Conflict);
+    expect(await publishedEntityArchive.json()).toEqual({
+      error: 'Unpublish this resource before archiving it.',
+    });
+    expect(
+      await database<Array<{ archivedAt: string | null; publishedAt: string | null }>>`
+      select resource."archived_at" as "archivedAt", resource."published_at" as "publishedAt"
+      from "entity" resource
+      where resource."owner_id" = ${OWNER_USER_ID} and resource."readable_id" = 'luca-bianchi'
+    `,
+    ).toEqual([{ archivedAt: null, publishedAt: timestamp }]);
+    await database`
+      update "entity" set "published_at" = null
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'entity_archive-guard'
+    `;
+
     const archivedEntityResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/entities/luca-bianchi/archive' }),
     );
@@ -1206,6 +1228,28 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(Number(pageBeforeArchive[0]?.outgoingMentions)).toBe(1);
     expect(Number(pageBeforeArchive[0]?.outgoingReferences)).toBe(1);
     expect(Number(pageBeforeArchive[0]?.revisions)).toBe(EXPECTED_GROWTH_REVISION_COUNT);
+
+    await database`
+      update "knowledge_page" set "public_id" = 'page_archive-guard', "published_at" = ${timestamp}, "published_revision_id" = "current_revision_id" where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
+    `;
+    const publishedPageArchive = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/pages/growth-playbook/archive' }),
+    );
+    expect(publishedPageArchive.status).toBe(StatusMap.Conflict);
+    expect(await publishedPageArchive.json()).toEqual({
+      error: 'Unpublish this resource before archiving it.',
+    });
+    expect(
+      await database<Array<{ archivedAt: string | null; publishedAt: string | null }>>`
+      select resource."archived_at" as "archivedAt", resource."published_at" as "publishedAt"
+      from "knowledge_page" resource
+      where resource."owner_id" = ${OWNER_USER_ID} and resource."readable_id" = 'growth-playbook'
+    `,
+    ).toEqual([{ archivedAt: null, publishedAt: timestamp }]);
+    await database`
+      update "knowledge_page" set "published_at" = null, "published_revision_id" = null
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'page_archive-guard'
+    `;
 
     const archivedPageResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/pages/growth-playbook/archive' }),

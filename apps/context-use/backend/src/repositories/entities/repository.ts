@@ -19,7 +19,8 @@ import { replaceSearchDocument } from '../search-index.ts';
 export type SetEntityImageResult =
   | { state: 'updated'; entity: Entity }
   | { state: 'not_found' }
-  | { state: 'image_in_use' };
+  | { state: 'image_in_use' }
+  | { state: 'image_not_public' };
 
 export interface EntityRepositoryContract {
   create(input: {
@@ -311,7 +312,23 @@ export class EntitiesRepository implements EntityRepositoryContract {
     updatedAt: string;
     change: ChangeContext;
   }): Promise<SetEntityImageResult> {
-    return this.sql.begin(async (db) => {
+    return this.sql.begin('immediate', async (db) => {
+      const targets = await db.FindEntityImagePublicationTarget`
+        /* @type entityIsPublic number */
+        /* @type assetIsPublic number */
+        select (entity."published_at" is not null) as "entityIsPublic", (asset."published_at" is not null) as "assetIsPublic"
+        from "entity" entity
+        join "asset" asset on asset."owner_id" = entity."owner_id" and asset."id" = ${assetId}
+        where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
+          and entity."archived_at" is null and asset."archived_at" is null
+      `;
+      const target = targets[0];
+      if (!target) {
+        return { state: 'not_found' } as const;
+      }
+      if (target.entityIsPublic && !target.assetIsPublic) {
+        return { state: 'image_not_public' } as const;
+      }
       const previous = await this.findWith({ db, ownerId, readableId });
       const rows = await db.SetEntityImage`
         /* @notNull entityId */
@@ -333,14 +350,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
         returning "id" as "entityId"
       `;
       if (!rows[0]) {
-        const assignments = await db.FindEntityImageAssignment`
-          /* @notNull entityId */
-          select "id" as "entityId" from "entity"
-          where "owner_id" = ${ownerId} and "image_asset_id" = ${assetId}
-        `;
-        return assignments[0]
-          ? ({ state: 'image_in_use' } as const)
-          : ({ state: 'not_found' } as const);
+        return { state: 'image_in_use' } as const;
       }
       await retireInvalidPortraitReference({ db, ownerId, entityId: rows[0].entityId });
       const entity = await this.findWith({ db, ownerId, readableId });
@@ -418,14 +428,14 @@ export class EntitiesRepository implements EntityRepositoryContract {
     archivedAt: string;
     change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference> | { state: 'self_entity' }> {
-    return this.sql.begin(async (db) => {
+    return this.sql.begin('immediate', async (db) => {
       const targets = await db.FindEntityArchiveTarget`
         /* @notNull id */
         /* @type isSelf number */
         select entity."id", entity."archived_at" as "archivedAt", exists(
           select 1 from "knowledge_profile"
           where "owner_id" = ${ownerId} and "self_entity_id" = entity."id"
-        ) as "isSelf"
+        ) as "isSelf", entity."published_at" as "publishedAt"
         from "entity" entity
         where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
       `;
@@ -438,6 +448,9 @@ export class EntitiesRepository implements EntityRepositoryContract {
       }
       if (target.archivedAt) {
         return { state: 'archived' } as const;
+      }
+      if (target.publishedAt) {
+        return { state: 'resource_published' } as const;
       }
       const blockers = await this.listActiveMentioningPages({
         db,

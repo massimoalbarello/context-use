@@ -915,7 +915,7 @@ test('entity mutations assign, preserve, replace, and remove images by canonical
 });
 
 test('entity image assignment exposes recoverable MCP errors from the service rules', async () => {
-  const states = ['not_found', 'invalid_asset_type', 'image_in_use'] as const;
+  const states = ['not_found', 'invalid_asset_type', 'image_in_use', 'image_not_public'] as const;
 
   for (const state of states) {
     let updateCalls = 0;
@@ -1532,6 +1532,48 @@ test('MCP resource mutations require a nonblank change message before calling a 
         expect(result.isError).toBe(true);
       }
       expect(writes).toBe(0);
+    },
+  });
+});
+
+test('MCP archival reports published resources as errors for every resource group', async () => {
+  await withMcpClient({
+    entitiesService: {
+      ...unusedEntitiesService,
+      archive: async () => ({ state: 'resource_published' }),
+    },
+    pagesService: {
+      ...unusedPagesService,
+      archive: async () => ({ state: 'resource_published' }),
+    },
+    assetsService: {
+      ...unusedAssetsService,
+      archive: async () => ({ state: 'resource_published' }),
+    },
+    run: async (client) => {
+      const guideVersion = await readHypermediaCurationGuideVersion(client);
+      for (const [name, address] of [
+        ['archive_entity', 'context-use://entity/luca-bianchi'],
+        ['archive_knowledge_page', 'context-use://page/growth-playbook'],
+        ['archive_asset', 'context-use://asset/portrait'],
+      ] as const) {
+        const result = await client.callTool({
+          name,
+          arguments: {
+            address,
+            changeMessage: 'Archive test resource',
+            ...(name === 'archive_knowledge_page' ? { guide_version: guideVersion } : {}),
+          },
+        });
+        expect(result.isError).toBe(true);
+        expect(errorCode(result)).toBe('resource_published');
+        expect(result.structuredContent).toEqual({
+          error: {
+            code: 'resource_published',
+            message: 'The owner must unpublish this resource before it can be archived.',
+          },
+        });
+      }
     },
   });
 });

@@ -158,6 +158,11 @@ export function createPageReadableIdController({
           ownerId: user.id,
           readableId: params.pageReadableId,
         });
+        if (result.state === 'resource_published') {
+          return status(StatusMap.Conflict, {
+            error: 'Unpublish this resource before archiving it.',
+          });
+        }
         if (result.state === 'resource_in_use') {
           return status(StatusMap.Conflict, resourceInUseResponse(result.blockers));
         }
@@ -173,7 +178,7 @@ export function createPageReadableIdController({
         response: {
           [StatusMap['No Content']]: t.Void(),
           [StatusMap['Not Found']]: ErrorResponseSchema,
-          [StatusMap.Conflict]: ResourceInUseResponseSchema,
+          [StatusMap.Conflict]: t.Union([ErrorResponseSchema, ResourceInUseResponseSchema]),
         },
       },
     );

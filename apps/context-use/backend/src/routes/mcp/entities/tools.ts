@@ -114,7 +114,7 @@ function entityImageError({
   state,
   createdEntityAddress,
 }: {
-  state: 'not_found' | 'invalid_asset_type' | 'image_in_use';
+  state: 'not_found' | 'invalid_asset_type' | 'image_in_use' | 'image_not_public';
   createdEntityAddress?: string;
 }) {
   const details = createdEntityAddress ? { createdEntityAddress } : undefined;
@@ -122,6 +122,14 @@ function entityImageError({
     return mcpToolError({
       code: 'invalid_asset_type',
       message: `Entity image assets must use a supported media type: ${ENTITY_IMAGE_MEDIA_TYPES}.`,
+      details,
+    });
+  }
+  if (state === 'image_not_public') {
+    return mcpToolError({
+      code: 'image_not_public',
+      message:
+        'The owner must publish this image asset before it can be assigned to a public entity.',
       details,
     });
   }
@@ -357,6 +365,12 @@ export function registerEntityTools({
         return mcpToolError({
           code: 'archive_not_allowed',
           message: 'This entity cannot be archived.',
+        });
+      }
+      if (result.state === 'resource_published') {
+        return mcpToolError({
+          code: 'resource_published',
+          message: 'The owner must unpublish this resource before it can be archived.',
         });
       }
       if (result.state === 'resource_in_use') {
