@@ -8,12 +8,14 @@ import type {
 import type { Queries } from '#backend/queries.gen.ts';
 import { executePublication, preparePublication } from './transitions.ts';
 
-export interface PublicationRequest {
+export type PublicationRequest = {
   ownerId: string;
-  resourceType: 'asset' | 'entity';
   readableId: string;
-  action: 'publish' | 'unpublish';
-}
+} & (
+  | { resourceType: 'asset' | 'entity'; action: 'publish' | 'unpublish' }
+  | { resourceType: 'page'; action: 'publish'; revisionNumber: number }
+  | { resourceType: 'page'; action: 'unpublish' }
+);
 
 export type PublicationTransitionResult =
   | { state: 'changed' | 'unchanged'; publication: PublicationStatus }
