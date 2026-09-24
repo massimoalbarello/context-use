@@ -99,7 +99,7 @@ test('identity is owner + provider + kind + source ID; identical bodies do not m
 });
 
 test('orders normalized source timestamps and rejects ambiguous changes without overwriting data', async () => {
-  await withRecords(async ({ service }) => {
+  await withRecords(async ({ service, dataFolder }) => {
     const original = record({ sourceUpdatedAt: '2026-09-08T10:00:00+02:00' });
     const first = await service.upsert({
       change: { clientName: null, message: 'Updated test context' },
@@ -128,6 +128,9 @@ test('orders normalized source timestamps and rejects ambiguous changes without 
       sourceUpdatedAt: NEXT,
       createdAt: NOW,
     });
+    expect(
+      Array.from(new Bun.Glob('**/*.json').scanSync({ cwd: join(dataFolder, 'objects') })),
+    ).toHaveLength(2);
     const unversioned = record({
       source: { provider: 'notes', kind: 'note', id: '1' },
       sourceUpdatedAt: null,
