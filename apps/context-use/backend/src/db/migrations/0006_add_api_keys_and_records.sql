@@ -68,12 +68,12 @@ create index "record_provider_kind_idx" on "record" ("owner_id", "provider", "ki
 
 create table "record_asset_usage" (
   "owner_id" text not null,
-  "record_readable_id" text not null,
-  "asset_id" text not null,
+  "source_record_readable_id" text not null,
+  "target_asset_id" text not null,
   "presentation" text not null,
-  primary key ("owner_id", "record_readable_id", "asset_id", "presentation"),
-  foreign key ("owner_id", "record_readable_id") references "record" ("owner_id", "readable_id") on delete cascade,
-  foreign key ("asset_id", "owner_id") references "asset" ("id", "owner_id") on delete cascade,
+  primary key ("owner_id", "source_record_readable_id", "target_asset_id", "presentation"),
+  foreign key ("owner_id", "source_record_readable_id") references "record" ("owner_id", "readable_id") on delete cascade,
+  foreign key ("target_asset_id", "owner_id") references "asset" ("id", "owner_id") on delete cascade,
   check ("presentation" in ('embed', 'attachment'))
 );
-create index "record_asset_usage_asset_idx" on "record_asset_usage" ("owner_id", "asset_id");
+create index "record_asset_usage_target_idx" on "record_asset_usage" ("owner_id", "target_asset_id");

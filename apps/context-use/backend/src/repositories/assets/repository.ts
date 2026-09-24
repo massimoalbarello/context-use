@@ -397,8 +397,8 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @type presentation 'embed' | 'attachment' */
       select record."readable_id" as "readableId", record."title", record."provider", record."kind", usage."presentation"
       from "record_asset_usage" usage join "record" record
-        on record."owner_id" = usage."owner_id" and record."readable_id" = usage."record_readable_id"
-      where usage."owner_id" = ${ownerId} and usage."asset_id" = ${assetId} and record."deleted_at" is null
+        on record."owner_id" = usage."owner_id" and record."readable_id" = usage."source_record_readable_id"
+      where usage."owner_id" = ${ownerId} and usage."target_asset_id" = ${assetId} and record."deleted_at" is null
       order by record."title", record."readable_id", usage."presentation" limit ${recordUsageLimit}
     `;
     return [

@@ -1,4 +1,5 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
+import type { AssetPresentation } from '#backend/models/assets/model.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
 import { ASSET_ADDRESS_PREFIX, assetReadableId } from '#backend/models/readable-ids/addresses.ts';
 import { isReadableId } from '#backend/models/readable-ids/model.ts';
@@ -9,7 +10,7 @@ export class InvalidRecordAssetError extends Error {
   }
 }
 
-export type RecordAssetUsage = { readableId: string; presentation: 'embed' | 'attachment' };
+export type RecordAssetUsage = { readableId: string; presentation: AssetPresentation };
 
 export function recordAssetUsages(body: string): RecordAssetUsage[] {
   const usages = new Map<string, RecordAssetUsage>();

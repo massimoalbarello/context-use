@@ -219,14 +219,14 @@ async function replaceRecordAssetUsages(input: {
 }) {
   const { db, write, readableId } = input;
   await db.RemoveRecordAssetUsages`
-    delete from "record_asset_usage" where "owner_id" = ${write.ownerId} and "record_readable_id" = ${readableId}
+    delete from "record_asset_usage" where "owner_id" = ${write.ownerId} and "source_record_readable_id" = ${readableId}
   `;
   for (const usage of write.value?.assetUsages ?? []) {
     const rows = await db.AddRecordAssetUsage`
-      insert into "record_asset_usage" ("owner_id", "record_readable_id", "asset_id", "presentation")
+      insert into "record_asset_usage" ("owner_id", "source_record_readable_id", "target_asset_id", "presentation")
       select ${write.ownerId}, ${readableId}, "id", ${usage.presentation} from "asset"
       where "owner_id" = ${write.ownerId} and "readable_id" = ${usage.readableId} and "archived_at" is null
-      returning "asset_id" as "assetId"
+      returning "target_asset_id" as "assetId"
     `;
     if (!rows.length) {
       throw new InvalidRecordAssetError();
