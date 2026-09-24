@@ -10,6 +10,7 @@ import {
   type RecordInput,
   RecordInputSchema,
   type RecordResource,
+  type RecordSyncRevision,
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
 import type {
@@ -22,13 +23,15 @@ const RECORD_ID_SUFFIX_LENGTH = 24;
 function sha256(value: string): string {
   return new Bun.CryptoHasher('sha256').update(value).digest('hex');
 }
-function recordReadableId(source: RecordDeletion['source']): string {
+function recordReadableId(input: { source: RecordDeletion['source']; syncId?: string }): string {
+  const { source } = input;
+  const identity = [source.provider, source.kind, source.id];
+  if (input.syncId) {
+    identity.push(input.syncId);
+  }
   return readableIdWithSuffix({
     readableId: readableIdFrom(`${source.kind}-${source.id}`),
-    suffix: sha256(JSON.stringify([source.provider, source.kind, source.id])).slice(
-      0,
-      RECORD_ID_SUFFIX_LENGTH,
-    ),
+    suffix: sha256(JSON.stringify(identity)).slice(0, RECORD_ID_SUFFIX_LENGTH),
   });
 }
 export class RecordsService {
@@ -50,13 +53,15 @@ export class RecordsService {
     ownerId,
     record: input,
     change,
+    sync,
   }: {
     ownerId: string;
     record: RecordInput;
     change: ChangeContext;
+    sync?: RecordSyncRevision;
   }): Promise<RecordWriteResult> {
     const record = parseRecord(input);
-    const readableId = recordReadableId(record.source);
+    const readableId = recordReadableId({ source: record.source, syncId: sync?.syncId });
     const storageKey = `${encodeURIComponent(ownerId)}/records/${readableId}/${Bun.randomUUIDv7()}.json`;
     const json = canonicalize(record)!;
     const file = new Blob([json], { type: 'application/json' });
@@ -70,6 +75,7 @@ export class RecordsService {
       const publication = await this.records.write({
         ownerId,
         change,
+        sync,
         readableId,
         receivedAt: this.now().toISOString(),
         value: { record, storageKey, sizeBytes, contentHash: sha256(json) },
@@ -100,7 +106,7 @@ export class RecordsService {
       ownerId,
       deletion,
       change,
-      readableId: recordReadableId(deletion.source),
+      readableId: recordReadableId({ source: deletion.source }),
       receivedAt: this.now().toISOString(),
     });
     return publication.result;

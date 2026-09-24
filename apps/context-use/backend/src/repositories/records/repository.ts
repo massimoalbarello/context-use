@@ -9,6 +9,7 @@ import type {
   RecordListFilters,
   RecordPage,
   RecordSummary,
+  RecordSyncRevision,
   RecordWriteResult,
   StoredRecord,
 } from '#backend/models/records/model.ts';
@@ -28,6 +29,7 @@ export type WriteRecordInput = {
   ownerId: string;
   readableId: string;
   receivedAt: string;
+  sync?: RecordSyncRevision;
 } & ({ value: PreparedRecord; deletion?: never } | { deletion: RecordDeletion; value?: never });
 export type ListRecordsInput = RecordListFilters & {
   ownerId: string;
@@ -79,6 +81,9 @@ function existingWriteState({
   if (!current) {
     return null;
   }
+  if (input.sync) {
+    return syncedWriteState({ current, input });
+  }
   const sourceUpdatedAt = input.value?.record.sourceUpdatedAt ?? input.deletion?.sourceUpdatedAt;
   if (input.value && !current.deletedAt && current.contentHash === input.value.contentHash) {
     return 'unchanged';
@@ -94,6 +99,33 @@ function existingWriteState({
     return 'stale';
   }
   return sourceUpdatedAt === current.sourceUpdatedAt ? 'conflict' : null;
+}
+
+function syncedWriteState(input: {
+  current: Queries['FindCurrentRecord'];
+  input: WriteRecordInput;
+}) {
+  const revision = input.input.sync!.revision;
+  if (revision < input.current.syncRevision) {
+    return 'stale';
+  }
+  if (input.current.contentHash === input.input.value?.contentHash) {
+    return 'unchanged';
+  }
+  return revision === input.current.syncRevision ? 'conflict' : null;
+}
+
+async function advanceSyncRevision(input: {
+  db: TypedSQL<Queries>;
+  write: WriteRecordInput;
+  current: Queries['FindCurrentRecord'];
+}) {
+  if (input.write.sync && input.write.sync.revision > input.current.syncRevision) {
+    await input.db.AdvanceRecordSyncRevision`
+      update "record" set "sync_revision" = ${input.write.sync.revision}
+      where "owner_id" = ${input.write.ownerId} and "readable_id" = ${input.current.readableId}
+    `;
+  }
 }
 
 const RECORD_HISTORY_EXCERPT_LENGTH = 280;
@@ -150,6 +182,34 @@ async function recordPublicationChange({
   });
 }
 
+async function publishRecord({
+  db,
+  input,
+  readableId,
+}: {
+  db: TypedSQL<Queries>;
+  input: WriteRecordInput;
+  readableId: string;
+}) {
+  const record = input.value?.record;
+  const source = (record ?? input.deletion!).source;
+  const sourceUpdatedAt = (record ?? input.deletion!).sourceUpdatedAt;
+  const sync = input.sync ?? { syncId: '', revision: 0 };
+  await db.WriteRecord`
+    insert into "record" ("owner_id", "sync_id", "sync_revision", "readable_id", "provider", "kind", "source_id", "source_url", "title", "occurred_at",
+      "source_created_at", "source_updated_at", "deleted_at", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
+    values (${input.ownerId}, ${sync.syncId}, ${sync.revision}, ${readableId}, ${source.provider}, ${source.kind}, ${source.id}, ${record?.source.url ?? null},
+      ${record?.title ?? null}, ${record?.occurredAt ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt},
+      ${input.deletion ? input.receivedAt : null}, ${input.value?.storageKey ?? null}, ${input.value?.contentHash ?? null},
+      ${input.value?.sizeBytes ?? null}, ${input.receivedAt}, ${input.receivedAt})
+    on conflict ("owner_id", "sync_id", "provider", "kind", "source_id") do update set
+      "sync_revision" = excluded."sync_revision", "source_url" = excluded."source_url", "title" = excluded."title", "occurred_at" = excluded."occurred_at",
+      "source_created_at" = excluded."source_created_at", "source_updated_at" = excluded."source_updated_at",
+      "deleted_at" = excluded."deleted_at", "storage_key" = excluded."storage_key", "content_hash" = excluded."content_hash",
+      "size_bytes" = excluded."size_bytes", "updated_at" = excluded."updated_at"
+  `;
+}
+
 async function writeRecord({
   db,
   input,
@@ -159,12 +219,13 @@ async function writeRecord({
 }): Promise<RecordPublication> {
   const record = input.value?.record;
   const source = (record ?? input.deletion!).source;
-  const sourceUpdatedAt = (record ?? input.deletion!).sourceUpdatedAt;
+  const sync = input.sync ?? { syncId: '', revision: 0 };
   const rows = await db.FindCurrentRecord`
+    /* @notNull syncRevision */
     select "readable_id" as "readableId", "title", "source_updated_at" as "sourceUpdatedAt",
-      "content_hash" as "contentHash", "deleted_at" as "deletedAt"
+      "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision"
     from "record" where "owner_id" = ${input.ownerId} and "provider" = ${source.provider}
-      and "kind" = ${source.kind} and "source_id" = ${source.id}
+      and "kind" = ${source.kind} and "source_id" = ${source.id} and "sync_id" = ${sync.syncId}
   `;
   const current = rows[0];
   const readableId = current?.readableId ?? input.readableId;
@@ -174,21 +235,12 @@ async function writeRecord({
   });
   const skip = existingWriteState({ current, input });
   if (skip) {
+    if (skip === 'unchanged') {
+      await advanceSyncRevision({ db, write: input, current: current! });
+    }
     return skipped(skip);
   }
-  await db.WriteRecord`
-    insert into "record" ("owner_id", "readable_id", "provider", "kind", "source_id", "source_url", "title", "occurred_at",
-      "source_created_at", "source_updated_at", "deleted_at", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
-    values (${input.ownerId}, ${readableId}, ${source.provider}, ${source.kind}, ${source.id}, ${record?.source.url ?? null},
-      ${record?.title ?? null}, ${record?.occurredAt ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt},
-      ${input.deletion ? input.receivedAt : null}, ${input.value?.storageKey ?? null}, ${input.value?.contentHash ?? null},
-      ${input.value?.sizeBytes ?? null}, ${input.receivedAt}, ${input.receivedAt})
-    on conflict ("owner_id", "provider", "kind", "source_id") do update set
-      "source_url" = excluded."source_url", "title" = excluded."title", "occurred_at" = excluded."occurred_at",
-      "source_created_at" = excluded."source_created_at", "source_updated_at" = excluded."source_updated_at",
-      "deleted_at" = excluded."deleted_at", "storage_key" = excluded."storage_key", "content_hash" = excluded."content_hash",
-      "size_bytes" = excluded."size_bytes", "updated_at" = excluded."updated_at"
-  `;
+  await publishRecord({ db, input, readableId });
   let excerpt: string | undefined;
   if (record) {
     const text = recordSearchText(record);

@@ -26,11 +26,10 @@ test('provider registrations share management and destination code while deliver
     connector: { bind: async () => ({ get: unexpected, post: unexpected, action: unexpected }) },
     destinationTypes: {
       [LOCAL_RECORD_DESTINATION]: {
-        version: '1',
         configSchema: { type: 'object' },
-        deliver: ({ delivery }) =>
+        deliver: ({ deliverable }) =>
           Promise.resolve(
-            rejectAlpha && delivery.definition.id === 'alpha.events'
+            rejectAlpha && deliverable.definition === 'alpha.events'
               ? { status: 'rejected', code: 'test_rejection' }
               : { status: 'accepted' },
           ),
@@ -88,8 +87,7 @@ test('provider registrations share management and destination code while deliver
     await service.connect({ ...actor, providerId: 'alpha' });
     await service.connect({ ...actor, providerId: 'beta' });
     await service.completeConnection({ ...actor, providerId: 'alpha' });
-    expect(runtime.api.destinations(scope)).toHaveLength(2);
-    expect(runtime.api.installations(scope)).toHaveLength(2);
+    expect(runtime.api.syncs(scope)).toHaveLength(2);
     // Allow each provider to acquire records and drain its delivery queue.
     for (const _provider of catalog.providers) {
       await runtime.tick();
@@ -113,7 +111,9 @@ test('provider registrations share management and destination code while deliver
     await runtime.tick();
     await runtime.tick();
     expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('ready');
-    expect(runtime.api.deliveries(scope).deliveries).toEqual([]);
+    for (const sync of runtime.api.syncs(scope)) {
+      expect(runtime.api.deliveries({ ...scope, syncId: sync.id }).deliveries).toEqual([]);
+    }
   } finally {
     await runtime.close();
     await rm(directory, { recursive: true, force: true });

@@ -1,4 +1,4 @@
-import { defineRecordSync, type SyncProvider } from '#backend/services/syncs/catalog.ts';
+import type { SyncProvider } from '#backend/services/syncs/catalog.ts';
 import { now } from './github-fixture.ts';
 
 export function fixtureProvider(id: string): SyncProvider {
@@ -8,44 +8,39 @@ export function fixtureProvider(id: string): SyncProvider {
     description: `Records from ${id}`,
     oauth: { createAppUrl: `https://${id}.example/apps`, authorizationOptionIds: ['read'] },
     syncs: [
-      defineRecordSync({
+      {
         key: `${id}-events`,
         name: 'Events',
         description: 'Calendar events',
         intervalMs: 60_000,
-        kinds: ['event'],
-        definition: {
-          id: `${id}.events`,
-          version: '1',
-          artifactId: `${id}/events/1`,
-          configSchema: { type: 'object' },
-          checkpointSchema: { type: 'object' },
-          initialCheckpoint: {},
-          provider: { service: id, actions: [] },
-        },
-        async *run() {
-          yield await Promise.resolve({
-            complete: true,
-            checkpoint: { complete: true },
-            deliverable: {
+        registration: {
+          definition: {
+            id: `${id}.events`,
+            configSchema: { type: 'object' },
+            checkpointSchema: { type: 'object' },
+            initialCheckpoint: {},
+            kinds: { event: { type: 'object' } },
+            provider: { service: id, actions: [] },
+          },
+          load: () => ({
+            step: async () => ({
+              complete: true,
+              checkpoint: {},
               records: [
                 {
                   operation: 'upsert',
                   kind: 'event',
                   id: 'event-one',
-                  data: {
-                    title: `${id} event`,
-                    body: '# Event\n\nMeeting notes.',
-                    sourceUpdatedAt: now,
-                    source: { provider: id, kind: 'event', id: 'event-one' },
-                    occurredAt: now,
-                  },
+                  data: { title: `${id} event` },
+                  content: { format: 'markdown', body: '# Event\n\nMeeting notes.' },
+                  createdAt: now,
+                  updatedAt: now,
                 },
               ],
-            },
-          });
+            }),
+          }),
         },
-      }),
+      },
     ],
   };
 }

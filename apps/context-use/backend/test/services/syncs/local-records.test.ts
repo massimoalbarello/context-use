@@ -1,282 +1,499 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import type { Delivery } from '@context-use/open-sync/delivery';
+import type { SyncContext, SyncStep } from '@context-use/open-sync/definition';
+import type {
+  Deliverable,
+  DeliveredRecord,
+  DestinationType,
+} from '@context-use/open-sync/delivery';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
+import type { JsonObject } from '@context-use/open-sync/json';
+import type { SQL } from 'bun';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
-import { ApiKeysRepository } from '#backend/repositories/api-keys/repository.ts';
+import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
-import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destination.ts';
-import { githubPullRequests } from '#backend/services/syncs/providers/github/pull-requests.ts';
+import {
+  githubPullRequests,
+  stepGithubPullRequests,
+} from '#backend/services/syncs/providers/github/pull-requests.ts';
 import { githubRecord } from '#backend/services/syncs/providers/github/record.ts';
-import { syncProviders } from '#backend/services/syncs/providers/index.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
-import { fixtureProvider } from './provider-fixture.ts';
 
-const SHA256_HEX_LENGTH = 64;
 const scope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };
-
-test('installed npm engine stores searchable local records through existing services and resumes without duplicates', async () => {
-  await withRecordTestDatabase({
-    run: async ({ database, dataFolder }) => {
-      await database`insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (${OWNER_USER_ID}, 'Owner', ${OWNER_SYNTHETIC_EMAIL}, 1, ${now}, ${now})`;
-      const records = new RecordsService({
-        records: new RecordsRepository(database),
-        storage: createLocalStorage({ dataFolder }),
-      });
-      const destination = localRecordDestination({
-        upsertRecord: (input) => records.upsert(input),
+const definition = githubPullRequests.registration;
+const SOURCE_RECORD_COUNT = 3;
+const HISTORY_AFTER_UPDATE = 3;
+const ISOLATED_SYNC_RECORD_COUNT = 4;
+const WITH_API_RECORD_COUNT = 5;
+const DAY_MS = 86_400_000;
+const HISTORY_AFTER_NEW_AND_EDITED = 5;
+function unexpected(): never {
+  throw new Error('Unexpected operation');
+}
+async function store(input: { database: SQL; dataFolder: string }) {
+  await input.database`insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (${OWNER_USER_ID}, 'Owner', ${OWNER_SYNTHETIC_EMAIL}, 1, ${now}, ${now})`;
+  const records = new RecordsService({
+    records: new RecordsRepository(input.database),
+    storage: createLocalStorage(input),
+  });
+  const destination = localRecordDestination({
+    ownerId: OWNER_USER_ID,
+    upsertRecord: (value) => records.upsert(value),
+    definitions: [definition],
+  });
+  return {
+    records,
+    destination,
+    list: () => records.listResources({ ownerId: OWNER_USER_ID, limit: 100, offset: 0 }),
+    history: () =>
+      new HistoryRepository(input.database).list({
         ownerId: OWNER_USER_ID,
-        definitions: new SyncCatalog(syncProviders).definitions,
-      });
-      let upstreamPull = pull();
-      const provider = {
-        action: () => Promise.reject(new Error('Unexpected action')),
-        get: () => Promise.reject(new Error('Unexpected GET')),
-        post: () =>
-          Promise.resolve({ status: 200, headers: {}, body: page({ nodes: [upstreamPull] }) }),
-      };
+        limit: 100,
+        resourceType: 'record',
+      }),
+  };
+}
+function bundle(records: DeliveredRecord[]): Deliverable {
+  return {
+    id: 'delivery',
+    ownerId: OWNER_USER_ID,
+    syncId: 'sync',
+    definition: definition.definition.id,
+    records,
+    assets: [],
+    openAsset: unexpected,
+  };
+}
+function delivery(deliverable: Deliverable) {
+  return { scope, config: {}, deliverable, signal: new AbortController().signal };
+}
+
+test('npm engine immediately backfills native pages across restart, then polls only the updated prefix', async () => {
+  await withRecordTestDatabase({
+    run: async (input) => {
+      const host = await store(input);
+      const requested: Array<{ cursor: string | null; updates: boolean }> = [];
+      let malformed = true;
+      let edited: JsonObject | undefined;
+      let added: JsonObject | undefined;
       const options = {
-        databasePath: join(dataFolder, 'sync.db'),
-        definitions: [githubPullRequests.registration],
-        destinationTypes: { local: destination },
-        connector: { bind: () => Promise.resolve(provider) },
+        databasePath: join(input.dataFolder, 'sync.db'),
+        definitions: [definition],
+        destinationTypes: { local: host.destination },
+        connector: {
+          bind: async () => ({
+            get: unexpected,
+            action: unexpected,
+            post: ({ body }: { body: JsonObject }) => {
+              const cursor = (body.variables as JsonObject).after as string | null;
+              const updates = String(body.query).includes('UPDATED_AT');
+              requested.push({ cursor, updates });
+              let result: JsonObject;
+              if (updates) {
+                const changed = [added, edited].filter(
+                  (record): record is JsonObject => record !== undefined,
+                );
+                result = page({ nodes: [...changed, pull({ id: 'PR_three' })], more: true });
+              } else if (cursor === null) {
+                result = page({
+                  nodes: [edited ?? pull(), malformed ? { id: 'invalid' } : pull({ id: 'PR_two' })],
+                  more: true,
+                });
+              } else {
+                result = page({
+                  cursor: 'last',
+                  nodes: [
+                    pull({ id: 'PR_three' }),
+                    ...[added].filter((record): record is JsonObject => record !== undefined),
+                  ],
+                });
+              }
+              return Promise.resolve({ status: 200, headers: {}, body: result });
+            },
+          }),
+        },
       };
-      const runtime = createSyncRuntime(options);
-      let installationId: string;
+      let runtime = createSyncRuntime(options);
       try {
-        const dest = runtime.api.createDestination({ ...scope, type: 'local', config: {} });
-        const installation = await runtime.api.createInstallation({
+        const sync = await runtime.api.createSync({
           ...scope,
-          definition: githubPullRequests.registration.definition,
+          definition: definition.definition.id,
           connection: { id: 'github-owner', service: 'github' },
-          destinationId: dest.id,
+          destination: { type: 'local', input: {} },
           config: {},
+          intervalMs: DAY_MS,
         });
-        installationId = installation.id;
-        await runtime.tick();
         await runtime.tick();
         expect(runtime.api.status(scope).queue.pendingRecords).toBe(0);
-        const listing = await records.listResources({
-          ownerId: OWNER_USER_ID,
-          limit: 10,
-          offset: 0,
-        });
-        expect(listing.items).toHaveLength(1);
-        expect(listing.items[0]?.title).toBe('example/project #1: Improve local records');
-        expect(listing.items[0]?.source.provider).toBe('github');
-        const resource = await records.findResource({
-          ownerId: OWNER_USER_ID,
-          readableId: listing.items[0]!.readableId,
-        });
-        expect(resource?.body).toContain('Keep **useful context**.');
-        expect(await new ApiKeysRepository(database).list({ ownerId: OWNER_USER_ID })).toEqual([]);
-        const canonical = githubRecord(pull({ id: 'PR_replay' }));
-        const delivery: Delivery = {
-          version: 1,
-          id: crypto.randomUUID(),
-          ownerId: OWNER_USER_ID,
-          sourceId: installation.sourceId,
-          installationId,
-          definition: githubPullRequests.registration.definition,
-          deliverable: {
-            records: [
-              {
-                operation: 'upsert',
-                kind: 'pull-request',
-                id: 'PR_replay',
-                data: canonical,
-                eventId: crypto.randomUUID(),
-                revision: 1,
-                contentHash: 'a'.repeat(SHA256_HEX_LENGTH),
-              },
-            ],
-          },
+        expect(runtime.api.polls({ ...scope, id: sync.id }).polls[0]?.recordsProcessed).toBe(0);
+        expect((await host.list()).items).toEqual([]);
+        malformed = false;
+        runtime.api.runNow({ ...scope, id: sync.id });
+        await runtime.tick();
+        expect(runtime.api.status(scope).queue.pendingRecords).toBe(2);
+        await runtime.close();
+        runtime = createSyncRuntime(options);
+        await runtime.tick();
+        await runtime.tick();
+        expect(requested).toEqual([
+          { cursor: null, updates: false },
+          { cursor: null, updates: false },
+          { cursor: 'cursor-1', updates: false },
+        ]);
+        expect((await host.list()).items).toHaveLength(SOURCE_RECORD_COUNT);
+        expect((await host.history()).items).toHaveLength(SOURCE_RECORD_COUNT);
+        requested.length = 0;
+        await runtime.tick();
+        expect(requested).toEqual([]);
+        runtime.api.runNow({ ...scope, id: sync.id });
+        await runtime.tick();
+        await runtime.tick();
+        expect(requested).toEqual([{ cursor: null, updates: true }]);
+        expect((await host.history()).items).toHaveLength(SOURCE_RECORD_COUNT);
+        requested.length = 0;
+        const updatedAt = new Date().toISOString();
+        edited = {
+          ...pull({ title: 'An older PR was edited', updatedAt }),
+          body: 'Revised **Markdown**',
         };
-        const input = { scope, config: {}, delivery, signal: new AbortController().signal };
-        for (const invalid of [
-          { ...delivery, definition: { ...delivery.definition, version: 'unknown' } },
-          {
-            ...delivery,
-            deliverable: {
-              records: [{ ...delivery.deliverable.records[0]!, kind: 'unregistered' }],
-            },
-          },
-          {
-            ...delivery,
-            deliverable: {
-              records: [
-                {
-                  ...delivery.deliverable.records[0]!,
-                  data: {
-                    ...canonical,
-                    attributes: { unsupported: true },
-                  },
-                },
-              ],
-            },
-          },
-        ]) {
-          expect((await destination.deliver({ ...input, delivery: invalid })).status).toBe(
-            'rejected',
-          );
-        }
-        expect(await destination.deliver(input)).toEqual({ status: 'accepted' });
-        expect(await destination.deliver(input)).toEqual({ status: 'accepted' });
-        expect(
-          await destination.deliver({
-            ...input,
-            delivery: {
-              ...delivery,
-              sourceId: 'another-source',
-              installationId: 'another-installation',
-            },
-          }),
-        ).toEqual({ status: 'accepted' });
-        expect(
-          await records.upsert({
-            change: { clientName: null, message: 'Updated test context' },
-            ownerId: OWNER_USER_ID,
-            record: canonical,
-          }),
-        ).toMatchObject({
-          state: 'unchanged',
+        added = pull({ id: 'PR_new', createdAt: updatedAt, updatedAt });
+        runtime.api.runNow({ ...scope, id: sync.id });
+        await runtime.tick();
+        await runtime.tick();
+        expect(requested).toEqual([{ cursor: null, updates: true }]);
+        expect((await host.list()).items).toHaveLength(ISOLATED_SYNC_RECORD_COUNT);
+        expect((await host.history()).items).toHaveLength(HISTORY_AFTER_NEW_AND_EDITED);
+        const record = (await host.list()).items.find((item) => item.source.id === 'PR_one')!;
+        expect(record.title).toContain('An older PR was edited');
+        const resource = await host.records.findResource({
+          ownerId: OWNER_USER_ID,
+          readableId: record.readableId,
         });
-        const withData = (record: typeof canonical): Delivery => ({
-          ...delivery,
-          deliverable: {
-            records: [{ ...delivery.deliverable.records[0]!, operation: 'upsert', data: record }],
-          },
-        });
-        for (const source of [
-          { ...canonical.source, id: 'mismatched-id' },
-          { ...canonical.source, provider: 'another-provider' },
-          { ...canonical.source, kind: 'another-kind' },
-        ]) {
-          expect(
-            await destination.deliver({ ...input, delivery: withData({ ...canonical, source }) }),
-          ).toEqual({ status: 'rejected', code: 'invalid_record' });
-        }
-        expect(
-          await destination.deliver({
-            ...input,
-            delivery: withData({ ...canonical, body: 'Conflicting content' }),
-          }),
-        ).toEqual({ status: 'rejected', code: 'conflict' });
-        expect(
-          await destination.deliver({
-            ...input,
-            delivery: withData({ ...canonical, sourceUpdatedAt: '2020-01-01T00:00:00.000Z' }),
-          }),
-        ).toEqual({ status: 'accepted' });
-
-        expect(
-          await destination.deliver({ ...input, scope: { actorId: 'other', ownerId: 'other' } }),
-        ).toEqual({ status: 'rejected', code: 'invalid_source' });
-        expect(
-          (await records.listResources({ ownerId: 'other', limit: 10, offset: 0 })).items,
-        ).toEqual([]);
+        expect(resource?.body).toBe(githubRecord(edited).content.body);
+        expect(resource?.sourceCreatedAt).toBe(now);
+        expect(resource?.sourceUpdatedAt).toBe(updatedAt);
+        requested.length = 0;
+        await runtime.api.resync({ ...scope, id: sync.id });
+        await runtime.tick();
+        await runtime.tick();
+        await runtime.tick();
+        expect(requested).toEqual([
+          { cursor: null, updates: false },
+          { cursor: 'cursor-1', updates: false },
+        ]);
+        expect((await host.history()).items).toHaveLength(HISTORY_AFTER_NEW_AND_EDITED);
       } finally {
         await runtime.close();
-      }
-      const restarted = createSyncRuntime(options);
-      try {
-        restarted.api.queueRun({ ...scope, id: installationId! });
-        await restarted.tick();
-        await restarted.tick();
-        const listing = await records.listResources({
-          ownerId: OWNER_USER_ID,
-          limit: 10,
-          offset: 0,
-        });
-        expect(listing.items).toHaveLength(2);
-        upstreamPull = pull({ title: 'Updated pull request', updatedAt: new Date().toISOString() });
-        restarted.api.queueRun({ ...scope, id: installationId! });
-        await restarted.tick();
-        await restarted.tick();
-        const updated = await records.listResources({
-          ownerId: OWNER_USER_ID,
-          limit: 10,
-          offset: 0,
-        });
-        expect(updated.items).toHaveLength(2);
-        expect(
-          updated.items.some(
-            (record) => record.title === 'example/project #1: Updated pull request',
-          ),
-        ).toBe(true);
-      } finally {
-        await restarted.close();
       }
     },
   });
 });
 
-test('a new provider stores the common record shape through the same local destination', async () => {
+test('incremental page failures and cursor expiry preserve the frozen scan through restart, and the next poll catches edits made during it', async () => {
   await withRecordTestDatabase({
-    run: async ({ database, dataFolder }) => {
-      await database`insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (${OWNER_USER_ID}, 'Owner', ${OWNER_SYNTHETIC_EMAIL}, 1, ${now}, ${now})`;
-      const records = new RecordsService({
-        records: new RecordsRepository(database),
-        storage: createLocalStorage({ dataFolder }),
-      });
-      const catalog = new SyncCatalog([fixtureProvider('calendar')]);
-      const destination = localRecordDestination({
-        upsertRecord: (input) => records.upsert(input),
-        ownerId: OWNER_USER_ID,
-        definitions: catalog.definitions,
-      });
-      const runtime = createSyncRuntime({
-        databasePath: join(dataFolder, 'sync.db'),
-        definitions: catalog.definitions,
-        destinationTypes: { local: destination },
+    run: async (input) => {
+      const host = await store(input);
+      const checkpoints: JsonObject[] = [];
+      const completed: SyncStep[] = [];
+      const registration = {
+        ...definition,
+        load: () => ({
+          step: async (context: SyncContext) => {
+            checkpoints.push(structuredClone(context.checkpoint) as JsonObject);
+            const step = await stepGithubPullRequests(context);
+            completed.push(step);
+            return step;
+          },
+        }),
+      };
+      const requests: Array<string | null> = [];
+      const responses: JsonObject[] = [page({ nodes: [] })];
+      const options = {
+        databasePath: join(input.dataFolder, 'sync.db'),
+        definitions: [registration],
+        destinationTypes: { local: host.destination },
         connector: {
           bind: async () => ({
-            get: () => {
-              throw new Error('Unused');
-            },
-            post: () => {
-              throw new Error('Unused');
-            },
-            action: () => {
-              throw new Error('Unused');
+            get: unexpected,
+            action: unexpected,
+            post: ({ body }: { body: JsonObject }) => {
+              requests.push((body.variables as JsonObject).after as string | null);
+              const response = responses.shift();
+              if (!response) {
+                throw new Error('Unexpected historical page request');
+              }
+              return Promise.resolve({ status: 200, headers: {}, body: response });
             },
           }),
         },
-      });
+      };
+      let runtime = createSyncRuntime(options);
       try {
-        const target = runtime.api.createDestination({ ...scope, type: 'local', config: {} });
-        await runtime.api.createInstallation({
+        const sync = await runtime.api.createSync({
           ...scope,
-          definition: catalog.definitions[0]!.definition,
-          connection: { id: 'calendar-owner', service: 'calendar' },
-          destinationId: target.id,
+          definition: definition.definition.id,
+          connection: { id: 'github-owner', service: 'github' },
+          destination: { type: 'local', input: {} },
+          config: {},
+          intervalMs: DAY_MS,
+        });
+        await runtime.tick();
+        const watermark = (completed.at(-1)!.checkpoint as JsonObject).watermark;
+        const recent = new Date().toISOString();
+        const first = page({
+          nodes: [pull({ updatedAt: recent }), pull({ id: 'PR_two', updatedAt: recent })],
+          more: true,
+        });
+        responses.push(
+          first,
+          page({
+            cursor: 'bad',
+            nodes: [pull({ id: 'uncommitted', updatedAt: recent }), { id: 'invalid' }],
+            more: true,
+          }),
+        );
+        runtime.api.runNow({ ...scope, id: sync.id });
+        await runtime.tick();
+        const inProgress = completed.at(-1)!.checkpoint as JsonObject;
+        expect(inProgress).toMatchObject({ watermark, cursor: 'cursor-1' });
+        await runtime.tick();
+        expect(completed.at(-1)!.checkpoint).toEqual(inProgress);
+        expect((await host.list()).items.map((item) => item.source.id).sort()).toEqual([
+          'PR_one',
+          'PR_two',
+        ]);
+        await runtime.close();
+        runtime = createSyncRuntime(options);
+        responses.push({ errors: [{ type: 'INVALID_CURSOR' }] });
+        runtime.api.runNow({ ...scope, id: sync.id });
+        await runtime.tick();
+        expect(checkpoints.at(-1)).toEqual(inProgress);
+        expect(completed.at(-1)!.checkpoint).toEqual({ ...inProgress, cursor: null });
+        responses.push(
+          first,
+          page({
+            cursor: 'end',
+            nodes: [pull({ id: 'PR_three', updatedAt: recent }), pull({ id: 'historical' })],
+            more: true,
+          }),
+        );
+        await runtime.tick();
+        await runtime.tick();
+        await runtime.tick();
+        expect(completed.at(-1)!.checkpoint).toEqual({
+          accountId: 'U_owner',
+          cursor: null,
+          cycleStartedAt: null,
+          watermark: inProgress.cycleStartedAt!,
+        });
+        expect(requests).toEqual([null, null, 'cursor-1', 'cursor-1', null, 'cursor-1']);
+        expect((await host.list()).items).toHaveLength(SOURCE_RECORD_COUNT);
+        expect((await host.history()).items).toHaveLength(SOURCE_RECORD_COUNT);
+        const duringScan = new Date(
+          Date.parse(String(inProgress.cycleStartedAt)) + 1,
+        ).toISOString();
+        responses.push(
+          page({
+            nodes: [
+              pull({ title: 'Edited during scan', updatedAt: duringScan }),
+              pull({ id: 'historical' }),
+            ],
+            more: true,
+          }),
+        );
+        runtime.api.runNow({ ...scope, id: sync.id });
+        await runtime.tick();
+        await runtime.tick();
+        expect(
+          (await host.list()).items.find((record) => record.source.id === 'PR_one')?.title,
+        ).toContain('Edited during scan');
+        expect((await host.history()).items).toHaveLength(ISOLATED_SYNC_RECORD_COUNT);
+        expect(responses).toEqual([]);
+      } finally {
+        await runtime.close();
+      }
+    },
+  });
+});
+
+test('partial publication and a lost acknowledgement replay after restart without duplicate history or stale overwrites', async () => {
+  await withRecordTestDatabase({
+    run: async (input) => {
+      const host = await store(input);
+      let failSecond = true;
+      let loseAcknowledgement = true;
+      const seenIds: string[] = [];
+      const receiver = localRecordDestination({
+        ownerId: OWNER_USER_ID,
+        definitions: [definition],
+        upsertRecord: (value) => {
+          if (failSecond && value.record.source.id === 'PR_two') {
+            throw new Error('Storage unavailable');
+          }
+          return host.records.upsert(value);
+        },
+      });
+      const destination: DestinationType = {
+        ...receiver,
+        deliver: async (value) => {
+          seenIds.push(value.deliverable.id);
+          const result = await receiver.deliver(value);
+          if (loseAcknowledgement) {
+            throw new Error('Acknowledgement lost');
+          }
+          return result;
+        },
+      };
+      const options = {
+        databasePath: join(input.dataFolder, 'sync.db'),
+        definitions: [definition],
+        destinationTypes: { local: destination },
+        connector: {
+          bind: async () => ({
+            get: unexpected,
+            action: unexpected,
+            post: async () => ({
+              status: 200,
+              headers: {},
+              body: page({ nodes: [pull(), pull({ id: 'PR_two' })] }),
+            }),
+          }),
+        },
+      };
+      let runtime = createSyncRuntime(options);
+      try {
+        const sync = await runtime.api.createSync({
+          ...scope,
+          definition: definition.definition.id,
+          connection: { id: 'github-owner', service: 'github' },
+          destination: { type: 'local', input: {} },
           config: {},
         });
         await runtime.tick();
         await runtime.tick();
-        const listing = await records.listResources({
-          ownerId: OWNER_USER_ID,
-          limit: 10,
-          offset: 0,
-        });
-        expect(listing.items).toHaveLength(1);
-        expect(listing.items[0]).toMatchObject({
-          title: 'calendar event',
-          source: { provider: 'calendar', kind: 'event', id: 'event-one' },
-        });
-        const record = await records.findResource({
-          ownerId: OWNER_USER_ID,
-          readableId: listing.items[0]!.readableId,
-        });
-        expect(record?.body).toContain('Meeting notes.');
+        expect((await host.list()).items).toHaveLength(1);
+        const pending = runtime.api.deliveries({ ...scope, syncId: sync.id }).deliveries[0]!;
+        const original = {
+          ...runtime.api.deliverable({ ...scope, syncId: sync.id, id: pending.id }),
+          openAsset: unexpected,
+        };
+        failSecond = false;
+        runtime.api.retryDelivery({ ...scope, syncId: sync.id, id: pending.id });
+        await runtime.tick();
+        expect((await host.list()).items).toHaveLength(2);
+        expect(runtime.api.status(scope).queue.pendingRecords).toBe(2);
+        await runtime.close();
+        loseAcknowledgement = false;
+        runtime = createSyncRuntime(options);
+        runtime.api.retryDelivery({ ...scope, syncId: sync.id, id: pending.id });
+        await runtime.tick();
         expect(runtime.api.status(scope).queue.pendingRecords).toBe(0);
+        expect(new Set(seenIds)).toEqual(new Set([pending.id]));
+        expect((await host.history()).items).toHaveLength(2);
+        const newer = {
+          ...githubRecord(pull({ title: 'Updated at the same upstream timestamp' })),
+          revision: 3,
+        };
+        const updated = { ...original, records: [newer] };
+        expect(await host.destination.deliver(delivery(updated))).toEqual({ status: 'accepted' });
+        expect(await host.destination.deliver(delivery(original))).toEqual({ status: 'accepted' });
+        expect(
+          (await host.list()).items.some((item) => item.title.includes('Updated at the same')),
+        ).toBe(true);
+        expect((await host.history()).items).toHaveLength(HISTORY_AFTER_UPDATE);
+        // A newer unchanged revision must also fence older, different content.
+        await host.destination.deliver(
+          delivery({ ...updated, records: [{ ...newer, revision: 5 }] }),
+        );
+        await host.destination.deliver(
+          delivery({ ...updated, records: [{ ...githubRecord(pull()), revision: 4 }] }),
+        );
+        expect((await host.history()).items).toHaveLength(HISTORY_AFTER_UPDATE);
+        expect(
+          await host.destination.deliver(
+            delivery({ ...updated, records: [{ ...githubRecord(pull()), revision: 5 }] }),
+          ),
+        ).toEqual({ status: 'rejected', code: 'conflict' });
+        await host.destination.deliver(delivery({ ...original, syncId: 'another-sync' }));
+        expect((await host.list()).items).toHaveLength(ISOLATED_SYNC_RECORD_COUNT);
+        expect(
+          await host.destination.deliver({
+            ...delivery(original),
+            scope: { actorId: 'other', ownerId: 'other' },
+          }),
+        ).toEqual({ status: 'rejected', code: 'invalid_source' });
+        expect(
+          (await host.records.listResources({ ownerId: 'other', limit: 10, offset: 0 })).items,
+        ).toEqual([]);
+        // API ingestion of the same source identity is independent from configured syncs.
+        await host.records.upsert({
+          ownerId: OWNER_USER_ID,
+          record: {
+            source: { provider: 'github', kind: 'pull-request', id: 'PR_one' },
+            title: 'API record',
+            body: 'Independent',
+          },
+          change: { clientName: 'test', message: 'Imported API record' },
+        });
+        expect((await host.list()).items).toHaveLength(WITH_API_RECORD_COUNT);
       } finally {
         await runtime.close();
       }
+    },
+  });
+});
+
+test('unsupported assets, deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
+  await withRecordTestDatabase({
+    run: async (input) => {
+      const host = await store(input);
+      const record = { ...githubRecord(pull()), revision: 1 };
+      const valid = bundle([record]);
+      for (const invalid of [
+        {
+          ...valid,
+          assets: [
+            {
+              id: 'asset',
+              version: '1',
+              name: 'file',
+              mediaType: 'text/plain',
+              unavailable: 'unavailable',
+            },
+          ],
+        },
+        bundle([{ ...record, assetRefs: { file: { id: 'asset', version: '1' } } }]),
+        bundle([record, { operation: 'delete', kind: 'pull-request', id: 'deleted', revision: 1 }]),
+        bundle([record, { ...record, id: 'bad', content: undefined }]),
+        { ...valid, definition: 'unknown' },
+      ]) {
+        expect((await host.destination.deliver(delivery(invalid))).status).toBe('rejected');
+      }
+      expect((await host.list()).items).toEqual([]);
+      const abort = new AbortController();
+      const cancelled = localRecordDestination({
+        ownerId: OWNER_USER_ID,
+        definitions: [definition],
+        upsertRecord: async (value) => {
+          const result = await host.records.upsert(value);
+          abort.abort();
+          return result;
+        },
+      });
+      const batch = bundle([record, { ...githubRecord(pull({ id: 'PR_two' })), revision: 1 }]);
+      await expect(
+        cancelled.deliver({ ...delivery(batch), signal: abort.signal }),
+      ).rejects.toThrow();
+      expect((await host.list()).items).toHaveLength(1);
+      expect(await host.destination.deliver(delivery(batch))).toEqual({ status: 'accepted' });
+      expect((await host.history()).items).toHaveLength(2);
+      expect(
+        (await host.history()).items.every((item) => item.message === 'Synced record from github'),
+      ).toBe(true);
     },
   });
 });

@@ -1,125 +1,49 @@
 import { expect, test } from 'bun:test';
-import type { ProviderResponse, SyncContext } from '@context-use/open-sync/definition';
+import type { ProviderResponse } from '@context-use/open-sync/definition';
+import { SourceHttpError } from '@context-use/open-sync/definition';
 import { postGithubGraphql } from '#backend/services/syncs/providers/github/request.ts';
-import { page } from './github-fixture.ts';
+import { githubContext, page } from './github-fixture.ts';
 
-const privateValue = 'private-token-cursor-and-pr-content';
-const body = { query: privateValue, variables: { after: privateValue } };
-
-function requestContext(post: SyncContext['provider']['post']) {
-  const logs: Parameters<SyncContext['log']>[0][] = [];
-  const abort = new AbortController();
-  const context: SyncContext = {
-    config: {},
-    checkpoint: null,
-    sourceId: 'source',
-    signal: abort.signal,
-    provider: {
-      post,
-      get: () => Promise.reject(new Error('Unexpected GET')),
-      action: () => Promise.reject(new Error('Unexpected action')),
-    },
-    log: (event) => logs.push(event),
-  };
-  return { context, logs, abort };
-}
-
-test('request diagnostics correlate timing and safe response headers without logging payloads', async () => {
-  const response = {
-    status: 200,
-    headers: {
-      'X-GitHub-Request-Id': 'ABCD:1234:5678',
-      'X-RateLimit-Remaining': '4999',
-      'X-RateLimit-Reset': '1789736400',
-      'set-cookie': privateValue,
-      authorization: privateValue,
-    },
-    body: { ...page(), privateValue },
-  };
-  const { context, logs } = requestContext(({ body: received }) => {
-    expect(received).toBe(body);
-    return Promise.resolve(response);
-  });
-  expect(await postGithubGraphql({ context, body })).toBe(response);
-  expect(logs).toHaveLength(2);
-  const requestId = logs[0]!.fields!.requestId!;
-  expect(requestId).toEqual(expect.any(String));
-  expect(logs[1]).toEqual({
-    message: 'github_request_finished',
-    fields: {
-      requestId,
-      provider: 'github',
-      method: 'POST',
-      path: '/graphql',
-      durationMs: expect.any(Number),
-      status: 200,
-      githubRequestId: 'ABCD:1234:5678',
-      'x-ratelimit-remaining': 4999,
-      'x-ratelimit-reset': 1789736400,
-      outcome: 'success',
-    },
-  });
-  expect(Number(logs[1]?.fields?.durationMs)).toBeGreaterThanOrEqual(0);
-  expect(JSON.stringify(logs)).not.toContain(privateValue);
-  expect(JSON.stringify(logs)).not.toContain('Improve local records');
-});
-
-const failureCases: { status: number; body: ProviderResponse['body']; outcome: string }[] = [
-  { status: 401, body: { message: privateValue }, outcome: 'http_error' },
-  { status: 429, body: privateValue, outcome: 'http_error' },
-  { status: 200, body: privateValue, outcome: 'invalid_response' },
+const cases: { response: ProviderResponse; status: number }[] = [
+  { response: { status: 401, headers: {}, body: 'private token' }, status: 401 },
+  { response: { status: 503, headers: {}, body: 'unavailable' }, status: 503 },
+  { response: { status: 403, headers: { 'x-ratelimit-remaining': '0' }, body: {} }, status: 429 },
+  { response: { status: 403, headers: {}, body: {} }, status: 403 },
   {
-    status: 200,
-    body: {
-      errors: [
-        {
-          message: privateValue,
-          path: [privateValue],
-          extensions: { code: 'undefinedField', typeName: 'Actor', fieldName: 'id', privateValue },
-        },
-      ],
-    },
-    outcome: 'graphql_error',
+    response: { status: 200, headers: {}, body: { errors: [{ type: 'RATE_LIMITED' }] } },
+    status: 429,
+  },
+  {
+    response: { status: 200, headers: {}, body: { errors: [{ type: 'FORBIDDEN' }] } },
+    status: 403,
   },
 ];
-
-test.each(failureCases)(
-  'request failures remain visible at HTTP $status ($outcome)',
-  async (input) => {
-    const response: ProviderResponse = {
-      status: input.status,
-      body: input.body,
-      headers: { 'retry-after': '60', 'x-github-request-id': `\u001b[31m${privateValue}` },
-    };
-    const { context, logs } = requestContext(() => Promise.resolve(response));
-    expect(await postGithubGraphql({ context, body })).toBe(response);
-    expect(logs[1]?.fields).toMatchObject({
-      status: input.status,
-      outcome: input.outcome,
-      'retry-after': 60,
+test.each(cases)(
+  'GitHub failures retain HTTP classification without provider payloads ($status)',
+  async ({ response, status }) => {
+    const context = githubContext({ post: async () => response });
+    await expect(postGithubGraphql({ context, body: {} })).rejects.toMatchObject({
+      code: `source_http_${status}`,
+      status,
     });
-    if (input.outcome === 'graphql_error') {
-      expect(logs[1]?.fields?.errors).toEqual([
-        { code: 'undefinedField', typeName: 'Actor', fieldName: 'id' },
-      ]);
-    }
-    expect(JSON.stringify(logs)).not.toContain(privateValue);
   },
 );
 
-test.each([{ cancel: false }, { cancel: true }])(
-  'transport failures preserve errors without exposing their messages (aborted: $cancel)',
-  async ({ cancel }) => {
-    const failure = new Error(privateValue);
-    const { context, logs, abort } = requestContext(() => {
-      if (cancel) {
-        abort.abort();
-      }
-      return Promise.reject(failure);
-    });
-    await expect(postGithubGraphql({ context, body })).rejects.toBe(failure);
-    expect(logs[1]?.fields?.outcome).toBe(cancel ? 'cancelled' : 'transport_error');
-    expect(logs[1]?.fields?.requestId).toBe(logs[0]?.fields?.requestId);
-    expect(JSON.stringify(logs)).not.toContain(privateValue);
-  },
-);
+test('bound transport failures preserve classification, and cancellation prevents output', async () => {
+  const failure = new SourceHttpError({ status: 429 });
+  await expect(
+    postGithubGraphql({
+      context: githubContext({ post: () => Promise.reject(failure) }),
+      body: {},
+    }),
+  ).rejects.toBe(failure);
+  const abort = new AbortController();
+  const context = githubContext({
+    signal: abort.signal,
+    post: () => {
+      abort.abort();
+      return Promise.resolve({ status: 200, headers: {}, body: page() });
+    },
+  });
+  await expect(postGithubGraphql({ context, body: {} })).rejects.toThrow();
+});

@@ -1,122 +1,156 @@
 import { expect, test } from 'bun:test';
-import type { ProviderOperations, SyncContext, SyncPage } from '@context-use/open-sync/definition';
 import type { JsonObject } from '@context-use/open-sync/json';
 import { validate } from '@octokit/graphql-schema';
-import {
-  githubPullRequests,
-  runGithubPullRequests,
-} from '#backend/services/syncs/providers/github/pull-requests.ts';
-import { now, page, pull } from './github-fixture.ts';
+import { stepGithubPullRequests } from '#backend/services/syncs/providers/github/pull-requests.ts';
+import { githubContext, now, page, pull } from './github-fixture.ts';
 
-function context(input: {
-  responses: JsonObject[];
-  checkpoint?: SyncContext['checkpoint'];
-  signal?: AbortSignal;
-}) {
+const initialCheckpoint = { accountId: null, cursor: null, cycleStartedAt: null, watermark: null };
+const updateCheckpoint = {
+  accountId: 'U_owner',
+  cursor: null,
+  cycleStartedAt: '2026-09-17T12:15:00.000Z',
+  watermark: now,
+};
+const cutoff = '2026-09-17T11:55:00.000Z';
+const beforeCutoff = '2026-09-17T11:54:59.999Z';
+function context(input: { response: JsonObject; checkpoint?: JsonObject }) {
   const requests: JsonObject[] = [];
-  const provider: ProviderOperations = {
-    action: () => Promise.reject(new Error('Unexpected action')),
-    get: () => Promise.reject(new Error('Unexpected GET')),
-    post: ({ body }) => {
-      // Validate the wire query against GitHub's schema before returning fixture data.
-      const errors = validate(String(body.query));
-      if (errors.length) {
-        throw new Error(errors.map((error) => error.message).join('\n'));
-      }
-      requests.push(body);
-      const response = input.responses.shift();
-      if (!response) {
-        throw new Error('Unexpected page');
-      }
-      return Promise.resolve({ status: 200, headers: {}, body: response });
-    },
-  };
+  const requestedAt: number[] = [];
   return {
     requests,
-    value: {
-      config: {},
-      checkpoint: input.checkpoint ?? githubPullRequests.registration.definition.initialCheckpoint,
-      sourceId: 'source',
-      signal: input.signal ?? new AbortController().signal,
-      provider,
-      log: () => {},
-    } satisfies SyncContext,
+    requestedAt,
+    value: githubContext({
+      checkpoint: input.checkpoint,
+      post: ({ body }) => {
+        expect(validate(String(body.query))).toEqual([]);
+        requestedAt.push(Date.now());
+        requests.push(body);
+        return Promise.resolve({ status: 200, headers: {}, body: input.response });
+      },
+    }),
   };
 }
-async function collect(value: SyncContext) {
-  const pages: SyncPage[] = [];
-  for await (const result of runGithubPullRequests(value)) {
-    pages.push(result);
-  }
-  return pages;
-}
 
-test('authored PR backfill resumes committed cursors and only completes after the final page', async () => {
+test('backfill returns one complete native page and freezes its start before retrieval until the last page', async () => {
+  const before = Date.now();
   const first = context({
-    responses: [page({ more: true }), { errors: [{ type: 'RATE_LIMITED' }] }],
+    response: page({ nodes: [pull(), pull({ id: 'PR_two' })], more: true }),
   });
-  const iterator = runGithubPullRequests(first.value);
-  const committed = (await iterator.next()).value!;
-  expect(committed.complete).toBe(false);
-  await expect(iterator.next()).rejects.toThrow('incomplete');
-  const resumed = context({
-    checkpoint: committed.checkpoint,
-    responses: [page({ cursor: 'next', nodes: [pull({ id: 'PR_two' })] })],
+  const step = await stepGithubPullRequests(first.value);
+  const checkpoint = step.checkpoint as JsonObject;
+  const cycleStartedAt = String(checkpoint.cycleStartedAt);
+  expect(Date.parse(cycleStartedAt)).toBeGreaterThanOrEqual(before);
+  expect(Date.parse(cycleStartedAt)).toBeLessThanOrEqual(first.requestedAt[0]!);
+  expect(first.requests).toHaveLength(1);
+  expect(first.requests[0]?.query).toContain('CREATED_AT, direction: ASC');
+  expect(step.records.map((record) => record.id)).toEqual(['PR_one', 'PR_two']);
+  expect(step.records[0]).toMatchObject({ createdAt: now, updatedAt: now });
+  expect(step.complete).toBe(false);
+  expect(checkpoint).toEqual({
+    accountId: 'U_owner',
+    cursor: 'cursor-1',
+    cycleStartedAt,
+    watermark: null,
   });
-  const results = await collect(resumed.value);
-  expect(resumed.requests[0]?.variables).toEqual({ after: 'cursor-0' });
-  expect(results[0]?.deliverable.records[0]?.id).toBe('PR_two');
-  expect(results.at(-1)?.complete).toBe(true);
-  const checkpoint = results.at(-1)?.checkpoint as JsonObject;
-  expect(checkpoint.cursor).toBeNull();
-  expect(checkpoint.accountId).toBe('U_owner');
-  expect(typeof checkpoint.watermark).toBe('string');
+  const replay = context({
+    response: page({ nodes: [pull(), pull({ id: 'PR_two' })], more: true }),
+    checkpoint: { ...initialCheckpoint, cycleStartedAt },
+  });
+  expect(await stepGithubPullRequests(replay.value)).toEqual(step);
+  const next = context({
+    response: page({ cursor: 'next', nodes: [pull({ id: 'PR_three' })] }),
+    checkpoint,
+  });
+  const done = await stepGithubPullRequests(next.value);
+  expect(next.requests[0]?.variables).toEqual({ after: 'cursor-1' });
+  expect(done.complete).toBe(true);
+  expect(done.checkpoint).toEqual({
+    accountId: 'U_owner',
+    cursor: null,
+    cycleStartedAt: null,
+    watermark: cycleStartedAt,
+  });
 });
 
-test('incremental scan overlaps its watermark and stops at older records without inferring deletions', async () => {
-  const value = context({
-    checkpoint: { accountId: 'U_owner', cursor: null, startedAt: null, watermark: now },
-    responses: [
-      page({
-        nodes: [pull(), pull({ id: 'PR_old', updatedAt: '2026-09-17T11:00:00.000Z' })],
-        more: true,
-      }),
-    ],
+test('incremental polls include cutoff ties across native pages and stop before the historical tail', async () => {
+  const first = context({
+    checkpoint: updateCheckpoint,
+    response: page({ nodes: [pull(), pull({ id: 'tie-one', updatedAt: cutoff })], more: true }),
   });
-  const results = await collect(value.value);
-  expect(
-    results.flatMap((result) => result.deliverable.records).map((record) => record.id),
-  ).toEqual(['PR_one']);
-  expect(results.at(-1)?.complete).toBe(true);
-  expect(value.requests[0]?.query).toContain('UPDATED_AT');
+  const step = await stepGithubPullRequests(first.value);
+  expect(first.requests[0]?.query).toContain('UPDATED_AT, direction: DESC');
+  expect(step.complete).toBe(false);
+  expect(step.checkpoint).toEqual({ ...updateCheckpoint, cursor: 'cursor-1' });
+  const next = context({
+    checkpoint: step.checkpoint as JsonObject,
+    response: page({
+      cursor: 'next',
+      nodes: [
+        pull({ id: 'tie-two', updatedAt: cutoff }),
+        pull({ id: 'old', updatedAt: beforeCutoff }),
+      ],
+      more: true,
+    }),
+  });
+  const done = await stepGithubPullRequests(next.value);
+  expect(next.requests[0]?.variables).toEqual({ after: 'cursor-1' });
+  expect(done.records.map((record) => record.id)).toEqual(['tie-two']);
+  expect(done.complete).toBe(true);
+  expect(done.checkpoint).toEqual({
+    ...updateCheckpoint,
+    cursor: null,
+    cycleStartedAt: null,
+    watermark: updateCheckpoint.cycleStartedAt,
+  });
+  const unchanged = context({
+    checkpoint: updateCheckpoint,
+    response: page({ nodes: [pull({ updatedAt: beforeCutoff })], more: true }),
+  });
+  expect(await stepGithubPullRequests(unchanged.value)).toMatchObject({
+    complete: true,
+    records: [],
+  });
+  expect(unchanged.requests).toHaveLength(1);
 });
 
-test('partial pages, repeated cursors, changed accounts, and expired cursors preserve safe checkpoints', async () => {
-  await expect(
-    collect(context({ responses: [page({ nodes: [], more: true })] }).value),
-  ).rejects.toThrow('pagination');
-  await expect(
-    collect(context({ responses: [page({ more: true }), page()] }).value),
-  ).rejects.toThrow('repeated');
-  await expect(
-    collect(
-      context({
-        checkpoint: { accountId: 'different', cursor: null, startedAt: null, watermark: now },
-        responses: [page()],
-      }).value,
-    ),
-  ).rejects.toThrow('account changed');
-  const expired = await collect(
-    context({
-      checkpoint: { accountId: 'U_owner', cursor: 'expired', startedAt: now, watermark: now },
-      responses: [{ errors: [{ type: 'INVALID_CURSOR' }] }],
-    }).value,
-  );
-  expect(expired).toEqual([
+test('invalid records, partial pages, update-order violations, repeated cursors and changed accounts never yield partial output', async () => {
+  for (const input of [
+    { response: page({ nodes: [], more: true }) },
+    { response: page({ nodes: [pull(), { id: 'invalid' }] }) },
     {
-      deliverable: { records: [] },
-      checkpoint: { accountId: 'U_owner', cursor: null, startedAt: now, watermark: now },
-      complete: false,
+      response: page(),
+      checkpoint: { ...initialCheckpoint, accountId: 'U_owner', cursor: 'cursor-0' },
     },
-  ]);
+    { response: page(), checkpoint: { ...initialCheckpoint, accountId: 'other' } },
+    { response: { ...page(), errors: [{ type: 'UNKNOWN' }] } },
+    { response: { ...page(), errors: null } },
+    { response: { ...page(), errors: [{ type: 123 }] } },
+    {
+      response: page({ nodes: [pull({ updatedAt: beforeCutoff }), pull()] }),
+      checkpoint: updateCheckpoint,
+    },
+  ]) {
+    const source = context(input);
+    const original = structuredClone(source.value.checkpoint);
+    await expect(stepGithubPullRequests(source.value)).rejects.toThrow();
+    expect(source.value.checkpoint).toEqual(original);
+  }
+});
+
+test('expired cursors restart only the current cycle while retaining its account, start and watermark', async () => {
+  for (const state of [{ ...initialCheckpoint, cycleStartedAt: now }, updateCheckpoint]) {
+    const checkpoint = { ...state, accountId: 'U_owner', cursor: 'expired' };
+    const value = context({ response: { errors: [{ type: 'INVALID_CURSOR' }] }, checkpoint });
+    expect(await stepGithubPullRequests(value.value)).toEqual({
+      records: [],
+      complete: false,
+      checkpoint: { ...checkpoint, cursor: null },
+    });
+  }
+  await expect(
+    stepGithubPullRequests(context({ response: { errors: [{ type: 'INVALID_CURSOR' }] } }).value),
+  ).rejects.toThrow('incomplete');
+  expect(
+    (await stepGithubPullRequests(context({ response: page({ nodes: [] }) }).value)).records,
+  ).toEqual([]);
 });

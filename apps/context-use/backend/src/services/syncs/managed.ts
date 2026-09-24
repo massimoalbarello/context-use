@@ -12,30 +12,34 @@ import type { ContextSync, SyncCatalog, SyncProvider } from './catalog.ts';
 const HEALTHY_STATES = new Set([
   'ready',
   'running',
-  'yielded',
+  'waiting_for_capacity',
   'succeeded',
   'disabled',
-  'cancelled',
 ]);
 type Scope = { actorId: string; ownerId: string };
 type Queue = { blocked: string[]; pending: number };
-type Installation = ReturnType<OpenSyncRuntime['api']['installations']>[number];
+type ConfiguredSync = ReturnType<OpenSyncRuntime['api']['syncs']>[number];
 
 function managedState(input: {
   configured: boolean;
   connected: boolean;
   connectionActive: boolean;
-  installation: Installation | undefined;
+  configuredSync: ConfiguredSync | undefined;
   queue: Queue;
 }): { state: ManagedSyncState; message: string } {
   if (!input.configured) {
     return { state: 'setup-required', message: 'Set up your OAuth app to get started.' };
   }
-  if (!input.connected || !input.installation) {
+  if (!input.connected || !input.configuredSync) {
     return { state: 'disconnected', message: 'Connect your account to start syncing.' };
   }
-  if (!input.installation.enabled) {
-    return { state: 'paused', message: 'Automatic syncing is paused. Your records are kept.' };
+  if (!input.configuredSync.enabled) {
+    return {
+      state: 'paused',
+      message: input.configuredSync.errorCode
+        ? 'Syncing paused after a provider error. Check your account access before resuming.'
+        : 'Automatic syncing is paused. Your records are kept.',
+    };
   }
   if (input.queue.blocked.length) {
     return {
@@ -43,13 +47,13 @@ function managedState(input: {
       message: 'Some records could not be saved. Try syncing again.',
     };
   }
-  if (!input.connectionActive || !HEALTHY_STATES.has(input.installation.status)) {
+  if (!input.connectionActive || !HEALTHY_STATES.has(input.configuredSync.status)) {
     return { state: 'error', message: 'This sync could not finish. Automatic retries continue.' };
   }
   if (input.queue.pending) {
     return { state: 'syncing', message: 'Saving records…' };
   }
-  if (['ready', 'running', 'yielded'].includes(input.installation.status)) {
+  if (['ready', 'running', 'waiting_for_capacity'].includes(input.configuredSync.status)) {
     return { state: 'syncing', message: 'Checking for changes…' };
   }
   return { state: 'ready', message: 'Up to date. New changes are checked automatically.' };
@@ -70,40 +74,37 @@ export class ManagedSyncsService {
     }
     return { actorId, ownerId: actorId };
   }
-  private installation(input: { scope: Scope; sync: ContextSync }) {
+  private configuredSync(input: { scope: Scope; sync: ContextSync }) {
     return this.input.sync.api
-      .installations(input.scope)
-      .find((item) => item.definition.id === input.sync.registration.definition.id);
+      .syncs(input.scope)
+      .find((item) => item.definition === input.sync.registration.definition.id);
   }
   private serial<T>(action: () => Promise<T>): Promise<T> {
     const next = this.pending.then(action, action);
     this.pending = next.catch(() => {});
     return next;
   }
-  private queues(scope: Scope) {
-    const queues = new Map<string, Queue>();
-    let offset = 0;
+  private queue(input: Scope & { syncId: string }): Queue {
+    const queue: Queue = { blocked: [], pending: 0 };
+    let before: number | undefined;
     while (true) {
-      const page = this.input.sync.api.deliveries({ ...scope, offset });
+      const page = this.input.sync.api.deliveries({ ...input, before });
       for (const item of page.deliveries) {
-        const queue = queues.get(item.installationId) ?? { blocked: [], pending: 0 };
         if (item.state === 'blocked') {
           queue.blocked.push(item.id);
         } else {
           queue.pending += item.recordCount;
         }
-        queues.set(item.installationId, queue);
       }
-      if (!page.hasMore) {
-        return queues;
+      if (page.nextCursor === null) {
+        return queue;
       }
-      offset += page.pageSize;
+      before = page.nextCursor;
     }
   }
   async list(input: { actorId: string }): Promise<SyncProviderSummary[]> {
     const scope = this.scope(input.actorId);
-    const queues = this.queues(scope);
-    const installations = this.input.sync.api.installations(scope);
+    const configuredSyncs = this.input.sync.api.syncs(scope);
     return await Promise.all(
       this.input.catalog.providers.map(async (provider) => {
         const status = await this.input.sync.providers.status({ ...scope, service: provider.id });
@@ -113,14 +114,16 @@ export class ManagedSyncsService {
         }
         const connection = status.connections[0];
         const syncs = provider.syncs.map((sync): ManagedSyncSummary => {
-          const installation = installations.find(
-            (item) => item.definition.id === sync.registration.definition.id,
+          const configuredSync = configuredSyncs.find(
+            (item) => item.definition === sync.registration.definition.id,
           );
-          const bound = status.connections.find((item) => item.id === installation?.connection?.id);
-          const runs = installation
-            ? this.input.sync.api.runs({ ...scope, id: installation.id }).runs
+          const bound = status.connections.find(
+            (item) => item.id === configuredSync?.connection?.id,
+          );
+          const polls = configuredSync
+            ? this.input.sync.api.polls({ ...scope, id: configuredSync.id }).polls
             : [];
-          const lastSuccess = runs.find((run) => run.state === 'succeeded');
+          const lastSuccess = polls.find((poll) => poll.state === 'succeeded');
           return {
             key: sync.key,
             name: sync.name,
@@ -132,14 +135,16 @@ export class ManagedSyncsService {
               configured: oauth.configured,
               connected: Boolean(connection),
               connectionActive: bound?.status === 'active',
-              installation,
-              queue: queues.get(installation?.id ?? '') ?? { blocked: [], pending: 0 },
+              configuredSync,
+              queue: configuredSync
+                ? this.queue({ ...scope, syncId: configuredSync.id })
+                : { blocked: [], pending: 0 },
             }),
             lastSyncedAt: lastSuccess?.completedAt
               ? new Date(lastSuccess.completedAt).toISOString()
               : null,
-            nextSyncAt: installation?.enabled
-              ? new Date(installation.nextDueAt).toISOString()
+            nextSyncAt: configuredSync?.enabled
+              ? new Date(configuredSync.nextDueAt).toISOString()
               : null,
           };
         });
@@ -222,21 +227,15 @@ export class ManagedSyncsService {
       throw new BadRequestError('Connect your account first.');
     }
     for (const sync of provider.syncs) {
-      if (this.installation({ scope, sync })) {
+      if (this.configuredSync({ scope, sync })) {
         continue;
       }
-      // Open Sync orders deliveries per destination, so each sync needs its own queue.
-      const destination = this.input.sync.api.createDestination({
+      await this.input.sync.api.createSync({
         ...scope,
-        type: LOCAL_RECORD_DESTINATION,
-        config: {},
-      });
-      await this.input.sync.api.createInstallation({
-        ...scope,
-        definition: sync.registration.definition,
+        definition: sync.registration.definition.id,
         connection,
         config: {},
-        destinationId: destination.id,
+        destination: { type: LOCAL_RECORD_DESTINATION, input: {} },
         intervalMs: sync.intervalMs,
       });
     }
@@ -249,22 +248,22 @@ export class ManagedSyncsService {
   async update(input: { actorId: string; key: string; action: 'pause' | 'resume' | 'run' }) {
     const scope = this.scope(input.actorId);
     const { sync } = this.input.catalog.sync(input.key);
-    const installation = this.installation({ scope, sync });
-    if (!installation) {
+    const configuredSync = this.configuredSync({ scope, sync });
+    if (!configuredSync) {
       throw new NotFoundError('Connect your account first.');
     }
     if (input.action === 'run') {
-      if (!installation.enabled) {
+      if (!configuredSync.enabled) {
         throw new BadRequestError('Resume the sync first.');
       }
-      for (const id of this.queues(scope).get(installation.id)?.blocked ?? []) {
-        this.input.sync.api.retryDelivery({ ...scope, id });
+      for (const id of this.queue({ ...scope, syncId: configuredSync.id }).blocked) {
+        this.input.sync.api.retryDelivery({ ...scope, syncId: configuredSync.id, id });
       }
-      this.input.sync.api.queueRun({ ...scope, id: installation.id });
+      this.input.sync.api.runNow({ ...scope, id: configuredSync.id });
     } else {
       await this.input.sync.api.setEnabled({
         ...scope,
-        id: installation.id,
+        id: configuredSync.id,
         enabled: input.action === 'resume',
       });
     }

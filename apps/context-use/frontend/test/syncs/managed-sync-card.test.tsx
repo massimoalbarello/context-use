@@ -41,3 +41,25 @@ test('sync controls use registered provider, kind, and schedule metadata', async
   await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Pause' }));
   expect(action).toHaveBeenCalledWith('pause');
 });
+
+test('paused syncs explain why they stopped and offer Resume without a disabled Sync now action', async () => {
+  const sync = {
+    ...providerFixture().syncs[0]!,
+    state: 'paused' as const,
+    message: 'Syncing paused after a provider error. Check your account access before resuming.',
+  };
+  const action = mock(() => {});
+  const root = createRootRoute({
+    component: () => <ManagedSyncCard sync={sync} pending={false} onAction={action} />,
+  });
+  const router = createRouter({
+    routeTree: root,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  });
+  await router.load();
+  const view = render(<RouterProvider router={router} />);
+  expect((await view.findByRole('status')).textContent).toBe(sync.message);
+  expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
+  await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Resume' }));
+  expect(action).toHaveBeenCalledWith('resume');
+});

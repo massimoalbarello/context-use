@@ -31,7 +31,7 @@
         "@better-auth/mcp": "^1.7.2",
         "@better-auth/oauth-provider": "^1.7.2",
         "@better-auth/passkey": "catalog:",
-        "@context-use/open-sync": "0.2.1",
+        "@context-use/open-sync": "0.3.0",
         "@context-use/openclaw-memory": "workspace:*",
         "@elysiajs/eden": "^1.4.9",
         "@elysiajs/openapi": "^1.4.15",
@@ -354,7 +354,7 @@
 
     "@commitlint/types": ["@commitlint/types@21.2.0", "", { "dependencies": { "conventional-commits-parser": "^7.0.0", "picocolors": "^1.1.1" } }, "sha512-7zVFCDB2reMvJH5dmbKnOQPjZEvjdJTH8jc0U/PIPU1r3/+vf5pD1HlfitV2MWsWXrvu7u39iY1lyLUPOaN0Gw=="],
 
-    "@context-use/open-sync": ["@context-use/open-sync@0.2.1", "", { "dependencies": { "@cfworker/json-schema": "4.1.1", "@oomol-lab/open-connector": "1.6.3", "elysia": "^1.4.30", "minisearch": "^7.2.0" } }, "sha512-QKfKoKIWHlkepTVyqQKDBqrOf5flwIFQ6HxAx1bkMqjY4BckMK5jRx5fo0uPiy0+lRGD2bkCCEwbi++DTOAr/g=="],
+    "@context-use/open-sync": ["@context-use/open-sync@0.3.0", "", { "dependencies": { "@cfworker/json-schema": "4.1.1", "@oomol-lab/open-connector": "1.6.5", "elysia": "^1.4.30", "minisearch": "^7.2.0" } }, "sha512-JzlEBYDBLwEpyLxrKUzKYPSiVXFgusLO2UWsz+yOTHGdrNGBPwKXX4jRjtXfl0BAzooZfeMXA4mb2QhEA0ckxw=="],
 
     "@context-use/openclaw-memory": ["@context-use/openclaw-memory@workspace:packages/openclaw-memory"],
 
@@ -542,7 +542,7 @@
 
     "@octokit/graphql-schema": ["@octokit/graphql-schema@15.26.1", "", { "dependencies": { "graphql": "^16.0.0", "graphql-tag": "^2.10.3" } }, "sha512-RFDC2MpRBd4AxSRvUeBIVeBU7ojN/SxDfALUd7iVYOSeEK3gZaqR2MGOysj4Zh2xj2RY5fQAUT+Oqq7hWTraMA=="],
 
-    "@oomol-lab/open-connector": ["@oomol-lab/open-connector@1.6.3", "", { "dependencies": { "@aws-sdk/client-s3": "^3.1111.0", "@cfworker/json-schema": "^4.1.1", "@hono/node-server": "^2.0.10", "@modelcontextprotocol/client": "^2.0.0", "@modelcontextprotocol/server": "^2.0.0", "@scalar/hono-api-reference": "^0.11.7", "ali-oss": "^6.23.0", "busboy": "^1.6.0", "fast-xml-builder": "^1.3.0", "fast-xml-parser": "^5.10.1", "fast-xml-validator": "^1.4.1", "hono": "^4.13.5", "imapflow": "^1.7.8", "jose": "^6.2.3", "mailparser": "^3.9.28", "mdast-util-from-markdown": "^2.0.3", "mdast-util-gfm": "^3.1.0", "mdast-util-to-markdown": "^2.1.2", "micromark-extension-gfm": "^3.0.0", "minisearch": "^7.2.0", "mqtt": "^5.15.2", "nodemailer": "^9.1.1", "pg": "^8.23.0", "pino": "^10.3.1", "rss-parser": "^3.13.0", "yaml": "^2.9.0", "zod": "^4.4.3" } }, "sha512-cnS3TcuDzDrwGMNYZckAwOBmchyQUWakOz0fp0VGjV0HRoK/04UG3SYarxM0vijaMyJUq1wRwb0rwoKWKADRWw=="],
+    "@oomol-lab/open-connector": ["@oomol-lab/open-connector@1.6.5", "", { "dependencies": { "@aws-sdk/client-s3": "^3.1111.0", "@cfworker/json-schema": "^4.1.1", "@hono/node-server": "^2.0.10", "@modelcontextprotocol/client": "^2.0.0", "@modelcontextprotocol/server": "^2.0.0", "@scalar/hono-api-reference": "^0.11.7", "ali-oss": "^6.23.0", "busboy": "^1.6.0", "fast-xml-builder": "^1.3.0", "fast-xml-parser": "^5.10.1", "fast-xml-validator": "^1.4.1", "hono": "^4.13.5", "imapflow": "^1.7.8", "jose": "^6.2.3", "mailparser": "^3.9.28", "mdast-util-from-markdown": "^2.0.3", "mdast-util-gfm": "^3.1.0", "mdast-util-to-markdown": "^2.1.2", "micromark-extension-gfm": "^3.0.0", "minisearch": "^7.2.0", "mqtt": "^5.15.2", "nodemailer": "^9.1.1", "pg": "^8.23.0", "pino": "^10.3.1", "rss-parser": "^3.13.0", "yaml": "^2.9.0", "zod": "^4.4.3" } }, "sha512-jSrVven/+JOo8p7yMPtt+bcK7b2ytQc0BmQtOor+izyENE10Yq3I+a4oPi46Q4CiT9sKYpFnQOoZcfSp46vq9w=="],
 
     "@openclaw/ai": ["@openclaw/ai@2026.9.4", "", { "dependencies": { "@anthropic-ai/sdk": "0.120.0", "@google/genai": "2.19.0", "@mistralai/mistralai": "2.6.4", "openai": "7.8.0", "partial-json": "0.1.7", "typebox": "1.3.18" } }, "sha512-OglePy7EiejsiMy2cqq4lGHijdt3RP29Phi90CdispR/h/k85hpYgC8/8kFPUgkxgy7i65gYELzrhai03D37pg=="],
 

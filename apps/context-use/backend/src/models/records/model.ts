@@ -63,6 +63,7 @@ export type RecordPage = {
   items: RecordSummary[];
   nextOffset: number | null;
 };
+export type RecordSyncRevision = { syncId: string; revision: number };
 export type RecordWriteResult = {
   state: 'created' | 'updated' | 'unchanged' | 'stale' | 'conflict';
   readableId: string;
