@@ -18,7 +18,10 @@ import type { AssetsRepositoryContract } from '#backend/repositories/assets/repo
 
 import type { AssetFacesServiceContract } from './faces.ts';
 
-export type AssetImportResult = { state: 'ready'; readableId: string } | { state: 'conflict' };
+export type AssetImportResult =
+  | { state: 'ready'; readableId: string }
+  | { state: 'conflict' }
+  | { state: 'invalid'; message: string };
 
 export type AssetCreateResult =
   | { state: 'created'; asset: Asset }
@@ -27,6 +30,21 @@ export type AssetCreateResult =
 
 function hash(bytes: Uint8Array): string {
   return new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
+}
+
+function assetValidationError(input: { name: string; sizeBytes: number }): string | null {
+  const name = input.name.trim();
+  if (name.length === 0 || name.length > MAX_ASSET_NAME_LENGTH) {
+    return `Asset names must be between 1 and ${MAX_ASSET_NAME_LENGTH} characters.`;
+  }
+  if (
+    !Number.isSafeInteger(input.sizeBytes) ||
+    input.sizeBytes < 1 ||
+    input.sizeBytes > MAX_ASSET_BYTES
+  ) {
+    return `Assets must be between 1 and ${MAX_ASSET_BYTES} bytes.`;
+  }
+  return null;
 }
 
 export class AssetsService {
@@ -48,34 +66,18 @@ export class AssetsService {
     this.storage = storage;
   }
 
-  async create(input: Parameters<AssetsService['persist']>[0]): Promise<AssetCreateResult> {
-    const result = await this.persist(input);
-    if (result.state === 'created') {
-      this.faces.notifyAssetSaved();
-    }
-    return result;
-  }
-
-  private async persist(input: {
+  async create(input: {
     change: ChangeContext;
     ownerId: string;
     name: string;
     file: Blob;
     allowDuplicate?: boolean;
   }): Promise<AssetCreateResult> {
+    const error = assetValidationError({ name: input.name, sizeBytes: input.file.size });
+    if (error) {
+      return { state: 'invalid', message: error };
+    }
     const name = input.name.trim();
-    if (name.length === 0 || name.length > MAX_ASSET_NAME_LENGTH) {
-      return {
-        state: 'invalid',
-        message: `Asset names must be between 1 and ${MAX_ASSET_NAME_LENGTH} characters.`,
-      };
-    }
-    if (input.file.size === 0 || input.file.size > MAX_ASSET_BYTES) {
-      return {
-        state: 'invalid',
-        message: `Assets must be between 1 and ${MAX_ASSET_BYTES} bytes.`,
-      };
-    }
     const bytes = new Uint8Array(await input.file.arrayBuffer());
     const id = Bun.randomUUIDv7();
     const derivedReadableId = readableIdFrom(name);
@@ -110,6 +112,10 @@ export class AssetsService {
     change: ChangeContext;
   }): Promise<AssetImportResult> {
     input.signal.throwIfAborted();
+    const error = assetValidationError(input.asset);
+    if (error) {
+      return { state: 'invalid', message: error };
+    }
     const existing = await this.reuseImport(input.asset);
     if (existing) {
       return existing;
@@ -119,7 +125,7 @@ export class AssetsService {
     });
     const bytes = new Uint8Array(
       await getStreamAsArrayBuffer(stream, {
-        maxBuffer: Math.min(MAX_ASSET_BYTES, input.asset.sizeBytes),
+        maxBuffer: input.asset.sizeBytes,
       }),
     );
     input.signal.throwIfAborted();
@@ -136,7 +142,6 @@ export class AssetsService {
     if (!stored) {
       return (await this.reuseImport(input.asset)) ?? { state: 'conflict' };
     }
-    this.faces.notifyAssetSaved();
     return { state: 'ready', readableId: stored.readableId };
   }
 
@@ -170,7 +175,7 @@ export class AssetsService {
       id: input.id,
       ownerId: input.ownerId,
       readableId: input.readableId,
-      name: input.name,
+      name: input.name.trim(),
       mediaType: media.mediaType,
       extension: media.extension,
       sizeBytes: input.bytes.byteLength,
@@ -179,6 +184,7 @@ export class AssetsService {
       createdAt: now,
       updatedAt: now,
     };
+    let created: StoredAsset | null = null;
     try {
       const size = await this.storage.write(
         storageKey,
@@ -190,7 +196,7 @@ export class AssetsService {
       input.signal?.throwIfAborted();
       const result = await this.assets.create({ ...stored, change: input.change });
       if (result.state === 'created') {
-        return result.asset;
+        created = result.asset;
       }
     } catch (error) {
       try {
@@ -202,8 +208,12 @@ export class AssetsService {
       }
       throw error;
     }
-    await this.storage.delete(storageKey);
-    return null;
+    if (!created) {
+      await this.storage.delete(storageKey);
+      return null;
+    }
+    this.faces.notifyAssetSaved();
+    return created;
   }
 
   list(input: { ownerId: string; limit: number; offset: number; kind?: 'entity_image' }) {

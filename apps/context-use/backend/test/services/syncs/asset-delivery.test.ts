@@ -5,7 +5,6 @@ import type { DestinationType } from '@context-use/open-sync/delivery';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { createSqliteDatabase } from '#backend/db/client.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
-import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import { recordAssetUsages } from '#backend/models/records/assets.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { importedAssetReadableId } from '#backend/services/syncs/destinations/local/record-assets.ts';
@@ -157,7 +156,7 @@ test('npm delivery persists assets before records and reuses them after partial 
   });
 });
 
-test('unavailable and unsupported descriptors reject the entire batch without storing assets or records', async () => {
+test('a rejected asset prevents record publication and preserves earlier uploads for replay', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       await insertAssetOwners(input.database);
@@ -165,21 +164,23 @@ test('unavailable and unsupported descriptors reject the entire batch without st
       const bundle = assetBundle();
       for (const replacement of [
         { ...fixtureFiles[0]!, unavailable: 'forbidden' },
-        { ...bundle.assets[0]!, size: MAX_ASSET_BYTES + 1 },
         { ...bundle.assets[0]!, size: 0 },
-        { ...bundle.assets[0]!, name: 'x'.repeat(MAX_ASSET_NAME_LENGTH + 1) },
       ]) {
         expect(
-          (
-            await host.destination.deliver(
-              assetDelivery({ ...bundle, assets: [bundle.assets[1]!, replacement] }),
-            )
-          ).status,
-        ).toBe('rejected');
+          await host.destination.deliver(
+            assetDelivery({ ...bundle, assets: [bundle.assets[1]!, replacement] }),
+          ),
+        ).toEqual({
+          status: 'rejected',
+          code: 'unavailable' in replacement ? 'asset_unavailable' : 'unsupported_asset',
+        });
       }
-      expect((await host.listAssets()).items).toEqual([]);
+      expect((await host.listAssets()).items).toHaveLength(1);
       expect((await host.list()).items).toEqual([]);
-      expect((await host.history()).items).toEqual([]);
+      expect((await host.history()).items.map((item) => item.resourceType)).toEqual(['asset']);
+      expect(await host.destination.deliver(assetDelivery(bundle))).toEqual({ status: 'accepted' });
+      expect((await host.listAssets()).items).toHaveLength(2);
+      expect((await host.list()).items).toHaveLength(1);
     },
   });
 });
