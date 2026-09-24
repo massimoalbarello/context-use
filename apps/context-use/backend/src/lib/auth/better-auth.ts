@@ -17,6 +17,7 @@ import {
   OwnerRegistrationError,
   ownerRegistrationUser,
 } from '#backend/lib/auth/owner-registration.ts';
+import { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
 
 export const AUTH_ROUTE_PATH = '/auth';
 export const MCP_ROUTE_PATH = '/mcp';
@@ -62,10 +63,7 @@ export function createAuthOptions({
   fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
 }) {
   const mcpResource = mcpServerUrl({ baseUrl });
-  // The RP ID is part of every stored credential. Keep nibrun's original identity when the
-  // public URL changes, and explicitly authorize the configured custom origin on both sides.
-  const relyingPartyUrl = nibrunHostname ? new URL(`https://${nibrunHostname}`) : baseUrl;
-  const trustedOrigins = [...new Set([relyingPartyUrl.origin, baseUrl.origin])];
+  const { rpID, origins: trustedOrigins } = passkeyConfiguration({ baseUrl, nibrunHostname });
   return {
     database: bunSqlAdapter({ sql: database, tablesPrefix: BETTER_AUTH_TABLES_PREFIX }),
     // The origin, never the href: better-auth drops `basePath` entirely when the base URL already
@@ -77,7 +75,7 @@ export function createAuthOptions({
     plugins: [
       jwt(),
       passkey({
-        rpID: relyingPartyUrl.hostname,
+        rpID,
         rpName: PASSKEY_RELYING_PARTY_NAME,
         origin: trustedOrigins,
         authenticatorSelection: {

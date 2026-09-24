@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { createHash, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
-import { cose, isoCBOR } from '@simplewebauthn/server/helpers';
 import type { SQL } from 'bun';
 import { Elysia, StatusMap } from 'elysia';
 import { createAuth, mcpServerUrl } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_DISPLAY_NAME, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { createAuthController } from '#backend/routes/api/auth/controller.ts';
 import { createAuthDiscoveryController } from '#backend/routes/auth-discovery/controller.ts';
+import { testPasskey } from '../../support/test-passkey.ts';
 import { withAuthTestDatabase } from './auth-test-database.ts';
 
 const AUTH_ORIGIN = 'http://localhost:3000';
@@ -51,13 +50,6 @@ describe('passkey-only authentication', () => {
   });
 });
 
-const CREDENTIAL_ID_BYTES = 32;
-const COUNTER_BYTES = 4;
-const AAGUID_BYTES = 16;
-const CREDENTIAL_LENGTH_BYTES = 2;
-const REGISTRATION_FLAGS = 0x45;
-const AUTHENTICATION_FLAGS = 0x05;
-
 const NIBRUN_HOSTNAME = 'context-use-test.nibrun.app';
 const NIBRUN_ORIGIN = `https://${NIBRUN_HOSTNAME}`;
 const CUSTOM_ORIGIN = 'https://knowledge.example.com';
@@ -91,98 +83,6 @@ function challengeCookie(response: Response): string {
     .getSetCookie()
     .map((cookie) => cookie.split(';')[0])
     .join('; ');
-}
-
-function hash(value: string | Buffer): Buffer {
-  return createHash('sha256').update(value).digest();
-}
-
-// A test authenticator emits real, signed WebAuthn messages. Only the device is simulated;
-// Better Auth verifies the origin, RP hash, challenge, user verification and database state.
-function testPasskey(rpId: string) {
-  const keys = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-  const publicKey = keys.publicKey.export({ format: 'jwk' });
-  const credentialId = randomBytes(CREDENTIAL_ID_BYTES);
-  const id = credentialId.toString('base64url');
-  let counter = 0;
-  const coseKey = isoCBOR.encode(
-    new Map<number, number | Uint8Array>([
-      [cose.COSEKEYS.kty, cose.COSEKTY.EC2],
-      [cose.COSEKEYS.alg, cose.COSEALG.ES256],
-      [cose.COSEKEYS.crv, cose.COSECRV.P256],
-      [cose.COSEKEYS.x, Buffer.from(publicKey.x!, 'base64url')],
-      [cose.COSEKEYS.y, Buffer.from(publicKey.y!, 'base64url')],
-    ]),
-  );
-  function authenticatorData(flags: number) {
-    const count = Buffer.alloc(COUNTER_BYTES);
-    count.writeUInt32BE(counter++);
-    return Buffer.concat([hash(rpId), Buffer.from([flags]), count]);
-  }
-  function clientData({
-    type,
-    origin,
-    challenge,
-  }: {
-    type: string;
-    origin: string;
-    challenge: string;
-  }) {
-    return Buffer.from(JSON.stringify({ type, origin, challenge }));
-  }
-  return {
-    id,
-    registration({ origin, challenge }: { origin: string; challenge: string }) {
-      const length = Buffer.alloc(CREDENTIAL_LENGTH_BYTES);
-      length.writeUInt16BE(credentialId.length);
-      const authData = Buffer.concat([
-        authenticatorData(REGISTRATION_FLAGS), // User present, user verified, attested credential included.
-        Buffer.alloc(AAGUID_BYTES),
-        length,
-        credentialId,
-        coseKey,
-      ]);
-      const attestation = isoCBOR.encode(
-        new Map<string, string | Map<string, never> | Uint8Array>([
-          ['fmt', 'none'],
-          ['attStmt', new Map<string, never>()],
-          ['authData', authData],
-        ]),
-      );
-      return {
-        id,
-        rawId: id,
-        type: 'public-key',
-        response: {
-          clientDataJSON: clientData({ type: 'webauthn.create', origin, challenge }).toString(
-            'base64url',
-          ),
-          attestationObject: Buffer.from(attestation).toString('base64url'),
-          transports: ['internal'],
-        },
-        clientExtensionResults: {},
-      };
-    },
-    authentication({ origin, challenge }: { origin: string; challenge: string }) {
-      const data = clientData({ type: 'webauthn.get', origin, challenge });
-      const authData = authenticatorData(AUTHENTICATION_FLAGS); // User present and user verified.
-      return {
-        id,
-        rawId: id,
-        type: 'public-key',
-        response: {
-          clientDataJSON: data.toString('base64url'),
-          authenticatorData: authData.toString('base64url'),
-          signature: sign(
-            'sha256',
-            Buffer.concat([authData, hash(data)]),
-            keys.privateKey,
-          ).toString('base64url'),
-        },
-        clientExtensionResults: {},
-      };
-    },
-  };
 }
 
 async function register({
