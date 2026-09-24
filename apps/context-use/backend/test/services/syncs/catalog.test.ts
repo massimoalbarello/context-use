@@ -145,7 +145,6 @@ test('provider registrations share management and destination code while deliver
             source: { provider: provider.id, kind: 'event', id: 'event-one', url: null },
             title: `${provider.id} event`,
             body: '# Event\n\nMeeting notes.',
-            occurredAt: now,
             sourceCreatedAt: now,
             sourceUpdatedAt: now,
           });

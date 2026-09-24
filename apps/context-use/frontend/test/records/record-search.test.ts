@@ -24,7 +24,6 @@ test('records use the shared retrieval pipeline, preserve relevance order, and k
         createdAt: timestamp,
         updatedAt: timestamp,
         source: { provider: 'github', kind: 'issue', id: id, url: null },
-        occurredAt: null,
       },
     })),
     totalMatches: 12,

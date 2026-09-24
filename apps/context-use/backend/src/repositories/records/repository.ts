@@ -65,7 +65,6 @@ function recordSummaryFrom(
       id: record.sourceId,
       url: record.sourceUrl,
     },
-    occurredAt: record.occurredAt,
     sourceCreatedAt: record.sourceCreatedAt,
     sourceUpdatedAt: record.sourceUpdatedAt,
     createdAt: record.createdAt,
@@ -198,14 +197,14 @@ async function publishRecord({
   const sourceUpdatedAt = (record ?? input.deletion!).sourceUpdatedAt;
   const sync = input.sync ?? { syncId: '', revision: 0 };
   await db.WriteRecord`
-    insert into "record" ("owner_id", "sync_id", "sync_revision", "readable_id", "provider", "kind", "source_id", "source_url", "title", "occurred_at",
+    insert into "record" ("owner_id", "sync_id", "sync_revision", "readable_id", "provider", "kind", "source_id", "source_url", "title",
       "source_created_at", "source_updated_at", "deleted_at", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
     values (${input.ownerId}, ${sync.syncId}, ${sync.revision}, ${readableId}, ${source.provider}, ${source.kind}, ${source.id}, ${record?.source.url ?? null},
-      ${record?.title ?? null}, ${record?.occurredAt ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt},
+      ${record?.title ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt},
       ${input.deletion ? input.receivedAt : null}, ${input.value?.storageKey ?? null}, ${input.value?.contentHash ?? null},
       ${input.value?.sizeBytes ?? null}, ${input.receivedAt}, ${input.receivedAt})
     on conflict ("owner_id", "sync_id", "provider", "kind", "source_id") do update set
-      "sync_revision" = excluded."sync_revision", "source_url" = excluded."source_url", "title" = excluded."title", "occurred_at" = excluded."occurred_at",
+      "sync_revision" = excluded."sync_revision", "source_url" = excluded."source_url", "title" = excluded."title",
       "source_created_at" = excluded."source_created_at", "source_updated_at" = excluded."source_updated_at",
       "deleted_at" = excluded."deleted_at", "storage_key" = excluded."storage_key", "content_hash" = excluded."content_hash",
       "size_bytes" = excluded."size_bytes", "updated_at" = excluded."updated_at"
@@ -315,7 +314,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
         select record."readable_id" as "readableId", record."title", record."provider", record."kind",
           record."source_id" as "sourceId", record."source_created_at" as "sourceCreatedAt",
           record."source_updated_at" as "sourceUpdatedAt",
-          record."source_url" as "sourceUrl", record."occurred_at" as "occurredAt",
+          record."source_url" as "sourceUrl",
           record."created_at" as "createdAt", record."updated_at" as "updatedAt"
         from "record" record
         where record."owner_id" = ${ownerId} and record."deleted_at" is null
@@ -327,13 +326,11 @@ export class RecordsRepository implements RecordsRepositoryContract {
           and (${updatedTo ?? null} is null or julianday(record."source_updated_at") < julianday(${updatedTo ?? null}))
         order by
           case ${sortBy} when 'sourceCreatedAt' then julianday(record."source_created_at") is null
-            when 'sourceUpdatedAt' then julianday(record."source_updated_at") is null when 'occurredAt' then julianday(record."occurred_at") is null else 0 end,
+            when 'sourceUpdatedAt' then julianday(record."source_updated_at") is null else 0 end,
           case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end asc,
           case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end asc,
           case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end desc,
           case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end desc,
-          case when ${sortDirection} = 'asc' and ${sortBy} = 'occurredAt' then julianday(record."occurred_at") end asc,
-          case when ${sortDirection} = 'desc' and ${sortBy} = 'occurredAt' then julianday(record."occurred_at") end desc,
         record."readable_id"
         limit ${limit + 1} offset ${offset}
       `;
@@ -374,7 +371,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
         /* @notNull title provider readableId kind sourceId storageKey contentHash sizeBytes createdAt updatedAt */
         select record."title", record."provider", record."source_created_at" as "sourceCreatedAt",
           record."source_updated_at" as "sourceUpdatedAt",
-          record."source_url" as "sourceUrl", record."occurred_at" as "occurredAt",
+          record."source_url" as "sourceUrl",
           record."readable_id" as "readableId", record."kind", record."source_id" as "sourceId",
           record."storage_key" as "storageKey", record."content_hash" as "contentHash",
           record."size_bytes" as "sizeBytes", record."created_at" as "createdAt",

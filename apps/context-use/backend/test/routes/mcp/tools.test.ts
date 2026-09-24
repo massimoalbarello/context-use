@@ -577,7 +577,6 @@ test('record search previews have exact owner-scoped read paths without imported
     createdAt: NOW,
     updatedAt: NOW,
     source: { provider: 'calendar', kind: 'meeting', id: 'meeting-42', url: null },
-    occurredAt: null,
   };
   const markdown = '# Planning meeting\n\nEvidence that must not be included in search previews.';
   await withMcpClient({
@@ -635,7 +634,6 @@ test('record search previews have exact owner-scoped read paths without imported
             address: 'context-use://record/calendar-meeting-42',
             readableId: record.readableId,
             title: record.title,
-            occurredAt: null,
             sourceCreatedAt: null,
             sourceUpdatedAt: null,
             matchExcerpt: 'Meeting with Samantha.',

@@ -15,15 +15,14 @@ const record: ContextRecord = {
   body: 'Discussion notes.',
   backlinks: [],
   source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
-  occurredAt: null,
 };
 
-test('record metadata shows source identity and occurrence separately from ingestion dates', () => {
-  render(<RecordMetadata record={{ ...record, occurredAt: '2001-01-09T13:00:00.000Z' }} />);
+test('record metadata shows source identity and source dates separately from ingestion dates', () => {
+  render(<RecordMetadata record={{ ...record, sourceCreatedAt: '2001-01-09T13:00:00.000Z' }} />);
   expect(screen.getByText(record.source.provider)).toBeTruthy();
   expect(screen.getByText(record.source.kind)).toBeTruthy();
-  expect(screen.getByText('Occurred at').nextElementSibling?.querySelector('time')?.dateTime).toBe(
-    '2001-01-09T13:00:00.000Z',
-  );
+  expect(
+    screen.getByText('Source created').nextElementSibling?.querySelector('time')?.dateTime,
+  ).toBe('2001-01-09T13:00:00.000Z');
   expect(screen.queryByText('Participants')).toBeNull();
 });

@@ -33,7 +33,6 @@ create table "record" (
   "source_id" text not null,
   "source_url" text,
   "title" text,
-  "occurred_at" text,
   "source_created_at" text,
   "source_updated_at" text,
   "deleted_at" text,
@@ -61,7 +60,6 @@ create table "record" (
   check (length(trim("updated_at")) > 0)
 );
 create index "record_owner_updated_idx" on "record" ("owner_id", "updated_at" desc, "readable_id") where "deleted_at" is null;
-create index "record_occurred_idx" on "record" ("owner_id", julianday("occurred_at")) where "deleted_at" is null;
 create index "record_source_created_idx" on "record" ("owner_id", julianday("source_created_at")) where "deleted_at" is null;
 create index "record_source_updated_idx" on "record" ("owner_id", julianday("source_updated_at")) where "deleted_at" is null;
 create index "record_provider_kind_idx" on "record" ("owner_id", "provider", "kind") where "deleted_at" is null;

@@ -122,7 +122,6 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
           },
           title: 'A title',
           body: '# Source body',
-          occurredAt: NOW,
         },
       });
       const other = await service.upsert({
@@ -143,14 +142,12 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
       expect(list.items[0]).toMatchObject({
         readableId: own.readableId,
         source: { provider: 'github', kind: 'pull-request', id: '1' },
-        occurredAt: NOW,
       });
       expect(list.items[0]).not.toHaveProperty('body');
       const detail = await (await get(`/${own.readableId}`)).json();
       expect(detail).toMatchObject({
         title: 'A title',
         body: '# Source body',
-        occurredAt: NOW,
         backlinks: [],
       });
       expect(detail).not.toHaveProperty('sync');

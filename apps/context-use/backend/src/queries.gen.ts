@@ -505,7 +505,6 @@ export interface ISearchHypermediaResult {
     recordKind: string | null;
     recordId: string | null;
     sourceUrl: string | null;
-    occurredAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -856,7 +855,6 @@ export interface IListRecordResourcesResult {
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
     sourceUrl: string | null;
-    occurredAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -874,7 +872,6 @@ export interface IFindRecordResourceResult {
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
     sourceUrl: string | null;
-    occurredAt: string | null;
     readableId: string;
     kind: string;
     sourceId: string;

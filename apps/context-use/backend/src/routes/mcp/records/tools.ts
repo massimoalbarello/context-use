@@ -48,7 +48,6 @@ export function registerRecordTools({
             title: record.title,
             source: record.source,
             body: record.body,
-            occurredAt: record.occurredAt,
             sourceCreatedAt: record.sourceCreatedAt,
             sourceUpdatedAt: record.sourceUpdatedAt,
             backlinks: record.backlinks.map(mcpKnowledgePageSummary),

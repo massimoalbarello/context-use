@@ -113,12 +113,6 @@ export function RecordMetadata({ record }: { record: ContextRecord }) {
         <dt className="text-muted-foreground">Data kind</dt>
         <dd>{record.source.kind}</dd>
       </div>
-      <div className="sm:col-span-2">
-        <dt className="text-muted-foreground">Occurred at</dt>
-        <dd>
-          <RecordTimestamp value={record.occurredAt} />
-        </dd>
-      </div>
       <div>
         <dt className="text-muted-foreground">Source created</dt>
         <dd>

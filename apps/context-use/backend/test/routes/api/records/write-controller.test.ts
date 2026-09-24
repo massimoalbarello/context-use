@@ -43,7 +43,6 @@ test('API keys and direct local writes share native identity; revocation cannot 
         source: { provider: 'github', kind: 'pull-request', id: 'PR_42' },
         title: 'PR title',
         body: '# Evidence',
-        occurredAt: NOW,
         sourceUpdatedAt: NOW,
       };
       const local = await recordsService.upsert({

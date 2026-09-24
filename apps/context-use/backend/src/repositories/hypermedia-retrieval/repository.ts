@@ -110,7 +110,6 @@ function resultFrom({
           id: row.recordId,
           url: row.sourceUrl,
         },
-        occurredAt: row.occurredAt,
         sourceCreatedAt: row.sourceCreatedAt,
         sourceUpdatedAt: row.sourceUpdatedAt,
         createdAt: row.createdAt,
@@ -335,7 +334,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         record."title" as "recordTitle", record."provider" as "recordProvider",
         record."source_created_at" as "sourceCreatedAt", record."source_updated_at" as "sourceUpdatedAt",
         record."kind" as "recordKind", record."source_id" as "recordId",
-        record."source_url" as "sourceUrl", record."occurred_at" as "occurredAt",
+        record."source_url" as "sourceUrl",
         case document."resource_type"
           when 'entity' then entity."created_at"
           when 'knowledge_page' then page."created_at"

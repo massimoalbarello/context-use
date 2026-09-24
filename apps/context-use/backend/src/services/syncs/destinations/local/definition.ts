@@ -43,7 +43,6 @@ function deliveredRecords(input: {
         assetRefs: record.assetRefs ?? {},
         assets: input.assets,
       }),
-      occurredAt: record.createdAt,
       sourceCreatedAt: record.createdAt,
       sourceUpdatedAt: record.updatedAt,
     });
