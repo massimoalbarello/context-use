@@ -6,7 +6,7 @@ import { createOpenSync } from '@context-use/open-sync';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { syncProviders } from '#backend/services/syncs/providers/index.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 
 const actor = { actorId: OWNER_USER_ID, providerId: 'github' };
 test('OAuth app credentials persist through the installed package without becoming account authorization or leaking its secret in status', async () => {

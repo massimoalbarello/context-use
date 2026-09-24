@@ -18,8 +18,8 @@ import { localRecordDestination } from '#backend/services/syncs/destinations/loc
 import {
   githubPullRequests,
   stepGithubPullRequests,
-} from '#backend/services/syncs/sources/github/pull-requests.ts';
-import { githubRecord } from '#backend/services/syncs/sources/github/record.ts';
+} from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
+import { githubRecord } from '#backend/services/syncs/sources/github/pull-requests/record.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
 

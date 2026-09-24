@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import type { ProviderResponse } from '@context-use/open-sync/definition';
 import { SourceHttpError } from '@context-use/open-sync/definition';
 import { postGithubGraphql } from '#backend/services/syncs/sources/github/request.ts';
-import { githubContext, page } from './github-fixture.ts';
+import { githubContext, page } from '../../github-fixture.ts';
 
 const cases: { response: ProviderResponse; status: number }[] = [
   { response: { status: 401, headers: {}, body: 'private token' }, status: 401 },

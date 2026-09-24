@@ -1,7 +1,7 @@
 import type { SyncContext, SyncRegistration, SyncStep } from '@context-use/open-sync/definition';
 import { z } from 'zod';
+import { errorsSchema, postGithubGraphql } from '../request.ts';
 import { githubRecord, pullSchema } from './record.ts';
-import { errorsSchema, postGithubGraphql } from './request.ts';
 
 // A GitHub cursor resumes pages within one polling iteration; it is not a change token.
 // Keep the previous watermark while paging. Only a completed iteration advances it to

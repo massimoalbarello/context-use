@@ -1,6 +1,6 @@
 import type { SyncContext } from '@context-use/open-sync/definition';
 import type { JsonObject } from '@context-use/open-sync/json';
-import type { githubRecord } from '#backend/services/syncs/sources/github/record.ts';
+import type { githubRecord } from '#backend/services/syncs/sources/github/pull-requests/record.ts';
 export const now = '2026-09-17T12:00:00.000Z';
 export function pull(
   input: { id?: string; title?: string; createdAt?: string; updatedAt?: string } = {},

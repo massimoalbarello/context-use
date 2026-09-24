@@ -58,7 +58,7 @@ import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { syncProviders } from '#backend/services/syncs/providers/index.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;

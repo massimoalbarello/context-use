@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { OpenSyncOptions } from '@context-use/open-sync';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
-import { githubPullRequests } from '#backend/services/syncs/sources/github/pull-requests.ts';
+import { githubPullRequests } from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
 import { page } from './github-fixture.ts';
 
 type Event = Parameters<NonNullable<OpenSyncOptions['onEvent']>>[0];
