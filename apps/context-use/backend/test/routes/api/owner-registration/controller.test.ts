@@ -54,6 +54,7 @@ const frontendAssetsService: FrontendAssetsServiceContract = {
   fallback: () => null,
 };
 const assetsService: AssetsServiceContract = {
+  preview: unexpectedCall,
   faces: unusedAssetFacesService,
   create: unexpectedCall,
   list: unexpectedCall,
@@ -63,6 +64,7 @@ const assetsService: AssetsServiceContract = {
   content: unexpectedCall,
 };
 const entitiesService: EntitiesServiceContract = {
+  preview: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
   create: unexpectedCall,

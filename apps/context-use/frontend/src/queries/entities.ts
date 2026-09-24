@@ -34,7 +34,6 @@ export const entitiesQueryKey = ['entities'] as const;
 export const entitiesListQueryKey = [...entitiesQueryKey, 'list'] as const;
 export const entityDetailsQueryKey = [...entitiesQueryKey, 'detail'] as const;
 export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
-const PREVIEW_RELATIONSHIP_LIMIT = 12;
 
 async function entitySearchPage({
   query,
@@ -102,7 +101,7 @@ export function entityPreviewQueryOptions(readableId: string) {
     queryFn: async () => {
       const { data, error } = await api.api
         .entities({ entityReadableId: readableId })
-        .get({ query: { relationshipLimit: PREVIEW_RELATIONSHIP_LIMIT } });
+        .preview.get();
       if (error) {
         throw new Error(apiErrorMessage(error));
       }

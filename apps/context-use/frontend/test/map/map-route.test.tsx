@@ -92,7 +92,6 @@ test('Map previews entities without filtering pages and recovers from page failu
     );
     client.setQueryData(entityPreviewQueryOptions(entity.readableId).queryKey, {
       ...entity,
-      pages: [],
     });
   }
   const requests: URL[] = [];

@@ -1,5 +1,5 @@
 import { t } from 'elysia';
-import type { Asset, AssetUsage } from '#backend/models/assets/model.ts';
+import type { Asset, AssetSummary, AssetUsage } from '#backend/models/assets/model.ts';
 import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import {
   AssetSummarySchema,
@@ -59,6 +59,24 @@ export const AssetSchema = t.Object({
     }),
   ),
 });
+
+export const AssetPreviewSchema = t.Pick(AssetSummarySchema, [
+  'readableId',
+  'name',
+  'mediaType',
+  'extension',
+  'sizeBytes',
+]);
+
+export function assetPreviewResponse(asset: AssetSummary) {
+  return {
+    readableId: asset.readableId,
+    name: asset.name,
+    mediaType: asset.mediaType,
+    extension: asset.extension,
+    sizeBytes: asset.sizeBytes,
+  };
+}
 
 export const AssetListSchema = t.Object({
   items: t.Array(AssetSummarySchema),

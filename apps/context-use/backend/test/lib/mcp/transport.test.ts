@@ -41,6 +41,7 @@ const entity: EntityDetail = {
 };
 
 const entitiesService: EntitiesServiceContract = {
+  preview: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
   create: unexpectedCall,
@@ -51,6 +52,7 @@ const entitiesService: EntitiesServiceContract = {
 };
 
 const assetsService: AssetsServiceContract = {
+  preview: unexpectedCall,
   faces: unusedAssetFacesService,
   create: unexpectedCall,
   list: unexpectedCall,

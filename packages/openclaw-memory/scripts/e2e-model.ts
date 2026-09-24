@@ -36,6 +36,7 @@ export function startModel() {
   let phase: 'setup' | 'learn' | 'recall' | 'background' | 'removed' = 'learn';
   let setupCommand = '';
   let setupStarted = false;
+  let setupConfirmed = false;
   let setupSession: string | undefined;
   let guideVersion: string | undefined;
   let mainStep = 0;
@@ -57,6 +58,7 @@ export function startModel() {
     const output = JSON.stringify(
       input.messages.filter((message) => message.role === 'tool').at(-1)?.content,
     );
+    setupConfirmed ||= output.includes('Open this URL') || output.includes('Context Use connected');
     setupSession ??= output.match(/Command still running \(session ([^,]+),/)?.[1];
     if (setupSession && !output.includes('Process exited with code 0')) {
       assert(
@@ -71,10 +73,7 @@ export function startModel() {
         answer: '',
       };
     }
-    assert(
-      output.includes('Open this URL') || output.includes('Context Use connected'),
-      `Agent setup command did not complete: ${output}`,
-    );
+    assert(setupConfirmed, `Agent setup command did not complete: ${output}`);
     return { answer: 'Plugin setup completed; follow the authorization instructions.' };
   }
   function recallReply(input: ModelInput): Reply {
@@ -431,6 +430,7 @@ export function startModel() {
       phase = 'setup';
       setupCommand = command;
       setupStarted = false;
+      setupConfirmed = false;
       setupSession = undefined;
     },
     learn: () => {

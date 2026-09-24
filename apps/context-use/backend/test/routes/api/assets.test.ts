@@ -417,9 +417,22 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       }),
     ]);
     const previewDetailResponse = await app.handle(
-      new Request('http://localhost/api/assets/quarterly-chart?relationshipLimit=2'),
+      new Request('http://localhost/api/assets/quarterly-chart/preview'),
     );
-    expect(((await previewDetailResponse.json()) as { usages: unknown[] }).usages).toHaveLength(2);
+    expect(previewDetailResponse.status).toBe(StatusMap.OK);
+    expect(await previewDetailResponse.json()).toEqual({
+      readableId: 'quarterly-chart',
+      name: 'Quarterly chart',
+      mediaType: 'image/png',
+      extension: 'png',
+      sizeBytes: pngBytes.byteLength,
+    });
+    const entityPreviewResponse = await app.handle(
+      new Request('http://localhost/api/entities/luca-bianchi/preview'),
+    );
+    expect(await entityPreviewResponse.json()).toMatchObject({
+      image: { readableId: 'quarterly-chart' },
+    });
 
     const blockedResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
@@ -474,6 +487,9 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(archiveResponse.status).toBe(StatusMap['No Content']);
     expect(await storage.exists(storedRows[0]!.storageKey)).toBe(true);
+    expect(
+      (await app.handle(new Request('http://localhost/api/assets/quarterly-chart/preview'))).status,
+    ).toBe(StatusMap['Not Found']);
     expect(
       (await app.handle(new Request('http://localhost/api/assets/quarterly-chart/content'))).status,
     ).toBe(StatusMap['Not Found']);

@@ -7,7 +7,6 @@ import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
 import { useRecord } from '../../lib/hooks/use-records';
 import type { ResourceSelection } from '../../lib/resource-selection';
-import type { KnowledgePageSummary } from '../../queries/pages';
 import { AssetFileActions } from '../assets/asset-file-actions';
 import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
@@ -89,25 +88,6 @@ function PreviewError({ error, retry }: { error: Error; retry: () => Promise<unk
   );
 }
 
-function PreviewPageSection({ pages }: { pages: KnowledgePageSummary[] }) {
-  return (
-    <section className="border-t pt-5">
-      <h3 className="font-semibold text-base">Mentioned by knowledge pages</h3>
-      {pages.length > 0 ? (
-        <ResourceList className="mt-3">
-          {pages.map((page) => (
-            <li key={page.readableId}>
-              <KnowledgePageLink page={page} presentation="card" />
-            </li>
-          ))}
-        </ResourceList>
-      ) : (
-        <p className="mt-2 text-muted-foreground text-sm">None yet.</p>
-      )}
-    </section>
-  );
-}
-
 type PreviewProps = {
   onExpand: () => void;
   readableId: string;
@@ -158,7 +138,6 @@ function EntityPreview({ readableId, onClose, onExpand }: PreviewProps) {
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
-          <PreviewPageSection pages={entity.pages} />
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>

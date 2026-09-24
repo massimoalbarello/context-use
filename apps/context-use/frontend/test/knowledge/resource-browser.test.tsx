@@ -74,6 +74,18 @@ async function renderResourceBrowser(path = '/pages') {
     assetUsages: [],
     revisions: [],
   };
+  entity.pages = [
+    {
+      readableId: page.readableId,
+      title: page.title,
+      excerpt: page.excerpt,
+      temporalCoverage: page.temporalCoverage,
+      revisionNumber: page.revisionNumber,
+      createdAt: page.createdAt,
+      updatedAt: page.updatedAt,
+    },
+  ];
+  asset.usages = [{ kind: 'page', page: entity.pages[0]!, presentation: 'embed' }];
   const session: Session = {
     session: {
       id: 'session',
@@ -155,8 +167,19 @@ async function renderResourceBrowser(path = '/pages') {
           '/api/pages/launch': page,
           '/api/pages/launch/preview': page,
           '/api/entities/owner': entity,
-          '/api/entities/owner/preview': entity,
+          '/api/entities/owner/preview': {
+            name: entity.name,
+            description: entity.description,
+            image: entity.image,
+          },
           '/api/assets/chart': asset,
+          '/api/assets/chart/preview': {
+            readableId: asset.readableId,
+            name: asset.name,
+            mediaType: asset.mediaType,
+            extension: asset.extension,
+            sizeBytes: asset.sizeBytes,
+          },
           '/api/records/research': record,
         };
         if (responses[url.pathname]) {
@@ -399,27 +422,53 @@ test('preview links retain canonical URLs and modifier clicks without leaving th
   }
 });
 
-test('asset previews use bounded relationships and expansion loads the full detail', async () => {
-  const app = await renderResourceBrowser('/assets?resource=asset&resourceId=chart');
-  try {
-    const user = userEvent.setup();
-    await screen.findByRole('heading', { name: 'Launch chart' });
-    expect(
-      app.requests
-        .filter((url) => url.pathname === '/api/assets/chart')
-        .map((url) => url.searchParams.get('relationshipLimit')),
-    ).toEqual(['12']);
-    await user.click(screen.getByRole('button', { name: 'Expand' }));
-    await screen.findByRole('button', { name: 'Edit asset' });
-    expect(
-      app.requests
-        .filter((url) => url.pathname === '/api/assets/chart')
-        .map((url) => url.searchParams.get('relationshipLimit')),
-    ).toEqual(['12', null]);
-  } finally {
-    app.dispose();
-  }
-});
+for (const { kind, id, name, edit, relationships } of [
+  {
+    kind: 'asset',
+    id: 'chart',
+    name: 'Launch chart',
+    edit: 'Edit asset',
+    relationships: 'Embedded in',
+  },
+  {
+    kind: 'entity',
+    id: 'owner',
+    name: 'Owner',
+    edit: 'Edit entity',
+    relationships: 'Mentioned by',
+  },
+]) {
+  test(`${kind} previews omit relationships and Expand loads full detail`, async () => {
+    const app = await renderResourceBrowser(
+      `/${kind === 'asset' ? 'assets' : 'entities'}?resource=${kind}&resourceId=${id}`,
+    );
+    try {
+      const user = userEvent.setup();
+      await screen.findByRole('heading', { name });
+      const preview = screen.getByRole('complementary', {
+        name: `${kind === 'asset' ? 'Asset' : 'Entity'} preview`,
+      });
+      expect(within(preview).queryByText(relationships)).toBeNull();
+      const path = `/api/${kind === 'asset' ? 'assets' : 'entities'}/${id}`;
+      expect(
+        app.requests
+          .filter((url) => url.pathname === path || url.pathname === `${path}/preview`)
+          .map((url) => url.pathname + url.search),
+      ).toEqual([`${path}/preview`]);
+      await user.click(screen.getByRole('button', { name: 'Expand' }));
+      await screen.findByRole('button', { name: edit });
+      expect(screen.getByText(relationships)).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Launch plan Launch overview' })).toBeTruthy();
+      expect(
+        app.requests
+          .filter((url) => url.pathname === path || url.pathname === `${path}/preview`)
+          .map((url) => url.pathname + url.search),
+      ).toEqual([`${path}/preview`, path]);
+    } finally {
+      app.dispose();
+    }
+  });
+}
 
 test('searching and clearing an asset query preserves its preview', async () => {
   const app = await renderResourceBrowser('/assets?resource=asset&resourceId=chart');

@@ -93,6 +93,7 @@ const principal: McpClientAuthorizationPrincipal = {
 };
 
 const unusedAssetsService: AssetsServiceContract = {
+  preview: unexpectedCall,
   faces: unusedAssetFacesService,
   create: unexpectedCall,
   list: unexpectedCall,
@@ -103,6 +104,7 @@ const unusedAssetsService: AssetsServiceContract = {
 };
 
 const unusedEntitiesService: EntitiesServiceContract = {
+  preview: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
   detail: unexpectedCall,

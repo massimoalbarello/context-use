@@ -9,6 +9,6 @@ export function useEntity(readableId: string): UseQueryResult<EntityDetail, Erro
   return useQuery(entityQueryOptions(readableId));
 }
 
-export function useEntityPreview(readableId: string): UseQueryResult<EntityDetail, Error> {
+export function useEntityPreview(readableId: string) {
   return useQuery(entityPreviewQueryOptions(readableId));
 }

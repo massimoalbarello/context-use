@@ -869,12 +869,15 @@ Every observation changes the next action.`,
     const temporalEntityPreviewResponse = await app.handle(
       jsonRequest({
         method: 'GET',
-        path: '/entities/temporal-subject?relationshipLimit=1',
+        path: '/entities/temporal-subject/preview',
       }),
     );
-    expect(
-      ((await temporalEntityPreviewResponse.json()) as { pages: unknown[] }).pages,
-    ).toHaveLength(1);
+    expect(temporalEntityPreviewResponse.status).toBe(StatusMap.OK);
+    expect(await temporalEntityPreviewResponse.json()).toEqual({
+      name: 'Temporal subject',
+      description: 'Subject used to verify related history.',
+      image: null,
+    });
 
     const knowledgePagePreviewResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages/growth-playbook/preview' }),

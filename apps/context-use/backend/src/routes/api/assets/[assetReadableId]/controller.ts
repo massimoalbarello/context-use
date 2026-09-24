@@ -5,14 +5,15 @@ import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import {
   AssetContentQuerySchema,
   AssetParamsSchema,
+  AssetPreviewSchema,
   AssetResourceInUseResponseSchema,
   AssetSchema,
+  assetPreviewResponse,
   assetResponse,
   assetUsageResponse,
   UpdateAssetBodySchema,
 } from '#backend/routes/api/assets/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
-import { PreviewRelationshipsQuerySchema } from '#backend/routes/api/model.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 
@@ -29,11 +30,10 @@ export function createAssetReadableIdController({
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .get(
       '/assets/:assetReadableId',
-      async ({ params, query, user, status }) => {
+      async ({ params, user, status }) => {
         const asset = await assetsService.detail({
           ownerId: user.id,
           readableId: params.assetReadableId,
-          usageLimit: query.relationshipLimit,
         });
         return asset
           ? status(StatusMap.OK, assetResponse(asset))
@@ -42,8 +42,27 @@ export function createAssetReadableIdController({
       {
         detail: { tags: ['Assets'], summary: 'Read an asset and its usages' },
         params: AssetParamsSchema,
-        query: PreviewRelationshipsQuerySchema,
         response: { [StatusMap.OK]: AssetSchema, [StatusMap['Not Found']]: ErrorResponseSchema },
+      },
+    )
+    .get(
+      '/assets/:assetReadableId/preview',
+      async ({ params, user, status }) => {
+        const asset = await assetsService.preview({
+          ownerId: user.id,
+          readableId: params.assetReadableId,
+        });
+        return asset
+          ? status(StatusMap.OK, assetPreviewResponse(asset))
+          : status(StatusMap['Not Found'], { error: 'Asset not found' });
+      },
+      {
+        detail: { tags: ['Assets'], summary: 'Read an asset preview' },
+        params: AssetParamsSchema,
+        response: {
+          [StatusMap.OK]: AssetPreviewSchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
       },
     )
     .get(
