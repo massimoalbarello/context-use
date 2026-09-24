@@ -79,8 +79,8 @@ test('npm engine immediately backfills native pages across restart, then polls o
       const host = await store(input);
       const requested: Array<{ cursor: string | null; updates: boolean }> = [];
       let malformed = true;
-      let edited: JsonObject | undefined;
-      let added: JsonObject | undefined;
+      let edited: ReturnType<typeof pull> | undefined;
+      let added: ReturnType<typeof pull> | undefined;
       const options = {
         databasePath: join(input.dataFolder, 'sync.db'),
         definitions: [definition],
@@ -95,9 +95,7 @@ test('npm engine immediately backfills native pages across restart, then polls o
               requested.push({ cursor, updates });
               let result: JsonObject;
               if (updates) {
-                const changed = [added, edited].filter(
-                  (record): record is JsonObject => record !== undefined,
-                );
+                const changed = [added, edited].filter((record) => record !== undefined);
                 result = page({ nodes: [...changed, pull({ id: 'PR_three' })], more: true });
               } else if (cursor === null) {
                 result = page({
@@ -109,7 +107,7 @@ test('npm engine immediately backfills native pages across restart, then polls o
                   cursor: 'last',
                   nodes: [
                     pull({ id: 'PR_three' }),
-                    ...[added].filter((record): record is JsonObject => record !== undefined),
+                    ...[added].filter((record) => record !== undefined),
                   ],
                 });
               }
@@ -456,25 +454,13 @@ test('partial publication and a lost acknowledgement replay after restart withou
   });
 });
 
-test('unavailable assets, deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
+test('deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       const host = await store(input);
       const record = { ...githubRecord(pull()), revision: 1 };
       const valid = bundle([record]);
       for (const invalid of [
-        {
-          ...valid,
-          assets: [
-            {
-              id: 'asset',
-              version: '1',
-              name: 'file',
-              mediaType: 'text/plain',
-              unavailable: 'unavailable',
-            },
-          ],
-        },
         bundle([{ ...record, assetRefs: { file: { id: 'asset', version: '1' } } }]),
         bundle([record, { operation: 'delete', kind: 'pull-request', id: 'deleted', revision: 1 }]),
         bundle([record, { ...record, id: 'bad', content: undefined }]),

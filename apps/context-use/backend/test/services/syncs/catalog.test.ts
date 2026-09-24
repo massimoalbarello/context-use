@@ -112,10 +112,10 @@ test('provider registrations share management and destination code while deliver
           await runtime.tick();
         }
         const listed = await service.list(actor);
-        expect(listed[0]?.syncs[0]?.state).toBe('error');
+        expect(listed[0]?.syncs[0]).toMatchObject({ key: 'alpha.events', state: 'error' });
         expect(listed[1]?.syncs[0]?.state).toBe('ready');
         expect(listed[1]?.account.name).toBe('beta-account');
-        await service.update({ ...actor, key: 'alpha-events', action: 'pause' });
+        await service.update({ ...actor, key: 'alpha.events', action: 'pause' });
         const paused = await service.list(actor);
         expect(paused[0]?.syncs[0]?.state).toBe('paused');
         expect(paused[1]?.syncs[0]?.state).toBe('ready');
@@ -124,8 +124,8 @@ test('provider registrations share management and destination code while deliver
           'beta',
         ]);
         rejectAlpha = false;
-        await service.update({ ...actor, key: 'alpha-events', action: 'resume' });
-        await service.update({ ...actor, key: 'alpha-events', action: 'run' });
+        await service.update({ ...actor, key: 'alpha.events', action: 'resume' });
+        await service.update({ ...actor, key: 'alpha.events', action: 'run' });
         await runtime.tick();
         await runtime.tick();
         expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('ready');

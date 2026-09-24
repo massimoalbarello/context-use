@@ -1,7 +1,7 @@
 import type { SyncContext, SyncRegistration, SyncStep } from '@context-use/open-sync/definition';
 import { z } from 'zod';
 import { githubRecord, pullSchema } from './record.ts';
-import { postGithubGraphql } from './request.ts';
+import { errorsSchema, postGithubGraphql } from './request.ts';
 
 const checkpointSchema = z.strictObject({
   accountId: z.string().nullable(),
@@ -22,7 +22,6 @@ const responseSchema = z.object({
   errors: z.never().optional(),
   data: z.object({ viewer: z.object({ id: z.string().min(1), pullRequests: pageSchema }) }),
 });
-const errorsSchema = z.object({ errors: z.array(z.object({ type: z.string().optional() })) });
 
 // Backfill once in stable creation order; subsequent polls stop below the saved update window.
 // Freeze the cycle start before retrieval so edits that move ahead of a cursor remain eligible next poll.

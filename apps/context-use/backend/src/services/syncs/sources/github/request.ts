@@ -2,7 +2,9 @@ import { SourceHttpError, type SyncContext } from '@context-use/open-sync/defini
 import type { JsonObject } from '@context-use/open-sync/json';
 import { z } from 'zod';
 
-const errorsSchema = z.object({ errors: z.array(z.object({ type: z.string().optional() })) });
+export const errorsSchema = z.object({
+  errors: z.array(z.object({ type: z.string().optional() })),
+});
 const HTTP_OK = 200;
 const FORBIDDEN = 403;
 const RATE_LIMITED = 429;

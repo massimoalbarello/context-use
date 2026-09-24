@@ -11,7 +11,6 @@ export const githubProvider = {
   },
   syncs: [
     {
-      key: 'github-pull-requests',
       name: 'Pull requests',
       description: 'Pull requests you authored, saved as searchable records.',
       intervalMs: 900_000,

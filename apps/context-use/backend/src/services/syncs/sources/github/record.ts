@@ -15,8 +15,7 @@ export const pullSchema = z.object({
   author: z.object({ id: z.string(), login: z.string() }).nullable(),
 });
 
-export function githubRecord(value: unknown) {
-  const pull = pullSchema.parse(value);
+export function githubRecord(pull: z.infer<typeof pullSchema>) {
   const title = `${pull.repository.nameWithOwner} #${pull.number}: ${pull.title}`;
   return {
     operation: 'upsert',

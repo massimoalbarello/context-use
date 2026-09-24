@@ -8,7 +8,6 @@ import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { githubProvider } from '#backend/services/syncs/providers/github.ts';
 import { syncProviders } from '#backend/services/syncs/providers/index.ts';
 import { githubPullRequests } from '#backend/services/syncs/sources/github/pull-requests.ts';
 
@@ -119,15 +118,15 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
     expect((await service.list(actor))[0]?.account.name).toBe('octocat');
     await service.completeConnection(actor);
     expect(runtime.api.syncs(scope)).toHaveLength(1);
-    await service.update({ ...actor, key: githubProvider.syncs[0]!.key, action: 'pause' });
+    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'pause' });
     expect((await service.list(actor))[0]?.syncs[0]).toMatchObject({
       state: 'paused',
       message: 'Automatic syncing is paused. Your records are kept.',
     });
     await expect(
-      service.update({ ...actor, key: githubProvider.syncs[0]!.key, action: 'run' }),
+      service.update({ ...actor, key: githubPullRequests.definition.id, action: 'run' }),
     ).rejects.toThrow('Resume');
-    await service.update({ ...actor, key: githubProvider.syncs[0]!.key, action: 'resume' });
+    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resume' });
     const summary = (await service.list(actor))[0]!;
     expect(summary.account.name).toBe('octocat');
     expect(summary.syncs[0]?.state).toBe('syncing');
@@ -142,14 +141,14 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
       'This sync could not finish. Automatic retries continue.',
     );
     providerError = new SourceHttpError({ status: 401 });
-    await service.update({ ...actor, key: githubProvider.syncs[0]!.key, action: 'run' });
+    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'run' });
     await runtime.tick();
     expect((await service.list(actor))[0]?.syncs[0]).toMatchObject({
       state: 'paused',
       nextSyncAt: null,
       message: 'Syncing paused after a provider error. Check your account access before resuming.',
     });
-    await service.update({ ...actor, key: githubProvider.syncs[0]!.key, action: 'resume' });
+    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resume' });
     expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('syncing');
     await expect(service.update({ ...actor, key: 'missing', action: 'pause' })).rejects.toThrow(
       'Sync not found.',

@@ -125,7 +125,7 @@ export class ManagedSyncsService {
             : [];
           const lastSuccess = polls.find((poll) => poll.state === 'succeeded');
           return {
-            key: sync.key,
+            key: sync.registration.definition.id,
             name: sync.name,
             description: sync.description,
             provider: provider.id,

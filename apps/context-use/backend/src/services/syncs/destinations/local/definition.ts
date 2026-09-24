@@ -20,19 +20,12 @@ import { importedAssetReadableId, mapRecordAssets } from './record-assets.ts';
 // Validate all rewritten records before publishing any; each publication commits its own revision.
 function deliveredRecords(input: {
   deliverable: Deliverable;
-  registration: SyncRegistration;
   provider: string;
   assets: ReadonlyMap<string, { readableId: string; name: string }>;
 }) {
   const records = [];
   for (const record of input.deliverable.records) {
-    if (
-      record.operation !== 'upsert' ||
-      !Object.hasOwn(input.registration.definition.kinds, record.kind) ||
-      !record.content ||
-      !Number.isSafeInteger(record.revision) ||
-      record.revision < 1
-    ) {
+    if (record.operation !== 'upsert' || !record.content) {
       return null;
     }
     const parsed = RecordInputSchema.safeParse({
@@ -104,13 +97,11 @@ export function localRecordDestination(input: {
 }): DestinationType {
   async function publish({
     deliverable,
-    registration,
     provider,
     assets,
     signal,
   }: {
     deliverable: Deliverable;
-    registration: SyncRegistration;
     provider: string;
     assets: Map<string, AssetImport>;
     signal: AbortSignal;
@@ -133,7 +124,7 @@ export function localRecordDestination(input: {
     }
     let records: ReturnType<typeof deliveredRecords>;
     try {
-      records = deliveredRecords({ deliverable, registration, provider, assets: imported });
+      records = deliveredRecords({ deliverable, provider, assets: imported });
     } catch {
       return { status: 'rejected', code: 'invalid_asset_reference' };
     }
@@ -182,7 +173,7 @@ export function localRecordDestination(input: {
         };
       }
       try {
-        return await publish({ deliverable, registration, provider, assets, signal });
+        return await publish({ deliverable, provider, assets, signal });
       } catch (error) {
         if (error instanceof InvalidRecordAssetError) {
           return { status: 'rejected', code: 'invalid_asset_reference' };

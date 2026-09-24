@@ -12,7 +12,6 @@ export function fixtureProvider(id: string): SyncProvider {
     oauth: { createAppUrl: `https://${id}.example/apps`, authorizationOptionIds: ['read'] },
     syncs: [
       {
-        key: `${id}-events`,
         name: 'Events',
         description: 'Calendar events',
         intervalMs: 60_000,
