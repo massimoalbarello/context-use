@@ -814,6 +814,46 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindPendingPublicationApproval`. */
+export interface IFindPendingPublicationApprovalResult {
+    id: string;
+    challenge: string;
+    ownerId: string;
+    resourceType: "page" | "entity" | "asset";
+    readableId: string;
+    action: "publish" | "unpublish";
+    revisionNumber: number | null;
+    expectedState: string;
+    expiresAt: string;
+}
+
+/** Result of query `DeleteExpiredPublicationApprovals`. */
+export interface IDeleteExpiredPublicationApprovalsResult {
+}
+
+/** Result of query `CreatePublicationApproval`. */
+export interface ICreatePublicationApprovalResult {
+    id: string;
+}
+
+/** Result of query `ListPublicationCredentials`. */
+export interface IListPublicationCredentialsResult {
+    id: string;
+    credentialId: string;
+    publicKey: string;
+    counter: number;
+    transports: string | null;
+}
+
+/** Result of query `ConsumePublicationApproval`. */
+export interface IConsumePublicationApprovalResult {
+}
+
+/** Result of query `AdvancePublicationCredentialCounter`. */
+export interface IAdvancePublicationCredentialCounterResult {
+    id: string | null;
+}
+
 /** Result of query `FindPublicationReferringPages`. */
 export interface IFindPublicationReferringPagesResult {
     readableId: string;
@@ -1088,6 +1128,12 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindPendingPublicationApproval: IFindPendingPublicationApprovalResult;
+    DeleteExpiredPublicationApprovals: IDeleteExpiredPublicationApprovalsResult;
+    CreatePublicationApproval: ICreatePublicationApprovalResult;
+    ListPublicationCredentials: IListPublicationCredentialsResult;
+    ConsumePublicationApproval: IConsumePublicationApprovalResult;
+    AdvancePublicationCredentialCounter: IAdvancePublicationCredentialCounterResult;
     FindPublicationReferringPages: IFindPublicationReferringPagesResult;
     FindPublicationPortraitEntities: IFindPublicationPortraitEntitiesResult;
     FindPagePublicationDependencies: IFindPagePublicationDependenciesResult;
