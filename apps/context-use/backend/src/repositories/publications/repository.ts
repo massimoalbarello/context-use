@@ -2,14 +2,32 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type {
   PagePublicationStatus,
+  PublicationPreparation,
   PublicationStatus,
 } from '#backend/models/publications/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
+import { executePublication, preparePublication } from './transitions.ts';
+
+export interface PublicationRequest {
+  ownerId: string;
+  resourceType: 'asset' | 'entity';
+  readableId: string;
+  action: 'publish' | 'unpublish';
+}
+
+export type PublicationTransitionResult =
+  | { state: 'changed' | 'unchanged'; publication: PublicationStatus }
+  | { state: 'not_found' | 'state_changed' }
+  | { state: 'blocked'; blockers: PublicationPreparation['blockers'] };
 
 export interface PublicationsRepositoryContract {
   pageStatus(input: { ownerId: string; readableId: string }): Promise<PagePublicationStatus | null>;
   entityStatus(input: { ownerId: string; readableId: string }): Promise<PublicationStatus | null>;
   assetStatus(input: { ownerId: string; readableId: string }): Promise<PublicationStatus | null>;
+  prepare(input: PublicationRequest): Promise<PublicationPreparation | null>;
+  execute(
+    input: PublicationRequest & { expectedState: string; publishedAt: string },
+  ): Promise<PublicationTransitionResult>;
 }
 
 export class PublicationsRepository implements PublicationsRepositoryContract {
@@ -17,6 +35,16 @@ export class PublicationsRepository implements PublicationsRepositoryContract {
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
+  }
+
+  prepare(input: PublicationRequest): Promise<PublicationPreparation | null> {
+    return this.sql.begin((db) => preparePublication({ db, input }));
+  }
+
+  execute(
+    input: PublicationRequest & { expectedState: string; publishedAt: string },
+  ): Promise<PublicationTransitionResult> {
+    return this.sql.begin('immediate', (db) => executePublication({ db, input }));
   }
 
   async pageStatus({
