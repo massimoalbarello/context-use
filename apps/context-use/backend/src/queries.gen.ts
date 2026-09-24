@@ -836,6 +836,8 @@ export interface IFindCurrentRecordResult {
     readableId: string | null;
     title: string | null;
     sourceUpdatedAt: string | null;
+    sourceUrl: string | null;
+    sourceCreatedAt: string | null;
     contentHash: string | null;
     deletedAt: string | null;
     syncRevision: number;

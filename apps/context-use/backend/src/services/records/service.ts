@@ -1,4 +1,3 @@
-import canonicalize from 'canonicalize';
 import type { Storage } from '#backend/lib/storage/storage.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
@@ -9,7 +8,6 @@ import {
   type RecordDeletion,
   RecordDeletionSchema,
   type RecordInput,
-  RecordInputSchema,
   type RecordResource,
   type RecordSyncRevision,
   type RecordWriteResult,
@@ -64,9 +62,8 @@ export class RecordsService {
     const record = parseRecord(input);
     const assetUsages = recordAssetUsages(record.body);
     const readableId = recordReadableId({ source: record.source, syncId: sync?.syncId });
-    const storageKey = `${encodeURIComponent(ownerId)}/records/${readableId}/${Bun.randomUUIDv7()}.json`;
-    const json = canonicalize(record)!;
-    const file = new Blob([json], { type: 'application/json' });
+    const storageKey = `${encodeURIComponent(ownerId)}/records/${readableId}/${Bun.randomUUIDv7()}.md`;
+    const file = new Blob([record.body], { type: 'text/markdown;charset=utf-8' });
     let result: RecordWriteResult;
     try {
       const sizeBytes = await this.storage.write(storageKey, file);
@@ -79,7 +76,7 @@ export class RecordsService {
         sync,
         readableId,
         receivedAt: this.now().toISOString(),
-        value: { record, assetUsages, storageKey, sizeBytes, contentHash: sha256(json) },
+        value: { record, assetUsages, storageKey, sizeBytes, contentHash: sha256(record.body) },
       });
       if (publication.committed) {
         return publication.result;
@@ -127,18 +124,14 @@ export class RecordsService {
       return null;
     }
     const { storageKey, contentHash, sizeBytes, ...summary } = stored;
-    const record = RecordInputSchema.parse(
-      JSON.parse(
-        await readVerifiedText({
-          storage: this.storage,
-          storageKey,
-          contentHash,
-          sizeBytes,
-          label: `Record file ${input.readableId}`,
-        }),
-      ),
-    );
-    return { ...summary, body: record.body };
+    const body = await readVerifiedText({
+      storage: this.storage,
+      storageKey,
+      contentHash,
+      sizeBytes,
+      label: `Record file ${input.readableId}`,
+    });
+    return { ...summary, body };
   }
   private async discard(storageKey: string): Promise<void> {
     if (await this.storage.exists(storageKey)) {

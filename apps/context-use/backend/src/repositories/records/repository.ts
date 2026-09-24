@@ -82,11 +82,21 @@ function existingWriteState({
   if (!current) {
     return null;
   }
+  const record = input.value?.record;
+  const sourceUpdatedAt = record?.sourceUpdatedAt ?? input.deletion?.sourceUpdatedAt;
+  const unchanged = Boolean(
+    record &&
+      !current.deletedAt &&
+      current.contentHash === input.value?.contentHash &&
+      current.title === record.title &&
+      current.sourceUrl === record.source.url &&
+      current.sourceCreatedAt === record.sourceCreatedAt &&
+      current.sourceUpdatedAt === record.sourceUpdatedAt,
+  );
   if (input.sync) {
-    return syncedWriteState({ current, input });
+    return syncedWriteState({ current, input, unchanged });
   }
-  const sourceUpdatedAt = input.value?.record.sourceUpdatedAt ?? input.deletion?.sourceUpdatedAt;
-  if (input.value && !current.deletedAt && current.contentHash === input.value.contentHash) {
+  if (unchanged) {
     return 'unchanged';
   }
   if (input.deletion && current.deletedAt && sourceUpdatedAt === current.sourceUpdatedAt) {
@@ -105,12 +115,13 @@ function existingWriteState({
 function syncedWriteState(input: {
   current: Queries['FindCurrentRecord'];
   input: WriteRecordInput;
+  unchanged: boolean;
 }) {
   const revision = input.input.sync!.revision;
   if (revision < input.current.syncRevision) {
     return 'stale';
   }
-  if (input.current.contentHash === input.input.value?.contentHash) {
+  if (input.unchanged) {
     return 'unchanged';
   }
   return revision === input.current.syncRevision ? 'conflict' : null;
@@ -246,6 +257,7 @@ async function writeRecord({
   const rows = await db.FindCurrentRecord`
     /* @notNull syncRevision */
     select "readable_id" as "readableId", "title", "source_updated_at" as "sourceUpdatedAt",
+      "source_url" as "sourceUrl", "source_created_at" as "sourceCreatedAt",
       "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision"
     from "record" where "owner_id" = ${input.ownerId} and "provider" = ${source.provider}
       and "kind" = ${source.kind} and "source_id" = ${source.id} and "sync_id" = ${sync.syncId}

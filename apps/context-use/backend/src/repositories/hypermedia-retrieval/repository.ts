@@ -10,7 +10,6 @@ import type {
 } from '#backend/models/hypermedia-retrieval/model.ts';
 import { MAX_HYPERMEDIA_SEARCH_LIMIT } from '#backend/models/hypermedia-retrieval/model.ts';
 import { parseKnowledgePageMarkdown } from '#backend/models/knowledge-pages/markdown.ts';
-import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { recordSearchText } from '#backend/models/records/search.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
@@ -175,8 +174,13 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       if (row.resourceType === 'knowledge_page') {
         document.body = parseKnowledgePageMarkdown(text).searchableText;
       } else {
-        const record = RecordInputSchema.parse(JSON.parse(text));
-        const projection = recordSearchText(record);
+        if (!(row.recordProvider && row.recordKind)) {
+          throw new Error('Hypermedia record search projection is incomplete');
+        }
+        const projection = recordSearchText({
+          body: text,
+          source: { provider: row.recordProvider, kind: row.recordKind },
+        });
         document.body = projection.body;
         document.metadata = projection.metadata;
       }

@@ -47,7 +47,6 @@
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-router": "^1.170.32",
     "better-auth": "catalog:",
-    "canonicalize": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "diff": "^9.0.0",
     "elysia": "^1.4.30",

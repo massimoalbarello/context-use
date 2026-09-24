@@ -1,4 +1,5 @@
 import { expect, spyOn, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createSqliteDatabase } from '#backend/db/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
@@ -44,6 +45,116 @@ async function withRecords(
     },
   });
 }
+
+test.each([
+  { name: 'Unicode Markdown with original whitespace', body: '# Notes\r\n\r\nCafé **📚**\r\n\r\n' },
+  { name: 'an empty body', body: '' },
+])('stores $name in a Markdown file and metadata in SQLite', async ({ body }) => {
+  await withRecords(async ({ service, database, dataFolder, storage }) => {
+    const input = record({
+      body,
+      source: {
+        provider: 'github',
+        kind: 'pull-request',
+        id: 'PR_1',
+        url: 'https://example.com/pr/1',
+      },
+      sourceCreatedAt: NOW,
+    });
+    const result = await service.upsert({
+      change: { clientName: null, message: 'Added source context' },
+      ownerId: 'owner-a',
+      record: input,
+    });
+    expect(result.state).toBe('created');
+    const [stored] = await database<
+      {
+        storage_key: string;
+        content_hash: string;
+        size_bytes: number;
+        title: string;
+        source_url: string;
+        source_created_at: string;
+        source_updated_at: string;
+      }[]
+    >`select * from "record" where "owner_id" = 'owner-a'`;
+    expect(stored).toMatchObject({
+      title: input.title,
+      source_url: input.source.url,
+      source_created_at: NOW,
+      source_updated_at: NOW,
+      content_hash: new Bun.CryptoHasher('sha256').update(body).digest('hex'),
+      size_bytes: Buffer.byteLength(body, 'utf8'),
+    });
+    expect(stored!.storage_key).toMatch(/^owner-a\/records\/[^/]+\/[^/]+\.md$/);
+    expect(await readFile(join(dataFolder, 'objects', stored!.storage_key), 'utf8')).toBe(body);
+    expect(
+      await service.findResource({ ownerId: 'owner-a', readableId: result.readableId }),
+    ).toMatchObject(input);
+    const columns = await database<{ name: string }[]>`pragma table_info('record')`;
+    expect(columns.map((column) => column.name)).not.toContain('body');
+    const retrieval = createTestHypermediaRetrievalService({ database, storage });
+    expect(
+      (await retrieval.search({ ownerId: 'owner-a', query: input.title, limit: 5 })).results,
+    ).toMatchObject([{ record: { readableId: result.readableId, title: input.title } }]);
+  });
+});
+
+test.each([
+  { title: 'Revised title' },
+  {
+    source: {
+      provider: 'github',
+      kind: 'pull-request',
+      id: 'PR_1',
+      url: 'https://example.com/pr/1',
+    },
+  },
+  { sourceCreatedAt: NOW },
+])('metadata-only changes require a newer version: %j', async (metadata) => {
+  await withRecords(async ({ service }) => {
+    const write = (value: RecordInput) =>
+      service.upsert({
+        change: { clientName: null, message: 'Updated source metadata' },
+        ownerId: 'owner-a',
+        record: value,
+      });
+    const original = record();
+    const first = await write(original);
+    expect((await write(record(metadata))).state).toBe('conflict');
+    const updated = record({ ...metadata, sourceUpdatedAt: NEXT });
+    expect((await write(updated)).state).toBe('updated');
+    expect(
+      await service.findResource({ ownerId: 'owner-a', readableId: first.readableId }),
+    ).toMatchObject(updated);
+    expect((await write(updated)).state).toBe('unchanged');
+    expect((await write(original)).state).toBe('stale');
+  });
+});
+
+test('sync revisions preserve metadata-only changes and fence stale replays with identical Markdown', async () => {
+  await withRecords(async ({ service }) => {
+    const latestRevision = 3;
+    const write = ({ value, revision }: { value: RecordInput; revision: number }) =>
+      service.upsert({
+        change: { clientName: null, message: 'Synced source metadata' },
+        ownerId: 'owner-a',
+        record: value,
+        sync: { syncId: 'metadata-sync', revision },
+      });
+    const original = record();
+    const first = await write({ value: original, revision: 1 });
+    const updated = record({ title: 'Synced revised title' });
+    expect((await write({ value: updated, revision: 1 })).state).toBe('conflict');
+    expect((await write({ value: updated, revision: 2 })).state).toBe('updated');
+    expect((await write({ value: updated, revision: latestRevision })).state).toBe('unchanged');
+    expect((await write({ value: original, revision: 2 })).state).toBe('stale');
+    expect((await write({ value: original, revision: latestRevision })).state).toBe('conflict');
+    expect(
+      await service.findResource({ ownerId: 'owner-a', readableId: first.readableId }),
+    ).toMatchObject(updated);
+  });
+});
 
 test('identity is owner + provider + kind + source ID; identical bodies do not merge unrelated items', async () => {
   await withRecords(async ({ service }) => {
@@ -100,6 +211,7 @@ test('identity is owner + provider + kind + source ID; identical bodies do not m
 
 test('orders normalized source timestamps and rejects ambiguous changes without overwriting data', async () => {
   await withRecords(async ({ service, dataFolder }) => {
+    const publishedVersionCount = 3;
     const original = record({ sourceUpdatedAt: '2026-09-08T10:00:00+02:00' });
     const first = await service.upsert({
       change: { clientName: null, message: 'Updated test context' },
@@ -117,7 +229,9 @@ test('orders normalized source timestamps and rejects ambiguous changes without 
     expect((await write(record({ body: 'Unversioned', sourceUpdatedAt: null }))).state).toBe(
       'conflict',
     );
-    expect((await write(record({ body: 'Replacementneedle', sourceUpdatedAt: NEXT }))).state).toBe(
+    expect((await write(record({ sourceUpdatedAt: NEXT }))).state).toBe('updated');
+    expect((await write(record({ body: 'Older edit' }))).state).toBe('stale');
+    expect((await write(record({ body: 'Replacementneedle', sourceUpdatedAt: LAST }))).state).toBe(
       'updated',
     );
     expect((await write(original)).state).toBe('stale');
@@ -125,12 +239,14 @@ test('orders normalized source timestamps and rejects ambiguous changes without 
       await service.findResource({ ownerId: 'owner-a', readableId: first.readableId }),
     ).toMatchObject({
       body: 'Replacementneedle',
-      sourceUpdatedAt: NEXT,
+      sourceUpdatedAt: LAST,
       createdAt: NOW,
     });
     expect(
-      Array.from(new Bun.Glob('**/*.json').scanSync({ cwd: join(dataFolder, 'objects') })),
-    ).toHaveLength(2);
+      Array.from(
+        new Bun.Glob('**/*').scanSync({ cwd: join(dataFolder, 'objects'), onlyFiles: true }),
+      ),
+    ).toHaveLength(publishedVersionCount);
     const unversioned = record({
       source: { provider: 'notes', kind: 'note', id: '1' },
       sourceUpdatedAt: null,
@@ -223,7 +339,7 @@ test('storage integrity and search publication fail atomically; unpublished file
       (await retrieval.search({ ownerId: 'owner-a', query: 'Failedneedle', limit: 5 })).results,
     ).toEqual([]);
     const files = Array.from(
-      new Bun.Glob('**/*.json').scanSync({ cwd: join(dataFolder, 'objects') }),
+      new Bun.Glob('**/*').scanSync({ cwd: join(dataFolder, 'objects'), onlyFiles: true }),
     );
     expect(files).toHaveLength(1);
     const [stored] = await database<
@@ -321,7 +437,9 @@ test.each(['throw', 'short'] as const)(
           (await service.listResources({ ownerId: 'owner-a', limit: 10, offset: 0 })).items,
         ).toEqual([]);
         expect(
-          Array.from(new Bun.Glob('**/*.json').scanSync({ cwd: join(dataFolder, 'objects') })),
+          Array.from(
+            new Bun.Glob('**/*').scanSync({ cwd: join(dataFolder, 'objects'), onlyFiles: true }),
+          ),
         ).toEqual([]);
       } finally {
         brokenWrite.mockRestore();
