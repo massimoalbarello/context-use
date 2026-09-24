@@ -30,7 +30,6 @@ export const assetsListQueryKey = [...assetsQueryKey, 'list'] as const;
 export const assetDetailsQueryKey = [...assetsQueryKey, 'detail'] as const;
 export const assetPreviewsQueryKey = [...assetsQueryKey, 'preview'] as const;
 export const assetSuggestionsQueryKey = [...assetsQueryKey, 'suggestions'] as const;
-const PREVIEW_RELATIONSHIP_LIMIT = 12;
 const SUGGESTION_LIMIT = 7;
 
 async function assetSearchPage({
@@ -108,9 +107,7 @@ export function assetPreviewQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...assetPreviewsQueryKey, readableId],
     queryFn: async () => {
-      const { data, error } = await api.api
-        .assets({ assetReadableId: readableId })
-        .get({ query: { relationshipLimit: PREVIEW_RELATIONSHIP_LIMIT } });
+      const { data, error } = await api.api.assets({ assetReadableId: readableId }).preview.get();
       if (error) {
         throw new Error(apiErrorMessage(error));
       }

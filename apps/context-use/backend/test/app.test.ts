@@ -43,6 +43,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     fallback: () => new Response('frontend'),
   };
   const assetsService: AssetsServiceContract = {
+    preview: unexpectedCall,
     faces: unusedAssetFacesService,
     create: unexpectedCall,
     list: unexpectedCall,
@@ -52,6 +53,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     content: unexpectedCall,
   };
   const entitiesService: EntitiesServiceContract = {
+    preview: unexpectedCall,
     setImage: unexpectedCall,
     removeImage: unexpectedCall,
     create: unexpectedCall,

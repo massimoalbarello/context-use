@@ -45,7 +45,7 @@ export function EntityAvatar({
   size,
   className,
 }: {
-  entity: Pick<EntityIdentity, 'name' | 'image'>;
+  entity: { name: string; image?: { readableId: string } | null };
   size?: 'default' | 'sm' | 'lg';
   className?: string;
 }) {

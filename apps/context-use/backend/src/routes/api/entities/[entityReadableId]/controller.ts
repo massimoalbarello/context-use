@@ -6,12 +6,13 @@ import type { EntityDetail } from '#backend/models/entities/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   EntityParamsSchema,
+  EntityPreviewSchema,
   EntitySchema,
+  entityPreviewResponse,
   entityResponse,
   SetEntityImageBodySchema,
   UpdateEntityBodySchema,
 } from '#backend/routes/api/entities/model.ts';
-import { PreviewRelationshipsQuerySchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
@@ -47,11 +48,10 @@ export function createEntityReadableIdController({
     })
     .get(
       '/entities/:entityReadableId',
-      async ({ params, query, user, status }) => {
+      async ({ params, user, status }) => {
         const entity = await entitiesService.detail({
           ownerId: user.id,
           readableId: params.entityReadableId,
-          pageLimit: query.relationshipLimit,
         });
         return entity
           ? status(StatusMap.OK, entityDetailResponse(entity))
@@ -60,9 +60,28 @@ export function createEntityReadableIdController({
       {
         detail: { tags: ['Entities'], summary: 'Read an entity and its knowledge pages' },
         params: EntityParamsSchema,
-        query: PreviewRelationshipsQuerySchema,
         response: {
           [StatusMap.OK]: EntityDetailSchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .get(
+      '/entities/:entityReadableId/preview',
+      async ({ params, user, status }) => {
+        const entity = await entitiesService.preview({
+          ownerId: user.id,
+          readableId: params.entityReadableId,
+        });
+        return entity
+          ? status(StatusMap.OK, entityPreviewResponse(entity))
+          : status(StatusMap['Not Found'], { error: 'Entity not found' });
+      },
+      {
+        detail: { tags: ['Entities'], summary: 'Read an entity preview' },
+        params: EntityParamsSchema,
+        response: {
+          [StatusMap.OK]: EntityPreviewSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
         },
       },

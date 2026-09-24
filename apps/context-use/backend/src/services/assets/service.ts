@@ -220,7 +220,11 @@ export class AssetsService {
     return this.assets.list(input);
   }
 
-  detail(input: { ownerId: string; readableId: string; usageLimit?: number }) {
+  preview(input: { ownerId: string; readableId: string }) {
+    return this.assets.find(input);
+  }
+
+  detail(input: { ownerId: string; readableId: string }) {
     return this.assets.detail(input);
   }
 
@@ -258,5 +262,5 @@ export class AssetsService {
 
 export type AssetsServiceContract = Pick<
   AssetsService,
-  'create' | 'list' | 'detail' | 'updateName' | 'archive' | 'content' | 'faces'
+  'create' | 'list' | 'detail' | 'preview' | 'updateName' | 'archive' | 'content' | 'faces'
 >;

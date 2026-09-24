@@ -75,14 +75,16 @@ export class EntitiesService {
     return this.entities.list(input);
   }
 
+  preview(input: { ownerId: string; readableId: string }) {
+    return this.entities.find(input);
+  }
+
   async detail({
     ownerId,
     readableId,
-    pageLimit,
   }: {
     ownerId: string;
     readableId: string;
-    pageLimit?: number;
   }): Promise<EntityDetail | null> {
     const entity = await this.entities.find({ ownerId, readableId });
     if (!entity) {
@@ -91,7 +93,6 @@ export class EntitiesService {
     const pages = await this.pages.listByEntity({
       ownerId,
       entityReadableId: readableId,
-      limit: pageLimit,
     });
     return { ...entity, pages };
   }
@@ -176,5 +177,5 @@ export class EntitiesService {
 
 export type EntitiesServiceContract = Pick<
   EntitiesService,
-  'create' | 'list' | 'detail' | 'update' | 'setImage' | 'removeImage' | 'archive'
+  'create' | 'list' | 'detail' | 'preview' | 'update' | 'setImage' | 'removeImage' | 'archive'
 >;

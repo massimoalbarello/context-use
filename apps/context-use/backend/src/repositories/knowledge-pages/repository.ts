@@ -85,7 +85,6 @@ export interface KnowledgePagesRepositoryContract {
   listByEntity(input: {
     ownerId: string;
     entityReadableId: string;
-    limit?: number;
   }): Promise<KnowledgePageSummary[]>;
   preview(input: { ownerId: string; readableId: string }): Promise<{
     page: StoredKnowledgePage;
@@ -740,13 +739,10 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   async listByEntity({
     ownerId,
     entityReadableId,
-    limit,
   }: {
     ownerId: string;
     entityReadableId: string;
-    limit?: number;
   }): Promise<KnowledgePageSummary[]> {
-    const queryLimit = limit ?? -1;
     const rows = await this.sql.ListKnowledgePagesByEntity`
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId",
@@ -779,7 +775,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           then revision."temporal_start_ms" end desc,
         revision."title" collate nocase,
         page."readable_id"
-      limit ${queryLimit}
     `;
     return rows.map(summaryFrom);
   }

@@ -67,6 +67,7 @@ const principal: McpClientAuthorizationPrincipal = {
 };
 
 const unusedEntitiesService: EntitiesServiceContract = {
+  preview: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
   create: unexpectedCall,
@@ -410,6 +411,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
   };
   let createCalls = 0;
   const assetsService: AssetsServiceContract = {
+    preview: unexpectedCall,
     faces: unusedAssetFacesService,
     create: async (input) => {
       createCalls += 1;
@@ -588,6 +590,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
   };
   let archiveCalls = 0;
   const assetsService: AssetsServiceContract = {
+    preview: unexpectedCall,
     faces: unusedAssetFacesService,
     create: unexpectedCall,
     list: unexpectedCall,

@@ -43,6 +43,20 @@ export const EntityReferenceSchema = t.Object({
   isSelf: EntitySchema.properties.isSelf,
 });
 
+export const EntityPreviewSchema = t.Object({
+  name: EntitySchema.properties.name,
+  description: EntitySchema.properties.description,
+  image: t.Nullable(t.Pick(AssetSummarySchema, ['readableId'])),
+});
+
+export function entityPreviewResponse(entity: Entity) {
+  return {
+    name: entity.name,
+    description: entity.description,
+    image: entity.image ? { readableId: entity.image.readableId } : null,
+  };
+}
+
 export const EntityIdentityBodySchema = t.Object({
   entityType: t.Optional(
     t.Nullable(EntityTypeSchema, {
