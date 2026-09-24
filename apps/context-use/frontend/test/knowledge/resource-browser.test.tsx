@@ -48,7 +48,6 @@ async function renderResourceBrowser(path = '/pages') {
     body: 'Research source content.',
     backlinks: [],
     source: { provider: 'notion', kind: 'note', id: 'source-record', url: null },
-    occurredAt: null,
   };
   const page: KnowledgePage = {
     readableId: 'launch',

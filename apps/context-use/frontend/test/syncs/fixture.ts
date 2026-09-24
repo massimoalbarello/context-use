@@ -12,7 +12,7 @@ export function providerFixture(): SyncProvider {
     account: { name: null, status: 'disconnected' },
     syncs: [
       {
-        key: 'github-pull-requests',
+        key: 'github.pull-requests',
         name: 'Pull requests',
         description: 'Pull requests you authored.',
         provider: 'github',

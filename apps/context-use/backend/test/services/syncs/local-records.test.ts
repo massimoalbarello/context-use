@@ -14,17 +14,17 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
-import { localRecordDestination } from '#backend/services/syncs/destination.ts';
+import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import {
   githubPullRequests,
   stepGithubPullRequests,
-} from '#backend/services/syncs/providers/github/pull-requests.ts';
-import { githubRecord } from '#backend/services/syncs/providers/github/record.ts';
+} from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
+import { githubRecord } from '#backend/services/syncs/sources/github/pull-requests/record.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
 
 const scope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };
-const definition = githubPullRequests.registration;
+const definition = githubPullRequests;
 const SOURCE_RECORD_COUNT = 3;
 const HISTORY_AFTER_UPDATE = 3;
 const ISOLATED_SYNC_RECORD_COUNT = 4;
@@ -41,6 +41,7 @@ async function store(input: { database: SQL; dataFolder: string }) {
     storage: createLocalStorage(input),
   });
   const destination = localRecordDestination({
+    importAsset: unexpected,
     ownerId: OWNER_USER_ID,
     upsertRecord: (value) => records.upsert(value),
     definitions: [definition],
@@ -78,8 +79,8 @@ test('npm engine immediately backfills native pages across restart, then polls o
       const host = await store(input);
       const requested: Array<{ cursor: string | null; updates: boolean }> = [];
       let malformed = true;
-      let edited: JsonObject | undefined;
-      let added: JsonObject | undefined;
+      let edited: ReturnType<typeof pull> | undefined;
+      let added: ReturnType<typeof pull> | undefined;
       const options = {
         databasePath: join(input.dataFolder, 'sync.db'),
         definitions: [definition],
@@ -94,9 +95,7 @@ test('npm engine immediately backfills native pages across restart, then polls o
               requested.push({ cursor, updates });
               let result: JsonObject;
               if (updates) {
-                const changed = [added, edited].filter(
-                  (record): record is JsonObject => record !== undefined,
-                );
+                const changed = [added, edited].filter((record) => record !== undefined);
                 result = page({ nodes: [...changed, pull({ id: 'PR_three' })], more: true });
               } else if (cursor === null) {
                 result = page({
@@ -108,7 +107,7 @@ test('npm engine immediately backfills native pages across restart, then polls o
                   cursor: 'last',
                   nodes: [
                     pull({ id: 'PR_three' }),
-                    ...[added].filter((record): record is JsonObject => record !== undefined),
+                    ...[added].filter((record) => record !== undefined),
                   ],
                 });
               }
@@ -174,6 +173,13 @@ test('npm engine immediately backfills native pages across restart, then polls o
           readableId: record.readableId,
         });
         expect(resource?.body).toBe(githubRecord(edited).content.body);
+        expect(resource?.title).toBe(githubRecord(edited).preview);
+        expect(resource?.source).toEqual({
+          provider: 'github',
+          kind: 'pull-request',
+          id: 'PR_one',
+          url: null,
+        });
         expect(resource?.sourceCreatedAt).toBe(now);
         expect(resource?.sourceUpdatedAt).toBe(updatedAt);
         requested.length = 0;
@@ -287,14 +293,14 @@ test('incremental page failures and cursor expiry preserve the frozen scan throu
         expect(completed.at(-1)!.checkpoint).toEqual({
           accountId: 'U_owner',
           cursor: null,
-          cycleStartedAt: null,
-          watermark: inProgress.cycleStartedAt!,
+          iterationStartedAt: null,
+          watermark: inProgress.iterationStartedAt!,
         });
         expect(requests).toEqual([null, null, 'cursor-1', 'cursor-1', null, 'cursor-1']);
         expect((await host.list()).items).toHaveLength(SOURCE_RECORD_COUNT);
         expect((await host.history()).items).toHaveLength(SOURCE_RECORD_COUNT);
         const duringScan = new Date(
-          Date.parse(String(inProgress.cycleStartedAt)) + 1,
+          Date.parse(String(inProgress.iterationStartedAt)) + 1,
         ).toISOString();
         responses.push(
           page({
@@ -328,6 +334,7 @@ test('partial publication and a lost acknowledgement replay after restart withou
       let loseAcknowledgement = true;
       const seenIds: string[] = [];
       const receiver = localRecordDestination({
+        importAsset: unexpected,
         ownerId: OWNER_USER_ID,
         definitions: [definition],
         upsertRecord: (value) => {
@@ -447,28 +454,18 @@ test('partial publication and a lost acknowledgement replay after restart withou
   });
 });
 
-test('unsupported assets, deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
+test('deletes, malformed batches and cancellation cannot acknowledge dropped or incomplete records', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       const host = await store(input);
       const record = { ...githubRecord(pull()), revision: 1 };
       const valid = bundle([record]);
       for (const invalid of [
-        {
-          ...valid,
-          assets: [
-            {
-              id: 'asset',
-              version: '1',
-              name: 'file',
-              mediaType: 'text/plain',
-              unavailable: 'unavailable',
-            },
-          ],
-        },
         bundle([{ ...record, assetRefs: { file: { id: 'asset', version: '1' } } }]),
         bundle([record, { operation: 'delete', kind: 'pull-request', id: 'deleted', revision: 1 }]),
         bundle([record, { ...record, id: 'bad', content: undefined }]),
+        bundle([record, { ...record, id: 'bad', preview: undefined }]),
+        bundle([record, { ...record, id: 'bad', preview: '   ' }]),
         { ...valid, definition: 'unknown' },
       ]) {
         expect((await host.destination.deliver(delivery(invalid))).status).toBe('rejected');
@@ -476,6 +473,7 @@ test('unsupported assets, deletes, malformed batches and cancellation cannot ack
       expect((await host.list()).items).toEqual([]);
       const abort = new AbortController();
       const cancelled = localRecordDestination({
+        importAsset: unexpected,
         ownerId: OWNER_USER_ID,
         definitions: [definition],
         upsertRecord: async (value) => {

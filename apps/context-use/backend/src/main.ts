@@ -55,10 +55,10 @@ import { McpClientAuthorizationsService } from '#backend/services/mcp-client-aut
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
-import { localRecordDestination } from '#backend/services/syncs/destination.ts';
+import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { syncProviders } from '#backend/services/syncs/providers/index.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const REQUEST_BODY_OVERHEAD_KIBIBYTES = 64;
@@ -183,6 +183,7 @@ try {
     destinationTypes: {
       [LOCAL_RECORD_DESTINATION]: localRecordDestination({
         upsertRecord: (input) => recordsService.upsert(input),
+        importAsset: (input) => assetsService.import(input),
         ownerId: OWNER_USER_ID,
         definitions: catalog.definitions,
       }),

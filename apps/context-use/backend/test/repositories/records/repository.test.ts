@@ -17,7 +17,6 @@ function record(overrides: Partial<RecordInput> = {}): RecordInput {
     source: { provider: 'github', kind: 'pull-request', id: 'PR_1' },
     title: 'Original title',
     body: 'Originalneedle',
-    occurredAt: NOW,
     sourceUpdatedAt: NOW,
     ...overrides,
   };
@@ -128,7 +127,6 @@ test('orders normalized source timestamps and rejects ambiguous changes without 
       body: 'Replacementneedle',
       sourceUpdatedAt: NEXT,
       createdAt: NOW,
-      occurredAt: NOW,
     });
     const unversioned = record({
       source: { provider: 'notes', kind: 'note', id: '1' },
@@ -278,7 +276,7 @@ test('all callers validate the native schema, including local service calls', as
   await withRecords(async ({ service }) => {
     for (const invalid of [
       record({ title: '' }),
-      record({ occurredAt: 'not-a-date' }),
+      record({ sourceCreatedAt: 'not-a-date' }),
       { ...record(), participants: [] },
       record({ source: { provider: '', kind: 'note', id: '1' } }),
     ]) {

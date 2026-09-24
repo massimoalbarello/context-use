@@ -8,7 +8,6 @@ import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const sortLabels: Record<RecordSortField, string> = {
-  occurredAt: 'Occurred at',
   sourceUpdatedAt: 'Source updated',
   sourceCreatedAt: 'Source created',
 };

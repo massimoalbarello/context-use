@@ -29,7 +29,6 @@ function record({
     source: { provider, kind, id },
     title: `Title of ${id}`,
     body: `Body of ${id}`,
-    occurredAt: created,
     sourceCreatedAt: created,
     sourceUpdatedAt: updated,
   } satisfies RecordInput;
@@ -103,7 +102,6 @@ async function withRecords(
 test('orders source dates before pagination, with missing dates last in either direction', async () => {
   await withRecords(async ({ repository }) => {
     const cases: [RecordListFilters, string[]][] = [
-      [{ sortBy: 'occurredAt', sortDirection: 'asc' }, ['b', 'a', 'c', 'missing']],
       [{ sortBy: 'sourceCreatedAt', sortDirection: 'asc' }, ['b', 'a', 'c', 'missing']],
       [{ sortBy: 'sourceCreatedAt', sortDirection: 'desc' }, ['c', 'a', 'b', 'missing']],
       [{ sortBy: 'sourceUpdatedAt', sortDirection: 'asc' }, ['c', 'b', 'a', 'missing']],

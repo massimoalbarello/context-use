@@ -143,6 +143,15 @@ export interface IListActiveEntityImageAssetUsagesResult {
     isSelf: number;
 }
 
+/** Result of query `ListActiveRecordAssetUsages`. */
+export interface IListActiveRecordAssetUsagesResult {
+    readableId: string;
+    title: string;
+    provider: string;
+    kind: string;
+    presentation: "embed" | "attachment";
+}
+
 /** Result of query `CreateEntity`. */
 export interface ICreateEntityResult {
     id: string;
@@ -496,7 +505,6 @@ export interface ISearchHypermediaResult {
     recordKind: string | null;
     recordId: string | null;
     sourceUrl: string | null;
-    occurredAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -814,6 +822,15 @@ export interface IAdvanceRecordSyncRevisionResult {
 export interface IWriteRecordResult {
 }
 
+/** Result of query `RemoveRecordAssetUsages`. */
+export interface IRemoveRecordAssetUsagesResult {
+}
+
+/** Result of query `AddRecordAssetUsage`. */
+export interface IAddRecordAssetUsageResult {
+    assetId: string | null;
+}
+
 /** Result of query `FindCurrentRecord`. */
 export interface IFindCurrentRecordResult {
     readableId: string | null;
@@ -838,7 +855,6 @@ export interface IListRecordResourcesResult {
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
     sourceUrl: string | null;
-    occurredAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -856,7 +872,6 @@ export interface IFindRecordResourceResult {
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
     sourceUrl: string | null;
-    occurredAt: string | null;
     readableId: string;
     kind: string;
     sourceId: string;
@@ -896,6 +911,7 @@ export interface Queries {
     ListAssetDepictedPeople: IListAssetDepictedPeopleResult;
     ListActivePageAssetUsages: IListActivePageAssetUsagesResult;
     ListActiveEntityImageAssetUsages: IListActiveEntityImageAssetUsagesResult;
+    ListActiveRecordAssetUsages: IListActiveRecordAssetUsagesResult;
     CreateEntity: ICreateEntityResult;
     ListEntities: IListEntitiesResult;
     CountEntities: ICountEntitiesResult;
@@ -965,6 +981,8 @@ export interface Queries {
     InsertResourceChange: IInsertResourceChangeResult;
     AdvanceRecordSyncRevision: IAdvanceRecordSyncRevisionResult;
     WriteRecord: IWriteRecordResult;
+    RemoveRecordAssetUsages: IRemoveRecordAssetUsagesResult;
+    AddRecordAssetUsage: IAddRecordAssetUsageResult;
     FindCurrentRecord: IFindCurrentRecordResult;
     RemoveRecordSearchDocument: IRemoveRecordSearchDocumentResult;
     ListRecordResources: IListRecordResourcesResult;

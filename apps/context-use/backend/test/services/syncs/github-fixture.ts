@@ -1,9 +1,10 @@
 import type { SyncContext } from '@context-use/open-sync/definition';
 import type { JsonObject } from '@context-use/open-sync/json';
+import type { githubRecord } from '#backend/services/syncs/sources/github/pull-requests/record.ts';
 export const now = '2026-09-17T12:00:00.000Z';
 export function pull(
   input: { id?: string; title?: string; createdAt?: string; updatedAt?: string } = {},
-): JsonObject {
+): Parameters<typeof githubRecord>[0] {
   return {
     id: input.id ?? 'PR_one',
     number: 1,
@@ -53,7 +54,7 @@ export function githubContext(input: {
     checkpoint: input.checkpoint ?? {
       accountId: null,
       cursor: null,
-      cycleStartedAt: null,
+      iterationStartedAt: null,
       watermark: null,
     },
     syncId: 'sync',

@@ -1,14 +1,19 @@
 import { expect, test } from 'bun:test';
 import type { JsonObject } from '@context-use/open-sync/json';
 import { validate } from '@octokit/graphql-schema';
-import { stepGithubPullRequests } from '#backend/services/syncs/providers/github/pull-requests.ts';
-import { githubContext, now, page, pull } from './github-fixture.ts';
+import { stepGithubPullRequests } from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
+import { githubContext, now, page, pull } from '../../../github-fixture.ts';
 
-const initialCheckpoint = { accountId: null, cursor: null, cycleStartedAt: null, watermark: null };
+const initialCheckpoint = {
+  accountId: null,
+  cursor: null,
+  iterationStartedAt: null,
+  watermark: null,
+};
 const updateCheckpoint = {
   accountId: 'U_owner',
   cursor: null,
-  cycleStartedAt: '2026-09-17T12:15:00.000Z',
+  iterationStartedAt: '2026-09-17T12:15:00.000Z',
   watermark: now,
 };
 const cutoff = '2026-09-17T11:55:00.000Z';
@@ -38,9 +43,9 @@ test('backfill returns one complete native page and freezes its start before ret
   });
   const step = await stepGithubPullRequests(first.value);
   const checkpoint = step.checkpoint as JsonObject;
-  const cycleStartedAt = String(checkpoint.cycleStartedAt);
-  expect(Date.parse(cycleStartedAt)).toBeGreaterThanOrEqual(before);
-  expect(Date.parse(cycleStartedAt)).toBeLessThanOrEqual(first.requestedAt[0]!);
+  const iterationStartedAt = String(checkpoint.iterationStartedAt);
+  expect(Date.parse(iterationStartedAt)).toBeGreaterThanOrEqual(before);
+  expect(Date.parse(iterationStartedAt)).toBeLessThanOrEqual(first.requestedAt[0]!);
   expect(first.requests).toHaveLength(1);
   expect(first.requests[0]?.query).toContain('CREATED_AT, direction: ASC');
   expect(step.records.map((record) => record.id)).toEqual(['PR_one', 'PR_two']);
@@ -49,12 +54,12 @@ test('backfill returns one complete native page and freezes its start before ret
   expect(checkpoint).toEqual({
     accountId: 'U_owner',
     cursor: 'cursor-1',
-    cycleStartedAt,
+    iterationStartedAt,
     watermark: null,
   });
   const replay = context({
     response: page({ nodes: [pull(), pull({ id: 'PR_two' })], more: true }),
-    checkpoint: { ...initialCheckpoint, cycleStartedAt },
+    checkpoint: { ...initialCheckpoint, iterationStartedAt },
   });
   expect(await stepGithubPullRequests(replay.value)).toEqual(step);
   const next = context({
@@ -67,8 +72,8 @@ test('backfill returns one complete native page and freezes its start before ret
   expect(done.checkpoint).toEqual({
     accountId: 'U_owner',
     cursor: null,
-    cycleStartedAt: null,
-    watermark: cycleStartedAt,
+    iterationStartedAt: null,
+    watermark: iterationStartedAt,
   });
 });
 
@@ -99,8 +104,8 @@ test('incremental polls include cutoff ties across native pages and stop before 
   expect(done.checkpoint).toEqual({
     ...updateCheckpoint,
     cursor: null,
-    cycleStartedAt: null,
-    watermark: updateCheckpoint.cycleStartedAt,
+    iterationStartedAt: null,
+    watermark: updateCheckpoint.iterationStartedAt,
   });
   const unchanged = context({
     checkpoint: updateCheckpoint,
@@ -137,8 +142,8 @@ test('invalid records, partial pages, update-order violations, repeated cursors 
   }
 });
 
-test('expired cursors restart only the current cycle while retaining its account, start and watermark', async () => {
-  for (const state of [{ ...initialCheckpoint, cycleStartedAt: now }, updateCheckpoint]) {
+test('expired cursors restart only the current iteration while retaining its account, start and watermark', async () => {
+  for (const state of [{ ...initialCheckpoint, iterationStartedAt: now }, updateCheckpoint]) {
     const checkpoint = { ...state, accountId: 'U_owner', cursor: 'expired' };
     const value = context({ response: { errors: [{ type: 'INVALID_CURSOR' }] }, checkpoint });
     expect(await stepGithubPullRequests(value.value)).toEqual({

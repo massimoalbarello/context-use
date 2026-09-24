@@ -6,7 +6,6 @@
       "id": "itunes-launch"
     },
     "title": "iTunes: the library has to be the starting point",
-    "occurredAt": "2001-01-09T13:00:00Z",
     "sourceCreatedAt": "2001-01-09T13:00:00Z",
     "sourceUpdatedAt": "2001-01-09T13:24:00Z",
     "path": "records/itunes-launch.md"
@@ -18,7 +17,6 @@
       "id": "stores-plan"
     },
     "title": "Retail review: sell the first successful experience",
-    "occurredAt": "2001-05-15T09:00:00Z",
     "sourceCreatedAt": "2001-05-15T09:00:00Z",
     "sourceUpdatedAt": "2001-05-15T09:45:00Z",
     "path": "records/stores-plan.md"
@@ -30,7 +28,6 @@
       "id": "stores-weekend"
     },
     "title": "Opening weekend: visitors need a next step",
-    "occurredAt": "2001-05-21T16:00:00Z",
     "sourceCreatedAt": "2001-05-21T16:00:00Z",
     "sourceUpdatedAt": "2001-05-21T16:24:00Z",
     "path": "records/stores-weekend.md"
@@ -42,7 +39,6 @@
       "id": "ipod-team-charter"
     },
     "title": "iPod team review: one owner for every handoff",
-    "occurredAt": "2001-10-19T09:00:00Z",
     "sourceCreatedAt": "2001-10-19T09:00:00Z",
     "sourceUpdatedAt": "2001-10-19T09:45:00Z",
     "path": "records/ipod-team-charter.md"
@@ -54,7 +50,6 @@
       "id": "ipod-product-review"
     },
     "title": "iPod rehearsal prep: the empty-library test",
-    "occurredAt": "2001-10-21T16:00:00Z",
     "sourceCreatedAt": "2001-10-21T16:00:00Z",
     "sourceUpdatedAt": "2001-10-21T16:24:00Z",
     "path": "records/ipod-product-review.md"
@@ -66,7 +61,6 @@
       "id": "demo-handoff"
     },
     "title": "iPod rehearsal: from an empty player to one album",
-    "occurredAt": "2001-10-22T09:00:00Z",
     "sourceCreatedAt": "2001-10-22T09:00:00Z",
     "sourceUpdatedAt": "2001-10-22T09:45:00Z",
     "path": "records/demo-handoff.md"
@@ -78,7 +72,6 @@
       "id": "ipod-launch"
     },
     "title": "After the iPod introduction: finish the journey before November 10",
-    "occurredAt": "2001-10-23T13:00:00Z",
     "sourceCreatedAt": "2001-10-23T13:00:00Z",
     "sourceUpdatedAt": "2001-10-23T13:24:00Z",
     "path": "records/ipod-launch.md"
@@ -90,7 +83,6 @@
       "id": "ipod-windows"
     },
     "title": "Windows iPod: accept a bridge, keep the experience gap visible",
-    "occurredAt": "2002-07-17T09:00:00Z",
     "sourceCreatedAt": "2002-07-17T09:00:00Z",
     "sourceUpdatedAt": "2002-07-17T09:45:00Z",
     "path": "records/ipod-windows.md"
@@ -102,7 +94,6 @@
       "id": "store-launch"
     },
     "title": "Music Store review: make buying easier than managing files",
-    "occurredAt": "2003-04-28T09:00:00Z",
     "sourceCreatedAt": "2003-04-28T09:00:00Z",
     "sourceUpdatedAt": "2003-04-28T09:45:00Z",
     "path": "records/store-launch.md"
@@ -114,7 +105,6 @@
       "id": "windows-handoff"
     },
     "title": "Windows launch rehearsal: close the Musicmatch gap",
-    "occurredAt": "2003-10-15T09:00:00Z",
     "sourceCreatedAt": "2003-10-15T09:00:00Z",
     "sourceUpdatedAt": "2003-10-15T09:45:00Z",
     "path": "records/windows-handoff.md"
@@ -126,7 +116,6 @@
       "id": "itunes-windows"
     },
     "title": "iTunes for Windows is out; watch existing customers first",
-    "occurredAt": "2003-10-16T13:00:00Z",
     "sourceCreatedAt": "2003-10-16T13:00:00Z",
     "sourceUpdatedAt": "2003-10-16T13:24:00Z",
     "path": "records/itunes-windows.md"
@@ -138,7 +127,6 @@
       "id": "mini-launch"
     },
     "title": "iPod mini review: smaller must mean easier to carry",
-    "occurredAt": "2004-01-06T09:00:00Z",
     "sourceCreatedAt": "2004-01-06T09:00:00Z",
     "sourceUpdatedAt": "2004-01-06T09:45:00Z",
     "path": "records/mini-launch.md"
@@ -150,7 +138,6 @@
       "id": "mini-international"
     },
     "title": "International mini: replace the April promise with July 24",
-    "occurredAt": "2004-07-07T13:00:00Z",
     "sourceCreatedAt": "2004-07-07T13:00:00Z",
     "sourceUpdatedAt": "2004-07-07T13:24:00Z",
     "path": "records/mini-international.md"
@@ -162,7 +149,6 @@
       "id": "motorola-plan"
     },
     "title": "Motorola music phone: write down who owns the seams",
-    "occurredAt": "2004-07-26T13:00:00Z",
     "sourceCreatedAt": "2004-07-26T13:00:00Z",
     "sourceUpdatedAt": "2004-07-26T13:24:00Z",
     "path": "records/motorola-plan.md"
@@ -174,7 +160,6 @@
       "id": "shuffle-launch"
     },
     "title": "Shuffle review: remove the screen, move the burden carefully",
-    "occurredAt": "2005-01-11T09:00:00Z",
     "sourceCreatedAt": "2005-01-11T09:00:00Z",
     "sourceUpdatedAt": "2005-01-11T09:45:00Z",
     "path": "records/shuffle-launch.md"
@@ -186,7 +171,6 @@
       "id": "intel-plan"
     },
     "title": "Mac transition: change the processor without losing the customer",
-    "occurredAt": "2005-06-06T09:00:00Z",
     "sourceCreatedAt": "2005-06-06T09:00:00Z",
     "sourceUpdatedAt": "2005-06-06T09:45:00Z",
     "path": "records/intel-plan.md"
@@ -198,7 +182,6 @@
       "id": "nano-launch"
     },
     "title": "Nano is live: make the size tangible",
-    "occurredAt": "2005-09-07T16:00:00Z",
     "sourceCreatedAt": "2005-09-07T16:00:00Z",
     "sourceUpdatedAt": "2005-09-07T16:24:00Z",
     "path": "records/nano-launch.md"
@@ -210,7 +193,6 @@
       "id": "rokr-launch"
     },
     "title": "ROKR release: the 100-song boundary must be explicit",
-    "occurredAt": "2005-09-07T13:00:00Z",
     "sourceCreatedAt": "2005-09-07T13:00:00Z",
     "sourceUpdatedAt": "2005-09-07T13:24:00Z",
     "path": "records/rokr-launch.md"
@@ -222,7 +204,6 @@
       "id": "rokr-debrief"
     },
     "title": "Nano and ROKR debrief: a music feature is not a phone experience",
-    "occurredAt": "2005-09-08T09:00:00Z",
     "sourceCreatedAt": "2005-09-08T09:00:00Z",
     "sourceUpdatedAt": "2005-09-08T09:45:00Z",
     "path": "records/rokr-debrief.md"
@@ -234,7 +215,6 @@
       "id": "video-ipod"
     },
     "title": "Video iPod: do not let the demo end at the download",
-    "occurredAt": "2005-10-12T16:00:00Z",
     "sourceCreatedAt": "2005-10-12T16:00:00Z",
     "sourceUpdatedAt": "2005-10-12T16:24:00Z",
     "path": "records/video-ipod.md"
@@ -246,7 +226,6 @@
       "id": "itunes-video"
     },
     "title": "Bob / Steve: television is a test of how we work together",
-    "occurredAt": "2005-10-12T13:00:00Z",
     "sourceCreatedAt": "2005-10-12T13:00:00Z",
     "sourceUpdatedAt": "2005-10-12T13:24:00Z",
     "path": "records/itunes-video.md"
@@ -258,7 +237,6 @@
       "id": "leadership"
     },
     "title": "Leadership handoff: make capacity and ownership explicit",
-    "occurredAt": "2005-10-14T09:00:00Z",
     "sourceCreatedAt": "2005-10-14T09:00:00Z",
     "sourceUpdatedAt": "2005-10-14T09:45:00Z",
     "path": "records/leadership.md"
@@ -270,7 +248,6 @@
       "id": "pixar-call"
     },
     "title": "Pixar / Disney: distribution agreement or shared future?",
-    "occurredAt": "2006-01-24T09:00:00Z",
     "sourceCreatedAt": "2006-01-24T09:00:00Z",
     "sourceUpdatedAt": "2006-01-24T09:45:00Z",
     "path": "records/pixar-call.md"
@@ -282,7 +259,6 @@
       "id": "pixar-announcement"
     },
     "title": "Pixar announcement: what we have agreed, what waits for closing",
-    "occurredAt": "2006-01-24T13:00:00Z",
     "sourceCreatedAt": "2006-01-24T13:00:00Z",
     "sourceUpdatedAt": "2006-01-24T13:24:00Z",
     "path": "records/pixar-announcement.md"
@@ -294,7 +270,6 @@
       "id": "pixar-close"
     },
     "title": "Pixar closing: carry the creative agreement into the new roles",
-    "occurredAt": "2006-05-05T13:00:00Z",
     "sourceCreatedAt": "2006-05-05T13:00:00Z",
     "sourceUpdatedAt": "2006-05-05T13:24:00Z",
     "path": "records/pixar-close.md"
@@ -306,7 +281,6 @@
       "id": "touch-interface-review"
     },
     "title": "iPhone interaction review: fingers, software and the whole sequence",
-    "occurredAt": "2007-01-07T09:00:00Z",
     "sourceCreatedAt": "2007-01-07T09:00:00Z",
     "sourceUpdatedAt": "2007-01-07T09:45:00Z",
     "path": "records/touch-interface-review.md"
@@ -318,7 +292,6 @@
       "id": "iphone-rehearsal"
     },
     "title": "Macworld rehearsal: one device, three familiar needs",
-    "occurredAt": "2007-01-08T09:00:00Z",
     "sourceCreatedAt": "2007-01-08T09:00:00Z",
     "sourceUpdatedAt": "2007-01-08T09:45:00Z",
     "path": "records/iphone-rehearsal.md"
@@ -330,7 +303,6 @@
       "id": "iphone-unveiling"
     },
     "title": "After Macworld: the June promise now has owners",
-    "occurredAt": "2007-01-09T13:00:00Z",
     "sourceCreatedAt": "2007-01-09T13:00:00Z",
     "sourceUpdatedAt": "2007-01-09T13:24:00Z",
     "path": "records/iphone-unveiling.md"
@@ -342,7 +314,6 @@
       "id": "apple-corps-agreement"
     },
     "title": "Apple name agreement: clear the blocker, keep catalog promises separate",
-    "occurredAt": "2007-02-05T13:00:00Z",
     "sourceCreatedAt": "2007-02-05T13:00:00Z",
     "sourceUpdatedAt": "2007-02-05T13:24:00Z",
     "path": "records/apple-corps-agreement.md"
@@ -354,7 +325,6 @@
       "id": "iphone-trademark"
     },
     "title": "iPhone naming resolved; launch work still stands",
-    "occurredAt": "2007-02-21T13:00:00Z",
     "sourceCreatedAt": "2007-02-21T13:00:00Z",
     "sourceUpdatedAt": "2007-02-21T13:24:00Z",
     "path": "records/iphone-trademark.md"
@@ -366,7 +336,6 @@
       "id": "apple-tv-shipping"
     },
     "title": "Apple TV: the living-room handoff is part of the product",
-    "occurredAt": "2007-03-21T16:00:00Z",
     "sourceCreatedAt": "2007-03-21T16:00:00Z",
     "sourceUpdatedAt": "2007-03-21T16:24:00Z",
     "path": "records/apple-tv-shipping.md"
@@ -378,7 +347,6 @@
       "id": "complete-my-album"
     },
     "title": "Complete My Album: do not charge twice for the first step",
-    "occurredAt": "2007-03-29T16:00:00Z",
     "sourceCreatedAt": "2007-03-29T16:00:00Z",
     "sourceUpdatedAt": "2007-03-29T16:24:00Z",
     "path": "records/complete-my-album.md"
@@ -390,7 +358,6 @@
       "id": "emi-drm-announcement"
     },
     "title": "EMI agreement: a useful opening, with a precise boundary",
-    "occurredAt": "2007-04-02T13:00:00Z",
     "sourceCreatedAt": "2007-04-02T13:00:00Z",
     "sourceUpdatedAt": "2007-04-02T13:24:00Z",
     "path": "records/emi-drm-announcement.md"
@@ -402,7 +369,6 @@
       "id": "ipod-100m"
     },
     "title": "100 million iPods: use the milestone to inspect the handoffs",
-    "occurredAt": "2007-04-09T16:00:00Z",
     "sourceCreatedAt": "2007-04-09T16:00:00Z",
     "sourceUpdatedAt": "2007-04-09T16:24:00Z",
     "path": "records/ipod-100m.md"
@@ -414,7 +380,6 @@
       "id": "macbook-update"
     },
     "title": "MacBook refresh: the library still needs a home",
-    "occurredAt": "2007-05-15T16:00:00Z",
     "sourceCreatedAt": "2007-05-15T16:00:00Z",
     "sourceUpdatedAt": "2007-05-15T16:24:00Z",
     "path": "records/macbook-update.md"
@@ -426,7 +391,6 @@
       "id": "itunes-plus"
     },
     "title": "iTunes Plus launch: test what \u201cDRM-free\u201d means to a customer",
-    "occurredAt": "2007-05-30T16:00:00Z",
     "sourceCreatedAt": "2007-05-30T16:00:00Z",
     "sourceUpdatedAt": "2007-05-30T16:24:00Z",
     "path": "records/itunes-plus.md"
@@ -438,7 +402,6 @@
       "id": "web-apps"
     },
     "title": "WWDC applications review: web at launch, native questions open",
-    "occurredAt": "2007-06-11T09:00:00Z",
     "sourceCreatedAt": "2007-06-11T09:00:00Z",
     "sourceUpdatedAt": "2007-06-11T09:45:00Z",
     "path": "records/web-apps.md"
@@ -450,7 +413,6 @@
       "id": "iphone-glass"
     },
     "title": "iPhone readiness: update the promise and the training together",
-    "occurredAt": "2007-06-18T09:00:00Z",
     "sourceCreatedAt": "2007-06-18T09:00:00Z",
     "sourceUpdatedAt": "2007-06-18T09:45:00Z",
     "path": "records/iphone-glass.md"
@@ -462,7 +424,6 @@
       "id": "retail-handoff"
     },
     "title": "Ron / Steve: who helps when the first hour stops working?",
-    "occurredAt": "2007-06-27T13:00:00Z",
     "sourceCreatedAt": "2007-06-27T13:00:00Z",
     "sourceUpdatedAt": "2007-06-27T13:24:00Z",
     "path": "records/retail-handoff.md"
@@ -474,7 +435,6 @@
       "id": "iphone-retail"
     },
     "title": "June 29 launch checklist: first call, first sync, clear help",
-    "occurredAt": "2007-06-28T16:00:00Z",
     "sourceCreatedAt": "2007-06-28T16:00:00Z",
     "sourceUpdatedAt": "2007-06-28T16:24:00Z",
     "path": "records/iphone-retail.md"
@@ -486,7 +446,6 @@
       "id": "iphone-first-weekend"
     },
     "title": "Launch debrief: keep a person with the stalled activation",
-    "occurredAt": "2007-06-30T16:00:00Z",
     "sourceCreatedAt": "2007-06-30T16:00:00Z",
     "sourceUpdatedAt": "2007-06-30T16:24:00Z",
     "path": "records/iphone-first-weekend.md"
@@ -498,7 +457,6 @@
       "id": "developer-feedback"
     },
     "title": "Developer follow-up: web apps leave concrete gaps",
-    "occurredAt": "2007-07-12T16:00:00Z",
     "sourceCreatedAt": "2007-07-12T16:00:00Z",
     "sourceUpdatedAt": "2007-07-12T16:24:00Z",
     "path": "records/developer-feedback.md"
@@ -510,7 +468,6 @@
       "id": "june-quarter-results"
     },
     "title": "Quarterly review: one million iPhones is a target, not a result",
-    "occurredAt": "2007-07-25T13:00:00Z",
     "sourceCreatedAt": "2007-07-25T13:00:00Z",
     "sourceUpdatedAt": "2007-07-25T13:24:00Z",
     "path": "records/june-quarter-results.md"
@@ -522,7 +479,6 @@
       "id": "itunes-three-billion"
     },
     "title": "Three billion songs: volume is not the whole store experience",
-    "occurredAt": "2007-07-31T16:00:00Z",
     "sourceCreatedAt": "2007-07-31T16:00:00Z",
     "sourceUpdatedAt": "2007-07-31T16:24:00Z",
     "path": "records/itunes-three-billion.md"
@@ -534,7 +490,6 @@
       "id": "aluminum-imac"
     },
     "title": "iMac review: the computer should recede behind the work",
-    "occurredAt": "2007-08-07T09:00:00Z",
     "sourceCreatedAt": "2007-08-07T09:00:00Z",
     "sourceUpdatedAt": "2007-08-07T09:45:00Z",
     "path": "records/aluminum-imac.md"
@@ -546,7 +501,6 @@
       "id": "ilife-08"
     },
     "title": "iLife demo: start with the messy photo collection",
-    "occurredAt": "2007-08-07T16:00:00Z",
     "sourceCreatedAt": "2007-08-07T16:00:00Z",
     "sourceUpdatedAt": "2007-08-07T16:24:00Z",
     "path": "records/ilife-08.md"
@@ -558,7 +512,6 @@
       "id": "iphone-price"
     },
     "title": "Holiday iPhone pricing: widen access, account for early buyers",
-    "occurredAt": "2007-09-05T09:00:00Z",
     "sourceCreatedAt": "2007-09-05T09:00:00Z",
     "sourceUpdatedAt": "2007-09-05T09:45:00Z",
     "path": "records/iphone-price.md"
@@ -570,7 +523,6 @@
       "id": "iphone-price-reaction"
     },
     "title": "Price-cut escalation: early buyers feel punished for trusting us",
-    "occurredAt": "2007-09-05T16:00:00Z",
     "sourceCreatedAt": "2007-09-05T16:00:00Z",
     "sourceUpdatedAt": "2007-09-05T16:24:00Z",
     "path": "records/iphone-price-reaction.md"
@@ -582,7 +534,6 @@
       "id": "iphone-credit"
     },
     "title": "Early iPhone customers: approve a $100 store credit",
-    "occurredAt": "2007-09-06T13:00:00Z",
     "sourceCreatedAt": "2007-09-06T13:00:00Z",
     "sourceUpdatedAt": "2007-09-06T13:24:00Z",
     "path": "records/iphone-credit.md"
@@ -594,7 +545,6 @@
       "id": "touch-launch"
     },
     "title": "iPod touch: reuse the interaction, state the difference clearly",
-    "occurredAt": "2007-09-05T16:00:00Z",
     "sourceCreatedAt": "2007-09-05T16:00:00Z",
     "sourceUpdatedAt": "2007-09-05T16:24:00Z",
     "path": "records/touch-launch.md"
@@ -606,7 +556,6 @@
       "id": "iphone-million"
     },
     "title": "Millionth iPhone confirmed; keep the trust follow-up open",
-    "occurredAt": "2007-09-10T13:00:00Z",
     "sourceCreatedAt": "2007-09-10T13:00:00Z",
     "sourceUpdatedAt": "2007-09-10T13:24:00Z",
     "path": "records/iphone-million.md"
@@ -618,7 +567,6 @@
       "id": "native-sdk-preflight"
     },
     "title": "Native SDK decision review: answer the gaps without promising a finished platform",
-    "occurredAt": "2007-10-16T09:00:00Z",
     "sourceCreatedAt": "2007-10-16T09:00:00Z",
     "sourceUpdatedAt": "2007-10-16T09:45:00Z",
     "path": "records/native-sdk-preflight.md"
@@ -630,7 +578,6 @@
       "id": "native-sdk"
     },
     "title": "Native SDK: February commitment, owners and unanswered questions",
-    "occurredAt": "2007-10-17T13:00:00Z",
     "sourceCreatedAt": "2007-10-17T13:00:00Z",
     "sourceUpdatedAt": "2007-10-17T13:24:00Z",
     "path": "records/native-sdk.md"
@@ -642,7 +589,6 @@
       "id": "leopard-release-date"
     },
     "title": "Leopard: October 26 is the next delivery commitment",
-    "occurredAt": "2007-10-16T13:00:00Z",
     "sourceCreatedAt": "2007-10-16T13:00:00Z",
     "sourceUpdatedAt": "2007-10-16T13:24:00Z",
     "path": "records/leopard-release-date.md"
@@ -654,7 +600,6 @@
       "id": "itunes-plus-expansion"
     },
     "title": "iTunes Plus: remove the price fork, keep the catalog boundary",
-    "occurredAt": "2007-10-17T16:00:00Z",
     "sourceCreatedAt": "2007-10-17T16:00:00Z",
     "sourceUpdatedAt": "2007-10-17T16:24:00Z",
     "path": "records/itunes-plus-expansion.md"

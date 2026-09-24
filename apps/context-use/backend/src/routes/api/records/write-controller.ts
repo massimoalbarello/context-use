@@ -1,6 +1,7 @@
 import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
-import { RecordInputSchema } from '#backend/models/records/model.ts';
+import { InvalidRecordAssetError } from '#backend/models/records/assets.ts';
+import { RecordInputSchema, type RecordWriteResult } from '#backend/models/records/model.ts';
 import { API_KEY_SECURITY_SCHEME } from '#backend/routes/api/api-keys/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { withChangeMessage } from '#backend/routes/change-message.ts';
@@ -30,14 +31,22 @@ export function createRecordWriteController({
       '/records',
       async ({ body, principal, status }) => {
         const { changeMessage, ...record } = body;
-        const result = await recordsService.upsert({
-          ownerId: principal.ownerId,
-          record,
-          change: {
-            clientName: principal.name,
-            message: changeMessage,
-          },
-        });
+        let result: RecordWriteResult;
+        try {
+          result = await recordsService.upsert({
+            ownerId: principal.ownerId,
+            record,
+            change: {
+              clientName: principal.name,
+              message: changeMessage,
+            },
+          });
+        } catch (error) {
+          if (error instanceof InvalidRecordAssetError) {
+            return status(StatusMap['Bad Request'], { error: error.message });
+          }
+          throw error;
+        }
         if (result.state === 'conflict') {
           return status(StatusMap.Conflict, {
             error:
@@ -61,6 +70,7 @@ export function createRecordWriteController({
           }),
           [StatusMap.Unauthorized]: ErrorResponseSchema,
           [StatusMap.Conflict]: ErrorResponseSchema,
+          [StatusMap['Bad Request']]: ErrorResponseSchema,
         },
         detail: {
           tags: ['Records'],

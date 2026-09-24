@@ -1,6 +1,6 @@
 import { getOpenSyncBuildOptions, providersFromDefinitions } from '@context-use/open-sync/build';
 import { SyncCatalog } from '../../src/services/syncs/catalog.ts';
-import { syncProviders } from '../../src/services/syncs/providers/index.ts';
+import { syncProviders } from '../../src/services/syncs/sources/index.ts';
 
 export function prepareSyncBuild() {
   return getOpenSyncBuildOptions({

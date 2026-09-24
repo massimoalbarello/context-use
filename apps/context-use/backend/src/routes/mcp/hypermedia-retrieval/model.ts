@@ -186,7 +186,6 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
       readableId: result.record.readableId,
       title: result.record.title,
       source: result.record.source,
-      occurredAt: result.record.occurredAt,
       sourceCreatedAt: result.record.sourceCreatedAt,
       sourceUpdatedAt: result.record.sourceUpdatedAt,
       matchExcerpt: result.matchExcerpt,

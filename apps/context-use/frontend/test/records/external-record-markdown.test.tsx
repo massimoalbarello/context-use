@@ -60,3 +60,25 @@ describe('external record Markdown', () => {
     expect(html).not.toContain('href="context-use:');
   });
 });
+
+test('renders local asset images and attachments while suppressing external and malformed image addresses', () => {
+  const html = renderToStaticMarkup(
+    <ContextRecordMarkdown
+      label="Attachments"
+      markdown={`![Diagram][image]
+
+[Download](context-use://asset/notes)
+
+[image]: context-use://asset/local-diagram
+
+![External](https://tracker.example/pixel.png)
+
+![Malformed](context-use://asset/../../private)`}
+    />,
+  );
+  expect(html).toContain('src="/api/assets/local-diagram/content"');
+  expect(html).toContain('href="/api/assets/notes/content"');
+  expect(html).toContain('alt="Diagram"');
+  expect(html).not.toContain('tracker.example');
+  expect(html).not.toContain('../../private');
+});

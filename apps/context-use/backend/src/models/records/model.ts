@@ -21,7 +21,6 @@ export const RecordInputSchema = z.strictObject({
   source: RecordSourceSchema,
   title: z.string().trim().min(1).max(MAX_RECORD_TITLE_LENGTH),
   body: z.string().max(MAX_RECORD_BODY_LENGTH),
-  occurredAt: TimestampSchema.nullable().default(null),
   sourceCreatedAt: TimestampSchema.nullable().default(null),
   sourceUpdatedAt: TimestampSchema.nullable().default(null),
 });
@@ -38,7 +37,7 @@ export type RecordSummary = Omit<NativeRecord, 'body'> & {
   updatedAt: string;
 };
 export type RecordResource = RecordSummary & { body: string; backlinks: KnowledgePageSummary[] };
-export const RECORD_SORT_FIELDS = ['occurredAt', 'sourceCreatedAt', 'sourceUpdatedAt'] as const;
+export const RECORD_SORT_FIELDS = ['sourceCreatedAt', 'sourceUpdatedAt'] as const;
 export type RecordSortField = (typeof RECORD_SORT_FIELDS)[number];
 export type RecordSourceFilters = {
   provider?: string;
@@ -75,7 +74,6 @@ export function parseRecord(input: RecordInput): NativeRecord {
     value === null ? null : new Date(value).toISOString();
   return {
     ...record,
-    occurredAt: timestamp(record.occurredAt),
     sourceCreatedAt: timestamp(record.sourceCreatedAt),
     sourceUpdatedAt: timestamp(record.sourceUpdatedAt),
   };

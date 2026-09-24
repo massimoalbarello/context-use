@@ -101,7 +101,6 @@ test('HTTP search maps pipeline results to compact typed previews without intern
           sourceUpdatedAt: null,
           ...dates,
           source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
-          occurredAt: null,
         },
       },
     ],

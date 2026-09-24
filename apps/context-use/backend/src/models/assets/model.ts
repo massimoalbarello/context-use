@@ -31,7 +31,18 @@ export interface EntityImageAssetUsage {
   entity: EntityReference;
 }
 
-export type AssetUsage = KnowledgePageAssetUsage | EntityImageAssetUsage;
+export interface RecordAssetUsage {
+  kind: 'record';
+  record: { readableId: string; title: string; source: { provider: string; kind: string } };
+  presentation: AssetPresentation;
+}
+
+export type AssetUsage = KnowledgePageAssetUsage | EntityImageAssetUsage | RecordAssetUsage;
+
+export type AssetImport = Pick<
+  StoredAsset,
+  'ownerId' | 'readableId' | 'name' | 'sizeBytes' | 'contentHash'
+>;
 
 export interface Asset extends AssetSummary {
   usages: AssetUsage[];

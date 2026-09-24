@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { OpenSyncOptions } from '@context-use/open-sync';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
-import { githubPullRequests } from '#backend/services/syncs/providers/github/pull-requests.ts';
+import { githubPullRequests } from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
 import { page } from './github-fixture.ts';
 
 type Event = Parameters<NonNullable<OpenSyncOptions['onEvent']>>[0];
@@ -16,7 +16,7 @@ test('SDK logs identify the owner and sync, distinguish request errors, and surv
   let fail = true;
   const runtime = createSyncRuntime({
     databasePath: join(directory, 'sync.db'),
-    definitions: [githubPullRequests.registration],
+    definitions: [githubPullRequests],
     destinationTypes: {
       local: {
         configSchema: { type: 'object' },
@@ -50,7 +50,7 @@ test('SDK logs identify the owner and sync, distinguish request errors, and surv
   try {
     const sync = await runtime.api.createSync({
       ...scope,
-      definition: githubPullRequests.registration.definition.id,
+      definition: githubPullRequests.definition.id,
       connection: { id: 'connection', service: 'github' },
       destination: { type: 'local', input: {} },
       config: {},

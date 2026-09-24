@@ -33,7 +33,6 @@ create table "record" (
   "source_id" text not null,
   "source_url" text,
   "title" text,
-  "occurred_at" text,
   "source_created_at" text,
   "source_updated_at" text,
   "deleted_at" text,
@@ -61,7 +60,18 @@ create table "record" (
   check (length(trim("updated_at")) > 0)
 );
 create index "record_owner_updated_idx" on "record" ("owner_id", "updated_at" desc, "readable_id") where "deleted_at" is null;
-create index "record_occurred_idx" on "record" ("owner_id", julianday("occurred_at")) where "deleted_at" is null;
 create index "record_source_created_idx" on "record" ("owner_id", julianday("source_created_at")) where "deleted_at" is null;
 create index "record_source_updated_idx" on "record" ("owner_id", julianday("source_updated_at")) where "deleted_at" is null;
 create index "record_provider_kind_idx" on "record" ("owner_id", "provider", "kind") where "deleted_at" is null;
+
+create table "record_asset_usage" (
+  "owner_id" text not null,
+  "source_record_readable_id" text not null,
+  "target_asset_id" text not null,
+  "presentation" text not null,
+  primary key ("owner_id", "source_record_readable_id", "target_asset_id", "presentation"),
+  foreign key ("owner_id", "source_record_readable_id") references "record" ("owner_id", "readable_id") on delete cascade,
+  foreign key ("target_asset_id", "owner_id") references "asset" ("id", "owner_id") on delete cascade,
+  check ("presentation" in ('embed', 'attachment'))
+);
+create index "record_asset_usage_target_idx" on "record_asset_usage" ("owner_id", "target_asset_id");

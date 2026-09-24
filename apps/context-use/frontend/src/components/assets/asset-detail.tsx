@@ -17,6 +17,7 @@ import { ResourceList } from '../knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
 import { FieldError } from '../ui/field';
 import { AssetFileActions } from './asset-file-actions';
@@ -31,8 +32,8 @@ function AssetUsageList({
   presentation: 'embed' | 'attachment';
 }) {
   const usages = asset.usages.filter(
-    (usage): usage is Extract<Asset['usages'][number], { kind: 'page' }> =>
-      usage.kind === 'page' && usage.presentation === presentation,
+    (usage): usage is Extract<Asset['usages'][number], { kind: 'page' | 'record' }> =>
+      usage.kind !== 'entity_image' && usage.presentation === presentation,
   );
   return (
     <section>
@@ -44,11 +45,17 @@ function AssetUsageList({
       </div>
       {usages.length > 0 ? (
         <ResourceList>
-          {usages.map(({ page }) => (
-            <li key={page.readableId}>
-              <KnowledgePageLink page={page} presentation="card" />
-            </li>
-          ))}
+          {usages.map((usage) =>
+            usage.kind === 'page' ? (
+              <li key={`page:${usage.page.readableId}`}>
+                <KnowledgePageLink page={usage.page} presentation="card" />
+              </li>
+            ) : (
+              <li key={`record:${usage.record.readableId}`}>
+                <RecordLink record={usage.record} presentation="card" />
+              </li>
+            ),
+          )}
         </ResourceList>
       ) : (
         <p className="text-muted-foreground text-sm">None yet.</p>

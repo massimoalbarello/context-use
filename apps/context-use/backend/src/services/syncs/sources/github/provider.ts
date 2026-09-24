@@ -1,5 +1,5 @@
 import type { SyncProvider } from '../../catalog.ts';
-import { githubPullRequests } from './pull-requests.ts';
+import { githubPullRequests } from './pull-requests/definition.ts';
 
 export const githubProvider = {
   id: 'github',
@@ -9,5 +9,12 @@ export const githubProvider = {
     createAppUrl: 'https://github.com/settings/applications/new',
     authorizationOptionIds: ['read:user', 'repo'],
   },
-  syncs: [githubPullRequests],
+  syncs: [
+    {
+      name: 'Pull requests',
+      description: 'Pull requests you authored, saved as searchable records.',
+      intervalMs: 900_000,
+      registration: githubPullRequests,
+    },
+  ],
 } satisfies SyncProvider;

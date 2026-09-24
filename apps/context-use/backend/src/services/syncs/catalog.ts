@@ -2,7 +2,6 @@ import type { SyncRegistration } from '@context-use/open-sync/definition';
 import { NotFoundError } from '#backend/lib/errors.ts';
 
 export interface ContextSync {
-  key: string;
   name: string;
   description: string;
   intervalMs: number;
@@ -24,7 +23,6 @@ export class SyncCatalog {
       this.unique({ identities, key: `provider:${provider.id}` });
       for (const sync of provider.syncs) {
         const definition = sync.registration.definition;
-        this.unique({ identities, key: `sync:${sync.key}` });
         this.unique({ identities, key: `definition:${definition.id}` });
         if (definition.provider?.service !== provider.id) {
           throw new Error('Sync definition must use its registered provider.');
@@ -48,7 +46,7 @@ export class SyncCatalog {
   }
   sync(key: string) {
     for (const provider of this.providers) {
-      const sync = provider.syncs.find((item) => item.key === key);
+      const sync = provider.syncs.find((item) => item.registration.definition.id === key);
       if (sync) {
         return { provider, sync };
       }

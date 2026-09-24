@@ -31,6 +31,15 @@ export const EntityImageAssetUsageSchema = t.Object({
 });
 
 export const AssetUsageSchema = t.Union([
+  t.Object({
+    kind: t.Literal('record'),
+    record: t.Object({
+      readableId: ReadableIdSchema,
+      title: t.String(),
+      source: t.Object({ provider: t.String(), kind: t.String() }),
+    }),
+    presentation: t.Union([t.Literal('embed'), t.Literal('attachment')]),
+  }),
   KnowledgePageAssetUsageSchema,
   EntityImageAssetUsageSchema,
 ]);
@@ -78,6 +87,17 @@ export const AssetContentQuerySchema = t.Object({
 });
 
 export function assetUsageResponse(usage: AssetUsage) {
+  if (usage.kind === 'record') {
+    return {
+      kind: usage.kind,
+      record: {
+        readableId: usage.record.readableId,
+        title: usage.record.title,
+        source: usage.record.source,
+      },
+      presentation: usage.presentation,
+    };
+  }
   return usage.kind === 'page'
     ? {
         kind: usage.kind,

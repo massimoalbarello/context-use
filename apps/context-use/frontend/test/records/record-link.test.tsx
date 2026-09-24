@@ -21,7 +21,6 @@ const record: ContextRecordSummary = {
   createdAt: new Date('2026-09-09T11:00:00.000Z'),
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
   source: { provider: 'github', kind: 'pull-request', id: '57', url: null },
-  occurredAt: null,
 };
 
 test('record cards identify their content, provider, and kind', () => {
