@@ -810,6 +810,25 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindPagePublicationStatus`. */
+export interface IFindPagePublicationStatusResult {
+    publicId: string | null;
+    publishedAt: string | null;
+    revisionId: string | null;
+}
+
+/** Result of query `FindEntityPublicationStatus`. */
+export interface IFindEntityPublicationStatusResult {
+    publicId: string | null;
+    publishedAt: string | null;
+}
+
+/** Result of query `FindAssetPublicationStatus`. */
+export interface IFindAssetPublicationStatusResult {
+    publicId: string | null;
+    publishedAt: string | null;
+}
+
 /** Result of query `InsertResourceChange`. */
 export interface IInsertResourceChangeResult {
 }
@@ -980,6 +999,9 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindPagePublicationStatus: IFindPagePublicationStatusResult;
+    FindEntityPublicationStatus: IFindEntityPublicationStatusResult;
+    FindAssetPublicationStatus: IFindAssetPublicationStatusResult;
     InsertResourceChange: IInsertResourceChangeResult;
     AdvanceRecordSyncRevision: IAdvanceRecordSyncRevisionResult;
     WriteRecord: IWriteRecordResult;
