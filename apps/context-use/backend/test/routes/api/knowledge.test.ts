@@ -984,9 +984,27 @@ Revise the current knowledge instead of appending snapshots.`,
       }),
     ]);
     const currentMentionCount = await database<Array<{ count: number }>>`
-      select count(*) as "count" from "knowledge_page_entity_mention"
+      select count(*) as "count" from "knowledge_page_entity_mention" mention
+      join "knowledge_page" page
+        on page."owner_id" = mention."owner_id"
+       and page."current_revision_id" = mention."source_revision_id"
+      where page."owner_id" = ${OWNER_USER_ID} and page."archived_at" is null
     `;
     expect(Number(currentMentionCount[0]?.count)).toBe(EXPECTED_CURRENT_MENTION_COUNT);
+    const savedMentions = await database`
+      select revision."revision_number" as "revisionNumber", entity."readable_id" as "entity"
+      from "knowledge_page_entity_mention" mention
+      join "knowledge_page_revision" revision on revision."id" = mention."source_revision_id"
+      join "knowledge_page" page on page."id" = revision."page_id"
+      join "entity" entity on entity."id" = mention."target_entity_id"
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'growth-playbook'
+      order by revision."revision_number", entity."readable_id"
+    `;
+    expect(savedMentions).toEqual([
+      { revisionNumber: 1, entity: 'luca-bianchi' },
+      { revisionNumber: 1, entity: 'test-owner' },
+      { revisionNumber: 2, entity: 'luca-bianchi' },
+    ]);
 
     const staleUpdateResponse = await app.handle(
       jsonRequest({
@@ -1234,9 +1252,21 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'growth-playbook'
     `;
     expect(archivedPageState[0]?.archivedAt).toBeString();
-    expect(Number(archivedPageState[0]?.outgoingMentions)).toBe(0);
-    expect(Number(archivedPageState[0]?.outgoingReferences)).toBe(0);
-    expect(Number(archivedPageState[0]?.incomingReferences)).toBe(0);
+    expect(Number(archivedPageState[0]?.outgoingMentions)).toBe(
+      Number(pageBeforeArchive[0]?.outgoingMentions),
+    );
+    expect(Number(archivedPageState[0]?.outgoingReferences)).toBe(
+      Number(pageBeforeArchive[0]?.outgoingReferences),
+    );
+    expect(Number(archivedPageState[0]?.incomingReferences)).toBe(1);
+    const savedReferences = await database`
+      select revision."revision_number" as "revisionNumber", reference."target_fragment" as "fragment"
+      from "knowledge_page_reference" reference
+      join "knowledge_page_revision" revision on revision."id" = reference."source_revision_id"
+      join "knowledge_page" page on page."id" = revision."page_id"
+      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'operating-rhythm'
+    `;
+    expect(savedReferences).toEqual([{ revisionNumber: 1, fragment: 'feedback-loop' }]);
     expect(await storage.exists(pageBeforeArchive[0]?.storageKey ?? '')).toBe(true);
     expect(await storage.file(pageBeforeArchive[0]?.storageKey ?? '').text()).toContain(
       '[Test Owner](context-use://entity/test-owner)',

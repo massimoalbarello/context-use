@@ -360,33 +360,6 @@ async function insertLinks({
   }
 }
 
-async function deleteLinks({
-  db,
-  ownerId,
-  revisionId,
-}: {
-  db: TypedSQL<Queries>;
-  ownerId: string;
-  revisionId: string;
-}): Promise<void> {
-  await db`
-    delete from "knowledge_page_entity_mention"
-    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
-  `;
-  await db`
-    delete from "knowledge_page_reference"
-    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
-  `;
-  await db`
-    delete from "knowledge_page_record_reference"
-    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
-  `;
-  await db`
-    delete from "knowledge_page_asset_usage"
-    where "owner_id" = ${ownerId} and "source_revision_id" = ${revisionId}
-  `;
-}
-
 export class KnowledgePagesRepository implements KnowledgePagesRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
 
@@ -560,7 +533,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         return resolved;
       }
       const revisionNumber = current.revisionNumber + 1;
-      await deleteLinks({ db, ownerId: input.ownerId, revisionId: current.currentRevisionId });
       const author = await revisionAuthorColumns({
         db,
         ownerId: input.ownerId,
@@ -888,7 +860,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         return { state: 'resource_in_use' as const, blockers };
       }
       const previous = await findCurrentKnowledgePage({ db, ownerId, readableId });
-      await deleteLinks({ db, ownerId, revisionId: target.currentRevisionId });
       await db`
         update "knowledge_page"
         set "archived_at" = ${archivedAt}
