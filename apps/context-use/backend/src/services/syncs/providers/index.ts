@@ -1,3 +1,3 @@
-import { githubProvider } from './github/index.ts';
+import { githubProvider } from './github.ts';
 
 export const syncProviders = [githubProvider];

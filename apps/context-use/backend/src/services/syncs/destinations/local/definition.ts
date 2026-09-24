@@ -20,7 +20,7 @@ import { importedAssetReadableId, mapRecordAssets } from './record-assets.ts';
 
 const summarySchema = z.object({ title: z.string(), url: z.string().optional() });
 
-// Validate the complete batch before publishing; every publication commits its own revision.
+// Validate all rewritten records before publishing any; each publication commits its own revision.
 function deliveredRecords(input: {
   deliverable: Deliverable;
   registration: SyncRegistration;
@@ -112,18 +112,19 @@ export function localRecordDestination(input: {
 }): DestinationType {
   async function publish({
     deliverable,
+    registration,
     provider,
-    records,
     assets,
     signal,
   }: {
     deliverable: Deliverable;
+    registration: SyncRegistration;
     provider: string;
-    records: NonNullable<ReturnType<typeof deliveredRecords>>;
     assets: Map<string, AssetImport>;
     signal: AbortSignal;
   }): Promise<DeliveryResult> {
     const change = { clientName: provider, message: `Synced record from ${provider}` };
+    const imported = new Map<string, { readableId: string; name: string }>();
     // Finish every asset before the first record. Replays reuse these immutable local assets.
     for (const asset of deliverable.assets) {
       signal.throwIfAborted();
@@ -136,6 +137,16 @@ export function localRecordDestination(input: {
       if (result.state === 'conflict') {
         return { status: 'rejected', code: 'asset_conflict' };
       }
+      imported.set(assetKey(asset), { readableId: result.readableId, name: asset.name });
+    }
+    let records: ReturnType<typeof deliveredRecords>;
+    try {
+      records = deliveredRecords({ deliverable, registration, provider, assets: imported });
+    } catch {
+      return { status: 'rejected', code: 'invalid_asset_reference' };
+    }
+    if (!records) {
+      return { status: 'rejected', code: 'invalid_record' };
     }
     for (const { record, revision } of records) {
       signal.throwIfAborted();
@@ -170,21 +181,16 @@ export function localRecordDestination(input: {
         return { status: 'rejected', code: 'invalid_source' };
       }
       let assets: Map<string, AssetImport>;
-      let records: ReturnType<typeof deliveredRecords>;
       try {
         assets = deliveredAssets(deliverable);
-        records = deliveredRecords({ deliverable, registration, provider, assets });
       } catch (error) {
         return {
           status: 'rejected',
           code: error instanceof InvalidDeliveryError ? error.code : 'invalid_asset_reference',
         };
       }
-      if (!records) {
-        return { status: 'rejected', code: 'invalid_record' };
-      }
       try {
-        return await publish({ deliverable, provider, records, assets, signal });
+        return await publish({ deliverable, registration, provider, assets, signal });
       } catch (error) {
         if (error instanceof InvalidRecordAssetError) {
           return { status: 'rejected', code: 'invalid_asset_reference' };

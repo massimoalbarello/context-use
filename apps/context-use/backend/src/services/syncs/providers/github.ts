@@ -1,5 +1,5 @@
-import type { SyncProvider } from '../../catalog.ts';
-import { githubPullRequests } from './pull-requests.ts';
+import type { SyncProvider } from '../catalog.ts';
+import { githubPullRequests } from '../sources/github/pull-requests.ts';
 
 export const githubProvider = {
   id: 'github',

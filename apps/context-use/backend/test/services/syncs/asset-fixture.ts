@@ -10,7 +10,7 @@ import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
-import { localRecordDestination } from '#backend/services/syncs/destination.ts';
+import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { unusedAssetFacesService } from '../../support/app.ts';
 
 export const assetScope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };

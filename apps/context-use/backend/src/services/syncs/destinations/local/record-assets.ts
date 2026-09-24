@@ -24,8 +24,10 @@ export function mapRecordAssets(input: {
   assets: ReadonlyMap<string, { readableId: string; name: string }>;
 }): string {
   const tree = fromMarkdown(input.body);
-  const used = new Set<string>();
-  for (const { target } of markdownLinks(tree)) {
+  const links = markdownLinks(tree);
+  const linked = new Set<string>();
+  const replacements = new Map<string, string>();
+  for (const { target, embedded } of links) {
     const ref = resolveAssetReference({ value: target.url, assetRefs: input.assetRefs });
     if (!ref) {
       continue;
@@ -35,20 +37,26 @@ export function mapRecordAssets(input: {
     if (!asset) {
       throw new Error('Missing record asset');
     }
-    used.add(key);
-    target.url = assetAddress(asset.readableId);
+    if (!embedded) {
+      linked.add(key);
+    }
+    replacements.set(target.url, assetAddress(asset.readableId));
   }
-  // A reference may exist only in opaque source data. Preserve it as a readable attachment.
+  // Resolve shared Markdown definitions before rewriting them: one can serve an image and a link.
+  for (const { target } of links) {
+    target.url = replacements.get(target.url) ?? target.url;
+  }
+  // Every declared asset needs a navigable link, even when it only appears as an image or in data.
   for (const ref of Object.values(input.assetRefs)) {
     const key = assetKey(ref);
-    if (used.has(key)) {
+    if (linked.has(key)) {
       continue;
     }
     const asset = input.assets.get(key);
     if (!asset) {
       throw new Error('Missing record asset');
     }
-    used.add(key);
+    linked.add(key);
     tree.children.push({
       type: 'paragraph',
       children: [
@@ -60,5 +68,5 @@ export function mapRecordAssets(input: {
       ],
     });
   }
-  return used.size ? toMarkdown(tree) : input.body;
+  return linked.size ? toMarkdown(tree) : input.body;
 }

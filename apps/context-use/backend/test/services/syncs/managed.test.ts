@@ -8,8 +8,8 @@ import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { githubPullRequests } from '#backend/services/syncs/providers/github/pull-requests.ts';
 import { syncProviders } from '#backend/services/syncs/providers/index.ts';
+import { githubPullRequests } from '#backend/services/syncs/sources/github/pull-requests.ts';
 
 function unexpected(): never {
   throw new Error('Unexpected provider call');

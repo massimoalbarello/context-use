@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import type { JsonObject } from '@context-use/open-sync/json';
 import { validate } from '@octokit/graphql-schema';
-import { stepGithubPullRequests } from '#backend/services/syncs/providers/github/pull-requests.ts';
+import { stepGithubPullRequests } from '#backend/services/syncs/sources/github/pull-requests.ts';
 import { githubContext, now, page, pull } from './github-fixture.ts';
 
 const initialCheckpoint = { accountId: null, cursor: null, cycleStartedAt: null, watermark: null };

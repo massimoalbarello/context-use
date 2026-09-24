@@ -7,8 +7,8 @@ import { createSqliteDatabase } from '#backend/db/client.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import { recordAssetUsages } from '#backend/models/records/assets.ts';
-import { localRecordDestination } from '#backend/services/syncs/destination.ts';
-import { importedAssetReadableId } from '#backend/services/syncs/record-assets.ts';
+import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
+import { importedAssetReadableId } from '#backend/services/syncs/destinations/local/record-assets.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import {
   assetBundle,
@@ -180,6 +180,49 @@ test('unavailable and unsupported descriptors reject the entire batch without st
       expect((await host.listAssets()).items).toEqual([]);
       expect((await host.list()).items).toEqual([]);
       expect((await host.history()).items).toEqual([]);
+    },
+  });
+});
+
+test('records use returned local asset IDs and link image-only and data-only attachments', async () => {
+  await withRecordTestDatabase({
+    run: async (input) => {
+      await insertAssetOwners(input.database);
+      const host = assetHost(input);
+      const destination = localRecordDestination({
+        ownerId: assetScope.ownerId,
+        definitions: [assetDefinition],
+        importAsset: async (value) => {
+          expect((await host.list()).items).toEqual([]);
+          return host.assets.import({
+            ...value,
+            asset: { ...value.asset, readableId: `local-${value.asset.readableId}` },
+          });
+        },
+        upsertRecord: (value) => host.records.upsert(value),
+      });
+      const bundle = assetBundle();
+      const delivered = bundle.records[0]!;
+      if (delivered.operation !== 'upsert') {
+        throw new Error('Expected an upsert fixture');
+      }
+      bundle.records[0] = {
+        ...delivered,
+        content: { format: 'markdown', body: '![Diagram](open-sync-asset:diagram)' },
+      };
+      expect(await destination.deliver(assetDelivery(bundle))).toEqual({ status: 'accepted' });
+      const { readableId } = (await host.list()).items[0]!;
+      const record = await host.records.findResource({ ...assetScope, readableId });
+      const usages = recordAssetUsages(record!.body);
+      expect(usages).toHaveLength(RECORD_USAGE_COUNT);
+      for (const asset of (await host.listAssets()).items) {
+        expect(asset.readableId.startsWith('local-')).toBe(true);
+        expect(usages).toContainEqual({ readableId: asset.readableId, presentation: 'attachment' });
+        expect(
+          await host.assets.content({ ...assetScope, readableId: asset.readableId }),
+        ).not.toBeNull();
+      }
+      expect(record!.body).not.toContain('open-sync-asset:');
     },
   });
 });

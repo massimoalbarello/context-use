@@ -55,7 +55,7 @@ import { McpClientAuthorizationsService } from '#backend/services/mcp-client-aut
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
-import { localRecordDestination } from '#backend/services/syncs/destination.ts';
+import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
 import { syncProviders } from '#backend/services/syncs/providers/index.ts';

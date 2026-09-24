@@ -14,12 +14,12 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
-import { localRecordDestination } from '#backend/services/syncs/destination.ts';
+import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import {
   githubPullRequests,
   stepGithubPullRequests,
-} from '#backend/services/syncs/providers/github/pull-requests.ts';
-import { githubRecord } from '#backend/services/syncs/providers/github/record.ts';
+} from '#backend/services/syncs/sources/github/pull-requests.ts';
+import { githubRecord } from '#backend/services/syncs/sources/github/record.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
 
