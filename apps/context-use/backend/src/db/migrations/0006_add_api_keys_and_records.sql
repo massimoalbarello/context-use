@@ -53,7 +53,7 @@ create table "record" (
   check (length(trim("kind")) > 0),
   check (length(trim("provider")) > 0),
   check ("deleted_at" is not null or ("title" is not null and length(trim("title")) > 0
-    and "storage_key" is not null and "content_hash" is not null and "size_bytes" is not null and "size_bytes" > 0)),
+    and "storage_key" is not null and "content_hash" is not null and "size_bytes" is not null and "size_bytes" >= 0)),
   check ("deleted_at" is null or ("source_updated_at" is not null and "storage_key" is null and "content_hash" is null and "size_bytes" is null)),
   check ("content_hash" is null or ("content_hash" not glob '*[^a-f0-9]*' and length("content_hash") = 64)),
   check (length(trim("created_at")) > 0),
