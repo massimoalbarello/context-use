@@ -1,7 +1,7 @@
 import type { Storage } from './storage.ts';
 
 /** Read the exact immutable file selected by a repository, never its latest replacement. */
-export async function readVerifiedText({
+export async function readVerifiedBytes({
   storage,
   storageKey,
   contentHash,
@@ -13,7 +13,7 @@ export async function readVerifiedText({
   contentHash: string;
   sizeBytes: number;
   label: string;
-}): Promise<string> {
+}): Promise<Uint8Array<ArrayBuffer>> {
   if (!(await storage.exists(storageKey))) {
     throw new Error(`${label} is missing`);
   }
@@ -24,5 +24,11 @@ export async function readVerifiedText({
   ) {
     throw new Error(`${label} failed its integrity check`);
   }
-  return new TextDecoder().decode(bytes);
+  return bytes;
+}
+
+export async function readVerifiedText(
+  input: Parameters<typeof readVerifiedBytes>[0],
+): Promise<string> {
+  return new TextDecoder().decode(await readVerifiedBytes(input));
 }

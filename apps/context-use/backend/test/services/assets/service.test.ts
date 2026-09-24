@@ -108,3 +108,33 @@ test('both entry points notify after saving, and notification failures cannot de
     },
   });
 });
+
+test('asset reads return verified bytes and reject missing or corrupt stored content', async () => {
+  await withRecordTestDatabase({
+    run: async (input) => {
+      await input.database`insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (${OWNER_USER_ID}, 'Owner', 'owner@example.invalid', 1, '2026-09-24', '2026-09-24')`;
+      const storage = createLocalStorage(input);
+      const assets = new AssetsService({
+        assets: new AssetsRepository(input.database),
+        storage,
+        faces: unusedAssetFacesService,
+      });
+      const scope = { ownerId: OWNER_USER_ID, readableId: 'verified' };
+      await assets.create({
+        ...scope,
+        name: 'Verified',
+        file: new Blob(['original']),
+        change: { clientName: null, message: 'Upload' },
+      });
+      const content = (await assets.content(scope))!;
+      expect(content.blob.type.split(';')[0]).toBe(content.asset.mediaType);
+      for (const corrupt of ['replaced', 'short']) {
+        await storage.write(content.asset.storageKey, new Blob([corrupt]));
+        await expect(assets.content(scope)).rejects.toThrow('integrity check');
+      }
+      await storage.delete(content.asset.storageKey);
+      await expect(assets.content(scope)).rejects.toThrow('missing');
+      expect(await content.blob.text()).toBe('original');
+    },
+  });
+});

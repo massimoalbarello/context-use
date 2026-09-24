@@ -1,5 +1,6 @@
 import { getStreamAsArrayBuffer } from 'get-stream';
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
+import { readVerifiedBytes } from '#backend/lib/storage/verified-file.ts';
 import { detectAssetMedia } from '#backend/models/assets/media.ts';
 import {
   type Asset,
@@ -248,15 +249,14 @@ export class AssetsService {
     if (!asset) {
       return null;
     }
-    if (!(await this.storage.exists(asset.storageKey))) {
-      throw new Error(`Asset blob ${asset.id} is missing`);
-    }
-    const blob = this.storage.file(asset.storageKey);
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    if (bytes.byteLength !== asset.sizeBytes || hash(bytes) !== asset.contentHash) {
-      throw new Error(`Asset blob ${asset.id} failed its integrity check`);
-    }
-    return { asset, blob };
+    const bytes = await readVerifiedBytes({
+      storage: this.storage,
+      storageKey: asset.storageKey,
+      contentHash: asset.contentHash,
+      sizeBytes: asset.sizeBytes,
+      label: `Asset blob ${asset.id}`,
+    });
+    return { asset, blob: new Blob([bytes], { type: asset.mediaType }) };
   }
 }
 

@@ -1,6 +1,6 @@
 import canonicalize from 'canonicalize';
 import type { Storage } from '#backend/lib/storage/storage.ts';
-import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
+import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import { readableIdFrom, readableIdWithSuffix } from '#backend/models/readable-ids/model.ts';
 import { recordAssetUsages } from '#backend/models/records/assets.ts';
@@ -67,7 +67,6 @@ export class RecordsService {
     const storageKey = `${encodeURIComponent(ownerId)}/records/${readableId}/${Bun.randomUUIDv7()}.json`;
     const json = canonicalize(record)!;
     const file = new Blob([json], { type: 'application/json' });
-    const unusedKeys = new Set([storageKey]);
     let result: RecordWriteResult;
     try {
       const sizeBytes = await this.storage.write(storageKey, file);
@@ -83,18 +82,18 @@ export class RecordsService {
         value: { record, assetUsages, storageKey, sizeBytes, contentHash: sha256(json) },
       });
       if (publication.committed) {
-        unusedKeys.delete(storageKey);
+        return publication.result;
       }
       result = publication.result;
     } catch (error) {
       try {
-        await this.discard(unusedKeys);
+        await this.discard(storageKey);
       } catch (cleanupError) {
         throw new AggregateError([error, cleanupError], 'Record write and cleanup failed');
       }
       throw error;
     }
-    await this.discard(unusedKeys);
+    await this.discard(storageKey);
     return result;
   }
   async remove({
@@ -141,20 +140,9 @@ export class RecordsService {
     );
     return { ...summary, body: record.body };
   }
-  private async discard(keys: Set<string>): Promise<void> {
-    const results = await Promise.allSettled(
-      Array.from(keys, async (key) => {
-        if (await this.storage.exists(key)) {
-          await this.storage.delete(key);
-        }
-      }),
-    );
-    const failures = results.filter((result) => result.status === 'rejected');
-    if (failures.length > 0) {
-      throw new AggregateError(
-        failures.map((failure) => failure.reason),
-        'Could not remove unpublished record files',
-      );
+  private async discard(storageKey: string): Promise<void> {
+    if (await this.storage.exists(storageKey)) {
+      await this.storage.delete(storageKey);
     }
   }
 }

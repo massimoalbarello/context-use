@@ -1,7 +1,7 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type { Storage } from '#backend/lib/storage/storage.ts';
-import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
+import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import type {
   HypermediaResourceType,
   HypermediaRetrievalFilters,

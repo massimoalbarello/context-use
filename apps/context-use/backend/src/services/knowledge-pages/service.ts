@@ -1,5 +1,5 @@
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
-import { readVerifiedText } from '#backend/lib/storage/verified-text.ts';
+import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import { diffPageMarkdown, type KnowledgePageDiff } from '#backend/models/knowledge-pages/diff.ts';
 import {
