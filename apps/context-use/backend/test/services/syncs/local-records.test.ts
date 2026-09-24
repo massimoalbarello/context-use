@@ -293,14 +293,14 @@ test('incremental page failures and cursor expiry preserve the frozen scan throu
         expect(completed.at(-1)!.checkpoint).toEqual({
           accountId: 'U_owner',
           cursor: null,
-          cycleStartedAt: null,
-          watermark: inProgress.cycleStartedAt!,
+          iterationStartedAt: null,
+          watermark: inProgress.iterationStartedAt!,
         });
         expect(requests).toEqual([null, null, 'cursor-1', 'cursor-1', null, 'cursor-1']);
         expect((await host.list()).items).toHaveLength(SOURCE_RECORD_COUNT);
         expect((await host.history()).items).toHaveLength(SOURCE_RECORD_COUNT);
         const duringScan = new Date(
-          Date.parse(String(inProgress.cycleStartedAt)) + 1,
+          Date.parse(String(inProgress.iterationStartedAt)) + 1,
         ).toISOString();
         responses.push(
           page({

@@ -54,7 +54,7 @@ export function githubContext(input: {
     checkpoint: input.checkpoint ?? {
       accountId: null,
       cursor: null,
-      cycleStartedAt: null,
+      iterationStartedAt: null,
       watermark: null,
     },
     syncId: 'sync',
