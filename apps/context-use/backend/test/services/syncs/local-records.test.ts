@@ -24,7 +24,7 @@ import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
 
 const scope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };
-const definition = githubPullRequests.registration;
+const definition = githubPullRequests;
 const SOURCE_RECORD_COUNT = 3;
 const HISTORY_AFTER_UPDATE = 3;
 const ISOLATED_SYNC_RECORD_COUNT = 4;
@@ -175,6 +175,13 @@ test('npm engine immediately backfills native pages across restart, then polls o
           readableId: record.readableId,
         });
         expect(resource?.body).toBe(githubRecord(edited).content.body);
+        expect(resource?.title).toBe(githubRecord(edited).preview);
+        expect(resource?.source).toEqual({
+          provider: 'github',
+          kind: 'pull-request',
+          id: 'PR_one',
+          url: null,
+        });
         expect(resource?.sourceCreatedAt).toBe(now);
         expect(resource?.sourceUpdatedAt).toBe(updatedAt);
         requested.length = 0;
@@ -471,6 +478,8 @@ test('unavailable assets, deletes, malformed batches and cancellation cannot ack
         bundle([{ ...record, assetRefs: { file: { id: 'asset', version: '1' } } }]),
         bundle([record, { operation: 'delete', kind: 'pull-request', id: 'deleted', revision: 1 }]),
         bundle([record, { ...record, id: 'bad', content: undefined }]),
+        bundle([record, { ...record, id: 'bad', preview: undefined }]),
+        bundle([record, { ...record, id: 'bad', preview: '   ' }]),
         { ...valid, definition: 'unknown' },
       ]) {
         expect((await host.destination.deliver(delivery(invalid))).status).toBe('rejected');

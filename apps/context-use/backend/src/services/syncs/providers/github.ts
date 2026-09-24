@@ -9,5 +9,13 @@ export const githubProvider = {
     createAppUrl: 'https://github.com/settings/applications/new',
     authorizationOptionIds: ['read:user', 'repo'],
   },
-  syncs: [githubPullRequests],
+  syncs: [
+    {
+      key: 'github-pull-requests',
+      name: 'Pull requests',
+      description: 'Pull requests you authored, saved as searchable records.',
+      intervalMs: 900_000,
+      registration: githubPullRequests,
+    },
+  ],
 } satisfies SyncProvider;

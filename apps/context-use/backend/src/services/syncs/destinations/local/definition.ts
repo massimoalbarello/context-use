@@ -1,7 +1,6 @@
 import { assetKey } from '@context-use/open-sync/assets';
 import type { SyncRegistration } from '@context-use/open-sync/definition';
 import type { Deliverable, DeliveryResult, DestinationType } from '@context-use/open-sync/delivery';
-import { z } from 'zod';
 import {
   type AssetImport,
   MAX_ASSET_BYTES,
@@ -17,8 +16,6 @@ import {
 } from '#backend/models/records/model.ts';
 
 import { importedAssetReadableId, mapRecordAssets } from './record-assets.ts';
-
-const summarySchema = z.object({ title: z.string(), url: z.string().optional() });
 
 // Validate all rewritten records before publishing any; each publication commits its own revision.
 function deliveredRecords(input: {
@@ -38,13 +35,9 @@ function deliveredRecords(input: {
     ) {
       return null;
     }
-    const summary = summarySchema.safeParse(record.data);
-    if (!summary.success) {
-      return null;
-    }
     const parsed = RecordInputSchema.safeParse({
-      source: { provider: input.provider, kind: record.kind, id: record.id, url: summary.data.url },
-      title: summary.data.title,
+      source: { provider: input.provider, kind: record.kind, id: record.id },
+      title: record.preview,
       body: mapRecordAssets({
         body: record.content.body,
         assetRefs: record.assetRefs ?? {},

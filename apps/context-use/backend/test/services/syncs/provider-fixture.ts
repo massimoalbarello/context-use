@@ -1,7 +1,10 @@
+import type { JsonObject } from '@context-use/open-sync/json';
 import type { SyncProvider } from '#backend/services/syncs/catalog.ts';
 import { now } from './github-fixture.ts';
 
 export function fixtureProvider(id: string): SyncProvider {
+  const data: JsonObject =
+    id === 'alpha' ? { title: 'Opaque provider data', url: 'not a URL' } : {};
   return {
     id,
     name: id,
@@ -31,7 +34,8 @@ export function fixtureProvider(id: string): SyncProvider {
                   operation: 'upsert',
                   kind: 'event',
                   id: 'event-one',
-                  data: { title: `${id} event` },
+                  data,
+                  preview: `${id}   event`,
                   content: { format: 'markdown', body: '# Event\n\nMeeting notes.' },
                   createdAt: now,
                   updatedAt: now,

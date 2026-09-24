@@ -16,7 +16,7 @@ test('SDK logs identify the owner and sync, distinguish request errors, and surv
   let fail = true;
   const runtime = createSyncRuntime({
     databasePath: join(directory, 'sync.db'),
-    definitions: [githubPullRequests.registration],
+    definitions: [githubPullRequests],
     destinationTypes: {
       local: {
         configSchema: { type: 'object' },
@@ -50,7 +50,7 @@ test('SDK logs identify the owner and sync, distinguish request errors, and surv
   try {
     const sync = await runtime.api.createSync({
       ...scope,
-      definition: githubPullRequests.registration.definition.id,
+      definition: githubPullRequests.definition.id,
       connection: { id: 'connection', service: 'github' },
       destination: { type: 'local', input: {} },
       config: {},

@@ -38,9 +38,7 @@ export const assetDefinition: SyncRegistration = {
     configSchema: { type: 'object' },
     checkpointSchema: { type: 'object' },
     initialCheckpoint: {},
-    kinds: {
-      summary: { type: 'object', required: ['title'], properties: { title: { type: 'string' } } },
-    },
+    kinds: { summary: { type: 'object' } },
     provider: { service: 'fixture', actions: [] },
   },
   load: () => ({
@@ -59,7 +57,8 @@ export function assetRecord(): DeliveredRecord {
     kind: 'summary',
     id: 'record',
     revision: 1,
-    data: { title: 'Summary with attachments', attachment: assetPlaceholder('notes') },
+    data: { attachment: assetPlaceholder('notes') },
+    preview: 'Summary with attachments',
     content: {
       format: 'markdown',
       body: `![Diagram][image]\n\n[Download][image]\n\n[image]: ${assetPlaceholder('diagram')}\n\n\`${assetPlaceholder('diagram')}\`\n\n\`\`\`text\n![literal](${assetPlaceholder('diagram')})\n\`\`\``,

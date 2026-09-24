@@ -22,7 +22,7 @@ export function githubRecord(value: unknown) {
     operation: 'upsert',
     kind: 'pull-request',
     id: pull.id,
-    data: { ...pull, title },
+    data: pull,
     preview: title,
     content: {
       format: 'markdown',

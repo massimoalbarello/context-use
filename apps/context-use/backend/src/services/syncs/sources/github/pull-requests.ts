@@ -1,6 +1,5 @@
-import type { SyncContext, SyncStep } from '@context-use/open-sync/definition';
+import type { SyncContext, SyncRegistration, SyncStep } from '@context-use/open-sync/definition';
 import { z } from 'zod';
-import type { ContextSync } from '../../catalog.ts';
 import { githubRecord, pullSchema } from './record.ts';
 import { postGithubGraphql } from './request.ts';
 
@@ -36,7 +35,7 @@ export async function stepGithubPullRequests(context: SyncContext): Promise<Sync
   const response = await postGithubGraphql({
     context,
     body: {
-      query: `query ContextUsePullRequests($after: String) { viewer { id pullRequests(first: ${PAGE_SIZE}, after: $after, orderBy: {field: ${order}}) { edges { cursor node { ${pullFields} } } pageInfo { hasNextPage } } } }`,
+      query: `query GithubPullRequests($after: String) { viewer { id pullRequests(first: ${PAGE_SIZE}, after: $after, orderBy: {field: ${order}}) { edges { cursor node { ${pullFields} } } pageInfo { hasNextPage } } } }`,
       variables: { after: checkpoint.cursor },
     },
   });
@@ -106,20 +105,14 @@ function validatePage(input: {
 }
 
 export const githubPullRequests = {
-  key: 'github-pull-requests',
-  name: 'Pull requests',
-  description: 'Pull requests you authored, saved as searchable records.',
-  intervalMs: 900_000,
-  registration: {
-    definition: {
-      id: 'github.pull-requests',
-      name: 'GitHub pull requests',
-      configSchema: { type: 'object', additionalProperties: false },
-      checkpointSchema: JSON.parse(JSON.stringify(z.toJSONSchema(checkpointSchema))),
-      initialCheckpoint,
-      kinds: { 'pull-request': JSON.parse(JSON.stringify(z.toJSONSchema(pullSchema))) },
-      provider: { service: 'github', actions: [], proxyPostPaths: ['/graphql'] },
-    },
-    load: () => ({ step: stepGithubPullRequests }),
+  definition: {
+    id: 'github.pull-requests',
+    name: 'GitHub pull requests',
+    configSchema: { type: 'object', additionalProperties: false },
+    checkpointSchema: JSON.parse(JSON.stringify(z.toJSONSchema(checkpointSchema))),
+    initialCheckpoint,
+    kinds: { 'pull-request': JSON.parse(JSON.stringify(z.toJSONSchema(pullSchema))) },
+    provider: { service: 'github', actions: [], proxyPostPaths: ['/graphql'] },
   },
-} satisfies ContextSync;
+  load: () => ({ step: stepGithubPullRequests }),
+} satisfies SyncRegistration;
