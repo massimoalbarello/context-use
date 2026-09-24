@@ -7,6 +7,7 @@ import {
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
+import { markdownLinks } from '#backend/models/markdown/links.ts';
 import { readableMarkdownText } from '#backend/models/markdown/text.ts';
 import { isReadableId } from '#backend/models/readable-ids/model.ts';
 
@@ -221,61 +222,18 @@ function isMarkdownReference(node: Nodes): node is MarkdownReference {
   );
 }
 
-interface LinkExtractionState {
-  assetUsages: Map<string, { readableId: string; presentation: 'embed' | 'attachment' }>;
-  consumedDefinitions: Set<MarkdownDefinition>;
-  definitions: Map<string, MarkdownDefinition>;
-  entityReadableIds: Set<string>;
-  recordReadableIds: Set<string>;
-  pageReferences: Map<string, { readableId: string; fragment: string | null }>;
-}
-
-function internalReferenceFromNode({
+function internalReferenceFromLink({
   node,
-  state,
-}: {
-  node: MarkdownReference;
-  state: LinkExtractionState;
-}): ParsedInternalReference | null {
-  const definition =
-    node.type === 'imageReference' || node.type === 'linkReference'
-      ? state.definitions.get(node.identifier)
-      : undefined;
-  if (definition) {
-    state.consumedDefinitions.add(definition);
-  }
-
-  const title = node.type === 'image' || node.type === 'link' ? node.title : definition?.title;
-  rejectHiddenInternalAddress(title);
-
+  target,
+  embedded,
+}: ReturnType<typeof markdownLinks>[number]): ParsedInternalReference | null {
+  rejectHiddenInternalAddress(target.title);
   const label = projectReferenceLabel(node);
   rejectHiddenInternalAddress(label);
-
-  const url = definition?.url ?? ('url' in node ? node.url : '');
-  if (!claimsInternalScheme(url)) {
+  if (!claimsInternalScheme(target.url)) {
     return null;
   }
-  return parseInternalReference({
-    embedded: node.type === 'image' || node.type === 'imageReference',
-    label,
-    url,
-  });
-}
-
-function inspectInternalAddressNode({ node, state }: { node: Nodes; state: LinkExtractionState }) {
-  if (node.type === 'code' || node.type === 'inlineCode') {
-    return SKIP;
-  }
-  if (isMarkdownReference(node)) {
-    const reference = internalReferenceFromNode({ node, state });
-    if (reference) {
-      addInternalReference({ ...state, reference });
-    }
-    return SKIP;
-  }
-  if (node.type === 'text' || node.type === 'html') {
-    rejectHiddenInternalAddress(node.value);
-  }
+  return parseInternalReference({ embedded, label, url: target.url });
 }
 
 function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
@@ -286,33 +244,38 @@ function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
     string,
     { readableId: string; presentation: 'embed' | 'attachment' }
   >();
-  const definitions = new Map<string, MarkdownDefinition>();
-  const definitionNodes: MarkdownDefinition[] = [];
   const consumedDefinitions = new Set<MarkdownDefinition>();
-  const state: LinkExtractionState = {
-    assetUsages,
-    consumedDefinitions,
-    definitions,
-    entityReadableIds,
-    recordReadableIds,
-    pageReferences,
-  };
+  for (const link of markdownLinks(tree)) {
+    if (link.target.type === 'definition') {
+      consumedDefinitions.add(link.target);
+    }
+    const reference = internalReferenceFromLink(link);
+    if (reference) {
+      addInternalReference({
+        assetUsages,
+        entityReadableIds,
+        recordReadableIds,
+        pageReferences,
+        reference,
+      });
+    }
+  }
 
-  visit(tree, 'definition', (node) => {
-    definitionNodes.push(node);
-    if (!definitions.has(node.identifier)) {
-      definitions.set(node.identifier, node);
+  visit(tree, (node) => {
+    if (node.type === 'code' || node.type === 'inlineCode' || isMarkdownReference(node)) {
+      return SKIP;
+    }
+    if (node.type === 'text' || node.type === 'html') {
+      rejectHiddenInternalAddress(node.value);
     }
   });
 
-  visit(tree, (node) => inspectInternalAddressNode({ node, state }));
-
-  for (const definition of definitionNodes) {
+  visit(tree, 'definition', (definition) => {
     rejectHiddenInternalAddress(definition.title);
     if (claimsInternalScheme(definition.url) && !consumedDefinitions.has(definition)) {
       throw new InvalidKnowledgePageMarkdownError(LABELLED_INTERNAL_LINK_MESSAGE);
     }
-  }
+  });
 
   return {
     entityReadableIds: [...entityReadableIds],
