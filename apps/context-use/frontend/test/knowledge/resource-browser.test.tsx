@@ -644,11 +644,11 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
     try {
       const user = userEvent.setup();
       await screen.findByRole('heading', { name: 'Launch plan' });
-      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
       await user.click(screen.getByRole('button', { name: `Filter ${collection}` }));
-      const group = screen.getByRole('group', { name: 'Visibility' });
-      expect(within(group).getByRole('button', { name: 'Private', pressed: true })).toBeTruthy();
-      await user.click(within(group).getByRole('button', { name: 'Public' }));
+      const group = screen.getByRole('tablist', { name: 'Visibility' });
+      expect(within(group).getByRole('tab', { name: 'Private', selected: true })).toBeTruthy();
+      await user.click(within(group).getByRole('tab', { name: 'Public' }));
       await waitFor(() => expect(app.router.state.location.search.visibility).toBe('public'));
       expect(app.router.state.location.search.resourceId).toBe('launch');
       expect(await screen.findByText(`No ${collection} match these filters.`)).toBeTruthy();
@@ -660,7 +660,7 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
         ),
       ).toBe(true);
       await user.keyboard('{Escape}');
-      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
       await user.type(screen.getByRole('searchbox'), 'launch{Enter}');
       await waitFor(() => expect(app.router.state.location.search.q).toBe('launch'));
       expect(
@@ -672,10 +672,10 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
       ).toBe(true);
       await user.click(screen.getByRole('button', { name: 'Expand' }));
       expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
-      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
       await user.click(await screen.findByRole('button', { name: `Filter ${collection}` }));
-      expect(await screen.findByRole('button', { name: 'Public', pressed: true })).toBeTruthy();
+      expect(await screen.findByRole('tab', { name: 'Public', selected: true })).toBeTruthy();
       await user.keyboard('{Escape}');
       expect(app.router.state.location.search).toMatchObject({
         q: 'launch',
@@ -686,7 +686,11 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
       expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
       await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
       await user.click(await screen.findByRole('button', { name: `Filter ${collection}` }));
-      await user.click(await screen.findByRole('button', { name: 'All' }));
+      await user.click(
+        within(screen.getByRole('tablist', { name: 'Visibility' })).getByRole('tab', {
+          name: 'All',
+        }),
+      );
       await waitFor(() => expect(app.router.state.location.search.visibility).toBeUndefined());
       expect(app.router.state.location.search).toMatchObject({ q: 'launch', resourceId: 'launch' });
       expect(app.router.state.location.href).not.toContain('visibility');
@@ -697,7 +701,7 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
         }),
       );
       expect(await screen.findByRole('searchbox', { name: 'Search records' })).toBeTruthy();
-      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
       expect(app.router.state.location.search.visibility).toBeUndefined();
     } finally {
       app.dispose();
