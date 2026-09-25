@@ -4,6 +4,7 @@ import type { PublicationVisibility } from '#backend/models/publications/model.t
 import { AssetList } from '../components/assets/asset-list';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
+import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter-popover';
 import { PublicationVisibilityFilter } from '../components/publications/publication-visibility-filter';
 import { useAssets } from '../lib/hooks/use-assets';
 import { publicationVisibilityFromSearch } from '../lib/publication-visibility';
@@ -74,17 +75,19 @@ function AssetsLayout() {
       collection="assets"
       title="Assets"
       search={<AssetFilterControl query={q} />}
-      visibleFilters={
-        <PublicationVisibilityFilter
-          value={search.visibility}
-          onChange={(visibility) => {
-            void navigate({
-              to: '/assets',
-              search: (previous) => ({ ...previous, visibility }),
-              replace: true,
-            });
-          }}
-        />
+      filters={
+        <KnowledgeFilterPopover title="Filter assets" filtered={Boolean(visibility)}>
+          <PublicationVisibilityFilter
+            value={search.visibility}
+            onChange={(visibility) => {
+              void navigate({
+                to: '/assets',
+                search: (previous) => ({ ...previous, visibility }),
+                replace: true,
+              });
+            }}
+          />
+        </KnowledgeFilterPopover>
       }
       count={total}
       createTo="/assets/new"

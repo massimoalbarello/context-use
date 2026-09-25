@@ -54,7 +54,14 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
   };
   const type = search.entityType ?? 'all';
   return (
-    <KnowledgeFilterPopover title="Filter entities" filtered={Boolean(search.entityType)}>
+    <KnowledgeFilterPopover
+      title="Filter entities"
+      filtered={Boolean(search.entityType || search.visibility)}
+    >
+      <PublicationVisibilityFilter
+        value={search.visibility}
+        onChange={(visibility) => onChange({ ...search, visibility })}
+      />
       <div className="grid gap-1.5">
         <span className="font-medium text-xs">Type</span>
         <Select<EntityTypeFilter>
@@ -75,12 +82,7 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
           </SelectContent>
         </Select>
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => onChange({ q: search.q, visibility: search.visibility })}
-      >
+      <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ q: search.q })}>
         Reset filters
       </Button>
     </KnowledgeFilterPopover>
@@ -115,18 +117,6 @@ function EntitiesLayout() {
             void navigate({
               to: '/entities',
               search: { ...search, q: query || undefined },
-              replace: true,
-            });
-          }}
-        />
-      }
-      visibleFilters={
-        <PublicationVisibilityFilter
-          value={search.visibility}
-          onChange={(visibility) => {
-            void navigate({
-              to: '/entities',
-              search: (previous) => ({ ...previous, visibility }),
               replace: true,
             });
           }}

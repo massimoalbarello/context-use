@@ -8,7 +8,6 @@ import { CollectionWorkspace } from '../components/knowledge/collection-workspac
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { PageFilters } from '../components/pages/page-filters';
-import { PublicationVisibilityFilter } from '../components/publications/publication-visibility-filter';
 import { usePages } from '../lib/hooks/use-pages';
 import { publicationVisibilityFromSearch } from '../lib/publication-visibility';
 import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
@@ -67,6 +66,14 @@ function PageFilterControl({ search }: { search: PageSearch }) {
     <PageFilters
       interval={interval}
       dateRange={dateRange}
+      visibility={search.visibility}
+      onVisibilityChange={(visibility) => {
+        void navigate({
+          to: '/pages',
+          search: (previous) => ({ ...previous, visibility }),
+          replace: true,
+        });
+      }}
       onIntervalChange={(nextInterval) => {
         void navigate({
           to: '/pages',
@@ -114,18 +121,6 @@ function PagesLayout() {
             void navigate({
               to: '/pages',
               search: { ...search, q: query || undefined },
-              replace: true,
-            });
-          }}
-        />
-      }
-      visibleFilters={
-        <PublicationVisibilityFilter
-          value={search.visibility}
-          onChange={(visibility) => {
-            void navigate({
-              to: '/pages',
-              search: (previous) => ({ ...previous, visibility }),
               replace: true,
             });
           }}
