@@ -10,6 +10,7 @@ import { EntityList } from '../components/entities/entity-list';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter-popover';
+import { PublicationVisibilityFilter } from '../components/publications/publication-visibility-filter';
 import {
   Select,
   SelectContent,
@@ -32,7 +33,11 @@ export const Route = createFileRoute('/entities')({
     ...entitySearch(search),
     ...resourceSearch(search),
   }),
-  loaderDeps: ({ search }) => ({ query: search.q, entityType: search.entityType }),
+  loaderDeps: ({ search }) => ({
+    query: search.q,
+    entityType: search.entityType,
+    visibility: search.visibility,
+  }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions(deps)),
   component: EntitiesLayout,
@@ -49,7 +54,14 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
   };
   const type = search.entityType ?? 'all';
   return (
-    <KnowledgeFilterPopover title="Filter entities" filtered={Boolean(search.entityType)}>
+    <KnowledgeFilterPopover
+      title="Filter entities"
+      filtered={Boolean(search.entityType || search.visibility)}
+    >
+      <PublicationVisibilityFilter
+        value={search.visibility}
+        onChange={(visibility) => onChange({ ...search, visibility })}
+      />
       <div className="grid gap-1.5">
         <span className="font-medium text-xs">Type</span>
         <Select<EntityTypeFilter>
@@ -81,10 +93,11 @@ function EntitiesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { q = '', entityType } = search;
+  const { q = '', entityType, visibility } = search;
   const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities({
     query: q,
     entityType,
+    visibility,
   });
   if (!profile) {
     return <Outlet />;
@@ -119,7 +132,11 @@ function EntitiesLayout() {
       loadMore={fetchNextPage}
       filters={<EntityFilterControl search={search} />}
     >
-      <EntityList entities={entities} filtered={Boolean(q || entityType)} search={search} />
+      <EntityList
+        entities={entities}
+        filtered={Boolean(q || entityType || visibility)}
+        search={search}
+      />
     </CollectionWorkspace>
   );
 }

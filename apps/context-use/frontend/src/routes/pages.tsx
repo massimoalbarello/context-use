@@ -3,11 +3,13 @@ import {
   type KnowledgePageIntervalFilter,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { PageFilters } from '../components/pages/page-filters';
 import { usePages } from '../lib/hooks/use-pages';
+import { publicationVisibilityFromSearch } from '../lib/publication-visibility';
 import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { type KnowledgePageListFilters, pagesQueryOptions } from '../queries/pages';
@@ -15,6 +17,7 @@ import { type KnowledgePageListFilters, pagesQueryOptions } from '../queries/pag
 export type PageSearch = Partial<CalendarDateRange> & {
   q?: string;
   interval?: KnowledgePageIntervalFilter;
+  visibility?: PublicationVisibility;
 };
 
 export function pageSearch(search: Record<string, unknown>): PageSearch {
@@ -25,6 +28,7 @@ export function pageSearch(search: Record<string, unknown>): PageSearch {
   if (search.interval === 'with' || search.interval === 'without') {
     result.interval = search.interval;
   }
+  result.visibility = publicationVisibilityFromSearch(search.visibility);
   return result;
 }
 
@@ -33,6 +37,7 @@ export function pageListFilters(search: PageSearch): KnowledgePageListFilters {
     dateRange: calendarDateRangeFromSearch(search),
     query: search.q,
     interval: search.interval,
+    visibility: search.visibility,
   };
 }
 
@@ -61,6 +66,14 @@ function PageFilterControl({ search }: { search: PageSearch }) {
     <PageFilters
       interval={interval}
       dateRange={dateRange}
+      visibility={search.visibility}
+      onVisibilityChange={(visibility) => {
+        void navigate({
+          to: '/pages',
+          search: (previous) => ({ ...previous, visibility }),
+          replace: true,
+        });
+      }}
       onIntervalChange={(nextInterval) => {
         void navigate({
           to: '/pages',
@@ -125,7 +138,9 @@ function PagesLayout() {
     >
       <KnowledgePageList
         pages={pages}
-        filtered={Boolean(filters.dateRange || filters.query || filters.interval)}
+        filtered={Boolean(
+          filters.dateRange || filters.query || filters.interval || filters.visibility,
+        )}
       />
     </CollectionWorkspace>
   );

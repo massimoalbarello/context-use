@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { EntityTypeFilter } from '#backend/models/entities/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { searchHypermedia } from './hypermedia-search';
@@ -38,13 +39,21 @@ export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
 async function entitySearchPage({
   query,
   entityType,
+  visibility,
   limit,
 }: {
   query: string;
   entityType?: EntityTypeFilter;
+  visibility?: PublicationVisibility;
   limit?: number;
 }): Promise<EntityPage> {
-  const result = await searchHypermedia({ query, entityType, resourceTypes: 'entity', limit });
+  const result = await searchHypermedia({
+    query,
+    entityType,
+    visibility,
+    resourceTypes: 'entity',
+    limit,
+  });
   return {
     items: result.results.flatMap((hit) => (hit.resourceType === 'entity' ? [hit.entity] : [])),
     total: result.totalMatches,
@@ -55,23 +64,29 @@ async function entitySearchPage({
 export function entitiesQueryOptions({
   query,
   entityType,
+  visibility,
 }: {
   query?: string;
   entityType?: EntityTypeFilter;
+  visibility?: PublicationVisibility;
 } = {}) {
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
     queryKey: [
       ...entitiesListQueryKey,
-      { query: normalizedQuery ?? null, entityType: entityType ?? 'all' },
+      {
+        query: normalizedQuery ?? null,
+        entityType: entityType ?? 'all',
+        visibility: visibility ?? 'all',
+      },
     ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (normalizedQuery) {
-        return entitySearchPage({ query: normalizedQuery, entityType });
+        return entitySearchPage({ query: normalizedQuery, entityType, visibility });
       }
       const { data, error } = await api.api.entities.get({
-        query: { offset: pageParam, entityType },
+        query: { offset: pageParam, entityType, visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
