@@ -530,7 +530,9 @@ test('records use owner passkey approval and stale content cannot be published',
     expect(published).toMatchObject({
       resourceType: 'record',
       publishedAt: NOW,
-      publicId: expect.stringContaining('record_'),
+      publicId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
     });
     expect((await complete(await begin({ ...target, action: 'unpublish' }))).status).toBe(
       StatusMap.OK,
