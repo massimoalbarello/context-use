@@ -257,6 +257,12 @@ async function confirm(user: ReturnType<typeof userEvent.setup>) {
 
 test('first publication reviews full selected content before allowing confirmation and withdraws with fresh approval', async () => {
   const { state, user, device, client } = await renderPage({ revision: 7 });
+  expect(
+    screen
+      .getByRole('button', { name: 'Publish' })
+      .compareDocumentPosition(screen.getByRole('button', { name: 'Edit page' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   const response = deferred<Response>();
   state.diffResponse = () => response.promise;
   await user.click(screen.getByRole('button', { name: 'Publish' }));
@@ -274,6 +280,12 @@ test('first publication reviews full selected content before allowing confirmati
   expect(state.comparisons).toEqual([{ from: 0, to: 7 }]);
   await confirm(user);
   await screen.findByText('Public revision 7');
+  expect(
+    screen
+      .getByRole('button', { name: 'Unpublish' })
+      .compareDocumentPosition(screen.getByRole('button', { name: 'Edit page' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.queryByText('Unpublished changes')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Publish changes' })).toBeNull();
   expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
