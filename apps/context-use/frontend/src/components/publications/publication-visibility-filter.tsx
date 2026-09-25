@@ -1,9 +1,9 @@
-import { Button } from '@repo/ui/button';
 import { useId } from 'react';
 import {
   PUBLICATION_VISIBILITIES,
   type PublicationVisibility,
 } from '#backend/models/publications/model.ts';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 
 const LABELS: Record<PublicationVisibility, string> = {
   all: 'All',
@@ -20,22 +20,22 @@ export function PublicationVisibilityFilter({
 }) {
   const labelId = useId();
   return (
-    <fieldset aria-labelledby={labelId} className="flex flex-wrap items-center gap-2">
-      <span id={labelId} className="mr-1 text-muted-foreground text-sm">
+    <div className="grid gap-2">
+      <p id={labelId} className="font-medium text-xs">
         Visibility
-      </span>
-      {PUBLICATION_VISIBILITIES.map((option) => (
-        <Button
-          key={option}
-          type="button"
-          size="sm"
-          variant={(value ?? 'all') === option ? 'secondary' : 'ghost'}
-          aria-pressed={(value ?? 'all') === option}
-          onClick={() => onChange(option === 'all' ? undefined : option)}
-        >
-          {LABELS[option]}
-        </Button>
-      ))}
-    </fieldset>
+      </p>
+      <Tabs
+        value={value ?? 'all'}
+        onValueChange={(option) => onChange(option === 'all' ? undefined : option)}
+      >
+        <TabsList className="grid w-full grid-cols-3" aria-labelledby={labelId}>
+          {PUBLICATION_VISIBILITIES.map((option) => (
+            <TabsTrigger key={option} value={option}>
+              {LABELS[option]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </div>
   );
 }
