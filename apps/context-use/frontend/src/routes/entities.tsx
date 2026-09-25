@@ -10,6 +10,7 @@ import { EntityList } from '../components/entities/entity-list';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter-popover';
+import { PublicationVisibilityFilter } from '../components/publications/publication-visibility-filter';
 import {
   Select,
   SelectContent,
@@ -32,7 +33,11 @@ export const Route = createFileRoute('/entities')({
     ...entitySearch(search),
     ...resourceSearch(search),
   }),
-  loaderDeps: ({ search }) => ({ query: search.q, entityType: search.entityType }),
+  loaderDeps: ({ search }) => ({
+    query: search.q,
+    entityType: search.entityType,
+    visibility: search.visibility,
+  }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(entitiesQueryOptions(deps)),
   component: EntitiesLayout,
@@ -70,7 +75,12 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
           </SelectContent>
         </Select>
       </div>
-      <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ q: search.q })}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => onChange({ q: search.q, visibility: search.visibility })}
+      >
         Reset filters
       </Button>
     </KnowledgeFilterPopover>
@@ -81,10 +91,11 @@ function EntitiesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { q = '', entityType } = search;
+  const { q = '', entityType, visibility } = search;
   const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities({
     query: q,
     entityType,
+    visibility,
   });
   if (!profile) {
     return <Outlet />;
@@ -109,6 +120,18 @@ function EntitiesLayout() {
           }}
         />
       }
+      visibleFilters={
+        <PublicationVisibilityFilter
+          value={search.visibility}
+          onChange={(visibility) => {
+            void navigate({
+              to: '/entities',
+              search: (previous) => ({ ...previous, visibility }),
+              replace: true,
+            });
+          }}
+        />
+      }
       count={total}
       createTo="/entities/new"
       createLabel="New entity"
@@ -119,7 +142,11 @@ function EntitiesLayout() {
       loadMore={fetchNextPage}
       filters={<EntityFilterControl search={search} />}
     >
-      <EntityList entities={entities} filtered={Boolean(q || entityType)} search={search} />
+      <EntityList
+        entities={entities}
+        filtered={Boolean(q || entityType || visibility)}
+        search={search}
+      />
     </CollectionWorkspace>
   );
 }
