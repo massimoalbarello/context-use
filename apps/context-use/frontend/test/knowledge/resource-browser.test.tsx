@@ -254,7 +254,7 @@ test('resource navigation opens unselected collections with their own toolbar an
         resource: 'Launch chart PNG · 1.0 KB',
         preview: 'Asset preview',
         creation: 'New asset',
-        filters: undefined,
+        filters: 'Filter assets',
       },
       {
         destination: 'Records',
@@ -514,7 +514,7 @@ for (const { path, filter, reset, key } of [
       await user.click(screen.getByRole('button', { name: reset }));
       await waitFor(() => expect(app.router.state.location.search[key]).toBeUndefined());
       if (key === 'entityType') {
-        expect(app.router.state.location.search.visibility).toBe('private');
+        expect(app.router.state.location.search.visibility).toBeUndefined();
       }
       expect(app.router.state.location.search.resourceId).toBe('launch');
     } finally {
@@ -644,6 +644,8 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
     try {
       const user = userEvent.setup();
       await screen.findByRole('heading', { name: 'Launch plan' });
+      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      await user.click(screen.getByRole('button', { name: `Filter ${collection}` }));
       const group = screen.getByRole('group', { name: 'Visibility' });
       expect(within(group).getByRole('button', { name: 'Private', pressed: true })).toBeTruthy();
       await user.click(within(group).getByRole('button', { name: 'Public' }));
@@ -657,6 +659,8 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
             url.searchParams.get('visibility') === 'public',
         ),
       ).toBe(true);
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
       await user.type(screen.getByRole('searchbox'), 'launch{Enter}');
       await waitFor(() => expect(app.router.state.location.search.q).toBe('launch'));
       expect(
@@ -670,7 +674,9 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
       expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
       expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
+      await user.click(await screen.findByRole('button', { name: `Filter ${collection}` }));
       expect(await screen.findByRole('button', { name: 'Public', pressed: true })).toBeTruthy();
+      await user.keyboard('{Escape}');
       expect(app.router.state.location.search).toMatchObject({
         q: 'launch',
         visibility: 'public',
@@ -679,10 +685,12 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
       app.router.history.back();
       expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
       await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
+      await user.click(await screen.findByRole('button', { name: `Filter ${collection}` }));
       await user.click(await screen.findByRole('button', { name: 'All' }));
       await waitFor(() => expect(app.router.state.location.search.visibility).toBeUndefined());
       expect(app.router.state.location.search).toMatchObject({ q: 'launch', resourceId: 'launch' });
       expect(app.router.state.location.href).not.toContain('visibility');
+      await user.keyboard('{Escape}');
       await user.click(
         within(screen.getByRole('navigation', { name: 'Workspace' })).getByRole('link', {
           name: 'Records',
