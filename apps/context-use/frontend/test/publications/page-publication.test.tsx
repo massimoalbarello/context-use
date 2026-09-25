@@ -380,6 +380,56 @@ test('comparison failure prevents approval until retry succeeds without changing
   expect(state.completes).toEqual(['approval-1']);
 });
 
+test('private resources stay collapsed until expanded and renewed review refreshes the count', async () => {
+  const { state, user, device } = await renderPage();
+  state.blockers = [
+    {
+      reason: 'reference_not_public',
+      resource: { resourceType: 'entity', readableId: 'studio', name: 'Private studio' },
+    },
+    {
+      reason: 'reference_not_public',
+      resource: { resourceType: 'asset', readableId: 'chart', name: 'Private chart' },
+    },
+    {
+      reason: 'reference_not_public',
+      resource: { resourceType: 'page', readableId: 'related', name: 'Related page' },
+    },
+  ];
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  const dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
+  const toggle = await dialog.findByRole('button', { name: '3 private resources' });
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(dialog.getByRole('alert').textContent).toBe(
+    'Publish all resources referenced in this page before publishing it.',
+  );
+  expect(dialog.queryByRole('link')).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(device.calls).toHaveLength(0);
+  expect(state.comparisons).toHaveLength(0);
+  toggle.focus();
+  await user.keyboard('{Enter}');
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(dialog.getAllByRole('link')).toHaveLength(state.blockers.length);
+  expect(dialog.getByRole('link', { name: 'Related page' }).getAttribute('href')).toStartWith(
+    '/pages/related',
+  );
+  expect(dialog.queryByText('Publish this referenced resource first.')).toBeNull();
+  await user.click(toggle);
+  expect(dialog.queryByRole('link')).toBeNull();
+  state.blockers = state.blockers.slice(0, 1);
+  await user.click(dialog.getByRole('button', { name: 'Review again' }));
+  expect(await dialog.findByRole('button', { name: '1 private resource' })).toBeTruthy();
+  state.blockers = [];
+  await user.click(dialog.getByRole('button', { name: 'Review again' }));
+  await dialog.findByText('Full content');
+  await waitFor(() =>
+    expect(
+      dialog.getByRole('button', { name: 'Confirm with passkey' }).hasAttribute('disabled'),
+    ).toBe(false),
+  );
+});
+
 test('record, private dependency, unavailable reference and self-reference blockers give actionable resource links', async () => {
   const { state, user, device } = await renderPage();
   state.blockers = [
@@ -406,18 +456,21 @@ test('record, private dependency, unavailable reference and self-reference block
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   await screen.findByRole('button', { name: 'Review again' });
+  expect(screen.queryByRole('link', { name: 'Private source' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: '3 references to fix' }));
   expect(screen.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
     '/records/source',
   );
+  expect(screen.getByText(/Publish a revision without this self-reference/)).toBeTruthy();
+  expect(screen.getByText(/Pages that reference records cannot be published/)).toBeTruthy();
+  expect(screen.getByText(/Remove or replace this unavailable reference/)).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: '2 private resources' }));
   expect(screen.getByRole('link', { name: 'Private studio' }).getAttribute('href')).toStartWith(
     '/entities/studio',
   );
   expect(screen.getByRole('link', { name: 'Private chart' }).getAttribute('href')).toStartWith(
     '/assets/chart',
   );
-  expect(screen.getByText(/Publish a revision without this self-reference/)).toBeTruthy();
-  expect(screen.getByText(/Pages that reference records cannot be published/)).toBeTruthy();
-  expect(screen.getByText(/Remove or replace this unavailable reference/)).toBeTruthy();
   expect(device.calls).toHaveLength(0);
   expect(state.comparisons).toHaveLength(0);
 });
