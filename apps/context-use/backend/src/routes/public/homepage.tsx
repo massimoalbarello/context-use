@@ -3,7 +3,6 @@ import { publicDocument } from './document.tsx';
 export function emptyPublicHomepageHtml(): string {
   return publicDocument({
     title: 'Nothing published yet',
-    navigation: <a href="/app">Owner login</a>,
     children: (
       <article>
         <h1>Nothing published yet</h1>
