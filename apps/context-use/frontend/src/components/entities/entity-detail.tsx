@@ -74,22 +74,24 @@ function EntityDetailContent({ entity, onArchived }: { entity: Entity; onArchive
                   setArchiveConflict(null);
                   setEditing(true);
                 }}
+                publicationActions={
+                  publication.isSuccess && (
+                    <EntityPublicationActions
+                      publicId={isPublic ? publication.data.publicId : null}
+                      isPublic={isPublic}
+                      unavailable={!!approval.request}
+                      onReview={() => {
+                        setArchiveConflict(null);
+                        approval.review({
+                          resourceType: 'entity',
+                          readableId: entity.readableId,
+                          action: isPublic ? 'unpublish' : 'publish',
+                        });
+                      }}
+                    />
+                  )
+                }
               >
-                {publication.isSuccess && (
-                  <EntityPublicationActions
-                    publicId={isPublic ? publication.data.publicId : null}
-                    isPublic={isPublic}
-                    unavailable={!!approval.request}
-                    onReview={() => {
-                      setArchiveConflict(null);
-                      approval.review({
-                        resourceType: 'entity',
-                        readableId: entity.readableId,
-                        action: isPublic ? 'unpublish' : 'publish',
-                      });
-                    }}
-                  />
-                )}
                 {!entity.isSelf && (
                   <ResourceArchiveAction
                     blocked={isPublic || hasInboundUsages}
@@ -175,49 +177,13 @@ function EntityPublicationReview({
 }: {
   approval: ReturnType<typeof usePublicationApproval>;
 }) {
-  const preparation = approval.ready?.preparation;
-  const identity = preparation?.entityIdentity;
-  const image = preparation?.includedImage;
   return (
     <PublicationReviewDialog approval={approval}>
-      {approval.request?.action === 'unpublish' ? (
-        <p className="text-sm">
-          The public entity and its page index will stop being available. Unpublishing this entity
-          does not unpublish its image assets. Unpublish those assets separately when needed.
-        </p>
-      ) : (
-        <>
-          {preparation && identity && (
-            <div className="flex min-w-0 items-start gap-4">
-              <EntityAvatar
-                entity={{ name: preparation.resource.name, image: image?.resource ?? null }}
-                className="size-16 shrink-0 text-xl"
-              />
-              <div className="grid min-w-0 gap-2">
-                <p className="text-muted-foreground text-sm">
-                  {identity.entityType ? ENTITY_TYPE_LABELS[identity.entityType] : 'Untyped'}
-                </p>
-                <p className="break-words text-sm">{identity.description}</p>
-              </div>
-            </div>
-          )}
-          <p className="text-sm">
-            Anyone with the public link can view this entity and its public page index. Saved
-            changes to its name, description, and type appear publicly.
-          </p>
-          {image ? (
-            <p className="break-words text-sm">
-              {image.publication.publishedAt
-                ? `Its image “${image.resource.name}” is already public.`
-                : `This also publishes the entire image asset “${image.resource.name}”. Anyone with its public link can view or download the original file.`}{' '}
-              The image remains public after you unpublish this entity, until you unpublish the
-              asset separately.
-            </p>
-          ) : (
-            <p className="text-sm">This entity has no image.</p>
-          )}
-        </>
-      )}
+      <p className="text-sm">
+        {approval.request?.action === 'unpublish'
+          ? 'The public entity and its page index will stop being available. Unpublishing this entity does not unpublish its image assets. Unpublish those assets separately when needed.'
+          : 'Anyone with the public link can view this entity and its public page index.'}
+      </p>
     </PublicationReviewDialog>
   );
 }
