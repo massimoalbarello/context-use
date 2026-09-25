@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import {
   assetPreviewQueryOptions,
   assetQueryOptions,
@@ -23,6 +24,9 @@ export function useAssetPreview(readableId: string) {
   return useQuery(assetPreviewQueryOptions(readableId));
 }
 
-export function useImageAssetSuggestions(query: string) {
-  return useQuery(imageAssetSuggestionsQueryOptions(query));
+export function useImageAssetSuggestions(input: {
+  query: string;
+  visibility?: PublicationVisibility;
+}) {
+  return useQuery(imageAssetSuggestionsQueryOptions(input));
 }

@@ -1,4 +1,5 @@
 import { t } from 'elysia';
+import { ENTITY_TYPES } from '#backend/models/entities/model.ts';
 import {
   PUBLICATION_VISIBILITIES,
   type PublicationPreparation,
@@ -116,6 +117,9 @@ const PreparationSchema = t.Object({
   resource: ResourceSchema,
   publication: PublicationSchema,
   includedImage: t.Nullable(t.Object({ resource: ResourceSchema, publication: PublicationSchema })),
+  entityIdentity: t.Nullable(
+    t.Object({ description: t.String(), entityType: t.Nullable(t.UnionEnum(ENTITY_TYPES)) }),
+  ),
   pageRevision: t.Nullable(
     t.Object({
       revisionNumber: t.Nullable(RevisionNumberSchema),

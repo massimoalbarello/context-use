@@ -13,9 +13,11 @@ import { EntityAvatar } from './entity-link';
 
 export function EntityImageEditor({
   entity,
+  isPublic,
   onDone,
 }: {
   entity: Pick<EntityDetail, 'readableId' | 'name' | 'image'>;
+  isPublic: boolean;
   onDone: () => void;
 }) {
   const [source, setSource] = useState('existing');
@@ -72,35 +74,54 @@ export function EntityImageEditor({
             Entity image
           </h2>
           <p className="text-muted-foreground text-sm">
-            Choose an available image asset or upload a new one.
+            {isPublic ? (
+              <>
+                Choose an existing public image. To use a new image, add and publish it in{' '}
+                <a className="underline" href="/assets" target="_blank" rel="noreferrer">
+                  Assets (opens in a new tab)
+                </a>{' '}
+                first. Choosing or removing an image updates the public entity immediately.
+              </>
+            ) : (
+              'Choose an available image asset or upload a new one.'
+            )}
           </p>
         </div>
       </div>
 
-      <Tabs value={source} onValueChange={setSource}>
-        <TabsList variant="line" aria-label="Entity image source">
-          <TabsTrigger value="existing">Choose existing</TabsTrigger>
-          <TabsTrigger value="upload">Upload new</TabsTrigger>
-        </TabsList>
-        <TabsContent value="existing">
-          <EntityImagePicker
-            selectedImageReadableId={entity.image?.readableId}
-            pending={pending}
-            onSelect={(asset) => assign(asset.readableId)}
-          />
-        </TabsContent>
-        <TabsContent value="upload" className="pt-4">
-          <EntityImageUploadField
-            file={file}
-            pending={pending}
-            onChange={(file) => {
-              setFile(file);
-              setValidationError(null);
-              createAsset.reset();
-            }}
-          />
-        </TabsContent>
-      </Tabs>
+      {isPublic ? (
+        <EntityImagePicker
+          visibility="public"
+          selectedImageReadableId={entity.image?.readableId}
+          pending={pending}
+          onSelect={(asset) => assign(asset.readableId)}
+        />
+      ) : (
+        <Tabs value={source} onValueChange={setSource}>
+          <TabsList variant="line" aria-label="Entity image source">
+            <TabsTrigger value="existing">Choose existing</TabsTrigger>
+            <TabsTrigger value="upload">Upload new</TabsTrigger>
+          </TabsList>
+          <TabsContent value="existing">
+            <EntityImagePicker
+              selectedImageReadableId={entity.image?.readableId}
+              pending={pending}
+              onSelect={(asset) => assign(asset.readableId)}
+            />
+          </TabsContent>
+          <TabsContent value="upload" className="pt-4">
+            <EntityImageUploadField
+              file={file}
+              pending={pending}
+              onChange={(file) => {
+                setFile(file);
+                setValidationError(null);
+                createAsset.reset();
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
 
       {(validationError || actionError) && (
         <FieldError>{validationError ?? actionError?.message}</FieldError>
