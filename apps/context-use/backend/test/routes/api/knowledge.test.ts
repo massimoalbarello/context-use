@@ -1120,6 +1120,19 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     await database`
       update "entity" set "public_id" = 'entity_archive-guard', "published_at" = ${timestamp} where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
     `;
+    const publicEntities = await app.handle(
+      jsonRequest({ method: 'GET', path: '/entities?visibility=public' }),
+    );
+    expect(publicEntities.status).toBe(StatusMap.OK);
+    expect(await publicEntities.json()).toMatchObject({
+      items: [{ readableId: 'luca-bianchi' }],
+      total: 1,
+    });
+    expect(
+      (await app.handle(jsonRequest({ method: 'GET', path: '/entities?visibility=published' })))
+        .status,
+    ).toBe(StatusMap['Bad Request']);
+
     const publishedEntityArchive = await app.handle(
       jsonRequest({ method: 'PUT', path: '/entities/luca-bianchi/archive' }),
     );
@@ -1236,6 +1249,19 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     await database`
       update "knowledge_page" set "public_id" = 'page_archive-guard', "published_at" = ${timestamp}, "published_revision_id" = "current_revision_id" where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
     `;
+    const publicPages = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?visibility=public' }),
+    );
+    expect(publicPages.status).toBe(StatusMap.OK);
+    expect(await publicPages.json()).toMatchObject({
+      items: [{ readableId: 'growth-playbook' }],
+      total: 1,
+    });
+    expect(
+      (await app.handle(jsonRequest({ method: 'GET', path: '/pages?visibility=published' })))
+        .status,
+    ).toBe(StatusMap['Bad Request']);
+
     const publishedPageArchive = await app.handle(
       jsonRequest({ method: 'PUT', path: '/pages/growth-playbook/archive' }),
     );

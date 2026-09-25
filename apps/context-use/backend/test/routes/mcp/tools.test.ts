@@ -454,6 +454,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
           resourceTypes: ['knowledge_page', 'asset', 'record'],
           limit: 7,
           filters: {
+            visibility: 'private',
             entity: { type: undefined },
             knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
             asset: { kind: 'entity_image' },
@@ -467,6 +468,7 @@ test('MCP search maps page-time, asset and record filters to the shared pipeline
       const result = await client.callTool({
         name: 'search_hypermedia',
         arguments: {
+          visibility: 'private',
           query: 'project',
           resourceTypes: ['knowledge_page', 'asset', 'record'],
           limit: 7,
@@ -521,6 +523,8 @@ test('MCP search rejects invalid filters before reaching retrieval', async () =>
       for (const filters of [
         { interval: 'all' },
         { assetKind: 'image' },
+        { visibility: 'published' },
+        { visibility: ['public', 'private'] },
         { time: '' },
         { time: '2026-01-01/2026-12-31-extra' },
         { limit: 2.5 },

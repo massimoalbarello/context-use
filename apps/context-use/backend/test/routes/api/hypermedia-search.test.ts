@@ -157,6 +157,7 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
         resourceTypes: ['knowledge_page', 'record'],
         limit: 7,
         filters: {
+          visibility: 'private',
           entity: { type: undefined },
           knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },
           asset: { kind: 'entity_image' },
@@ -175,6 +176,7 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
   });
   const query = new URLSearchParams({
     query: 'project',
+    visibility: 'private',
     resourceTypes: 'knowledge_page,record',
     limit: '7',
     interval: 'with',
@@ -210,6 +212,8 @@ test('HTTP search rejects unauthenticated or invalid queries before reaching the
     '',
     'query=%20',
     'query=research&entityType=event',
+    'query=research&visibility=published',
+    'query=research&visibility=public,private',
     'query=research&entityType=person,location',
     'query=research&limit=0',
     'query=research&limit=2.5',

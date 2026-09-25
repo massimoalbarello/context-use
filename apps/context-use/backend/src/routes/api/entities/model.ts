@@ -17,6 +17,7 @@ import {
   PaginationQuerySchema,
   ReadableIdSchema,
 } from '#backend/routes/api/model.ts';
+import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
 
 export const EntityTypeSchema = t.UnionEnum(ENTITY_TYPES, {
   description: ENTITY_TYPE_DESCRIPTION,
@@ -84,6 +85,7 @@ export const SetEntityImageBodySchema = t.Object({
 });
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
 export const EntityListQuerySchema = t.Object({
+  visibility: t.Optional(PublicationVisibilitySchema),
   entityType: t.Optional(EntityTypeFilterSchema),
   ...PaginationQuerySchema.properties,
 });

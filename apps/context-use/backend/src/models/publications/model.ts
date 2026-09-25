@@ -1,3 +1,6 @@
+export const PUBLICATION_VISIBILITIES = ['all', 'public', 'private'] as const;
+export type PublicationVisibility = (typeof PUBLICATION_VISIBILITIES)[number];
+
 export interface PublicationStatus {
   publicId: string | null;
   publishedAt: string | null;

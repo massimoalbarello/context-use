@@ -8,12 +8,17 @@ import { runMigrations } from '#backend/db/migrate.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { EntityType } from '#backend/models/entities/model.ts';
 import { MAX_HYPERMEDIA_MATCH_EXCERPT_LENGTH } from '#backend/models/hypermedia-retrieval/model.ts';
+import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { RecordDeletion, RecordInput } from '#backend/models/records/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HypermediaRetrievalRepository } from '#backend/repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
+import {
+  type PublicationRequest,
+  PublicationsRepository,
+} from '#backend/repositories/publications/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { replaceSearchDocument } from '#backend/repositories/search-index.ts';
 import { HypermediaRetrievalService } from '#backend/services/hypermedia-retrieval/service.ts';
@@ -1203,4 +1208,257 @@ test('self entities are created as people and cannot leave the people filter thr
       expect(listed.total).toBe(entityType === 'person' ? 1 : 0);
       expect(searched.totalMatches).toBe(listed.total);
     }
+  }));
+
+async function withPublicationSearchFixture(
+  run: (
+    context: RetrievalTestContext & {
+      publications: PublicationsRepository;
+      requests: PublicationRequest[];
+      change: (input: PublicationRequest) => Promise<void>;
+    },
+  ) => Promise<void>,
+) {
+  await withRetrievalTest(async (context) => {
+    const { database, assets, entities, pages, records } = context;
+    for (const readableId of ['alpha', 'zulu']) {
+      await createEntity({
+        entities,
+        readableId,
+        name: `${readableId} quartz`,
+        description: 'A quartz identity.',
+      });
+      await createAsset({ assets, readableId, name: `${readableId} quartz` });
+      expect(
+        (
+          await pages.create({
+            message: 'Create search fixture',
+            ownerId: OWNER_A,
+            actor: { kind: 'owner' },
+            markdown: `# ${readableId} quartz\n\nA quartz page.`,
+            temporalCoverage: readableId === 'zulu' ? '2026' : null,
+          })
+        ).state,
+      ).toBe('saved');
+    }
+    await writeRecords({
+      records,
+      values: [
+        recordFixture({ content: { title: 'Quartz source', body: 'Private quartz evidence.' } }),
+      ],
+    });
+    await database`update entity set entity_type = 'person' where owner_id = ${OWNER_A} and readable_id = 'zulu'`;
+    await database`update asset set media_type = 'image/png' where owner_id = ${OWNER_A} and readable_id = 'zulu'`;
+    const publications = new PublicationsRepository(database);
+    const requests: PublicationRequest[] = [
+      { ownerId: OWNER_A, resourceType: 'entity', readableId: 'zulu', action: 'publish' },
+      { ownerId: OWNER_A, resourceType: 'asset', readableId: 'zulu', action: 'publish' },
+      {
+        ownerId: OWNER_A,
+        resourceType: 'page',
+        readableId: 'zulu-quartz',
+        action: 'publish',
+        revisionNumber: 1,
+      },
+    ];
+    const change = async (input: PublicationRequest) => {
+      const preparation = await publications.prepare(input);
+      expect(preparation?.blockers).toEqual([]);
+      expect(
+        (
+          await publications.execute({
+            ...input,
+            expectedState: preparation?.expectedState ?? '',
+            publishedAt: NOW,
+          })
+        ).state,
+      ).toBe('changed');
+    };
+    for (const input of requests) {
+      await change(input);
+    }
+    await createEntity({
+      entities,
+      ownerId: OWNER_B,
+      readableId: 'alpha',
+      name: 'Other quartz',
+      description: 'Other owner quartz.',
+    });
+    await change({
+      ownerId: OWNER_B,
+      resourceType: 'entity',
+      readableId: 'alpha',
+      action: 'publish',
+    });
+    expect(
+      (
+        await pages.update({
+          message: 'Save private changes',
+          ownerId: OWNER_A,
+          actor: { kind: 'owner' },
+          readableId: 'zulu-quartz',
+          expectedRevisionNumber: 1,
+          markdown: '# Zulu quartz draft\n\nNew draftonly quartz content.',
+          temporalCoverage: '2026',
+        })
+      ).state,
+    ).toBe('saved');
+    await run({ ...context, publications, requests, change });
+  });
+}
+
+test('visibility narrows search before limits and counts while retaining current private content', () =>
+  withPublicationSearchFixture(async ({ retrieval }) => {
+    const input = { ownerId: OWNER_A, query: 'quartz', limit: 1 };
+    const all = await retrieval.search(input);
+    expect(all).toMatchObject({ totalMatches: 7, truncated: true });
+    expect(await retrieval.search({ ...input, filters: { visibility: 'all' } })).toEqual(all);
+    const allAssets = await retrieval.search({ ...input, resourceTypes: ['asset'] });
+    expect(allAssets.results[0]).toMatchObject({ asset: { readableId: 'alpha' } });
+    for (const [resourceType, publicReadableId] of [
+      ['asset', 'zulu'],
+      ['entity', 'zulu'],
+      ['knowledge_page', 'zulu-quartz'],
+    ] as const) {
+      const filtered = await retrieval.search({
+        ...input,
+        resourceTypes: [resourceType],
+        filters: { visibility: 'public' },
+      });
+      expect(filtered).toMatchObject({ totalMatches: 1, truncated: false });
+      expect(filtered.results).toHaveLength(1);
+      const field = { asset: 'asset', entity: 'entity', knowledge_page: 'knowledgePage' }[
+        resourceType
+      ];
+      expect(filtered.results[0]).toMatchObject({ [field]: { readableId: publicReadableId } });
+    }
+    expect(await retrieval.search({ ...input, filters: { visibility: 'public' } })).toMatchObject({
+      totalMatches: 3,
+      truncated: true,
+    });
+    const publicResults = await retrieval.search({
+      ...input,
+      limit: 50,
+      filters: { visibility: 'public' },
+    });
+    expect(publicResults).toMatchObject({ totalMatches: 3, truncated: false });
+    expect(publicResults.results.map((result) => result.resourceType).sort()).toEqual([
+      'asset',
+      'entity',
+      'knowledge_page',
+    ]);
+    const privateResults = await retrieval.search({
+      ...input,
+      limit: 50,
+      filters: { visibility: 'private' },
+    });
+    expect(privateResults).toMatchObject({ totalMatches: 4, truncated: false });
+    expect(privateResults.results.map((result) => result.resourceType).sort()).toEqual([
+      'asset',
+      'entity',
+      'knowledge_page',
+      'record',
+    ]);
+    expect(
+      await retrieval.search({ ...input, ownerId: OWNER_B, filters: { visibility: 'public' } }),
+    ).toMatchObject({
+      results: [{ resourceType: 'entity', entity: { readableId: 'alpha', name: 'Other quartz' } }],
+      totalMatches: 1,
+      truncated: false,
+    });
+    expect(
+      await retrieval.search({ ...input, query: 'draftonly', filters: { visibility: 'public' } }),
+    ).toMatchObject({
+      results: [
+        {
+          resourceType: 'knowledge_page',
+          knowledgePage: { title: 'Zulu quartz draft', revisionNumber: 2 },
+        },
+      ],
+      totalMatches: 1,
+    });
+  }));
+
+test('search visibility composes with entity, page, asset and private record filters', () =>
+  withPublicationSearchFixture(async ({ retrieval }) => {
+    const input = { ownerId: OWNER_A, query: 'quartz', limit: 1 };
+    for (const { filters, resourceTypes } of [
+      { resourceTypes: ['entity' as const], filters: { entity: { type: 'person' as const } } },
+      { resourceTypes: ['asset' as const], filters: { asset: { kind: 'entity_image' as const } } },
+      {
+        resourceTypes: ['knowledge_page' as const],
+        filters: {
+          knowledgePage: {
+            interval: 'with' as const,
+            temporalBounds: temporalBoundsFrom('2026-06'),
+          },
+        },
+      },
+    ]) {
+      expect(
+        await retrieval.search({
+          ...input,
+          resourceTypes,
+          filters: { ...filters, visibility: 'public' },
+        }),
+      ).toMatchObject({ totalMatches: 1, truncated: false });
+      expect(
+        await retrieval.search({
+          ...input,
+          resourceTypes,
+          filters: { ...filters, visibility: 'private' },
+        }),
+      ).toEqual({ results: [], totalMatches: 0, truncated: false });
+    }
+    expect(
+      await retrieval.search({
+        ...input,
+        filters: { visibility: 'public', record: { provider: 'calendar' } },
+      }),
+    ).toEqual({ results: [], totalMatches: 0, truncated: false });
+    expect(
+      await retrieval.search({
+        ...input,
+        filters: { visibility: 'private', record: { provider: 'calendar' } },
+      }),
+    ).toMatchObject({ results: [{ resourceType: 'record' }], totalMatches: 1 });
+  }));
+
+test('search visibility reflects withdrawal without rebuilding the search index', () =>
+  withPublicationSearchFixture(async ({ database, retrieval, publications, requests, change }) => {
+    const input = { ownerId: OWNER_A, query: 'quartz', limit: 1 };
+    await database`update entity set image_asset_id = 'asset-zulu' where owner_id = ${OWNER_A} and readable_id = 'zulu'`;
+    expect(
+      await retrieval.search({
+        ...input,
+        resourceTypes: ['asset'],
+        filters: { visibility: 'public', asset: { kind: 'entity_image' } },
+      }),
+    ).toEqual({ results: [], totalMatches: 0, truncated: false });
+    // Withdraw the entity before its portrait; no index rebuild is needed for any state change.
+    for (const request of requests) {
+      await change({ ...request, action: 'unpublish' });
+    }
+    expect(await retrieval.search({ ...input, filters: { visibility: 'public' } })).toEqual({
+      results: [],
+      totalMatches: 0,
+      truncated: false,
+    });
+    expect(await retrieval.search({ ...input, filters: { visibility: 'private' } })).toMatchObject({
+      totalMatches: 7,
+      truncated: true,
+    });
+    expect(
+      (
+        await publications.prepare({
+          ownerId: OWNER_A,
+          resourceType: 'entity',
+          readableId: 'zulu',
+          action: 'publish',
+        })
+      )?.publication,
+    ).toMatchObject({
+      publicId: expect.any(String),
+      publishedAt: null,
+    });
   }));

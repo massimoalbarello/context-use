@@ -63,6 +63,7 @@ export function createAssetsController({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
+          visibility: query.visibility,
           kind: query.kind,
         });
         return status(StatusMap.OK, { ...page, items: page.items.map(assetSummaryResponse) });
