@@ -30,6 +30,7 @@ import {
   unusedHistoryService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
+  unusedPublicResourcesService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../support/app.ts';
@@ -112,6 +113,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     });
     const app = createApp({
       publicationApprovalService: unusedPublicationApprovalService,
+      publicResourcesService: unusedPublicResourcesService,
       historyService: unusedHistoryService,
       managedSyncsService: unusedManagedSyncsService,
       syncFetch: unusedSyncFetch,

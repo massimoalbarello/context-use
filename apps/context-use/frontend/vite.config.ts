@@ -17,6 +17,7 @@ const pdfjsDirectory = dirname(
 const BACKEND_ORIGIN = `http://localhost:${DEFAULT_BACKEND_PORT}`;
 const MCP_TRANSPORT_PROXY_CONTEXT = '^/mcp/?(?:\\?.*)?$';
 const MCP_ASSET_TRANSFERS_PROXY_CONTEXT = '^/mcp/asset-transfers(?:/|\\?|$)';
+const PUBLIC_RESOURCES_PROXY_CONTEXT = '^/public(?:/|\\?|$)';
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
@@ -31,6 +32,7 @@ export default defineConfig({
     // the browser's Origin header while proxying instead of pretending it came from the backend.
     proxy: {
       '/api': { target: BACKEND_ORIGIN },
+      [PUBLIC_RESOURCES_PROXY_CONTEXT]: { target: BACKEND_ORIGIN },
       // Vite treats keys beginning with ^ as regular expressions. Keep the frontend-owned
       // /mcp/authorize route out of the proxy while preserving the transport (with query strings
       // or a trailing slash) and the separate asset-transfer endpoints.

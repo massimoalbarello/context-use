@@ -51,5 +51,6 @@ export function createFrontendFallbackController({
 
 function isClientRoutePath(pathname: string): boolean {
   const isMcpTransportPath = pathname === MCP_ROUTE_PATH || pathname === `${MCP_ROUTE_PATH}/`;
-  return !pathname.startsWith(API_PATH) && !isMcpTransportPath;
+  const isPublicPath = pathname === '/public' || pathname.startsWith('/public/');
+  return !pathname.startsWith(API_PATH) && !isMcpTransportPath && !isPublicPath;
 }

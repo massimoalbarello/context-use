@@ -38,10 +38,14 @@ function unexpectedCall(): never {
 
 test('createApp uses supplied dependencies without production bootstrap', async () => {
   let healthChecks = 0;
+  let sessionChecks = 0;
   const auth: Auth = {
     passkeyOrigins: [],
     handler: async () => new Response(null, { status: 404 }),
-    getSession: async () => null,
+    getSession: () => {
+      sessionChecks += 1;
+      return Promise.resolve(null);
+    },
     protectMcpRequest: unusedMcpProtection,
   };
   const frontendAssetsService: FrontendAssetsServiceContract = {
@@ -95,6 +99,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   const app = createApp({
     publicationApprovalService: unusedPublicationApprovalService,
+    publicResourcesService: { assetContent: async () => null },
     historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,
@@ -141,6 +146,9 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   expect(response.status).toBe(StatusMap.OK);
   expect(await response.json()).toEqual({ status: 'ok', uptime: 0 });
   expect(healthChecks).toBe(1);
+
+  await expectPublicRouteBoundary(app);
+  expect(sessionChecks).toBe(0);
 
   const graphResponse = await app.handle(
     new Request(
@@ -265,4 +273,30 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
     }
   }
   expect(mutationContracts).toBeGreaterThan(0);
+}
+
+async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
+  for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
+    for (const path of [
+      '/public',
+      '/public/',
+      '/public/unknown',
+      '/public/assets',
+      '/public/assets/unknown',
+      '/public/assets/unknown/metadata',
+    ]) {
+      const response = await app.handle(
+        new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),
+      );
+      expect(response.status).toBe(StatusMap['Not Found']);
+      expect(await response.json()).toEqual({ error: 'Not Found' });
+    }
+    for (const path of ['/pages', '/assets', '/entities', '/publicity', '/public-assets']) {
+      const response = await app.handle(
+        new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),
+      );
+      expect(response.status).toBe(StatusMap.OK);
+      expect(await response.text()).toBe('frontend');
+    }
+  }
 }
