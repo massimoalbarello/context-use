@@ -1,73 +1,19 @@
 import { expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import type { SQL } from 'bun';
-import { createSqliteDatabase } from '#backend/db/client.ts';
-import { runMigrations } from '#backend/db/migrate.ts';
 import { isReadableId } from '#backend/models/readable-ids/model.ts';
 import { createPublicId } from '#backend/repositories/publications/public-id.ts';
 import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 
-const NOW = '2026-09-24T09:00:00.000Z';
-const LATER = '2026-09-24T10:00:00.000Z';
-const CONTENT_HASH_LENGTH = 64;
-const HASH = 'a'.repeat(CONTENT_HASH_LENGTH);
+import { HASH, LATER, NOW, withDatabase } from './database.ts';
+
 const RESOURCES = [
   { type: 'page', table: 'knowledge_page', status: 'pageStatus' },
   { type: 'entity', table: 'entity', status: 'entityStatus' },
   { type: 'asset', table: 'asset', status: 'assetStatus' },
 ] as const;
 
-async function seedOwner({ database, ownerId }: { database: SQL; ownerId: string }) {
-  await database.begin(async (db) => {
-    await db`
-      insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
-      values (${ownerId}, 'Owner', ${`${ownerId}@example.invalid`}, 1, ${NOW}, ${NOW})
-    `;
-    for (const name of ['primary', 'secondary']) {
-      const pageId = `${ownerId}-page-${name}`;
-      const entityId = `${ownerId}-entity-${name}`;
-      const assetId = `${ownerId}-asset-${name}`;
-      await db`
-        insert into "knowledge_page" ("id", "owner_id", "readable_id", "current_revision_id", "created_at", "updated_at")
-        values (${pageId}, ${ownerId}, ${name}, ${`${pageId}-revision`}, ${NOW}, ${NOW})
-      `;
-      await db`
-        insert into "knowledge_page_revision"
-          ("id", "page_id", "owner_id", "revision_number", "title", "excerpt", "storage_key",
-           "size_bytes", "content_hash", "author_kind", "author_name", "created_at")
-        values (${`${pageId}-revision`}, ${pageId}, ${ownerId}, 1, 'Page', '', ${pageId}, 1, ${HASH}, 'owner', 'Owner', ${NOW})
-      `;
-      await db`
-        insert into "entity" ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
-        values (${entityId}, ${ownerId}, ${name}, 'Entity', 'Test entity', ${NOW}, ${NOW})
-      `;
-      await db`
-        insert into "asset" ("id", "owner_id", "readable_id", "name", "media_type", "size_bytes", "content_hash", "storage_key", "created_at", "updated_at")
-        values (${assetId}, ${ownerId}, ${name}, 'Asset', 'text/plain', 1, ${HASH}, ${assetId}, ${NOW}, ${NOW})
-      `;
-    }
-  });
-}
-
-async function withDatabase(run: (database: SQL) => Promise<void>) {
-  const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-publications-'));
-  const database = await createSqliteDatabase({ dataFolder });
-  try {
-    await runMigrations({ db: database });
-    await seedOwner({ database, ownerId: 'owner-a' });
-    await seedOwner({ database, ownerId: 'owner-b' });
-    await run(database);
-  } finally {
-    await database.close();
-    await rm(dataFolder, { recursive: true, force: true });
-  }
-}
-
 for (const { type, table, status } of RESOURCES) {
   test(`${type} status is private by default and retains its separate public identity across withdrawal`, async () => {
-    await withDatabase(async (database) => {
+    await withDatabase(async ({ database }) => {
       const repository = new PublicationsRepository(database);
       const input = { ownerId: 'owner-a', readableId: 'primary' };
       const resourceId = `owner-a-${type}-primary`;
@@ -133,7 +79,7 @@ for (const { type, table, status } of RESOURCES) {
   });
 
   test(`${type} publication enforces ownership, public identity, uniqueness, and resource cleanup`, async () => {
-    await withDatabase(async (database) => {
+    await withDatabase(async ({ database }) => {
       const resourceId = `owner-a-${type}-primary`;
       const publicId = createPublicId(type);
       const reserve = async ({ id = resourceId, owner = 'owner-a', handle = publicId } = {}) =>
@@ -215,7 +161,7 @@ for (const { type, table, status } of RESOURCES) {
 }
 
 test('a page publication selects exactly one revision of its own page and survives newer private revisions', async () => {
-  await withDatabase(async (database) => {
+  await withDatabase(async ({ database }) => {
     const repository = new PublicationsRepository(database);
     const input = { ownerId: 'owner-a', readableId: 'primary' };
     const publicId = createPublicId('page');

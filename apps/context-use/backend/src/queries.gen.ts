@@ -810,6 +810,18 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindPublicationReferringPages`. */
+export interface IFindPublicationReferringPagesResult {
+    readableId: string;
+    name: string;
+}
+
+/** Result of query `FindPublicationPortraitEntities`. */
+export interface IFindPublicationPortraitEntitiesResult {
+    readableId: string;
+    name: string;
+}
+
 /** Result of query `FindPagePublicationStatus`. */
 export interface IFindPagePublicationStatusResult {
     publicId: string | null;
@@ -827,6 +839,42 @@ export interface IFindEntityPublicationStatusResult {
 export interface IFindAssetPublicationStatusResult {
     publicId: string | null;
     publishedAt: string | null;
+}
+
+/** Result of query `FindAssetPublicationTarget`. */
+export interface IFindAssetPublicationTargetResult {
+    id: string;
+    readableId: string;
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
+    contentHash: string;
+    archivedAt: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+}
+
+/** Result of query `FindEntityPublicationTarget`. */
+export interface IFindEntityPublicationTargetResult {
+    id: string;
+    readableId: string;
+    name: string;
+    description: string;
+    entityType: string | null;
+    imageAssetId: string | null;
+    imageReadableId: string | null;
+    archivedAt: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+}
+
+/** Result of query `SetEntityPublication`. */
+export interface ISetEntityPublicationResult {
+}
+
+/** Result of query `SetAssetPublication`. */
+export interface ISetAssetPublicationResult {
 }
 
 /** Result of query `InsertResourceChange`. */
@@ -999,9 +1047,15 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindPublicationReferringPages: IFindPublicationReferringPagesResult;
+    FindPublicationPortraitEntities: IFindPublicationPortraitEntitiesResult;
     FindPagePublicationStatus: IFindPagePublicationStatusResult;
     FindEntityPublicationStatus: IFindEntityPublicationStatusResult;
     FindAssetPublicationStatus: IFindAssetPublicationStatusResult;
+    FindAssetPublicationTarget: IFindAssetPublicationTargetResult;
+    FindEntityPublicationTarget: IFindEntityPublicationTargetResult;
+    SetEntityPublication: ISetEntityPublicationResult;
+    SetAssetPublication: ISetAssetPublicationResult;
     InsertResourceChange: IInsertResourceChangeResult;
     AdvanceRecordSyncRevision: IAdvanceRecordSyncRevisionResult;
     WriteRecord: IWriteRecordResult;
