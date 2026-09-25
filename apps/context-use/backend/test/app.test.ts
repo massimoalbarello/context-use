@@ -99,7 +99,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   const app = createApp({
     publicationApprovalService: unusedPublicationApprovalService,
-    publicResourcesService: { assetContent: async () => null },
+    publicResourcesService: { assetContent: async () => null, pageContent: async () => null },
     historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,

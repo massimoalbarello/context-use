@@ -1,6 +1,7 @@
 import { cn } from '@repo/ui/class-names';
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
+import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
 import { internalLink } from '../../lib/internal-link';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
@@ -26,12 +27,7 @@ function textContent(node: ReactNode): string {
 }
 
 export function knowledgeHeadingId(children: ReactNode): string {
-  return textContent(children)
-    .normalize('NFKD')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/[\s-]+/g, '-');
+  return normalizeKnowledgeHeadingId(textContent(children));
 }
 
 export function entityMentionFrom({
@@ -139,6 +135,7 @@ export function KnowledgePageMarkdown({
   return (
     <article className="py-3 md:py-5">
       <ReactMarkdown
+        skipHtml
         urlTransform={(url) => (url.startsWith('context-use://') ? url : defaultUrlTransform(url))}
         components={{
           a: ({ href, children }) => (

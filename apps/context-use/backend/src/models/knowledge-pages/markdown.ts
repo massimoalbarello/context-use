@@ -222,7 +222,7 @@ function isMarkdownReference(node: Nodes): node is MarkdownReference {
   );
 }
 
-function internalReferenceFromLink({
+export function internalReferenceFromLink({
   node,
   target,
   embedded,
