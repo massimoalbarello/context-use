@@ -70,7 +70,7 @@ function setup(response: (url: URL) => Promise<Response>) {
   });
   const result = render(
     <QueryClientProvider client={client}>
-      <KnowledgePageRevisions page={page} />
+      <KnowledgePageRevisions page={page} publication={null} />
     </QueryClientProvider>,
   );
   return { ...result, requests, user: userEvent.setup() };
@@ -104,11 +104,11 @@ test('revision history loads adjacent changes on expansion and preserves snapsho
   const first = screen.getByRole('button', { name: 'Changes in revision 1' });
   expect(first.getAttribute('aria-expanded')).toBe('false');
   await user.click(first);
-  expect(await screen.findByText('Page created')).toBeTruthy();
+  expect(await screen.findByText('Full content')).toBeTruthy();
   expect(requests.at(-1)?.search).toBe('?from=0&to=1');
   await user.click(first);
   await user.click(first);
-  await screen.findByText('Page created');
+  await screen.findByText('Full content');
   expect(requests).toHaveLength(2);
 });
 
