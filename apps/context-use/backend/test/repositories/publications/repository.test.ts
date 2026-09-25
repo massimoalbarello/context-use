@@ -21,9 +21,9 @@ for (const { type, table, status } of RESOURCES) {
       const privateStatus = {
         publicId: null,
         publishedAt: null,
-        ...(type === 'page' ? { revisionId: null } : {}),
+        ...(type === 'page' ? { publishedRevisionNumber: null } : {}),
       };
-      const activeRevision = type === 'page' ? { revisionId: `${resourceId}-revision` } : {};
+      const activeRevision = type === 'page' ? { publishedRevisionNumber: 1 } : {};
       expect(await repository[status](input)).toEqual(privateStatus);
       expect(await repository[status]({ ...input, readableId: 'missing' })).toBeNull();
       expect(await repository[status]({ ...input, ownerId: 'missing-owner' })).toBeNull();
@@ -97,7 +97,7 @@ for (const { type, table, status } of RESOURCES) {
       ).toEqual({
         publicId: null,
         publishedAt: null,
-        ...(type === 'page' ? { revisionId: null } : {}),
+        ...(type === 'page' ? { publishedRevisionNumber: null } : {}),
       });
       for (const handle of [
         'primary',
@@ -212,7 +212,7 @@ test('a page publication selects exactly one revision of its own page and surviv
     expect(await repository.pageStatus(input)).toEqual({
       publicId,
       publishedAt: NOW,
-      revisionId: 'owner-a-page-primary-revision',
+      publishedRevisionNumber: 1,
     });
     await expect(
       Promise.resolve(
@@ -226,7 +226,7 @@ test('a page publication selects exactly one revision of its own page and surviv
     expect(await repository.pageStatus(input)).toEqual({
       publicId,
       publishedAt: LATER,
-      revisionId: 'new-revision',
+      publishedRevisionNumber: 2,
     });
     await database`delete from "knowledge_page_revision" where "id" = 'owner-a-page-primary-revision'`;
     await database`delete from "knowledge_page" where "id" = 'owner-a-page-primary'`;

@@ -220,7 +220,7 @@ test('entity publication explicitly includes its current portrait and does not r
     expect(await repository.pageStatus({ ownerId: 'owner-a', readableId: 'primary' })).toEqual({
       publicId: null,
       publishedAt: null,
-      revisionId: null,
+      publishedRevisionNumber: null,
     });
     const withdrawAsset = withdrawal('asset');
     expect(await change({ repository, input: withdrawAsset })).toMatchObject({

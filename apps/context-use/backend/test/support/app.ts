@@ -5,6 +5,7 @@ import type {
 import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
 import type { HistoryServiceContract } from '#backend/services/history/service.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
+import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
   RecordsIngestionContract,
@@ -61,3 +62,9 @@ export const unusedManagedSyncsService: ManagedSyncsServiceContract = {
 export const unusedSyncFetch = () => Promise.resolve(new Response(null, { status: 404 }));
 
 export const unusedHistoryService: HistoryServiceContract = { list: unexpectedCall };
+
+export const unusedPublicationApprovalService: PublicationApprovalServiceContract = {
+  status: unexpectedCall,
+  begin: unexpectedCall,
+  complete: unexpectedCall,
+};

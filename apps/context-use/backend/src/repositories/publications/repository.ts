@@ -58,8 +58,11 @@ export class PublicationsRepository implements PublicationsRepositoryContract {
   }): Promise<PagePublicationStatus | null> {
     const rows = await this.sql.FindPagePublicationStatus`
       select page."public_id" as "publicId", page."published_at" as "publishedAt",
-        page."published_revision_id" as "revisionId"
+        revision."revision_number" as "publishedRevisionNumber"
       from "knowledge_page" page
+      left join "knowledge_page_revision" revision
+        on revision."id" = page."published_revision_id" and revision."owner_id" = page."owner_id"
+        and revision."page_id" = page."id"
       where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
         and page."archived_at" is null
     `;
