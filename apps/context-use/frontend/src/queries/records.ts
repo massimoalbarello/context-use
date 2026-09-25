@@ -29,6 +29,7 @@ export function recordsQueryOptions(filters: RecordCollectionFilters = {}) {
           searchHypermedia({
             query,
             resourceTypes: 'record',
+            visibility: filters.visibility,
             recordProvider: filters.provider,
             recordKind: filters.kind,
             recordCreatedFrom: filters.createdFrom,

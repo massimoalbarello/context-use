@@ -10,7 +10,12 @@ export const PublicationVisibilitySchema = t.UnionEnum(PUBLICATION_VISIBILITIES,
   default: undefined,
 });
 
-const ResourceTypeSchema = t.Union([t.Literal('page'), t.Literal('entity'), t.Literal('asset')]);
+const ResourceTypeSchema = t.Union([
+  t.Literal('page'),
+  t.Literal('entity'),
+  t.Literal('asset'),
+  t.Literal('record'),
+]);
 const ActionSchema = t.Union([t.Literal('publish'), t.Literal('unpublish')]);
 const RevisionNumberSchema = t.Integer({ minimum: 1 });
 
@@ -39,7 +44,7 @@ export const BeginPublicationBodySchema = t.Union([
   ),
   t.Object(
     {
-      resourceType: t.Union([t.Literal('entity'), t.Literal('asset')]),
+      resourceType: t.Union([t.Literal('entity'), t.Literal('asset'), t.Literal('record')]),
       readableId: ReadableIdSchema,
       action: ActionSchema,
     },
@@ -105,10 +110,10 @@ const BlockerSchema = t.Object({
     t.Literal('image_unavailable'),
     t.Literal('reference_not_public'),
     t.Literal('reference_unavailable'),
-    t.Literal('record_reference'),
+    t.Literal('public_record_reference'),
   ]),
   resource: t.Object({
-    resourceType: t.Union([ResourceTypeSchema, t.Literal('record')]),
+    resourceType: ResourceTypeSchema,
     readableId: ReadableIdSchema,
     name: t.String(),
   }),
@@ -135,7 +140,7 @@ export const PublicationStatusSchema = t.Union([
     publishedRevisionNumber: t.Nullable(RevisionNumberSchema),
   }),
   t.Object({
-    resourceType: t.Union([t.Literal('entity'), t.Literal('asset')]),
+    resourceType: t.Union([t.Literal('entity'), t.Literal('asset'), t.Literal('record')]),
     ...PublicationSchema.properties,
   }),
 ]);

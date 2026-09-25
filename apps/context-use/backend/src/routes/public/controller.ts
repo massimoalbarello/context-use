@@ -5,6 +5,7 @@ import { assetContentResponse } from '#backend/routes/asset-content-response.ts'
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';
 import { publicEntityHtml } from '#backend/routes/public/entity.tsx';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
+import { publicRecordHtml } from '#backend/routes/public/record.tsx';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 
 export function createPublicController({
@@ -77,6 +78,52 @@ export function createPublicController({
         detail: {
           tags: ['Pages'],
           summary: 'Read safe Markdown for an active public page',
+          security: [],
+        },
+        response: {
+          [StatusMap.OK]: t.String(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Internal Server Error']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .get(
+      '/records/:publicId',
+      async ({ params }) => {
+        const content = await publicResourcesService.recordContent({ publicId: params.publicId });
+        if (!content) {
+          throw new NotFoundError();
+        }
+        return new Response(publicRecordHtml({ publicId: params.publicId, ...content }), {
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      },
+      {
+        params: t.Object({ publicId: t.String() }),
+        detail: { tags: ['Records'], summary: 'Read an active public record', security: [] },
+        response: {
+          [StatusMap.OK]: t.String(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Internal Server Error']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .get(
+      '/records/:publicId/markdown',
+      async ({ params }) => {
+        const content = await publicResourcesService.recordContent({ publicId: params.publicId });
+        if (!content) {
+          throw new NotFoundError();
+        }
+        return new Response(content.markdown, {
+          headers: { 'content-type': 'text/markdown; charset=utf-8' },
+        });
+      },
+      {
+        params: t.Object({ publicId: t.String() }),
+        detail: {
+          tags: ['Records'],
+          summary: 'Read safe Markdown for an active public record',
           security: [],
         },
         response: {

@@ -69,7 +69,9 @@ export class PublicationApprovalService {
     const publication =
       input.resourceType === 'entity'
         ? await this.publications.entityStatus(input)
-        : await this.publications.assetStatus(input);
+        : input.resourceType === 'record'
+          ? await this.publications.recordStatus(input)
+          : await this.publications.assetStatus(input);
     return publication ? { resourceType: input.resourceType, ...publication } : null;
   }
 
