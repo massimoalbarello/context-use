@@ -23,7 +23,7 @@ export function EntityList({
 
   if (entities.length === 0) {
     return (
-      <ResourceListEmpty title={filtered ? 'No entities match this search.' : 'No entities yet.'}>
+      <ResourceListEmpty title={filtered ? 'No entities match these filters.' : 'No entities yet.'}>
         {filtered
           ? 'Clear or change the entity filters.'
           : 'Create a stable coordinate before mentioning it from a page.'}
