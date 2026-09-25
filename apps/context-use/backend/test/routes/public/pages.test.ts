@@ -235,7 +235,7 @@ test('local and managed fragments resolve to safe headings without exposing remo
 });
 
 test('anonymous readers can follow inline and reference links between published revisions after private edits', async () => {
-  await withPublicPages(async ({ create, update, publish, app }) => {
+  await withPublicResources(async ({ create, update, publish, app }) => {
     const source = await create({ markdown: '# Public introduction\n\nApproved introduction.' });
     const sourceId = await publish({ readableId: source.readableId });
     const target = await create({
