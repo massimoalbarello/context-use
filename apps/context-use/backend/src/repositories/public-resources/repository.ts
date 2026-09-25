@@ -1,5 +1,7 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
+import { ENTITY_TYPES, type EntityType } from '#backend/models/entities/model.ts';
 import type { PublicMarkdownTarget } from '#backend/models/public-resources/markdown.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 
@@ -20,7 +22,16 @@ export interface StoredPublicPage {
   targets: PublicMarkdownTarget[];
 }
 
+export interface PublicEntity {
+  name: string;
+  description: string;
+  entityType: EntityType | null;
+  imagePublicId: string | null;
+  pages: { publicId: string; title: string }[];
+}
+
 export interface PublicResourcesRepositoryContract {
+  findEntity(input: { publicId: string }): Promise<PublicEntity | null>;
   findPage(input: { publicId: string }): Promise<StoredPublicPage | null>;
   findAsset(input: { publicId: string }): Promise<StoredPublicAsset | null>;
 }
@@ -30,6 +41,66 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
+  }
+
+  async findEntity({ publicId }: { publicId: string }): Promise<PublicEntity | null> {
+    // Live identity and the exact published revision index share one database snapshot.
+    const rows = await this.sql.FindPublicEntity`
+      /* @notNull name description */
+      /* @type hasImage number */
+      with active_entity as (
+        select entity."id", entity."owner_id", entity."name", entity."description",
+          entity."entity_type", entity."image_asset_id"
+        from "entity" entity
+        where entity."public_id" = ${publicId} and entity."published_at" is not null
+          and entity."archived_at" is null
+      ), published_mentions as (
+        select page."public_id", revision."title"
+        from active_entity entity
+        join "knowledge_page_entity_mention" mention on mention."target_entity_id" = entity."id"
+          and mention."owner_id" = entity."owner_id"
+        join "knowledge_page_revision" revision on revision."id" = mention."source_revision_id"
+          and revision."owner_id" = entity."owner_id"
+        join "knowledge_page" page on page."id" = revision."page_id"
+          and page."owner_id" = entity."owner_id" and page."archived_at" is null
+          and page."published_at" is not null and page."published_revision_id" = revision."id"
+      )
+      select entity."name", entity."description", entity."entity_type" as "entityType",
+        entity."image_asset_id" is not null as "hasImage",
+        image."public_id" as "imagePublicId", image."media_type" as "imageMediaType",
+        page."public_id" as "pagePublicId", page."title" as "pageTitle"
+      from active_entity entity
+      left join "asset" image on image."id" = entity."image_asset_id"
+        and image."owner_id" = entity."owner_id" and image."archived_at" is null
+        and image."published_at" is not null
+      left join published_mentions page on true
+      order by page."title", page."public_id"
+    `;
+    const entity = rows[0];
+    if (
+      !entity ||
+      (entity.hasImage &&
+        (!entity.imagePublicId ||
+          !entity.imageMediaType ||
+          !isEmbeddableAssetMedia(entity.imageMediaType)))
+    ) {
+      return null;
+    }
+    const entityType = ENTITY_TYPES.find((type) => type === entity.entityType) ?? null;
+    if (entity.entityType !== null && entityType === null) {
+      return null;
+    }
+    return {
+      name: entity.name,
+      description: entity.description,
+      entityType,
+      imagePublicId: entity.imagePublicId,
+      pages: rows.flatMap((row) =>
+        row.pagePublicId && row.pageTitle
+          ? [{ publicId: row.pagePublicId, title: row.pageTitle }]
+          : [],
+      ),
+    };
   }
 
   async findPage({ publicId }: { publicId: string }): Promise<StoredPublicPage | null> {

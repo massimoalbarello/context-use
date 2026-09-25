@@ -42,6 +42,10 @@ export class PublicResourcesService {
     }
   }
 
+  entityContent(input: { publicId: string }) {
+    return this.resources.findEntity(input);
+  }
+
   async assetContent(input: { publicId: string }) {
     const asset = await this.resources.findAsset(input);
     if (!asset) {
@@ -68,5 +72,5 @@ export class PublicResourcesService {
 
 export type PublicResourcesServiceContract = Pick<
   PublicResourcesService,
-  'assetContent' | 'pageContent'
+  'assetContent' | 'pageContent' | 'entityContent'
 >;

@@ -99,7 +99,11 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   const app = createApp({
     publicationApprovalService: unusedPublicationApprovalService,
-    publicResourcesService: { assetContent: async () => null, pageContent: async () => null },
+    publicResourcesService: {
+      assetContent: async () => null,
+      pageContent: async () => null,
+      entityContent: async () => null,
+    },
     historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,
@@ -284,6 +288,9 @@ async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
       '/public/assets',
       '/public/assets/unknown',
       '/public/assets/unknown/metadata',
+      '/public/entities',
+      '/public/entities/unknown',
+      '/public/entities/unknown/history',
     ]) {
       const response = await app.handle(
         new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),

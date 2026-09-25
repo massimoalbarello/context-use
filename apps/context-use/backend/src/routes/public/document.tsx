@@ -23,6 +23,12 @@ code { font-size: .875em; background: #eeeae2; padding: .15em .3em; border-radiu
 pre { overflow-x: auto; padding: 1.25rem; background: #eeeae2; border-radius: .5rem; line-height: 1.6; }
 pre code { padding: 0; background: none; }
 hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
+.entity-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
+.entity-identity h1 { margin: 0; }
+.entity-identity > div { flex: 1; min-width: min(15rem, 100%); }
+img.entity-portrait { width: 10rem; height: 10rem; object-fit: cover; margin: 0; }
+.entity-type { margin: 0 0 .5rem; font-size: .875rem; }
+.entity-description { white-space: pre-wrap; }
 @media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 3rem; } nav { margin-bottom: 2rem; } }
 @media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } nav, blockquote { color: #bbb5a9; } code, pre { background: #302e29; } }
 `;
