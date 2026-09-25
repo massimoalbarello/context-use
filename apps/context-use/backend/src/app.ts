@@ -14,6 +14,7 @@ import {
 import type { AssetTransferCapabilitiesContract } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createAssetTransferController } from '#backend/routes/mcp/assets/transfer-controller.ts';
 import { createMcpController } from '#backend/routes/mcp/controller.ts';
+import { createPublicController } from '#backend/routes/public/controller.ts';
 import { createSyncCallbacks, type SyncFetch } from '#backend/routes/sync-callbacks.ts';
 import type {
   ApiKeyAuthenticationContract,
@@ -30,6 +31,7 @@ import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#backend/services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
+import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
@@ -58,6 +60,7 @@ export function createApp({
   pagesService,
   profilesService,
   publicationApprovalService,
+  publicResourcesService,
   recordsService,
   apiKeysService,
   managedSyncsService,
@@ -81,6 +84,7 @@ export function createApp({
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
   publicationApprovalService: PublicationApprovalServiceContract;
+  publicResourcesService: PublicResourcesServiceContract;
   recordsService: RecordsIngestionContract & RecordResourcesServiceContract;
   apiKeysService: ApiKeyAuthenticationContract & ApiKeysServiceContract;
 }) {
@@ -154,6 +158,7 @@ export function createApp({
         },
       }),
     )
+    .use(createPublicController({ publicResourcesService }))
     .use(createSyncCallbacks({ auth, fetch: syncFetch, syncs: managedSyncsService }))
     .use(createAuthDiscoveryController({ auth }))
     .use(

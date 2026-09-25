@@ -38,6 +38,7 @@ import {
   unusedHistoryService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
+  unusedPublicResourcesService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../support/app.ts';
@@ -185,6 +186,7 @@ async function fixture({ automatic = true } = {}) {
   };
   const app = createApp({
     publicationApprovalService: unusedPublicationApprovalService,
+    publicResourcesService: unusedPublicResourcesService,
     historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,

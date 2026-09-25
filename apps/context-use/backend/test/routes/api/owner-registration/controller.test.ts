@@ -23,6 +23,7 @@ import {
   unusedHypermediaGraphService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
+  unusedPublicResourcesService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../../support/app.ts';
@@ -100,6 +101,7 @@ test('owner registration API exposes only complete registration states', async (
     });
     const app = createApp({
       publicationApprovalService: unusedPublicationApprovalService,
+      publicResourcesService: unusedPublicResourcesService,
       historyService: unusedHistoryService,
       managedSyncsService: unusedManagedSyncsService,
       syncFetch: unusedSyncFetch,

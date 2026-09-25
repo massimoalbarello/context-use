@@ -814,6 +814,16 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindPublicAsset`. */
+export interface IFindPublicAssetResult {
+    name: string;
+    mediaType: string;
+    extension: string | null;
+    sizeBytes: number;
+    contentHash: string;
+    storageKey: string;
+}
+
 /** Result of query `FindPendingPublicationApproval`. */
 export interface IFindPendingPublicationApprovalResult {
     id: string;
@@ -1128,6 +1138,7 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindPublicAsset: IFindPublicAssetResult;
     FindPendingPublicationApproval: IFindPendingPublicationApprovalResult;
     DeleteExpiredPublicationApprovals: IDeleteExpiredPublicationApprovalsResult;
     CreatePublicationApproval: ICreatePublicationApprovalResult;

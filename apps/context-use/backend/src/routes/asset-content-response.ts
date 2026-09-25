@@ -19,7 +19,7 @@ export function assetContentResponse({
   blob,
   inline,
 }: {
-  asset: StoredAsset;
+  asset: Pick<StoredAsset, 'name' | 'extension' | 'mediaType' | 'sizeBytes'>;
   blob: Blob;
   inline: boolean;
 }): Response {

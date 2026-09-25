@@ -5,6 +5,7 @@ import type {
 import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
 import type { HistoryServiceContract } from '#backend/services/history/service.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
+import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
@@ -67,4 +68,8 @@ export const unusedPublicationApprovalService: PublicationApprovalServiceContrac
   status: unexpectedCall,
   begin: unexpectedCall,
   complete: unexpectedCall,
+};
+
+export const unusedPublicResourcesService: PublicResourcesServiceContract = {
+  assetContent: unexpectedCall,
 };

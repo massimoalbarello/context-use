@@ -37,6 +37,7 @@ import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
+import { PublicResourcesRepository } from '#backend/repositories/public-resources/repository.ts';
 import { PublicationApprovalsRepository } from '#backend/repositories/publications/approvals.ts';
 import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
@@ -56,6 +57,7 @@ import { KnowledgePagesService } from '#backend/services/knowledge-pages/service
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
+import { PublicResourcesService } from '#backend/services/public-resources/service.ts';
 import { PublicationApprovalService } from '#backend/services/publications/approval-service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
@@ -160,6 +162,10 @@ try {
         transferCapabilities: assetTransferCapabilities,
       }),
   });
+  const publicResourcesService = new PublicResourcesService({
+    resources: new PublicResourcesRepository(database),
+    storage,
+  });
   const publicationApprovalService = new PublicationApprovalService({
     publications: new PublicationsRepository(database),
     approvals: new PublicationApprovalsRepository(database),
@@ -221,6 +227,7 @@ try {
     pagesService,
     profilesService,
     publicationApprovalService,
+    publicResourcesService,
     recordsService,
     apiKeysService,
   }).onStop(async () => {
