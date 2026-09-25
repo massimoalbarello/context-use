@@ -1,10 +1,14 @@
+import { Button, buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
+import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
 import { assetTypeLabel, isEmbeddableAsset } from '../../lib/asset-presentation';
 import { useArchiveAsset } from '../../lib/hooks/use-archive-asset';
 import { useAsset } from '../../lib/hooks/use-assets';
+import { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import { useUpdateAsset } from '../../lib/hooks/use-update-asset';
 import type { Asset } from '../../queries/assets';
+import { publicationStatusQueryOptions } from '../../queries/publications';
 import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
 import { EntityLink } from '../entities/entity-link';
@@ -17,6 +21,8 @@ import { ResourceList } from '../knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { PublicationReviewDialog } from '../publications/publication-review-dialog';
+import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
 import { FieldError } from '../ui/field';
@@ -124,13 +130,57 @@ function AssetPreview({
   );
 }
 
+function AssetPublicationActions({
+  publicId,
+  isPublic,
+  unavailable,
+  onReview,
+}: {
+  publicId: string | null | undefined;
+  isPublic: boolean;
+  unavailable: boolean;
+  onReview: () => void;
+}) {
+  return (
+    <>
+      {publicId && (
+        <a
+          className={buttonVariants({ variant: 'outline', size: 'lg' })}
+          href={`/public/assets/${encodeURIComponent(publicId)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View public
+        </a>
+      )}
+      <Button variant="outline" size="lg" disabled={unavailable} onClick={onReview}>
+        {isPublic ? 'Unpublish' : 'Publish'}
+      </Button>
+    </>
+  );
+}
+
+function AssetArchiveConflict({ reason }: { reason: 'publication' | 'usages' }) {
+  return (
+    <p className="text-destructive text-sm" role="alert">
+      {reason === 'publication' ? (
+        'Unpublish this asset before archiving it.'
+      ) : (
+        <>
+          This asset can’t be archived until every embed, attachment, and entity image is removed or
+          replaced.{' '}
+          <a className="font-medium underline" href="#used-by">
+            Review usages
+          </a>
+          .
+        </>
+      )}
+    </p>
+  );
+}
+
 export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => void }) {
   const { data: asset, error, refetch } = useAsset(id);
-  const updateAsset = useUpdateAsset();
-  const archiveAsset = useArchiveAsset();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState('');
-  const [archiveConflictVisible, setArchiveConflictVisible] = useState(false);
 
   if (error) {
     return <WorkspaceResourceError resource="asset" error={error} retry={() => void refetch()} />;
@@ -142,13 +192,29 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
       </p>
     );
   }
+  return <AssetDetailContent key={asset.readableId} asset={asset} onArchived={onArchived} />;
+}
+
+function AssetDetailContent({ asset, onArchived }: { asset: Asset; onArchived: () => void }) {
+  const updateAsset = useUpdateAsset();
+  const archiveAsset = useArchiveAsset();
+  const publication = useQuery(
+    publicationStatusQueryOptions({ resourceType: 'asset', readableId: asset.readableId }),
+  );
+  const approval = usePublicationApproval();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [archiveConflict, setArchiveConflict] = useState<'publication' | 'usages' | null>(null);
+
   const hasInboundUsages = asset.usages.length > 0;
+  const isPublic = !publication.isError && publication.data?.publishedAt != null;
   const isImage = isEmbeddableAsset(asset);
 
   return (
     <DetailShell>
       <DetailHeader>
         <ResourceDetailHeading
+          context={<PublicationStatus query={publication} />}
           actions={
             editing ? (
               <ResourceDetailActions
@@ -168,16 +234,31 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
                 onEdit={() => {
                   setName(asset.name);
                   updateAsset.reset();
-                  setArchiveConflictVisible(false);
+                  setArchiveConflict(null);
                   setEditing(true);
                 }}
               >
+                {publication.isSuccess && (
+                  <AssetPublicationActions
+                    publicId={isPublic ? publication.data?.publicId : null}
+                    isPublic={isPublic}
+                    unavailable={!!approval.request}
+                    onReview={() => {
+                      setArchiveConflict(null);
+                      approval.review({
+                        resourceType: 'asset',
+                        readableId: asset.readableId,
+                        action: isPublic ? 'unpublish' : 'publish',
+                      });
+                    }}
+                  />
+                )}
                 <ResourceArchiveAction
-                  blocked={hasInboundUsages}
+                  blocked={isPublic || hasInboundUsages}
                   pending={archiveAsset.isPending}
                   resource="asset"
                   onBlocked={() => {
-                    setArchiveConflictVisible(true);
+                    setArchiveConflict(isPublic ? 'publication' : 'usages');
                   }}
                   onConfirm={() => {
                     archiveAsset.mutate(
@@ -187,7 +268,7 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
                           if (result.state === 'archived') {
                             onArchived();
                           } else {
-                            setArchiveConflictVisible(true);
+                            setArchiveConflict('usages');
                           }
                         },
                       },
@@ -226,16 +307,9 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
       </DetailHeader>
 
       {archiveAsset.error && <FieldError>{archiveAsset.error.message}</FieldError>}
-      {archiveConflictVisible && (
-        <p className="text-destructive text-sm" role="alert">
-          This asset can’t be archived until every embed, attachment, and entity image is removed or
-          replaced.{' '}
-          <a className="font-medium underline" href="#used-by">
-            Review usages
-          </a>
-          .
-        </p>
-      )}
+      {archiveConflict && <AssetArchiveConflict reason={archiveConflict} />}
+
+      <AssetPublicationReview approval={approval} />
 
       {isImage ? (
         <AssetFaces asset={asset}>
@@ -264,5 +338,21 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
         {isImage && <AssetEntityImageUsageList asset={asset} />}
       </div>
     </DetailShell>
+  );
+}
+
+function AssetPublicationReview({
+  approval,
+}: {
+  approval: ReturnType<typeof usePublicationApproval>;
+}) {
+  return (
+    <PublicationReviewDialog approval={approval}>
+      <p className="text-sm">
+        {approval.request?.action === 'unpublish'
+          ? 'The public file will stop being available. Copies already downloaded by others cannot be withdrawn.'
+          : 'Anyone with the public link can view or download the original file. Its contents stay fixed; edits to its name appear publicly as you save them.'}
+      </p>
+    </PublicationReviewDialog>
   );
 }
