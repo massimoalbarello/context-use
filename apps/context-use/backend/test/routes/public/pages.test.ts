@@ -432,6 +432,65 @@ test('local and managed fragments resolve to safe headings without exposing remo
   });
 });
 
+test('anonymous readers can follow inline and reference links between published revisions after private edits', async () => {
+  await withPublicPages(async ({ create, update, publish, app }) => {
+    const source = await create({ markdown: '# Public introduction\n\nApproved introduction.' });
+    const sourceId = await publish({ readableId: source.readableId });
+    const target = await create({
+      markdown: `# Public project\n\n## Project details\n\nApproved project details.\n\n[Back to introduction](context-use://page/${source.readableId})`,
+    });
+    const targetId = await publish({ readableId: target.readableId });
+    const linkedSource = await update({
+      readableId: source.readableId,
+      markdown: `# Public introduction\n\n[Explore the project][project]\n\n[project]: context-use://page/${target.readableId}#project-details`,
+    });
+    await publish({ readableId: source.readableId, revisionNumber: linkedSource.revisionNumber });
+    for (const page of [source, target]) {
+      await update({
+        readableId: page.readableId,
+        markdown:
+          '# Unpublished replacement\n\nPrivate details without the public links or headings.',
+      });
+    }
+
+    async function read(url: URL) {
+      const requestUrl = new URL(url);
+      // Browsers resolve the fragment locally and omit it from the HTTP request.
+      requestUrl.hash = '';
+      const response = await app.handle(new Request(requestUrl));
+      expect(response.status).toBe(StatusMap.OK);
+      const links: string[] = [];
+      const headingIds: string[] = [];
+      const html = await new HTMLRewriter()
+        .on('article a[href]', {
+          element(element) {
+            links.push(element.getAttribute('href')!);
+          },
+        })
+        .on('article h2[id]', {
+          element(element) {
+            headingIds.push(element.getAttribute('id')!);
+          },
+        })
+        .transform(response)
+        .text();
+      expect(html).not.toContain('Unpublished replacement');
+      expect(html).not.toContain('Private details');
+      return { html, links, headingIds };
+    }
+
+    const sourceUrl = new URL(`http://localhost/public/pages/${sourceId}`);
+    const introduction = await read(sourceUrl);
+    expect(introduction.links).toEqual([`/public/pages/${targetId}#project-details`]);
+    const targetUrl = new URL(introduction.links[0]!, sourceUrl);
+    const project = await read(targetUrl);
+    expect(project.html).toContain('Approved project details.');
+    expect(project.headingIds).toContain(targetUrl.hash.slice(1));
+    expect(project.links).toEqual([sourceUrl.pathname]);
+    expect((await read(new URL(project.links[0]!, targetUrl))).html).toBe(introduction.html);
+  });
+});
+
 test('private, foreign, unknown, withdrawn and archived page identifiers are indistinguishable and there is no history route', async () => {
   await withPublicPages(async ({ create, publish, request, transition, database, app }) => {
     const page = await create({ markdown: '# Public\n\nBody.' });
