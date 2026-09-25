@@ -19,7 +19,9 @@ create table "entity" (
   foreign key ("image_asset_id", "owner_id") references "asset" ("id", "owner_id")
     deferrable initially deferred,
   check ("public_id" is null or (
-    "public_id" glob 'entity_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "id"
+    length("public_id") = 36 and "public_id" glob '????????-????-????-????-????????????'
+    and length(replace("public_id", '-', '')) = 32 and "public_id" not glob '*[^a-f0-9-]*'
+    and "public_id" != "id" and "public_id" != "readable_id"
   )),
   check ("published_at" is null or (
     length(trim("published_at")) > 0 and "public_id" is not null
@@ -62,7 +64,9 @@ create table "knowledge_page" (
     references "knowledge_page_revision" ("id", "page_id", "owner_id")
     deferrable initially deferred,
   check ("public_id" is null or (
-    "public_id" glob 'page_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "id"
+    length("public_id") = 36 and "public_id" glob '????????-????-????-????-????????????'
+    and length(replace("public_id", '-', '')) = 32 and "public_id" not glob '*[^a-f0-9-]*'
+    and "public_id" != "id" and "public_id" != "readable_id"
   )),
   check ("published_at" is null or (
     length(trim("published_at")) > 0 and "public_id" is not null

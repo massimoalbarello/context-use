@@ -240,7 +240,9 @@ test('HTTP publication selects the exact reviewed page revision, with revision n
     const status = await (await request({ path: '/page/primary' })).json();
     expect(status).toEqual({
       resourceType: 'page',
-      publicId: expect.stringMatching(/^page_/),
+      publicId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
       publishedAt: NOW,
       publishedRevisionNumber: 1,
     });
@@ -528,7 +530,9 @@ test('records use owner passkey approval and stale content cannot be published',
     expect(published).toMatchObject({
       resourceType: 'record',
       publishedAt: NOW,
-      publicId: expect.stringContaining('record_'),
+      publicId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
     });
     expect((await complete(await begin({ ...target, action: 'unpublish' }))).status).toBe(
       StatusMap.OK,

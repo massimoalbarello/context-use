@@ -51,6 +51,11 @@ test('public record readers use a stable handle, sanitize source Markdown, and s
     const { readableId } = await records.upsert(input);
     expect((await request({ app, id: readableId })).status).toBe(StatusMap['Not Found']);
     const publicId = await transition(target(readableId));
+    expect(publicId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(publicId).not.toBe(readableId);
+    expect((await request({ app, id: `record_${publicId}` })).status).toBe(StatusMap['Not Found']);
     const html = await request({ app, id: publicId });
     expect(html.status).toBe(StatusMap.OK);
     expect(html.headers.get('cache-control')).toBe('private, no-store');

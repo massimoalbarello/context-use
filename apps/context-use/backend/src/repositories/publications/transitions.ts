@@ -260,7 +260,7 @@ export async function executePublication({
   }
 
   const publication = {
-    publicId: target.publicId ?? createPublicId(input.resourceType),
+    publicId: target.publicId ?? createPublicId(),
     publishedAt: input.action === 'publish' ? input.publishedAt : null,
   };
   if (input.action === 'publish' && image && !image.publishedAt) {
@@ -268,7 +268,7 @@ export async function executePublication({
       db,
       ownerId: input.ownerId,
       id: image.id,
-      publicId: image.publicId ?? createPublicId('asset'),
+      publicId: image.publicId ?? createPublicId(),
       publishedAt: input.publishedAt,
     });
   }

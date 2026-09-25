@@ -51,7 +51,9 @@ create table "record" (
   check (substr("readable_id", 1, 1) glob '[a-z0-9]'),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
   check ("public_id" is null or (
-    "public_id" glob 'record_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "readable_id"
+    length("public_id") = 36 and "public_id" glob '????????-????-????-????-????????????'
+    and length(replace("public_id", '-', '')) = 32 and "public_id" not glob '*[^a-f0-9-]*'
+    and "public_id" != "readable_id"
   )),
   check ("published_at" is null or (
     length(trim("published_at")) > 0 and "public_id" is not null and "deleted_at" is null

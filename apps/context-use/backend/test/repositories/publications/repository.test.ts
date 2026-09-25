@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { isReadableId } from '#backend/models/readable-ids/model.ts';
 import { createPublicId } from '#backend/repositories/publications/public-id.ts';
 import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 
@@ -17,7 +16,7 @@ for (const { type, table, status } of RESOURCES) {
       const repository = new PublicationsRepository(database);
       const input = { ownerId: 'owner-a', readableId: 'primary' };
       const resourceId = `owner-a-${type}-primary`;
-      const publicId = createPublicId(type);
+      const publicId = createPublicId();
       const privateStatus = {
         publicId: null,
         publishedAt: null,
@@ -27,7 +26,6 @@ for (const { type, table, status } of RESOURCES) {
       expect(await repository[status](input)).toEqual(privateStatus);
       expect(await repository[status]({ ...input, readableId: 'missing' })).toBeNull();
       expect(await repository[status]({ ...input, ownerId: 'missing-owner' })).toBeNull();
-      expect(isReadableId(publicId)).toBe(false);
       expect(publicId).not.toBe(resourceId);
 
       await database.unsafe(
@@ -81,7 +79,7 @@ for (const { type, table, status } of RESOURCES) {
   test(`${type} publication enforces ownership, public identity, uniqueness, and resource cleanup`, async () => {
     await withDatabase(async ({ database }) => {
       const resourceId = `owner-a-${type}-primary`;
-      const publicId = createPublicId(type);
+      const publicId = createPublicId();
       const reserve = async ({ id = resourceId, owner = 'owner-a', handle = publicId } = {}) =>
         database.unsafe(
           `update "${table}" set "public_id" = $1 where "id" = $2 and "owner_id" = $3`,
@@ -102,7 +100,13 @@ for (const { type, table, status } of RESOURCES) {
       for (const handle of [
         'primary',
         resourceId,
-        createPublicId(type === 'asset' ? 'entity' : 'asset'),
+        `${type}_${publicId}`,
+        `A${publicId.slice(1)}`,
+        publicId.replaceAll('-', ''),
+        publicId.replace('-', 'a'),
+        `${publicId.slice(0, -1)}-`,
+        `g${publicId.slice(1)}`,
+        `${publicId}0`,
       ]) {
         await expect(reserve({ handle })).rejects.toThrow('CHECK');
       }
@@ -128,23 +132,28 @@ for (const { type, table, status } of RESOURCES) {
       ).rejects.toThrow('CHECK');
 
       // Even a private database ID that happens to use the public syntax cannot be reused.
+      const privateId = crypto.randomUUID();
       await database.begin(async (db) => {
         await db.unsafe(`update "${table}" set "id" = $1 where "id" = $2`, [
-          `${type}_private-database-id`,
+          privateId,
           `owner-a-${type}-secondary`,
         ]);
         if (type === 'page') {
-          await db`update "knowledge_page_revision" set "page_id" = 'page_private-database-id' where "page_id" = 'owner-a-page-secondary'`;
+          await db`update "knowledge_page_revision" set "page_id" = ${privateId} where "page_id" = 'owner-a-page-secondary'`;
         }
       });
-      await expect(
-        reserve({ id: `${type}_private-database-id`, handle: `${type}_private-database-id` }),
-      ).rejects.toThrow('CHECK');
+      await expect(reserve({ id: privateId, handle: privateId })).rejects.toThrow('CHECK');
+      const readableId = crypto.randomUUID();
+      await database.unsafe(`update "${table}" set "readable_id" = $1 where "id" = $2`, [
+        readableId,
+        privateId,
+      ]);
+      await expect(reserve({ id: privateId, handle: readableId })).rejects.toThrow('CHECK');
 
       await reserve({
         id: `owner-b-${type}-primary`,
         owner: 'owner-b',
-        handle: createPublicId(type),
+        handle: createPublicId(),
       });
       await database.unsafe(`delete from "${table}" where "id" = $1`, [resourceId]);
       const retained = await database.unsafe(
@@ -164,7 +173,7 @@ test('a page publication selects exactly one revision of its own page and surviv
   await withDatabase(async ({ database }) => {
     const repository = new PublicationsRepository(database);
     const input = { ownerId: 'owner-a', readableId: 'primary' };
-    const publicId = createPublicId('page');
+    const publicId = createPublicId();
     await database`
       update "knowledge_page" set "public_id" = ${publicId}
       where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
