@@ -58,17 +58,22 @@ async function assetSearchPage({
   };
 }
 
-export function assetsQueryOptions(query?: string) {
+export type AssetListFilters = { query?: string; visibility?: PublicationVisibility };
+
+export function assetsQueryOptions({ query, visibility }: AssetListFilters = {}) {
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
-    queryKey: [...assetsListQueryKey, { query: normalizedQuery ?? null }],
+    queryKey: [
+      ...assetsListQueryKey,
+      { query: normalizedQuery ?? null, visibility: visibility ?? 'all' },
+    ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (normalizedQuery) {
-        return assetSearchPage({ query: normalizedQuery });
+        return assetSearchPage({ query: normalizedQuery, visibility });
       }
       const { data, error } = await api.api.assets.get({
-        query: { offset: pageParam },
+        query: { offset: pageParam, visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

@@ -1,10 +1,13 @@
 import { expect, test } from 'bun:test';
 import { MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import { ENTITY_TYPE_FILTERS, MAX_ENTITY_NAME_LENGTH } from '#backend/models/entities/model.ts';
+import { PUBLICATION_VISIBILITIES } from '#backend/models/publications/model.ts';
 import { entitySearch } from '../../src/lib/entity-filters';
 import { assetsQueryOptions } from '../../src/queries/assets';
 import { entitiesQueryOptions } from '../../src/queries/entities';
+import { pagesQueryOptions } from '../../src/queries/pages';
 import { assetSearch } from '../../src/routes/assets';
+import { pageListFilters, pageSearch } from '../../src/routes/pages';
 
 test('entity and asset keyword searches are canonical URL state', () => {
   expect(entitySearch({ q: '  Maya  ' })).toEqual({ q: 'Maya' });
@@ -23,7 +26,9 @@ test('filtered collection pages use distinct query caches', () => {
   expect(entitiesQueryOptions({ query: 'maya' }).queryKey).not.toEqual(
     entitiesQueryOptions().queryKey,
   );
-  expect(assetsQueryOptions('rollout').queryKey).not.toEqual(assetsQueryOptions().queryKey);
+  expect(assetsQueryOptions({ query: 'rollout' }).queryKey).not.toEqual(
+    assetsQueryOptions().queryKey,
+  );
 });
 
 test('entity type URL state rejects invented types and separates every filtered cache', () => {
@@ -42,4 +47,29 @@ test('entity type URL state rejects invented types and separates every filtered 
     ),
   );
   expect(new Set(keys).size).toBe(ENTITY_TYPE_FILTERS.length);
+});
+
+test('visibility URL state accepts only domain choices and shares the default All cache', () => {
+  for (const parse of [pageSearch, entitySearch, assetSearch]) {
+    for (const visibility of ['public', 'private'] as const) {
+      expect(parse({ visibility }).visibility).toBe(visibility);
+    }
+    for (const visibility of ['all', 'unknown', ['public'], 1, null, undefined]) {
+      expect(parse({ visibility }).visibility).toBeUndefined();
+    }
+  }
+  for (const options of [pagesQueryOptions, entitiesQueryOptions, assetsQueryOptions]) {
+    expect(options({ visibility: 'all' }).queryKey).toEqual(options().queryKey);
+    expect(
+      new Set(
+        PUBLICATION_VISIBILITIES.map((visibility) =>
+          JSON.stringify(options({ query: 'launch', visibility }).queryKey),
+        ),
+      ).size,
+    ).toBe(PUBLICATION_VISIBILITIES.length);
+  }
+  expect(pageListFilters(pageSearch({ visibility: 'public', interval: 'without' }))).toMatchObject({
+    visibility: 'public',
+    interval: 'without',
+  });
 });

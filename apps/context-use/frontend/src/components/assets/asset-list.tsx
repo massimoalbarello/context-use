@@ -19,9 +19,9 @@ export function AssetList({
   });
   if (assets.length === 0) {
     return (
-      <ResourceListEmpty title={filtered ? 'No assets match this search.' : 'No assets yet.'}>
+      <ResourceListEmpty title={filtered ? 'No assets match these filters.' : 'No assets yet.'}>
         {filtered
-          ? 'Clear or change the keyword search.'
+          ? 'Clear or change the filters.'
           : 'Upload a file to embed it in or attach it to a knowledge page.'}
       </ResourceListEmpty>
     );
