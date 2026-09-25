@@ -1,6 +1,7 @@
 import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import { Pencil } from 'lucide-react';
+import type { ReactNode } from 'react';
 import {
   type EntityType,
   MAX_ENTITY_DESCRIPTION_LENGTH,
@@ -29,6 +30,8 @@ export function EntityIdentityEditor({
   imageEditorOpen,
   pending,
   error,
+  context,
+  children,
   onEditImage,
   onCancel,
   onSubmit,
@@ -41,6 +44,8 @@ export function EntityIdentityEditor({
   imageEditorOpen: boolean;
   pending: boolean;
   error: Error | null;
+  context?: ReactNode;
+  children?: ReactNode;
   onEditImage: () => void;
   onCancel: () => void;
   onSubmit: (identity: {
@@ -71,6 +76,7 @@ export function EntityIdentityEditor({
       }}
     >
       <ResourceDetailHeading
+        context={context}
         actions={
           <ResourceDetailActions
             mode="edit"
@@ -82,6 +88,7 @@ export function EntityIdentityEditor({
       >
         Entity {isSelf && <Badge variant="secondary">You</Badge>}
       </ResourceDetailHeading>
+      {children}
       <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
         <Button
           className="relative h-auto p-0"

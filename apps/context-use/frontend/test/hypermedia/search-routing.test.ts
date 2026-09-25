@@ -27,7 +27,7 @@ test('sidebar and picker keyword queries use the shared search endpoint with typ
     await client.fetchInfiniteQuery(entitiesQueryOptions({ query: 'running' }));
     await client.fetchInfiniteQuery(assetsQueryOptions('running'));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: 'running', interval: 'with' }));
-    await client.fetchQuery(imageAssetSuggestionsQueryOptions('running'));
+    await client.fetchQuery(imageAssetSuggestionsQueryOptions({ query: 'running' }));
     await client.fetchQuery(knowledgeSuggestionsQueryOptions('running'));
 
     expect(requests.map((url) => url.pathname)).toEqual(
@@ -67,7 +67,7 @@ test('blank keyword queries browse typed collections without invoking retrieval'
     await client.fetchInfiniteQuery(entitiesQueryOptions({ query: '  ' }));
     await client.fetchInfiniteQuery(assetsQueryOptions('  '));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: '  ' }));
-    await client.fetchQuery(imageAssetSuggestionsQueryOptions('  '));
+    await client.fetchQuery(imageAssetSuggestionsQueryOptions({ query: '  ' }));
 
     expect(requests.map((url) => url.pathname)).toEqual([
       '/api/entities',
