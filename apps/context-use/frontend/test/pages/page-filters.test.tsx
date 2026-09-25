@@ -1,5 +1,5 @@
 import { afterEach, expect, mock, test } from 'bun:test';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PageFilters } from '../../src/components/pages/page-filters';
 
@@ -25,13 +25,18 @@ test('Pages keeps visibility, interval and date controls behind the filter icon'
 
   expect(trigger.textContent).toBe('');
   expect(screen.queryByRole('searchbox', { name: 'Keyword' })).toBeNull();
-  expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+  expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
 
   await user.click(trigger);
 
   expect(screen.queryByRole('searchbox')).toBeNull();
-  expect(screen.getByRole('group', { name: 'Visibility' })).toBeTruthy();
-  expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('tablist', { name: 'Visibility' })).toBeTruthy();
+  expect(
+    within(screen.getByRole('tablist', { name: 'Interval' })).getByRole('tab', {
+      name: 'All',
+      selected: true,
+    }),
+  ).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Filter by date range: Choose dates' })).toBeTruthy();
 
   await user.click(screen.getByRole('tab', { name: 'With' }));
