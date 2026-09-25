@@ -6,7 +6,10 @@ import {
   verifyAuthenticationResponse,
 } from '@simplewebauthn/server';
 import type { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
-import type { PublicationPreparation } from '#backend/models/publications/model.ts';
+import type {
+  PublicationPreparation,
+  PublicationResource,
+} from '#backend/models/publications/model.ts';
 import type {
   PublicationApprovalResult,
   PublicationApprovalsRepositoryContract,
@@ -52,6 +55,22 @@ export class PublicationApprovalService {
     this.approvals = approvals;
     this.passkeys = passkeys;
     this.now = now;
+  }
+
+  async status(input: {
+    ownerId: string;
+    readableId: string;
+    resourceType: PublicationResource['resourceType'];
+  }) {
+    if (input.resourceType === 'page') {
+      const publication = await this.publications.pageStatus(input);
+      return publication ? { resourceType: 'page' as const, ...publication } : null;
+    }
+    const publication =
+      input.resourceType === 'entity'
+        ? await this.publications.entityStatus(input)
+        : await this.publications.assetStatus(input);
+    return publication ? { resourceType: input.resourceType, ...publication } : null;
   }
 
   async begin({
@@ -147,5 +166,5 @@ export class PublicationApprovalService {
 
 export type PublicationApprovalServiceContract = Pick<
   PublicationApprovalService,
-  'begin' | 'complete'
+  'begin' | 'complete' | 'status'
 >;

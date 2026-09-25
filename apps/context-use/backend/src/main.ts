@@ -13,6 +13,7 @@ import { loadAuthSecret } from '#backend/lib/auth/auth-secret.ts';
 import { createAuth, mcpServerUrl } from '#backend/lib/auth/better-auth.ts';
 import { fetchClientMetadataResource } from '#backend/lib/auth/client-metadata-resource.ts';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
+import { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
 import { loadEnv } from '#backend/lib/env.ts';
 import { LocalFaceAnalyzer } from '#backend/lib/face-analysis/local-analyzer.ts';
 import { createLogger } from '#backend/lib/logger.ts';
@@ -36,6 +37,8 @@ import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
+import { PublicationApprovalsRepository } from '#backend/repositories/publications/approvals.ts';
+import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { AssetTransferCapabilities } from '#backend/routes/mcp/assets/transfer-capabilities.ts';
 import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
@@ -53,6 +56,7 @@ import { KnowledgePagesService } from '#backend/services/knowledge-pages/service
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
+import { PublicationApprovalService } from '#backend/services/publications/approval-service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
@@ -156,6 +160,11 @@ try {
         transferCapabilities: assetTransferCapabilities,
       }),
   });
+  const publicationApprovalService = new PublicationApprovalService({
+    publications: new PublicationsRepository(database),
+    approvals: new PublicationApprovalsRepository(database),
+    passkeys: passkeyConfiguration({ baseUrl: env.BASE_URL, nibrunHostname: env.NIBRUN_HOSTNAME }),
+  });
   const auth = createAuth({
     database,
     baseUrl: env.BASE_URL,
@@ -211,6 +220,7 @@ try {
     ownerRegistrationService,
     pagesService,
     profilesService,
+    publicationApprovalService,
     recordsService,
     apiKeysService,
   }).onStop(async () => {

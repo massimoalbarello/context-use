@@ -884,7 +884,7 @@ export interface IFindPagePublicationRecordReferencesResult {
 export interface IFindPagePublicationStatusResult {
     publicId: string | null;
     publishedAt: string | null;
-    revisionId: string | null;
+    publishedRevisionNumber: number | null;
 }
 
 /** Result of query `FindEntityPublicationStatus`. */

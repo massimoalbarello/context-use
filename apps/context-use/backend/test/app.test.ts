@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import { createApp } from '#backend/app.ts';
-import type { Auth } from '#backend/lib/auth/better-auth.ts';
+import { type Auth, SESSION_SECURITY_SCHEME } from '#backend/lib/auth/better-auth.ts';
 import { API_KEY_SECURITY_SCHEME } from '#backend/routes/api/api-keys/model.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
@@ -15,6 +15,7 @@ import {
   unusedHistoryService,
   unusedHypermediaGraphService,
   unusedManagedSyncsService,
+  unusedPublicationApprovalService,
   unusedSyncFetch,
 } from './support/app.ts';
 import {
@@ -25,6 +26,11 @@ import {
   unusedMcpProtection,
   unusedMcpTransport,
 } from './support/mcp.ts';
+
+const PUBLICATION_APPROVAL_PATHS = [
+  '/api/publications/approvals',
+  '/api/publications/approvals/{approvalId}/complete',
+];
 
 function unexpectedCall(): never {
   throw new Error('Unexpected dependency call');
@@ -88,6 +94,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
 
   const app = createApp({
+    publicationApprovalService: unusedPublicationApprovalService,
     historyService: unusedHistoryService,
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,
@@ -201,6 +208,19 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   });
   const receiverOperation = openApi.paths?.['/api/records']?.post;
   expectWriteMessages(openApi.paths ?? {});
+  for (const path of PUBLICATION_APPROVAL_PATHS) {
+    const operation = openApi.paths?.[path]?.post;
+    expect(operation?.security).toEqual([{ [SESSION_SECURITY_SCHEME]: [] }]);
+    for (const statusCode of ['200', '400', '401', '404', '409', '500']) {
+      expect(operation?.responses).toHaveProperty(statusCode);
+    }
+  }
+  const completeSchema =
+    openApi.paths?.['/api/publications/approvals/{approvalId}/complete']?.post?.requestBody
+      ?.content?.['application/json']?.schema;
+  expect(Object.keys(completeSchema?.properties ?? {})).toEqual(['assertion']);
+  expect(completeSchema).toMatchObject({ required: ['assertion'], additionalProperties: false });
+  expect(openApi.paths?.['/api/publications/{resourceType}/{readableId}']?.get).toBeDefined();
   expect(receiverOperation?.security).toContainEqual({ [API_KEY_SECURITY_SCHEME]: [] });
   expect(receiverOperation?.requestBody?.content?.['application/json']).toBeDefined();
   expect(openApi.paths?.['/api/records/batch']).toBeUndefined();
@@ -222,7 +242,8 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
     schema.allOf?.some(requiresChangeMessage) === true;
   let mutationContracts = 0;
   for (const [path, operations] of Object.entries(paths)) {
-    if (!path.startsWith('/api/')) {
+    // Approval ceremonies carry the stored operation and assertion, not content edits.
+    if (!path.startsWith('/api/') || PUBLICATION_APPROVAL_PATHS.includes(path)) {
       continue;
     }
     for (const [method, operation] of Object.entries(operations)) {

@@ -4,7 +4,7 @@ export interface PublicationStatus {
 }
 
 export interface PagePublicationStatus extends PublicationStatus {
-  revisionId: string | null;
+  publishedRevisionNumber: number | null;
 }
 
 export interface PublicationResource {

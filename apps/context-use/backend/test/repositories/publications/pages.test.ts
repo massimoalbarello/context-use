@@ -138,7 +138,7 @@ test('publishing selects the reviewed saved revision despite later private edits
       blockers: [],
     });
     const first = await execution({ repository, input: publish() });
-    const secondId = await addRevision({ db });
+    await addRevision({ db });
     expect((await repository.prepare(publish()))?.expectedState).toBe(first.expectedState);
     expect(await repository.execute(first)).toMatchObject({ state: 'changed' });
     const firstStatus = await repository.pageStatus(publish());
@@ -148,7 +148,7 @@ test('publishing selects the reviewed saved revision despite later private edits
     expect(firstStatus).toEqual({
       publicId: expect.stringContaining('page_'),
       publishedAt: NOW,
-      revisionId: FIRST_REVISION,
+      publishedRevisionNumber: 1,
     });
     expect(await repository.execute(first)).toEqual({ state: 'state_changed' });
     expect(await change({ repository, input: publish() })).toMatchObject({ state: 'unchanged' });
@@ -162,13 +162,13 @@ test('publishing selects the reviewed saved revision despite later private edits
     expect(await repository.pageStatus(publish())).toEqual({
       ...firstStatus,
       publishedAt: LATER,
-      revisionId: secondId,
+      publishedRevisionNumber: 2,
     });
     expect(await change({ repository, input: unpublish() })).toMatchObject({ state: 'changed' });
     expect(await repository.pageStatus(publish())).toEqual({
       ...firstStatus,
       publishedAt: null,
-      revisionId: null,
+      publishedRevisionNumber: null,
     });
     expect(await change({ repository, input: unpublish() })).toMatchObject({ state: 'unchanged' });
     expect(await change({ repository, input: publish() })).toMatchObject({ state: 'changed' });
@@ -253,7 +253,7 @@ test('every managed reference must already be public without recursively publish
     await db`update "asset" set "name" = 'Live public asset' where "id" = 'owner-a-asset-secondary'`;
     expect((await repository.prepare(publish()))?.expectedState).toBe(approved.expectedState);
     expect(await repository.execute(approved)).toMatchObject({ state: 'changed' });
-    expect((await repository.pageStatus(publish()))?.revisionId).toBe(FIRST_REVISION);
+    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBe(1);
   });
 });
 
@@ -262,7 +262,7 @@ test('publication rechecks dependency visibility and preserves the preceding pub
     const repository = new PublicationsRepository(db);
     await allReferences(db);
     await publishDependencies({ repository });
-    const secondId = await addRevision({ db });
+    await addRevision({ db });
     await change({ repository, input: publish({ revisionNumber: 2 }) });
     const approved = await execution({ repository, input: publish() });
     await change({
@@ -278,7 +278,7 @@ test('publication rechecks dependency visibility and preserves the preceding pub
       state: 'blocked',
       blockers: [{ reason: 'reference_not_public', resource: { resourceType: 'asset' } }],
     });
-    expect((await repository.pageStatus(publish()))?.revisionId).toBe(secondId);
+    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBe(2);
     await change({
       repository,
       input: {
@@ -300,7 +300,7 @@ test('publication rechecks dependency visibility and preserves the preceding pub
         'reference_unavailable',
       ]);
     }
-    expect((await repository.pageStatus(publish()))?.revisionId).toBe(secondId);
+    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBe(2);
   });
 });
 
@@ -363,7 +363,7 @@ test('page withdrawal checks only incoming public revisions and keeps their publ
         },
       ],
     });
-    expect((await repository.pageStatus(publish()))?.revisionId).toBe(FIRST_REVISION);
+    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBe(1);
     await change({ repository, input: publish({ revisionNumber: 2, readableId: 'secondary' }) });
     const privateRevision = await addRevision({
       db,
@@ -378,7 +378,7 @@ test('page withdrawal checks only incoming public revisions and keeps their publ
     await addRevision({ db });
     expect((await repository.prepare(unpublish()))?.expectedState).toBe(approved.expectedState);
     expect(await repository.execute(approved)).toMatchObject({ state: 'changed' });
-    expect((await repository.pageStatus(publish()))?.revisionId).toBeNull();
+    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBeNull();
   });
 });
 
@@ -403,7 +403,7 @@ test('self references require an already public target but do not prevent withdr
     await change({ repository, input: publish({ revisionNumber: 2 }) });
     expect(await change({ repository, input: publish() })).toMatchObject({ state: 'changed' });
     expect(await change({ repository, input: unpublish() })).toMatchObject({ state: 'changed' });
-    expect((await repository.pageStatus(publish()))?.revisionId).toBeNull();
+    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBeNull();
   });
 });
 

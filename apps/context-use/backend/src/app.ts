@@ -30,6 +30,7 @@ import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#backend/services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
+import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
   RecordsIngestionContract,
@@ -56,6 +57,7 @@ export function createApp({
   ownerRegistrationService,
   pagesService,
   profilesService,
+  publicationApprovalService,
   recordsService,
   apiKeysService,
   managedSyncsService,
@@ -78,6 +80,7 @@ export function createApp({
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
+  publicationApprovalService: PublicationApprovalServiceContract;
   recordsService: RecordsIngestionContract & RecordResourcesServiceContract;
   apiKeysService: ApiKeyAuthenticationContract & ApiKeysServiceContract;
 }) {
@@ -97,6 +100,10 @@ export function createApp({
             version: '1.0.0',
           },
           tags: [
+            {
+              name: 'Publications',
+              description: 'Publication status and fresh owner passkey approval.',
+            },
             {
               name: 'Assets',
               description: 'Uploaded files embedded in or attached to knowledge pages.',
@@ -176,6 +183,7 @@ export function createApp({
         ownerRegistrationService,
         pagesService,
         profilesService,
+        publicationApprovalService,
         recordsService,
         apiKeysService,
         managedSyncsService,
