@@ -620,6 +620,8 @@ test('the concise guide is deterministic and names only available retrieval tool
 
 test('record search previews have exact owner-scoped read paths without imported bodies or delivery internals', async () => {
   const record = {
+    publicId: null,
+    publishedAt: null,
     readableId: 'calendar-meeting-42',
     title: 'Planning meeting',
     sourceCreatedAt: null,
@@ -682,6 +684,7 @@ test('record search previews have exact owner-scoped read paths without imported
           {
             resourceType: 'record',
             address: 'context-use://record/calendar-meeting-42',
+            publication: { isPublic: false },
             readableId: record.readableId,
             title: record.title,
             sourceCreatedAt: null,

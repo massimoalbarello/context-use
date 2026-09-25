@@ -15,8 +15,7 @@ const blockerExplanations: Record<PublicationBlocker['reason'], string> = {
   image_unavailable: 'This image is unavailable. Choose an available image first.',
   reference_not_public: 'Publish this referenced resource first.',
   reference_unavailable: 'Remove or replace this unavailable reference first.',
-  record_reference:
-    'Pages that reference records cannot be published. Remove this reference first.',
+  public_record_reference: 'Unpublish this referring record or remove its reference first.',
 };
 
 function BlockerLink({ resource }: Pick<PublicationBlocker, 'resource'>) {

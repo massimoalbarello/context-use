@@ -304,7 +304,7 @@ test('publication rechecks dependency visibility and preserves the preceding pub
   });
 });
 
-test('record references block publication even after the record becomes unavailable', async () => {
+test('private and unavailable record references block publication', async () => {
   await withDatabase(async ({ database: db }) => {
     const repository = new PublicationsRepository(db);
     await db`
@@ -320,11 +320,11 @@ test('record references block publication even after the record becomes unavaila
       state: 'blocked',
       blockers: [
         {
-          reason: 'record_reference',
+          reason: 'reference_not_public',
           resource: {
             resourceType: 'record',
             readableId: 'sensitive-record',
-            name: 'sensitive-record',
+            name: 'Sensitive record',
           },
         },
       ],
@@ -332,7 +332,10 @@ test('record references block publication even after the record becomes unavaila
     expect(await change({ repository, input: publish() })).toEqual(blocked);
     await db`update "record" set "deleted_at" = ${LATER}, "source_updated_at" = ${LATER}, "storage_key" = null,
       "content_hash" = null, "size_bytes" = null where "owner_id" = ${OWNER}`;
-    expect(await change({ repository, input: publish() })).toEqual(blocked);
+    expect(await change({ repository, input: publish() })).toMatchObject({
+      state: 'blocked',
+      blockers: [{ reason: 'reference_unavailable' }],
+    });
     expect((await repository.pageStatus(publish()))?.publishedAt).toBeNull();
     await addRevision({ db });
     expect(await change({ repository, input: publish({ revisionNumber: 2 }) })).toMatchObject({

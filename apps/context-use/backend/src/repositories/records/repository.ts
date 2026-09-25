@@ -3,16 +3,17 @@ import type { SQL } from 'bun';
 import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import { InvalidRecordAssetError, type RecordAssetUsage } from '#backend/models/records/assets.ts';
-import type {
-  NativeRecord,
-  RecordDeletion,
-  RecordFilterOptions,
-  RecordListFilters,
-  RecordPage,
-  RecordSummary,
-  RecordSyncRevision,
-  RecordWriteResult,
-  StoredRecord,
+import {
+  type NativeRecord,
+  type RecordDeletion,
+  type RecordFilterOptions,
+  type RecordListFilters,
+  type RecordPage,
+  RecordPublicationConflictError,
+  type RecordSummary,
+  type RecordSyncRevision,
+  type RecordWriteResult,
+  type StoredRecord,
 } from '#backend/models/records/model.ts';
 import { recordSearchText } from '#backend/models/records/search.ts';
 import type { Queries } from '#backend/queries.gen.ts';
@@ -57,6 +58,8 @@ function recordSummaryFrom(
   },
 ): RecordSummary {
   return {
+    publicId: record.publicId,
+    publishedAt: record.publishedAt,
     readableId: record.readableId,
     title: record.title,
     source: {
@@ -258,7 +261,7 @@ async function writeRecord({
     /* @notNull syncRevision */
     select "readable_id" as "readableId", "title", "source_updated_at" as "sourceUpdatedAt",
       "source_url" as "sourceUrl", "source_created_at" as "sourceCreatedAt",
-      "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision"
+      "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision", "published_at" as "publishedAt"
     from "record" where "owner_id" = ${input.ownerId} and "provider" = ${source.provider}
       and "kind" = ${source.kind} and "source_id" = ${source.id} and "sync_id" = ${sync.syncId}
   `;
@@ -275,8 +278,26 @@ async function writeRecord({
     }
     return skipped(skip);
   }
+  if (input.deletion && current?.publishedAt) {
+    throw new RecordPublicationConflictError('Unpublish this record before deleting it.');
+  }
   await publishRecord({ db, input, readableId });
   await replaceRecordAssetUsages({ db, write: input, readableId });
+  if (current?.publishedAt) {
+    const privateAssets = await db.FindPrivatePublicRecordAssets`
+      select asset."readable_id"
+      from "record_asset_usage" usage
+      join "asset" asset on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
+      where usage."owner_id" = ${input.ownerId} and usage."source_record_readable_id" = ${readableId}
+        and asset."published_at" is null
+      limit 1
+    `;
+    if (privateAssets.length) {
+      throw new RecordPublicationConflictError(
+        'Publish referenced assets before adding them to a public record.',
+      );
+    }
+  }
   let excerpt: string | undefined;
   if (record) {
     const text = recordSearchText(record);
@@ -317,19 +338,22 @@ export class RecordsRepository implements RecordsRepositoryContract {
     createdTo,
     updatedFrom,
     updatedTo,
+    visibility = 'all',
     sortBy = 'sourceUpdatedAt',
     sortDirection = 'desc',
   }: ListRecordsInput): Promise<RecordPage> {
     return await this.serialize(async () => {
       const rows = await this.sql.ListRecordResources`
         /* @notNull readableId title provider kind sourceId createdAt updatedAt */
-        select record."readable_id" as "readableId", record."title", record."provider", record."kind",
+        select record."public_id" as "publicId", record."published_at" as "publishedAt",
+          record."readable_id" as "readableId", record."title", record."provider", record."kind",
           record."source_id" as "sourceId", record."source_created_at" as "sourceCreatedAt",
           record."source_updated_at" as "sourceUpdatedAt",
           record."source_url" as "sourceUrl",
           record."created_at" as "createdAt", record."updated_at" as "updatedAt"
         from "record" record
         where record."owner_id" = ${ownerId} and record."deleted_at" is null
+          and (${visibility} = 'all' or (${visibility} = 'public') = (record."published_at" is not null))
           and (${provider ?? null} is null or record."provider" = ${provider ?? null})
           and (${kind ?? null} is null or record."kind" = ${kind ?? null})
           and (${createdFrom ?? null} is null or julianday(record."source_created_at") >= julianday(${createdFrom ?? null}))
@@ -381,7 +405,8 @@ export class RecordsRepository implements RecordsRepositoryContract {
     return await this.serialize(async () => {
       const rows = await this.sql.FindRecordResource`
         /* @notNull title provider readableId kind sourceId storageKey contentHash sizeBytes createdAt updatedAt */
-        select record."title", record."provider", record."source_created_at" as "sourceCreatedAt",
+        select record."public_id" as "publicId", record."published_at" as "publishedAt",
+          record."title", record."provider", record."source_created_at" as "sourceCreatedAt",
           record."source_updated_at" as "sourceUpdatedAt",
           record."source_url" as "sourceUrl",
           record."readable_id" as "readableId", record."kind", record."source_id" as "sourceId",

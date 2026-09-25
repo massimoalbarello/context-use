@@ -12,7 +12,7 @@ export type PublicationRequest = {
   ownerId: string;
   readableId: string;
 } & (
-  | { resourceType: 'asset' | 'entity'; action: 'publish' | 'unpublish' }
+  | { resourceType: 'asset' | 'entity' | 'record'; action: 'publish' | 'unpublish' }
   | { resourceType: 'page'; action: 'publish'; revisionNumber: number }
   | { resourceType: 'page'; action: 'unpublish' }
 );
@@ -26,6 +26,7 @@ export interface PublicationsRepositoryContract {
   pageStatus(input: { ownerId: string; readableId: string }): Promise<PagePublicationStatus | null>;
   entityStatus(input: { ownerId: string; readableId: string }): Promise<PublicationStatus | null>;
   assetStatus(input: { ownerId: string; readableId: string }): Promise<PublicationStatus | null>;
+  recordStatus(input: { ownerId: string; readableId: string }): Promise<PublicationStatus | null>;
   prepare(input: PublicationRequest): Promise<PublicationPreparation | null>;
   execute(
     input: PublicationRequest & { expectedState: string; publishedAt: string },
@@ -97,6 +98,21 @@ export class PublicationsRepository implements PublicationsRepositoryContract {
       from "asset" asset
       where asset."owner_id" = ${ownerId} and asset."readable_id" = ${readableId}
         and asset."archived_at" is null
+    `;
+    return rows[0] ?? null;
+  }
+
+  async recordStatus({
+    ownerId,
+    readableId,
+  }: {
+    ownerId: string;
+    readableId: string;
+  }): Promise<PublicationStatus | null> {
+    const rows = await this.sql.FindRecordPublicationStatus`
+      select "public_id" as "publicId", "published_at" as "publishedAt"
+      from "record" where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
+        and "deleted_at" is null
     `;
     return rows[0] ?? null;
   }
