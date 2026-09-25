@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from '@repo/ui/button';
+import { Button } from '@repo/ui/button';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useArchivePage } from '../../lib/hooks/use-archive-page';
@@ -202,30 +202,41 @@ function KnowledgePageDetailContent({
   const hasInboundUsages = page.backlinks.length > 0;
   const isPublic = !publication.isError && publication.data?.publishedAt != null;
   const publishedRevision =
-    isPublic && publication.data?.resourceType === 'page'
-      ? publication.data.publishedRevisionNumber
-      : null;
-  const hasUnpublishedChanges = isPublic && publishedRevision !== page.revisionNumber;
+    publication.data?.resourceType === 'page' ? publication.data.publishedRevisionNumber : null;
+  const hasUnpublishedRevisions = isPublic && publishedRevision !== page.revisionNumber;
   const publicationContext = (
     <PagePublicationContext
       publication={publication}
-      publishedRevision={publishedRevision}
-      hasUnpublishedChanges={hasUnpublishedChanges}
+      hasUnpublishedRevisions={hasUnpublishedRevisions}
+      onOpenRevisions={() => onViewChange({ view: 'revisions' })}
     />
   );
-  function review(action: 'publish' | 'unpublish') {
+  function review(
+    request: { action: 'publish'; revisionNumber: number } | { action: 'unpublish' },
+  ) {
     setArchiveConflict(null);
-    approval.review(
-      action === 'publish'
-        ? {
-            resourceType: 'page',
-            readableId: page.readableId,
-            action,
-            revisionNumber: page.revisionNumber,
-          }
-        : { resourceType: 'page', readableId: page.readableId, action },
-    );
+    approval.review({ resourceType: 'page', readableId: page.readableId, ...request });
   }
+  const publicationAction = isPublic
+    ? { label: 'Unpublish', onClick: () => review({ action: 'unpublish' }) }
+    : {
+        label: 'Publish',
+        onClick: () => review({ action: 'publish', revisionNumber: page.revisionNumber }),
+      };
+  const revisions = (
+    <KnowledgePageRevisions
+      page={page}
+      publication={
+        publication.isSuccess
+          ? {
+              publishedRevisionNumber: publishedRevision,
+              pending: !!approval.request,
+              onPublish: (revisionNumber) => review({ action: 'publish', revisionNumber }),
+            }
+          : null
+      }
+    />
+  );
   const editActions = (
     <ResourceDetailActions
       mode="edit"
@@ -249,13 +260,14 @@ function KnowledgePageDetailContent({
       }}
       publicationActions={
         publication.isSuccess && (
-          <PagePublicationActions
-            publicId={isPublic ? publication.data.publicId : null}
-            isPublic={isPublic}
-            hasUnpublishedChanges={hasUnpublishedChanges}
-            unavailable={!!approval.request}
-            onReview={review}
-          />
+          <Button
+            variant="outline"
+            size="lg"
+            disabled={!!approval.request}
+            onClick={publicationAction.onClick}
+          >
+            {publicationAction.label}
+          </Button>
         )
       }
     >
@@ -300,15 +312,7 @@ function KnowledgePageDetailContent({
           error={updatePage.error}
           header={(intervalField) => (
             <DetailHeader>
-              <ResourceDetailHeading
-                actions={editActions}
-                context={
-                  <>
-                    {publicationContext}
-                    {intervalField}
-                  </>
-                }
-              >
+              <ResourceDetailHeading actions={editActions} context={intervalField}>
                 Knowledge page
               </ResourceDetailHeading>
               <p className="text-muted-foreground text-sm">
@@ -413,9 +417,7 @@ function KnowledgePageDetailContent({
             <TabsContent value="links">
               <PageLinksView page={page} />
             </TabsContent>
-            <TabsContent value="revisions">
-              <KnowledgePageRevisions page={page} />
-            </TabsContent>
+            <TabsContent value="revisions">{revisions}</TabsContent>
           </Tabs>
         </>
       )}
@@ -424,71 +426,21 @@ function KnowledgePageDetailContent({
   );
 }
 
-function PagePublicationActions({
-  publicId,
-  isPublic,
-  hasUnpublishedChanges,
-  unavailable,
-  onReview,
-}: {
-  publicId: string | null;
-  isPublic: boolean;
-  hasUnpublishedChanges: boolean;
-  unavailable: boolean;
-  onReview: (action: 'publish' | 'unpublish') => void;
-}) {
-  return (
-    <>
-      {(!isPublic || hasUnpublishedChanges) && (
-        <Button
-          variant="outline"
-          size="lg"
-          disabled={unavailable}
-          onClick={() => onReview('publish')}
-        >
-          {isPublic ? 'Publish changes' : 'Publish'}
-        </Button>
-      )}
-      {publicId && (
-        <a
-          className={buttonVariants({ variant: 'outline', size: 'lg' })}
-          href={`/public/pages/${encodeURIComponent(publicId)}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          View public
-        </a>
-      )}
-      {isPublic && (
-        <Button
-          variant="outline"
-          size="lg"
-          disabled={unavailable}
-          onClick={() => onReview('unpublish')}
-        >
-          Unpublish
-        </Button>
-      )}
-    </>
-  );
-}
-
 function PagePublicationContext({
   publication,
-  publishedRevision,
-  hasUnpublishedChanges,
+  hasUnpublishedRevisions,
+  onOpenRevisions,
 }: {
   publication: UseQueryResult<{ publishedAt: string | null }>;
-  publishedRevision: number | null;
-  hasUnpublishedChanges: boolean;
+  hasUnpublishedRevisions: boolean;
+  onOpenRevisions: () => void;
 }) {
-  return (
-    <>
-      <PublicationStatus query={publication} />
-      {publishedRevision != null && (
-        <span className="text-muted-foreground text-sm">Public revision {publishedRevision}</span>
-      )}
-      {hasUnpublishedChanges && <Badge variant="secondary">Unpublished changes</Badge>}
-    </>
-  );
+  if (!publication.isSuccess || !publication.data.publishedAt) {
+    return <PublicationStatus query={publication} />;
+  }
+  return hasUnpublishedRevisions ? (
+    <Button variant="warning" size="sm" onClick={onOpenRevisions}>
+      Unpublished revisions
+    </Button>
+  ) : null;
 }

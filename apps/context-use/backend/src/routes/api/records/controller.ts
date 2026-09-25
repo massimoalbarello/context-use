@@ -45,6 +45,7 @@ export function createRecordsController({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
+          visibility: query.visibility,
           provider: query.provider,
           kind: query.kind,
           createdFrom: query.createdFrom?.toISOString(),

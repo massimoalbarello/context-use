@@ -102,6 +102,8 @@ test('HTTP search maps pipeline results to compact typed previews without intern
         resourceType: 'record',
         matchExcerpt: 'The meeting discusses retrieval.',
         record: {
+          publicId: null,
+          publishedAt: null,
           readableId: 'meeting',
           title: 'Meeting',
           sourceCreatedAt: timestamp,

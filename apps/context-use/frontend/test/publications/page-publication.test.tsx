@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
@@ -78,7 +79,13 @@ async function renderPage({
     backlinks: [],
     recordReferences: [],
     assetUsages: [],
-    revisions: [],
+    revisions: Array.from(Array(revision).keys(), (index) => ({
+      revisionNumber: revision - index,
+      title: `Revision title ${revision - index}`,
+      temporalCoverage: null,
+      author: { kind: 'owner', name: 'Alex Morgan' },
+      createdAt: timestamp,
+    })),
   };
   const state = {
     publication: {
@@ -214,17 +221,27 @@ async function renderPage({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   client.setQueryData(pagesListQueryKey, []);
-  const router = createRouter({
-    routeTree: createRootRoute({
-      component: () => (
+  const root = createRootRoute();
+  const route = createRoute({
+    getParentRoute: () => root,
+    path: '/pages/$id',
+    validateSearch: (search: { view?: 'preview' | 'links' | 'revisions' }) => search,
+    component: () => {
+      const { view } = route.useSearch();
+      const navigate = route.useNavigate();
+      return (
         <KnowledgePageDetail
           id="notes"
-          onViewChange={() => undefined}
+          view={view}
+          onViewChange={(options) => void navigate({ search: options })}
           onArchived={() => undefined}
         />
-      ),
-    }),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
+      );
+    },
+  });
+  const router = createRouter({
+    routeTree: root.addChildren([route]),
+    history: createMemoryHistory({ initialEntries: ['/pages/notes'] }),
   });
   await router.load();
   render(
@@ -239,7 +256,7 @@ async function renderPage({
   await screen.findByRole('button', {
     name: statusError ? 'Retry publication status' : published == null ? 'Publish' : 'Unpublish',
   });
-  return { page, state, client, device, user: userEvent.setup() };
+  return { page, state, client, device, router, user: userEvent.setup() };
 }
 
 async function refreshPage(client: QueryClient) {
@@ -268,8 +285,11 @@ test('first publication reviews full selected content before allowing confirmati
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   const dialog = await screen.findByRole('dialog', { name: 'Publish page' });
   expect(within(dialog).getByText('Prepared title')).toBeTruthy();
-  expect(within(dialog).getByText(/Publish revision 7/)).toBeTruthy();
-  expect(within(dialog).getByText(/no active public revision/)).toBeTruthy();
+  expect(
+    within(dialog).getByText(
+      'Anyone with the link can read this page. Future edits stay private until you publish them.',
+    ),
+  ).toBeTruthy();
   await screen.findByText('Loading changes…');
   const button = screen.getByRole('button', { name: 'Confirm with passkey' });
   expect(button.hasAttribute('disabled')).toBe(true);
@@ -279,18 +299,18 @@ test('first publication reviews full selected content before allowing confirmati
   await screen.findByText('Full content');
   expect(state.comparisons).toEqual([{ from: 0, to: 7 }]);
   await confirm(user);
-  await screen.findByText('Public revision 7');
+  await screen.findByRole('button', { name: 'Unpublish' });
   expect(
     screen
       .getByRole('button', { name: 'Unpublish' })
       .compareDocumentPosition(screen.getByRole('button', { name: 'Edit page' })) &
       Node.DOCUMENT_POSITION_FOLLOWING,
   ).toBeTruthy();
-  expect(screen.queryByText('Unpublished changes')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Unpublished revisions' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Publish changes' })).toBeNull();
-  expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
-    '/public/pages/page_handle',
-  );
+  expect(screen.queryByRole('link', { name: 'View public' })).toBeNull();
+  expect(screen.queryByText('Public')).toBeNull();
+  expect(screen.queryByText('Public revision 7')).toBeNull();
   expect(client.getQueryState(pagesListQueryKey)?.isInvalidated).toBe(true);
   await user.click(screen.getByRole('button', { name: 'Unpublish' }));
   expect(await screen.findByText(/public URL and in public entity page indices/)).toBeTruthy();
@@ -308,58 +328,114 @@ test('first publication reviews full selected content before allowing confirmati
 });
 
 test('skipped private revisions compare active public to selected and a later revision cannot retarget the review', async () => {
-  const { state, user, page, client } = await renderPage({ published: 1 });
-  expect(screen.getByText('Unpublished changes')).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: 'Publish changes' }));
+  const { state, user, page, client, router } = await renderPage({ published: 1 });
+  expect(screen.queryByText('Public')).toBeNull();
+  expect(screen.queryByText('Public revision 1')).toBeNull();
+  expect(screen.queryByRole('link', { name: 'View public' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Publish changes' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Unpublished revisions' }));
+  expect(router.state.location.search).toEqual({ view: 'revisions' });
+  expect(screen.getByRole('tab', { name: 'Revisions' }).getAttribute('aria-selected')).toBe('true');
+  expect(
+    within(screen.getByRole('listitem', { name: 'Revision 1' })).getByText('Public'),
+  ).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Publish revision 1' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Publish revision 3' }));
   const dialog = await screen.findByRole('dialog', { name: 'Publish page' });
   await screen.findByText('Revision 1 → 3');
-  expect(state.comparisons).toEqual([{ from: 1, to: 3 }]);
+  expect(state.comparisons).toEqual([
+    { from: 2, to: 3 },
+    { from: 1, to: 3 },
+  ]);
   page.revisionNumber = LATER_REVISION;
   page.markdown = '# New private title\n\nNew private text';
   await refreshPage(client);
   expect(within(dialog).getByText('Prepared title')).toBeTruthy();
-  expect(within(dialog).getByText(/Publish revision 3/)).toBeTruthy();
+  expect(within(dialog).getByText('Revision 1 → 3')).toBeTruthy();
   expect(within(dialog).queryByText('New private title')).toBeNull();
   await confirm(user);
-  await screen.findByText('Public revision 3');
-  expect(screen.getByText('Unpublished changes')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Publish changes' })).toBeTruthy();
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('listitem', { name: 'Revision 3' })).getByText('Public'),
+    ).toBeTruthy(),
+  );
+  expect(screen.getByRole('button', { name: 'Unpublished revisions' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Publish revision 3' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Publish revision 1' })).toBeTruthy();
   expect(state.publication.publishedRevisionNumber).toBe(SELECTED_REVISION);
   expect(state.begins).toHaveLength(1);
 });
 
-test('a changed public baseline requires explicit renewed review and its own ready comparison', async () => {
+test('a changed public baseline requires renewed approval with the matching cached comparison', async () => {
   const { state, user, device } = await renderPage({ published: 1 });
-  await user.click(screen.getByRole('button', { name: 'Publish changes' }));
+  await user.click(screen.getByRole('tab', { name: 'Revisions' }));
+  await user.click(screen.getByRole('button', { name: 'Publish revision 3' }));
   await screen.findByText('Revision 1 → 3');
   state.publication.publishedRevisionNumber = 2;
   state.completeError = true;
   await confirm(user);
   await screen.findByRole('button', { name: 'Review again' });
   expect(state.begins).toHaveLength(1);
-  const response = deferred<Response>();
-  state.diffResponse = () => response.promise;
   state.completeError = false;
   await user.click(screen.getByRole('button', { name: 'Review again' }));
-  await screen.findByText(/replaces public revision 2/);
-  await screen.findByText('Loading changes…');
+  await within(screen.getByRole('dialog')).findByText('Revision 2 → 3');
   expect(screen.queryByText('Revision 1 → 3')).toBeNull();
-  expect(
-    screen.getByRole('button', { name: 'Confirm with passkey' }).hasAttribute('disabled'),
-  ).toBe(true);
   expect(state.comparisons).toEqual([
-    { from: 1, to: 3 },
     { from: 2, to: 3 },
+    { from: 1, to: 3 },
   ]);
   expect(device.calls).toHaveLength(1);
-  response.resolve(Response.json(changes({ from: 2, to: SELECTED_REVISION })));
-  await screen.findByText('Revision 2 → 3');
   await confirm(user);
-  await screen.findByText('Public revision 3');
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('listitem', { name: 'Revision 3' })).getByText('Public'),
+    ).toBeTruthy(),
+  );
   expect(state.completes).toEqual(['approval-1', 'approval-2']);
   expect(new Uint8Array(device.calls[1]!.publicKey!.challenge as ArrayBuffer)).toEqual(
     new Uint8Array([2]),
   );
+});
+
+test('publishing an older revision reviews that exact revision and moves the public marker only after approval', async () => {
+  const { state, user, device } = await renderPage({ published: 3 });
+  expect(screen.queryByRole('button', { name: 'Unpublished revisions' })).toBeNull();
+  await user.click(screen.getByRole('tab', { name: 'Revisions' }));
+  const current = within(screen.getByRole('listitem', { name: 'Revision 3' }));
+  expect(current.getByText('Public')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Publish revision 1' }));
+  const dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
+  await dialog.findByText('Revision 3 → 1');
+  expect(state.begins).toEqual([
+    { resourceType: 'page', readableId: 'notes', action: 'publish', revisionNumber: 1 },
+  ]);
+  expect(state.publication.publishedRevisionNumber).toBe(SELECTED_REVISION);
+  expect(device.calls).toHaveLength(0);
+  await confirm(user);
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('listitem', { name: 'Revision 1' })).getByText('Public'),
+    ).toBeTruthy(),
+  );
+  expect(current.queryByText('Public')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Unpublished revisions' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Publish revision 3' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Publish revision 1' })).toBeNull();
+});
+
+test('revision publishing and public markers wait for publication status to recover', async () => {
+  const { state, user } = await renderPage({ published: 1, statusError: true });
+  await user.click(screen.getByRole('tab', { name: 'Revisions' }));
+  expect(screen.queryByText('Public')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Publish revision/ })).toBeNull();
+  await screen.findByText('Revision 2 → 3');
+  state.statusError = false;
+  await user.click(screen.getByRole('button', { name: 'Retry publication status' }));
+  await screen.findByRole('button', { name: 'Publish revision 3' });
+  expect(
+    within(screen.getByRole('listitem', { name: 'Revision 1' })).getByText('Public'),
+  ).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Publish revision 1' })).toBeNull();
 });
 
 test('comparison failure prevents approval until retry succeeds without changing the reviewed challenge', async () => {
@@ -375,16 +451,16 @@ test('comparison failure prevents approval until retry succeeds without changing
   await user.click(screen.getByRole('button', { name: 'Retry changes' }));
   await screen.findByText('Full content');
   await confirm(user);
-  await screen.findByText('Public revision 3');
+  await screen.findByRole('button', { name: 'Unpublish' });
   expect(state.begins).toHaveLength(1);
   expect(state.completes).toEqual(['approval-1']);
 });
 
-test('record, private dependency, unavailable reference and self-reference blockers give actionable resource links', async () => {
+test('private resources stay collapsed and OK returns to the page before publishing again', async () => {
   const { state, user, device } = await renderPage();
   state.blockers = [
     {
-      reason: 'record_reference',
+      reason: 'reference_not_public',
       resource: { resourceType: 'record', readableId: 'source', name: 'Private source' },
     },
     {
@@ -397,6 +473,59 @@ test('record, private dependency, unavailable reference and self-reference block
     },
     {
       reason: 'reference_not_public',
+      resource: { resourceType: 'page', readableId: 'related', name: 'Related page' },
+    },
+  ];
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  let dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
+  const toggle = await dialog.findByRole('button', { name: '4 private resources' });
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(dialog.getByRole('alert').textContent).toBe(
+    'Publish all resources referenced in this page before publishing it.',
+  );
+  expect(dialog.queryByRole('link')).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Review again' })).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Cancel' })).toBeNull();
+  expect(device.calls).toHaveLength(0);
+  expect(state.comparisons).toHaveLength(0);
+  toggle.focus();
+  await user.keyboard('{Enter}');
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(dialog.getAllByRole('link')).toHaveLength(state.blockers.length);
+  expect(dialog.getByRole('link', { name: 'Related page' }).getAttribute('href')).toStartWith(
+    '/pages/related',
+  );
+  expect(dialog.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
+    '/records/source',
+  );
+  expect(dialog.queryByText('Publish this referenced resource first.')).toBeNull();
+  await user.click(toggle);
+  expect(dialog.queryByRole('link')).toBeNull();
+  await user.click(dialog.getByRole('button', { name: 'OK' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(state.begins).toHaveLength(1);
+  state.blockers = state.blockers.slice(0, 1);
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
+  expect(await dialog.findByRole('button', { name: '1 private resource' })).toBeTruthy();
+  await user.click(dialog.getByRole('button', { name: 'OK' }));
+  state.blockers = [];
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
+  await dialog.findByText('Full content');
+  await waitFor(() =>
+    expect(
+      dialog.getByRole('button', { name: 'Confirm with passkey' }).hasAttribute('disabled'),
+    ).toBe(false),
+  );
+});
+
+test('unavailable references and self-references retain specific guidance in a compact disclosure', async () => {
+  const { state, user, device } = await renderPage();
+  state.blockers = [
+    {
+      reason: 'reference_not_public',
       resource: { resourceType: 'page', readableId: 'notes', name: 'This page' },
     },
     {
@@ -405,18 +534,13 @@ test('record, private dependency, unavailable reference and self-reference block
     },
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
-  await screen.findByRole('button', { name: 'Review again' });
-  expect(screen.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
-    '/records/source',
-  );
-  expect(screen.getByRole('link', { name: 'Private studio' }).getAttribute('href')).toStartWith(
-    '/entities/studio',
-  );
-  expect(screen.getByRole('link', { name: 'Private chart' }).getAttribute('href')).toStartWith(
-    '/assets/chart',
+  await screen.findByRole('button', { name: 'OK' });
+  expect(screen.queryByRole('link', { name: 'Removed source' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: '2 references to fix' }));
+  expect(screen.getByRole('link', { name: 'Removed source' }).getAttribute('href')).toStartWith(
+    '/records/removed',
   );
   expect(screen.getByText(/Publish a revision without this self-reference/)).toBeTruthy();
-  expect(screen.getByText(/Pages that reference records cannot be published/)).toBeTruthy();
   expect(screen.getByText(/Remove or replace this unavailable reference/)).toBeTruthy();
   expect(device.calls).toHaveLength(0);
   expect(state.comparisons).toHaveLength(0);
@@ -441,17 +565,17 @@ test('inbound public references explain both withdrawal and publishing a replace
   );
 });
 
-test('saving a public page creates a private revision while status and temporal controls remain available', async () => {
+test('saving a public page creates a private revision and exposes revision navigation after saving', async () => {
   const { state, user, page } = await renderPage({ published: 3 });
   await user.click(screen.getByRole('button', { name: 'Edit page' }));
-  expect(screen.getByText('Public revision 3')).toBeTruthy();
+  expect(screen.queryByText('Public revision 3')).toBeNull();
   expect(screen.getByText(/Saving creates a private revision/)).toBeTruthy();
   expect(screen.getByRole('textbox', { name: 'Interval (optional)' })).toBeTruthy();
   const editor = screen.getByRole('combobox', { name: 'Knowledge page content' });
   await user.clear(editor);
   await user.type(editor, '# New saved title\n\nPrivate changes');
   await user.click(screen.getByRole('button', { name: 'Save page' }));
-  await screen.findByRole('button', { name: 'Publish changes' });
+  await screen.findByRole('button', { name: 'Unpublished revisions' });
   expect(page.revisionNumber).toBe(LATER_REVISION);
   expect(state.publication.publishedRevisionNumber).toBe(SELECTED_REVISION);
   expect(state.begins).toHaveLength(0);

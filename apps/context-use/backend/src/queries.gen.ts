@@ -551,6 +551,8 @@ export interface ISearchHypermediaResult {
     mediaType: string | null;
     assetExtension: string | null;
     assetSizeBytes: number | null;
+    recordPublicId: string | null;
+    recordPublishedAt: string | null;
     recordTitle: string | null;
     recordProvider: string | null;
     sourceCreatedAt: string | null;
@@ -923,6 +925,18 @@ export interface IFindPublicPageResult {
     mediaType: string | null;
 }
 
+/** Result of query `FindPublicRecord`. */
+export interface IFindPublicRecordResult {
+    title: string;
+    storageKey: string;
+    contentHash: string;
+    sizeBytes: number;
+    kind: unknown | null;
+    readableId: string | null;
+    publicId: string | null;
+    mediaType: string | null;
+}
+
 /** Result of query `FindPublicAsset`. */
 export interface IFindPublicAssetResult {
     name: string;
@@ -938,7 +952,7 @@ export interface IFindPendingPublicationApprovalResult {
     id: string;
     challenge: string;
     ownerId: string;
-    resourceType: "page" | "entity" | "asset";
+    resourceType: "page" | "entity" | "asset" | "record";
     readableId: string;
     action: "publish" | "unpublish";
     revisionNumber: number | null;
@@ -979,6 +993,12 @@ export interface IFindPublicationReferringPagesResult {
     name: string;
 }
 
+/** Result of query `FindPublicationReferringRecords`. */
+export interface IFindPublicationReferringRecordsResult {
+    readableId: string;
+    name: string;
+}
+
 /** Result of query `FindPublicationPortraitEntities`. */
 export interface IFindPublicationPortraitEntitiesResult {
     readableId: string;
@@ -987,16 +1007,19 @@ export interface IFindPublicationPortraitEntitiesResult {
 
 /** Result of query `FindPagePublicationDependencies`. */
 export interface IFindPagePublicationDependenciesResult {
-    resourceType: "page" | "entity" | "asset";
+    resourceType: "page" | "entity" | "asset" | "record";
     readableId: string;
     name: string;
     archivedAt: string | null;
     publishedAt: string | null;
+    unavailable: unknown | null;
 }
 
-/** Result of query `FindPagePublicationRecordReferences`. */
-export interface IFindPagePublicationRecordReferencesResult {
+/** Result of query `FindRecordPublicationDependencies`. */
+export interface IFindRecordPublicationDependenciesResult {
     readableId: string;
+    name: string;
+    archivedAt: string | null;
 }
 
 /** Result of query `FindPagePublicationStatus`. */
@@ -1014,6 +1037,12 @@ export interface IFindEntityPublicationStatusResult {
 
 /** Result of query `FindAssetPublicationStatus`. */
 export interface IFindAssetPublicationStatusResult {
+    publicId: string | null;
+    publishedAt: string | null;
+}
+
+/** Result of query `FindRecordPublicationStatus`. */
+export interface IFindRecordPublicationStatusResult {
     publicId: string | null;
     publishedAt: string | null;
 }
@@ -1065,6 +1094,22 @@ export interface IFindEntityPublicationTargetResult {
     publishedAt: string | null;
 }
 
+/** Result of query `FindRecordPublicationTarget`. */
+export interface IFindRecordPublicationTargetResult {
+    id: string;
+    readableId: string;
+    name: string;
+    contentHash: string;
+    sizeBytes: number;
+    archivedAt: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+}
+
+/** Result of query `SetRecordPublication`. */
+export interface ISetRecordPublicationResult {
+}
+
 /** Result of query `SetPagePublication`. */
 export interface ISetPagePublicationResult {
 }
@@ -1108,6 +1153,12 @@ export interface IFindCurrentRecordResult {
     contentHash: string | null;
     deletedAt: string | null;
     syncRevision: number;
+    publishedAt: string | null;
+}
+
+/** Result of query `FindPrivatePublicRecordAssets`. */
+export interface IFindPrivatePublicRecordAssetsResult {
+    readable_id: string;
 }
 
 /** Result of query `RemoveRecordSearchDocument`. */
@@ -1116,6 +1167,8 @@ export interface IRemoveRecordSearchDocumentResult {
 
 /** Result of query `ListRecordResources`. */
 export interface IListRecordResourcesResult {
+    publicId: string | null;
+    publishedAt: string | null;
     readableId: string;
     title: string;
     provider: string;
@@ -1136,6 +1189,8 @@ export interface IRecordFilterOptionsResult {
 
 /** Result of query `FindRecordResource`. */
 export interface IFindRecordResourceResult {
+    publicId: string | null;
+    publishedAt: string | null;
     title: string;
     provider: string;
     sourceCreatedAt: string | null;
@@ -1252,6 +1307,7 @@ export interface Queries {
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
     FindPublicEntity: IFindPublicEntityResult;
     FindPublicPage: IFindPublicPageResult;
+    FindPublicRecord: IFindPublicRecordResult;
     FindPublicAsset: IFindPublicAssetResult;
     FindPendingPublicationApproval: IFindPendingPublicationApprovalResult;
     DeleteExpiredPublicationApprovals: IDeleteExpiredPublicationApprovalsResult;
@@ -1260,15 +1316,19 @@ export interface Queries {
     ConsumePublicationApproval: IConsumePublicationApprovalResult;
     AdvancePublicationCredentialCounter: IAdvancePublicationCredentialCounterResult;
     FindPublicationReferringPages: IFindPublicationReferringPagesResult;
+    FindPublicationReferringRecords: IFindPublicationReferringRecordsResult;
     FindPublicationPortraitEntities: IFindPublicationPortraitEntitiesResult;
     FindPagePublicationDependencies: IFindPagePublicationDependenciesResult;
-    FindPagePublicationRecordReferences: IFindPagePublicationRecordReferencesResult;
+    FindRecordPublicationDependencies: IFindRecordPublicationDependenciesResult;
     FindPagePublicationStatus: IFindPagePublicationStatusResult;
     FindEntityPublicationStatus: IFindEntityPublicationStatusResult;
     FindAssetPublicationStatus: IFindAssetPublicationStatusResult;
+    FindRecordPublicationStatus: IFindRecordPublicationStatusResult;
     FindPagePublicationTarget: IFindPagePublicationTargetResult;
     FindAssetPublicationTarget: IFindAssetPublicationTargetResult;
     FindEntityPublicationTarget: IFindEntityPublicationTargetResult;
+    FindRecordPublicationTarget: IFindRecordPublicationTargetResult;
+    SetRecordPublication: ISetRecordPublicationResult;
     SetPagePublication: ISetPagePublicationResult;
     SetEntityPublication: ISetEntityPublicationResult;
     SetAssetPublication: ISetAssetPublicationResult;
@@ -1278,6 +1338,7 @@ export interface Queries {
     RemoveRecordAssetUsages: IRemoveRecordAssetUsagesResult;
     AddRecordAssetUsage: IAddRecordAssetUsageResult;
     FindCurrentRecord: IFindCurrentRecordResult;
+    FindPrivatePublicRecordAssets: IFindPrivatePublicRecordAssetsResult;
     RemoveRecordSearchDocument: IRemoveRecordSearchDocumentResult;
     ListRecordResources: IListRecordResourcesResult;
     RecordFilterOptions: IRecordFilterOptionsResult;

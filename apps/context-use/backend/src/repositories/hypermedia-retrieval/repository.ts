@@ -108,6 +108,8 @@ function resultFrom({
     return {
       resourceType: row.resourceType,
       record: {
+        publicId: row.recordPublicId,
+        publishedAt: row.recordPublishedAt,
         readableId: row.readableId,
         title: row.recordTitle,
         source: {
@@ -277,7 +279,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
           and (${visibility} = 'all' or (${visibility} = 'public') = (
-            (entity."published_at" is not null) or (page."published_at" is not null) or (asset."published_at" is not null)
+            (entity."published_at" is not null) or (page."published_at" is not null) or (asset."published_at" is not null) or (record."published_at" is not null)
           ))
           and (${entitiesOnly} = false or (document."resource_type" = 'entity'
             and (${entityType} = 'all' or entity."entity_type" = ${entityType}
@@ -356,6 +358,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         asset."public_id" as "assetPublicId", asset."published_at" as "assetPublishedAt",
         asset."media_type" as "mediaType", asset."extension" as "assetExtension",
         asset."size_bytes" as "assetSizeBytes",
+        record."public_id" as "recordPublicId", record."published_at" as "recordPublishedAt",
         record."title" as "recordTitle", record."provider" as "recordProvider",
         record."source_created_at" as "sourceCreatedAt", record."source_updated_at" as "sourceUpdatedAt",
         record."kind" as "recordKind", record."source_id" as "recordId",

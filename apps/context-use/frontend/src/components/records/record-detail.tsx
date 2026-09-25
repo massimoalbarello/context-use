@@ -1,10 +1,16 @@
+import { Button, buttonVariants } from '@repo/ui/button';
+import { useQuery } from '@tanstack/react-query';
+import { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import { useRecord } from '../../lib/hooks/use-records';
+import { publicationStatusQueryOptions } from '../../queries/publications';
 import type { ContextRecord } from '../../queries/records';
 import { DetailHeader, DetailShell } from '../knowledge/detail-shell';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceList } from '../knowledge/resource-list';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { PublicationReviewDialog } from '../publications/publication-review-dialog';
+import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
 import { RecordTimestamp } from '../records/record-timestamp';
 import { Badge } from '../ui/badge';
@@ -46,15 +52,80 @@ export function RecordDetail({
   }
 
   return (
+    <RecordDetailContent
+      key={record.readableId}
+      record={record}
+      view={view}
+      onViewChange={onViewChange}
+    />
+  );
+}
+
+function RecordDetailContent({
+  record,
+  view,
+  onViewChange,
+}: {
+  record: ContextRecord;
+  view: RecordView;
+  onViewChange: (options: { view: RecordView; hash?: string }) => void;
+}) {
+  const publication = useQuery(
+    publicationStatusQueryOptions({ resourceType: 'record', readableId: record.readableId }),
+  );
+  const approval = usePublicationApproval();
+  const isPublic = !publication.isError && publication.data?.publishedAt != null;
+  return (
     <DetailShell className="gap-0">
       <DetailHeader>
         <ResourceDetailHeading
-          actions={null}
-          context={<Badge variant="secondary">{record.source.provider}</Badge>}
+          actions={
+            publication.isSuccess && (
+              <>
+                {isPublic && publication.data.publicId && (
+                  <a
+                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                    href={`/public/records/${encodeURIComponent(publication.data.publicId)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View public
+                  </a>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!!approval.request}
+                  onClick={() =>
+                    approval.review({
+                      resourceType: 'record',
+                      readableId: record.readableId,
+                      action: isPublic ? 'unpublish' : 'publish',
+                    })
+                  }
+                >
+                  {isPublic ? 'Unpublish' : 'Publish'}
+                </Button>
+              </>
+            )
+          }
+          context={
+            <>
+              <Badge variant="secondary">{record.source.provider}</Badge>
+              <PublicationStatus query={publication} />
+            </>
+          }
         >
           Record
         </ResourceDetailHeading>
       </DetailHeader>
+      <PublicationReviewDialog approval={approval}>
+        <p className="text-sm">
+          {approval.request?.action === 'unpublish'
+            ? 'This record will stop being available at its public URL. Referenced assets keep their own publication state.'
+            : 'Anyone with the public link can read this record. Future sync updates will also be public.'}
+        </p>
+      </PublicationReviewDialog>
       <Tabs
         className="mt-5 min-w-0"
         value={view}
