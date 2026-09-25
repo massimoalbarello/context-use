@@ -14,13 +14,16 @@ export interface StoredPublicAsset {
   storageKey: string;
 }
 
-export interface StoredPublicPage {
-  modifiedAt: string;
+export interface StoredPublicMarkdown {
   title: string;
   storageKey: string;
   contentHash: string;
   sizeBytes: number;
   targets: PublicMarkdownTarget[];
+}
+
+export interface StoredPublicPage extends StoredPublicMarkdown {
+  modifiedAt: string;
 }
 
 export interface PublicEntity {
@@ -35,6 +38,7 @@ export interface PublicEntity {
 export interface PublicResourcesRepositoryContract {
   findEntity(input: { publicId: string }): Promise<PublicEntity | null>;
   findPage(input: { publicId: string }): Promise<StoredPublicPage | null>;
+  findRecord(input: { publicId: string }): Promise<StoredPublicMarkdown | null>;
   findAsset(input: { publicId: string }): Promise<StoredPublicAsset | null>;
 }
 
@@ -151,10 +155,13 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
           and target."owner_id" = source."owner_id" and target."archived_at" is null
           and target."published_at" is not null
         union all
-        select 'record', link."target_record_readable_id", null, null
+        select 'record', link."target_record_readable_id", target."public_id", null
         from active_page source
         join "knowledge_page_record_reference" link on link."source_revision_id" = source."id"
           and link."owner_id" = source."owner_id"
+        left join "record" target on target."readable_id" = link."target_record_readable_id"
+          and target."owner_id" = source."owner_id" and target."deleted_at" is null
+          and target."published_at" is not null
       )
       select source."title", source."created_at" as "modifiedAt", source."storage_key" as "storageKey",
         source."content_hash" as "contentHash", source."size_bytes" as "sizeBytes",
@@ -174,7 +181,10 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       if (
         !target.readableId ||
         !target.publicId ||
-        (target.kind !== 'page' && target.kind !== 'entity' && target.kind !== 'asset')
+        (target.kind !== 'page' &&
+          target.kind !== 'entity' &&
+          target.kind !== 'asset' &&
+          target.kind !== 'record')
       ) {
         return null;
       }
@@ -191,6 +201,53 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       storageKey: page.storageKey,
       contentHash: page.contentHash,
       sizeBytes: Number(page.sizeBytes),
+      targets,
+    };
+  }
+
+  async findRecord({ publicId }: { publicId: string }): Promise<StoredPublicMarkdown | null> {
+    const rows = await this.sql.FindPublicRecord`
+      /* @notNull title storageKey contentHash sizeBytes */
+      with active_record as (
+        select "owner_id", "readable_id", "title", "storage_key", "content_hash", "size_bytes"
+        from "record" where "public_id" = ${publicId} and "published_at" is not null and "deleted_at" is null
+      ), link_targets as (
+        select 'asset' as "kind", target."readable_id", target."public_id", target."media_type"
+        from active_record source
+        join "record_asset_usage" usage on usage."owner_id" = source."owner_id"
+          and usage."source_record_readable_id" = source."readable_id"
+        left join "asset" target on target."id" = usage."target_asset_id" and target."owner_id" = source."owner_id"
+          and target."published_at" is not null and target."archived_at" is null
+      )
+      select source."title", source."storage_key" as "storageKey", source."content_hash" as "contentHash",
+        source."size_bytes" as "sizeBytes", target."kind", target."readable_id" as "readableId",
+        target."public_id" as "publicId", target."media_type" as "mediaType"
+      from active_record source left join link_targets target on true
+    `;
+    const record = rows[0];
+    if (!record) {
+      return null;
+    }
+    const targets: PublicMarkdownTarget[] = [];
+    for (const target of rows) {
+      if (target.kind === null) {
+        continue;
+      }
+      if (!target.readableId || !target.publicId) {
+        return null;
+      }
+      targets.push({
+        kind: 'asset',
+        readableId: target.readableId,
+        publicId: target.publicId,
+        mediaType: target.mediaType,
+      });
+    }
+    return {
+      title: record.title,
+      storageKey: record.storageKey,
+      contentHash: record.contentHash,
+      sizeBytes: Number(record.sizeBytes),
       targets,
     };
   }

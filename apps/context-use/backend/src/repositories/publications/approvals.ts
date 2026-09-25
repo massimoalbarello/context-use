@@ -46,7 +46,7 @@ export interface PublicationApprovalsRepositoryContract {
 async function findApproval({ db, ...input }: ApprovalIdentity & { db: TypedSQL<Queries> }) {
   const rows = await db.FindPendingPublicationApproval`
     /* @notNull id challenge ownerId resourceType readableId action expectedState expiresAt */
-    /* @type resourceType 'page' | 'entity' | 'asset' */
+    /* @type resourceType 'page' | 'entity' | 'asset' | 'record' */
     /* @type action 'publish' | 'unpublish' */
     select approval."id", approval."challenge", approval."owner_id" as "ownerId",
       approval."resource_type" as "resourceType", approval."readable_id" as "readableId",

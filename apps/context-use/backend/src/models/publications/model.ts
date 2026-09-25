@@ -13,7 +13,7 @@ export interface PagePublicationStatus extends PublicationStatus {
 }
 
 export interface PublicationResource {
-  resourceType: 'page' | 'entity' | 'asset';
+  resourceType: 'page' | 'entity' | 'asset' | 'record';
   readableId: string;
   name: string;
 }
@@ -22,11 +22,11 @@ export interface PublicationBlocker {
   reason:
     | 'public_page_reference'
     | 'public_entity_image'
+    | 'public_record_reference'
     | 'image_unavailable'
     | 'reference_not_public'
-    | 'reference_unavailable'
-    | 'record_reference';
-  resource: PublicationResource | { resourceType: 'record'; readableId: string; name: string };
+    | 'reference_unavailable';
+  resource: PublicationResource;
 }
 
 export interface PublicationPreparation {

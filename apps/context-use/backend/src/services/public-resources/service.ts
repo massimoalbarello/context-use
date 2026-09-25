@@ -1,7 +1,10 @@
 import type { Storage } from '#backend/lib/storage/storage.ts';
 import { readVerifiedBytes, readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import { InvalidKnowledgePageMarkdownError } from '#backend/models/knowledge-pages/markdown.ts';
-import { publicPageMarkdown } from '#backend/models/public-resources/markdown.ts';
+import {
+  publicPageMarkdown,
+  publicRecordMarkdown,
+} from '#backend/models/public-resources/markdown.ts';
 import type { PublicResourcesRepositoryContract } from '#backend/repositories/public-resources/repository.ts';
 
 export class PublicResourcesService {
@@ -44,6 +47,22 @@ export class PublicResourcesService {
     }
   }
 
+  async recordContent(input: { publicId: string }) {
+    const record = await this.resources.findRecord(input);
+    if (!record) {
+      return null;
+    }
+    const source = await readVerifiedText({
+      storage: this.storage,
+      storageKey: record.storageKey,
+      contentHash: record.contentHash,
+      sizeBytes: record.sizeBytes,
+      label: 'Public record',
+    });
+    const markdown = publicRecordMarkdown({ markdown: source, targets: record.targets });
+    return markdown === null ? null : { title: record.title, markdown };
+  }
+
   entityContent(input: { publicId: string }) {
     return this.resources.findEntity(input);
   }
@@ -74,5 +93,5 @@ export class PublicResourcesService {
 
 export type PublicResourcesServiceContract = Pick<
   PublicResourcesService,
-  'assetContent' | 'pageContent' | 'entityContent'
+  'assetContent' | 'pageContent' | 'entityContent' | 'recordContent'
 >;

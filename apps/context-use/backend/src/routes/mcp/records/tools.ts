@@ -8,6 +8,7 @@ import {
   McpKnowledgePageSummarySchema,
   mcpKnowledgePageSummary,
 } from '#backend/routes/mcp/pages/model.ts';
+import { McpPublicationSchema, mcpPublication } from '#backend/routes/mcp/publications/model.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { RecordResourcesServiceContract } from '#backend/services/records/service.ts';
@@ -31,6 +32,7 @@ export function registerRecordTools({
       outputSchema: z.object({
         address: RecordAddressSchema,
         readableId: McpReadableIdSchema,
+        publication: McpPublicationSchema,
         ...RecordInputSchema.shape,
         backlinks: z.array(McpKnowledgePageSummarySchema),
       }),
@@ -45,6 +47,7 @@ export function registerRecordTools({
         ? mcpToolSuccess({
             address: recordAddress(record.readableId),
             readableId: record.readableId,
+            publication: mcpPublication(record),
             title: record.title,
             source: record.source,
             body: record.body,

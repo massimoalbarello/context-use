@@ -7,6 +7,7 @@ import { InvalidRecordAssetError } from '#backend/models/records/assets.ts';
 import {
   type RecordInput,
   RecordInputSchema,
+  RecordPublicationConflictError,
   type RecordSyncRevision,
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
@@ -159,6 +160,9 @@ export function localRecordDestination(input: {
       try {
         return await publish({ deliverable, provider, signal });
       } catch (error) {
+        if (error instanceof RecordPublicationConflictError) {
+          return { status: 'rejected', code: 'publication_conflict' };
+        }
         if (error instanceof InvalidRecordAssetError) {
           return { status: 'rejected', code: 'invalid_asset_reference' };
         }

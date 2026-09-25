@@ -39,7 +39,7 @@ export const SearchHypermediaInputSchema = z.object({
     .enum(PUBLICATION_VISIBILITIES)
     .optional()
     .describe(
-      'Filter by active publication before ranking and limiting. Omit or use "all" for every resource; "public" excludes records; "private" includes records and withdrawn resources. Pages with a published revision remain public even when they have newer private edits. Results always show current workspace content.',
+      'Filter by active publication before ranking and limiting. Omit or use "all" for every resource; "public" includes published resources; "private" includes unpublished and withdrawn resources. Pages with a published revision remain public even when they have newer private edits. Results always show current workspace content.',
     ),
   entityType: McpEntityTypeFilterSchema.optional().describe(
     'Search entities only, filtering by assigned type. Untyped selects entities with no assigned type; all selects every entity. This does not search pages mentioning those entities. Omit to allow other resource types.',
@@ -155,6 +155,7 @@ const AssetResultSchema = z.object({
 const RecordResultSchema = z.object({
   resourceType: z.literal('record'),
   address: RecordAddressSchema,
+  publication: McpPublicationSchema,
   readableId: McpReadableIdSchema,
   ...RecordInputSchema.omit({ body: true }).shape,
   matchExcerpt: MatchExcerptSchema,
@@ -201,6 +202,7 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
     return {
       resourceType: result.resourceType,
       address: recordAddress(result.record.readableId),
+      publication: mcpPublication(result.record),
       readableId: result.record.readableId,
       title: result.record.title,
       source: result.record.source,

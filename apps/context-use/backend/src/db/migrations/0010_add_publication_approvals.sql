@@ -3,7 +3,7 @@ create table "publication_approval" (
   "owner_id" text not null references "auth_user" ("id") on delete cascade,
   "session_id" text not null references "auth_session" ("id") on delete cascade,
   "challenge" text not null unique,
-  "resource_type" text not null check ("resource_type" in ('page', 'entity', 'asset')),
+  "resource_type" text not null check ("resource_type" in ('page', 'entity', 'asset', 'record')),
   "readable_id" text not null,
   "action" text not null check ("action" in ('publish', 'unpublish')),
   "revision_number" integer,
