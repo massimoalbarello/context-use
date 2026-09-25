@@ -14,6 +14,11 @@ import { routeTree } from '../../src/routeTree.gen';
 
 afterEach(cleanup);
 
+function collectionResponse({ url, item }: { url: URL; item: unknown }) {
+  const items = url.searchParams.get('visibility') === 'public' ? [] : [item];
+  return { items, total: items.length, nextOffset: null };
+}
+
 async function renderResourceBrowser(path = '/pages') {
   const timestamp = new Date('2026-01-01T00:00:00Z');
   const entity: EntityDetail = {
@@ -156,9 +161,9 @@ async function renderResourceBrowser(path = '/pages') {
             entityReferencesTruncated: false,
           },
           '/api/hypermedia/search': { results: [], totalMatches: 0 },
-          '/api/pages': { items: [page], total: 1, nextOffset: null },
-          '/api/entities': { items: [entity], total: 1, nextOffset: null },
-          '/api/assets': { items: [asset], total: 1, nextOffset: null },
+          '/api/pages': collectionResponse({ url, item: page }),
+          '/api/entities': collectionResponse({ url, item: entity }),
+          '/api/assets': collectionResponse({ url, item: asset }),
           '/api/records': {
             items: [record],
             filterOptions: { providers: ['notion'], kinds: ['note'] },
@@ -488,7 +493,7 @@ test('searching and clearing an asset query preserves its preview', async () => 
 
 for (const { path, filter, reset, key } of [
   {
-    path: '/entities?entityType=person&resource=page&resourceId=launch',
+    path: '/entities?entityType=person&visibility=private&resource=page&resourceId=launch',
     filter: 'Filter entities',
     reset: 'Reset filters',
     key: 'entityType',
@@ -508,6 +513,9 @@ for (const { path, filter, reset, key } of [
       await user.click(screen.getByRole('button', { name: filter }));
       await user.click(screen.getByRole('button', { name: reset }));
       await waitFor(() => expect(app.router.state.location.search[key]).toBeUndefined());
+      if (key === 'entityType') {
+        expect(app.router.state.location.search.visibility).toBe('private');
+      }
       expect(app.router.state.location.search.resourceId).toBe('launch');
     } finally {
       app.dispose();
@@ -623,6 +631,67 @@ for (const expanded of [false, true]) {
       await waitFor(() => expect(revealed).toContain(section));
     } finally {
       scroll.mockRestore();
+      app.dispose();
+    }
+  });
+}
+
+for (const collection of ['pages', 'entities', 'assets'] as const) {
+  test(`${collection} visibility changes preserve selection, search, and browsing history`, async () => {
+    const app = await renderResourceBrowser(
+      `/${collection}?visibility=private&resource=page&resourceId=launch`,
+    );
+    try {
+      const user = userEvent.setup();
+      await screen.findByRole('heading', { name: 'Launch plan' });
+      const group = screen.getByRole('group', { name: 'Visibility' });
+      expect(within(group).getByRole('button', { name: 'Private', pressed: true })).toBeTruthy();
+      await user.click(within(group).getByRole('button', { name: 'Public' }));
+      await waitFor(() => expect(app.router.state.location.search.visibility).toBe('public'));
+      expect(app.router.state.location.search.resourceId).toBe('launch');
+      expect(await screen.findByText(`No ${collection} match these filters.`)).toBeTruthy();
+      expect(
+        app.requests.some(
+          (url) =>
+            url.pathname === `/api/${collection}` &&
+            url.searchParams.get('visibility') === 'public',
+        ),
+      ).toBe(true);
+      await user.type(screen.getByRole('searchbox'), 'launch{Enter}');
+      await waitFor(() => expect(app.router.state.location.search.q).toBe('launch'));
+      expect(
+        app.requests.some(
+          (url) =>
+            url.pathname === '/api/hypermedia/search' &&
+            url.searchParams.get('visibility') === 'public',
+        ),
+      ).toBe(true);
+      await user.click(screen.getByRole('button', { name: 'Expand' }));
+      expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
+      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
+      expect(await screen.findByRole('button', { name: 'Public', pressed: true })).toBeTruthy();
+      expect(app.router.state.location.search).toMatchObject({
+        q: 'launch',
+        visibility: 'public',
+        resourceId: 'launch',
+      });
+      app.router.history.back();
+      expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
+      await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
+      await user.click(await screen.findByRole('button', { name: 'All' }));
+      await waitFor(() => expect(app.router.state.location.search.visibility).toBeUndefined());
+      expect(app.router.state.location.search).toMatchObject({ q: 'launch', resourceId: 'launch' });
+      expect(app.router.state.location.href).not.toContain('visibility');
+      await user.click(
+        within(screen.getByRole('navigation', { name: 'Workspace' })).getByRole('link', {
+          name: 'Records',
+        }),
+      );
+      expect(await screen.findByRole('searchbox', { name: 'Search records' })).toBeTruthy();
+      expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
+      expect(app.router.state.location.search.visibility).toBeUndefined();
+    } finally {
       app.dispose();
     }
   });

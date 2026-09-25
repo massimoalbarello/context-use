@@ -1,10 +1,13 @@
-import { Button } from '@repo/ui/button';
+import { Button, buttonVariants } from '@repo/ui/button';
+import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useArchivePage } from '../../lib/hooks/use-archive-page';
 import { usePage } from '../../lib/hooks/use-page';
+import { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import { useUpdatePage } from '../../lib/hooks/use-update-page';
 import { temporalCoverageExpression } from '../../lib/temporal-coverage';
 import type { KnowledgePage } from '../../queries/pages';
+import { publicationStatusQueryOptions } from '../../queries/publications';
 import { AssetLink } from '../assets/asset-link';
 import { EntityLink } from '../entities/entity-link';
 import { DetailHeader, DetailShell } from '../knowledge/detail-shell';
@@ -18,9 +21,11 @@ import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { KnowledgePageRevisions } from '../pages/knowledge-page-revisions';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
+import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { PagePublicationReview } from './page-publication-review';
 
 type PageView = 'preview' | 'links' | 'revisions';
 
@@ -144,11 +149,7 @@ export function KnowledgePageDetail({
   onViewChange: (options: { view: PageView; hash?: string }) => void;
   onArchived: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const { data: page, error, refetch } = usePage(id);
-  const updatePage = useUpdatePage();
-  const archivePage = useArchivePage();
-  const [archiveConflictVisible, setArchiveConflictVisible] = useState(false);
 
   if (error) {
     return (
@@ -168,7 +169,63 @@ export function KnowledgePageDetail({
       </p>
     );
   }
+  return (
+    <KnowledgePageDetailContent
+      key={page.readableId}
+      page={page}
+      view={view}
+      onViewChange={onViewChange}
+      onArchived={onArchived}
+    />
+  );
+}
+
+function KnowledgePageDetailContent({
+  page,
+  view,
+  onViewChange,
+  onArchived,
+}: {
+  page: KnowledgePage;
+  view: PageView;
+  onViewChange: (options: { view: PageView; hash?: string }) => void;
+  onArchived: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const updatePage = useUpdatePage();
+  const archivePage = useArchivePage();
+  const publication = useQuery(
+    publicationStatusQueryOptions({ resourceType: 'page', readableId: page.readableId }),
+  );
+  const approval = usePublicationApproval();
+  const [archiveConflict, setArchiveConflict] = useState<'publication' | 'references' | null>(null);
   const hasInboundUsages = page.backlinks.length > 0;
+  const isPublic = !publication.isError && publication.data?.publishedAt != null;
+  const publishedRevision =
+    isPublic && publication.data?.resourceType === 'page'
+      ? publication.data.publishedRevisionNumber
+      : null;
+  const hasUnpublishedChanges = isPublic && publishedRevision !== page.revisionNumber;
+  const publicationContext = (
+    <PagePublicationContext
+      publication={publication}
+      publishedRevision={publishedRevision}
+      hasUnpublishedChanges={hasUnpublishedChanges}
+    />
+  );
+  function review(action: 'publish' | 'unpublish') {
+    setArchiveConflict(null);
+    approval.review(
+      action === 'publish'
+        ? {
+            resourceType: 'page',
+            readableId: page.readableId,
+            action,
+            revisionNumber: page.revisionNumber,
+          }
+        : { resourceType: 'page', readableId: page.readableId, action },
+    );
+  }
   const editActions = (
     <ResourceDetailActions
       mode="edit"
@@ -187,16 +244,27 @@ export function KnowledgePageDetail({
       resource="page"
       onEdit={() => {
         updatePage.reset();
-        setArchiveConflictVisible(false);
+        setArchiveConflict(null);
         setEditing(true);
       }}
+      publicationActions={
+        publication.isSuccess && (
+          <PagePublicationActions
+            publicId={isPublic ? publication.data.publicId : null}
+            isPublic={isPublic}
+            hasUnpublishedChanges={hasUnpublishedChanges}
+            unavailable={!!approval.request}
+            onReview={review}
+          />
+        )
+      }
     >
       <ResourceArchiveAction
-        blocked={hasInboundUsages}
+        blocked={isPublic || hasInboundUsages}
         pending={archivePage.isPending}
         resource="page"
         onBlocked={() => {
-          setArchiveConflictVisible(true);
+          setArchiveConflict(isPublic ? 'publication' : 'references');
         }}
         onConfirm={() => {
           archivePage.mutate(
@@ -206,7 +274,7 @@ export function KnowledgePageDetail({
                 if (result.state === 'archived') {
                   onArchived();
                 } else {
-                  setArchiveConflictVisible(true);
+                  setArchiveConflict('references');
                 }
               },
             },
@@ -232,9 +300,21 @@ export function KnowledgePageDetail({
           error={updatePage.error}
           header={(intervalField) => (
             <DetailHeader>
-              <ResourceDetailHeading actions={editActions} context={intervalField}>
+              <ResourceDetailHeading
+                actions={editActions}
+                context={
+                  <>
+                    {publicationContext}
+                    {intervalField}
+                  </>
+                }
+              >
                 Knowledge page
               </ResourceDetailHeading>
+              <p className="text-muted-foreground text-sm">
+                Saving creates a private revision of this page. Publish it separately to make those
+                changes public.
+              </p>
               {page.recordReferences.some((record) => !record.available) && (
                 <p className="text-muted-foreground text-sm" role="status">
                   The saved page has unavailable record references. You can keep or remove them when
@@ -264,12 +344,15 @@ export function KnowledgePageDetail({
             <ResourceDetailHeading
               actions={viewActions}
               context={
-                page.temporalCoverage ? (
-                  <TemporalCoverageLabel
-                    className="w-fit text-sm"
-                    expression={page.temporalCoverage}
-                  />
-                ) : null
+                <>
+                  {publicationContext}
+                  {page.temporalCoverage && (
+                    <TemporalCoverageLabel
+                      className="w-fit text-sm"
+                      expression={page.temporalCoverage}
+                    />
+                  )}
+                </>
               }
             >
               Knowledge page
@@ -282,7 +365,12 @@ export function KnowledgePageDetail({
             </p>
           )}
 
-          {archiveConflictVisible && (
+          {archiveConflict === 'publication' && (
+            <p className="text-destructive text-sm" role="alert">
+              Unpublish this page before archiving it.
+            </p>
+          )}
+          {archiveConflict === 'references' && (
             <div
               className="flex flex-wrap items-center gap-2 text-destructive text-sm"
               role="alert"
@@ -331,6 +419,76 @@ export function KnowledgePageDetail({
           </Tabs>
         </>
       )}
+      <PagePublicationReview approval={approval} />
     </DetailShell>
+  );
+}
+
+function PagePublicationActions({
+  publicId,
+  isPublic,
+  hasUnpublishedChanges,
+  unavailable,
+  onReview,
+}: {
+  publicId: string | null;
+  isPublic: boolean;
+  hasUnpublishedChanges: boolean;
+  unavailable: boolean;
+  onReview: (action: 'publish' | 'unpublish') => void;
+}) {
+  return (
+    <>
+      {(!isPublic || hasUnpublishedChanges) && (
+        <Button
+          variant="outline"
+          size="lg"
+          disabled={unavailable}
+          onClick={() => onReview('publish')}
+        >
+          {isPublic ? 'Publish changes' : 'Publish'}
+        </Button>
+      )}
+      {publicId && (
+        <a
+          className={buttonVariants({ variant: 'outline', size: 'lg' })}
+          href={`/public/pages/${encodeURIComponent(publicId)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View public
+        </a>
+      )}
+      {isPublic && (
+        <Button
+          variant="outline"
+          size="lg"
+          disabled={unavailable}
+          onClick={() => onReview('unpublish')}
+        >
+          Unpublish
+        </Button>
+      )}
+    </>
+  );
+}
+
+function PagePublicationContext({
+  publication,
+  publishedRevision,
+  hasUnpublishedChanges,
+}: {
+  publication: UseQueryResult<{ publishedAt: string | null }>;
+  publishedRevision: number | null;
+  hasUnpublishedChanges: boolean;
+}) {
+  return (
+    <>
+      <PublicationStatus query={publication} />
+      {publishedRevision != null && (
+        <span className="text-muted-foreground text-sm">Public revision {publishedRevision}</span>
+      )}
+      {hasUnpublishedChanges && <Badge variant="secondary">Unpublished changes</Badge>}
+    </>
   );
 }

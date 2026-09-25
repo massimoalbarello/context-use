@@ -25,7 +25,7 @@ test('sidebar and picker keyword queries use the shared search endpoint with typ
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   try {
     await client.fetchInfiniteQuery(entitiesQueryOptions({ query: 'running' }));
-    await client.fetchInfiniteQuery(assetsQueryOptions('running'));
+    await client.fetchInfiniteQuery(assetsQueryOptions({ query: 'running' }));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: 'running', interval: 'with' }));
     await client.fetchQuery(imageAssetSuggestionsQueryOptions({ query: 'running' }));
     await client.fetchQuery(knowledgeSuggestionsQueryOptions('running'));
@@ -65,7 +65,7 @@ test('blank keyword queries browse typed collections without invoking retrieval'
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   try {
     await client.fetchInfiniteQuery(entitiesQueryOptions({ query: '  ' }));
-    await client.fetchInfiniteQuery(assetsQueryOptions('  '));
+    await client.fetchInfiniteQuery(assetsQueryOptions({ query: '  ' }));
     await client.fetchInfiniteQuery(pagesQueryOptions({ query: '  ' }));
     await client.fetchQuery(imageAssetSuggestionsQueryOptions({ query: '  ' }));
 
@@ -115,6 +115,72 @@ test('typed search callers preserve pipeline order and nonliteral matches withou
     expect(result.pages[0]?.items.map(({ readableId }) => readableId)).toEqual(['zoe', 'alice']);
     expect(result.pages[0]?.total).toBe(response.totalMatches);
     expect(result.pages[0]?.nextOffset).toBeNull();
+  } finally {
+    client.clear();
+    fetch.mockRestore();
+  }
+});
+
+test('collection visibility separates cached list and keyword results with the existing filters', async () => {
+  const requests: URL[] = [];
+  const publicTotal = 2;
+  const privateTotal = 7;
+  const collectionCount = 3;
+  const fetch = spyOn(globalThis, 'fetch').mockImplementation(
+    Object.assign(
+      (input: Parameters<typeof globalThis.fetch>[0]) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        requests.push(url);
+        const total = url.searchParams.get('visibility') === 'public' ? publicTotal : privateTotal;
+        return Promise.resolve(
+          Response.json(
+            url.pathname === '/api/hypermedia/search'
+              ? { results: [], totalMatches: total, truncated: false }
+              : { items: [], total, nextOffset: null },
+          ),
+        );
+      },
+      { preconnect: globalThis.fetch.preconnect },
+    ),
+  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  try {
+    for (const query of [undefined, 'launch']) {
+      for (const visibility of ['public', 'private'] as const) {
+        const results = await Promise.all([
+          client.fetchInfiniteQuery(
+            pagesQueryOptions({
+              query,
+              visibility,
+              interval: 'with',
+              dateRange: { from: '2026-01-01', to: '2026-01-31' },
+            }),
+          ),
+          client.fetchInfiniteQuery(
+            entitiesQueryOptions({ query, visibility, entityType: 'person' }),
+          ),
+          client.fetchInfiniteQuery(assetsQueryOptions({ query, visibility })),
+        ]);
+        expect(results.map((result) => result.pages[0]?.total)).toEqual(
+          Array(collectionCount).fill(visibility === 'public' ? publicTotal : privateTotal),
+        );
+        const batch = requests.slice(-collectionCount);
+        expect(batch.map((url) => url.pathname)).toEqual(
+          query
+            ? Array(collectionCount).fill('/api/hypermedia/search')
+            : ['/api/pages', '/api/entities', '/api/assets'],
+        );
+        expect(batch.map((url) => url.searchParams.get('visibility'))).toEqual(
+          Array(collectionCount).fill(visibility),
+        );
+        expect(batch[0]?.searchParams.get('interval')).toBe('with');
+        expect(batch[0]?.searchParams.get('time')).toContain('2026-01-01');
+        expect(batch[1]?.searchParams.get('entityType')).toBe('person');
+      }
+    }
+    expect(requests).toHaveLength(collectionCount * 2 * 2);
   } finally {
     client.clear();
     fetch.mockRestore();
