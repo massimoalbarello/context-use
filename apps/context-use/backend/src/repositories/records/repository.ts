@@ -4,6 +4,7 @@ import { type ChangeContext, changedText } from '#backend/models/history/model.t
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import { InvalidRecordAssetError, type RecordAssetUsage } from '#backend/models/records/assets.ts';
 import {
+  DEFAULT_RECORD_SORT_FIELD,
   type NativeRecord,
   type RecordDeletion,
   type RecordFilterOptions,
@@ -339,7 +340,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
     updatedFrom,
     updatedTo,
     visibility = 'all',
-    sortBy = 'sourceUpdatedAt',
+    sortBy = DEFAULT_RECORD_SORT_FIELD,
     sortDirection = 'desc',
   }: ListRecordsInput): Promise<RecordPage> {
     return await this.serialize(async () => {
@@ -363,6 +364,8 @@ export class RecordsRepository implements RecordsRepositoryContract {
         order by
           case ${sortBy} when 'sourceCreatedAt' then julianday(record."source_created_at") is null
             when 'sourceUpdatedAt' then julianday(record."source_updated_at") is null else 0 end,
+          case when ${sortDirection} = 'asc' and ${sortBy} = 'updatedAt' then record."updated_at" end asc,
+          case when ${sortDirection} = 'desc' and ${sortBy} = 'updatedAt' then record."updated_at" end desc,
           case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end asc,
           case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end asc,
           case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end desc,

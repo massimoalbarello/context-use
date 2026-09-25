@@ -1,6 +1,10 @@
 import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
-import type { RecordFilterOptions, RecordSortField } from '#backend/models/records/model.ts';
+import {
+  DEFAULT_RECORD_SORT_FIELD,
+  type RecordFilterOptions,
+  type RecordSortField,
+} from '#backend/models/records/model.ts';
 import { type RecordSearch, recordsAreFiltered } from '../../lib/record-filters';
 import { calendarDateRangeFromSearch } from '../../lib/temporal-coverage';
 import { DateRangeFilter } from '../knowledge/date-range-filter';
@@ -8,6 +12,7 @@ import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const sortLabels: Record<RecordSortField, string> = {
+  updatedAt: 'Updated',
   sourceUpdatedAt: 'Source updated',
   sourceCreatedAt: 'Source created',
 };
@@ -51,7 +56,7 @@ export function RecordFilters({
 }) {
   const created = calendarDateRangeFromSearch({ from: search.createdFrom, to: search.createdTo });
   const updated = calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo });
-  const sortBy = search.sortBy ?? 'sourceUpdatedAt';
+  const sortBy = search.sortBy ?? DEFAULT_RECORD_SORT_FIELD;
   return (
     <KnowledgeFilterPopover
       title="Filter and sort records"

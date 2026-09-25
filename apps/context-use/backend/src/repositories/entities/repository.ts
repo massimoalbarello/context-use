@@ -177,7 +177,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
         and (${visibility} = 'all' or (${visibility} = 'public') = (entity."published_at" is not null))
         and (${entityType} = 'all' or entity."entity_type" = ${entityType}
           or (${entityType} = 'untyped' and entity."entity_type" is null))
-      order by entity."name" collate nocase, entity."readable_id"
+      order by entity."updated_at" desc, entity."readable_id"
       limit ${limit} offset ${offset}
     `;
     const countsPromise = this.sql.CountEntities`

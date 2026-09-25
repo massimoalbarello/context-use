@@ -45,6 +45,8 @@ test('record URL state validates ranges and gives each server filter a distinct 
       updatedTo: '2026-01-01',
     }),
   ).toEqual({});
+  expect(recordListFilters({})).toMatchObject({ sortBy: 'updatedAt', sortDirection: 'desc' });
+  expect(recordSearch({ sortBy: 'updatedAt' })).toEqual({ sortBy: 'updatedAt' });
   expect(recordSearch({ sortBy: 'provider' })).toEqual({});
   expect(recordSearch({ sortBy: 'kind' })).toEqual({});
   expect(recordSearch({ q: ' ' })).toEqual({});
@@ -75,9 +77,7 @@ test('record controls select metadata, sort direction, and reset the current vie
   }
   render(<Controls />);
   await user.click(screen.getByRole('button', { name: 'Filter and sort records' }));
-  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain(
-    'Source updated',
-  );
+  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain('Updated');
   expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('Newest first');
   await user.click(screen.getByRole('combobox', { name: 'Provider' }));
   await user.click(await screen.findByRole('option', { name: 'slack' }));
@@ -106,4 +106,6 @@ test('record controls select metadata, sort direction, and reset the current vie
   expect(screen.queryByRole('searchbox')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Reset filters and order' }));
   expect(screen.getByLabelText('Selected filters').textContent).toBe('{}');
+  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain('Updated');
+  expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('Newest first');
 });

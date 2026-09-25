@@ -42,8 +42,9 @@ export type RecordSummary = Omit<NativeRecord, 'body'> &
     updatedAt: string;
   };
 export type RecordResource = RecordSummary & { body: string; backlinks: KnowledgePageSummary[] };
-export const RECORD_SORT_FIELDS = ['sourceCreatedAt', 'sourceUpdatedAt'] as const;
+export const RECORD_SORT_FIELDS = ['updatedAt', 'sourceCreatedAt', 'sourceUpdatedAt'] as const;
 export type RecordSortField = (typeof RECORD_SORT_FIELDS)[number];
+export const DEFAULT_RECORD_SORT_FIELD = 'updatedAt' satisfies RecordSortField;
 export type RecordSourceFilters = {
   provider?: string;
   kind?: string;

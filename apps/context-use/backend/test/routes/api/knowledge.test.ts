@@ -502,6 +502,18 @@ Every observation changes the next action.`,
     );
     expect(semanticResponse.status).toBe(StatusMap.Created);
 
+    // Give collection ordering deterministic update times independent of coverage and title.
+    for (const [index, readableId] of [
+      'growth-playbook',
+      duplicatePage.readableId,
+      'operating-rhythm',
+      'current-programme',
+      'alpha-principles',
+    ].entries()) {
+      await database`update "knowledge_page" set "updated_at" = ${`2026-01-0${index + 1}T00:00:00.000Z`}
+        where "owner_id" = ${OWNER_USER_ID} and "readable_id" = ${readableId}`;
+    }
+
     const firstKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0' }),
     );
@@ -514,8 +526,8 @@ Every observation changes the next action.`,
     expect(firstKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
     expect(firstKnowledgePage.nextOffset).toBe(2);
     expect(firstKnowledgePage.items.map(({ readableId }) => readableId)).toEqual([
+      'alpha-principles',
       'current-programme',
-      'operating-rhythm',
     ]);
 
     const secondKnowledgePageResponse = await app.handle(
@@ -530,8 +542,8 @@ Every observation changes the next action.`,
     expect(secondKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
     expect(secondKnowledgePage.nextOffset).toBe(EXPECTED_SECOND_PAGE_OFFSET);
     expect(secondKnowledgePage.items.map(({ readableId }) => readableId)).toEqual([
-      'growth-playbook',
-      'alpha-principles',
+      'operating-rhythm',
+      duplicatePage.readableId,
     ]);
     const thirdKnowledgePageResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=4' }),
@@ -542,7 +554,7 @@ Every observation changes the next action.`,
       nextOffset: number | null;
     };
     expect(thirdKnowledgePage.items.map(({ readableId }) => readableId)).toEqual([
-      duplicatePage.readableId,
+      'growth-playbook',
     ]);
     expect(thirdKnowledgePage.total).toBe(EXPECTED_PAGE_COUNT);
     expect(thirdKnowledgePage.nextOffset).toBeNull();

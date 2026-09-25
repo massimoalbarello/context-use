@@ -99,6 +99,42 @@ async function withRecords(
   });
 }
 
+test('defaults to resource updates before pagination, including records without source dates', async () => {
+  await withRecords(async ({ repository, database }) => {
+    for (const [id, updatedAt] of [
+      ['a', '2026-09-01T00:00:00.000Z'],
+      ['b', '2026-09-02T00:00:00.000Z'],
+      ['c', '2026-09-03T00:00:00.000Z'],
+      ['missing', '2026-09-04T00:00:00.000Z'],
+    ] as const) {
+      await database`update "record" set "updated_at" = ${updatedAt}
+        where "owner_id" = ${OWNER_ID} and "source_id" = ${id}`;
+    }
+    const cases: [RecordListFilters, string[]][] = [
+      [{}, ['missing', 'c', 'b', 'a']],
+      [{ sortBy: 'updatedAt', sortDirection: 'asc' }, ['a', 'b', 'c', 'missing']],
+      [{ sortBy: 'updatedAt', sortDirection: 'desc' }, ['missing', 'c', 'b', 'a']],
+    ];
+    for (const [filters, ids] of cases) {
+      const first = await repository.listResources({
+        ownerId: OWNER_ID,
+        limit: 2,
+        offset: 0,
+        ...filters,
+      });
+      expect(first.nextOffset).toBe(2);
+      const second = await repository.listResources({
+        ownerId: OWNER_ID,
+        limit: 2,
+        offset: first.nextOffset!,
+        ...filters,
+      });
+      expect([...first.items, ...second.items].map((item) => item.source.id)).toEqual(ids);
+      expect(second.nextOffset).toBeNull();
+    }
+  });
+});
+
 test('orders source dates before pagination, with missing dates last in either direction', async () => {
   await withRecords(async ({ repository }) => {
     const cases: [RecordListFilters, string[]][] = [

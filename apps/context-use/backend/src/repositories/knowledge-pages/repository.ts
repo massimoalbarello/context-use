@@ -674,23 +674,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
             )
           )
         )
-      order by
-        case
-          when revision."temporal_coverage" is not null
-            and revision."temporal_end_exclusive_ms" is null then 0
-          when revision."temporal_coverage" is not null then 1
-          else 2
-        end,
-        case when revision."temporal_coverage" is not null
-          and revision."temporal_end_exclusive_ms" is null
-          then revision."temporal_start_ms" end desc,
-        case when revision."temporal_coverage" is not null
-          and revision."temporal_end_exclusive_ms" is not null
-          then revision."temporal_end_exclusive_ms" end desc,
-        case when revision."temporal_coverage" is not null
-          then revision."temporal_start_ms" end desc,
-        revision."title" collate nocase,
-        page."readable_id"
+      order by page."updated_at" desc, page."readable_id"
       limit ${limit} offset ${offset}
     `;
     const countsPromise = this.sql.CountKnowledgePages`

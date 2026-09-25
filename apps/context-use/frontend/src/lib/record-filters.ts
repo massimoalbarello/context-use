@@ -1,5 +1,9 @@
 import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '#backend/models/hypermedia-retrieval/model.ts';
-import { RECORD_SORT_FIELDS, type RecordSortField } from '#backend/models/records/model.ts';
+import {
+  DEFAULT_RECORD_SORT_FIELD,
+  RECORD_SORT_FIELDS,
+  type RecordSortField,
+} from '#backend/models/records/model.ts';
 import type { RecordCollectionFilters } from '../queries/records';
 import {
   type CalendarDateRange,
@@ -75,7 +79,7 @@ export function recordListFilters(search: RecordSearch): RecordCollectionFilters
     createdTo: created.to,
     updatedFrom: updated.from,
     updatedTo: updated.to,
-    sortBy: search.sortBy ?? 'sourceUpdatedAt',
+    sortBy: search.sortBy ?? DEFAULT_RECORD_SORT_FIELD,
     sortDirection: search.sortDirection ?? 'desc',
   };
 }
