@@ -2,6 +2,8 @@ create table "entity" (
   "id" text not null,
   "owner_id" text not null,
   "readable_id" text not null,
+  "public_id" text,
+  "published_at" text,
   "name" text not null,
   "description" text not null,
   "entity_type" text check ("entity_type" in ('person', 'organization', 'location')),
@@ -10,11 +12,18 @@ create table "entity" (
   "updated_at" text not null,
   "archived_at" text check ("archived_at" is null or length(trim("archived_at")) > 0),
   primary key ("id"),
+  unique ("public_id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
   foreign key ("owner_id") references "auth_user" ("id") on delete cascade,
   foreign key ("image_asset_id", "owner_id") references "asset" ("id", "owner_id")
     deferrable initially deferred,
+  check ("public_id" is null or (
+    "public_id" glob 'entity_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "id"
+  )),
+  check ("published_at" is null or (
+    length(trim("published_at")) > 0 and "public_id" is not null
+  )),
   check (length("readable_id") between 1 and 120),
   check ("readable_id" = lower("readable_id")),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
@@ -37,17 +46,31 @@ create table "knowledge_page" (
   "id" text not null,
   "owner_id" text not null,
   "readable_id" text not null,
+  "public_id" text,
+  "published_at" text,
   "current_revision_id" text not null,
+  "published_revision_id" text,
   "created_at" text not null,
   "updated_at" text not null,
   "archived_at" text check ("archived_at" is null or length(trim("archived_at")) > 0),
   primary key ("id"),
+  unique ("public_id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
   foreign key ("owner_id") references "auth_user" ("id") on delete cascade,
   foreign key ("current_revision_id", "id", "owner_id")
     references "knowledge_page_revision" ("id", "page_id", "owner_id")
     deferrable initially deferred,
+  check ("public_id" is null or (
+    "public_id" glob 'page_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "id"
+  )),
+  check ("published_at" is null or (
+    length(trim("published_at")) > 0 and "public_id" is not null
+  )),
+  foreign key ("published_revision_id", "id", "owner_id")
+    references "knowledge_page_revision" ("id", "page_id", "owner_id")
+    deferrable initially deferred,
+  check (("published_at" is null) = ("published_revision_id" is null)),
   check (length("readable_id") between 1 and 120),
   check ("readable_id" = lower("readable_id")),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
