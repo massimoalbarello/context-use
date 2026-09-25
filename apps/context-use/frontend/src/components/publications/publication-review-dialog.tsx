@@ -126,7 +126,13 @@ export function PublicationReviewDialog({
             This review has expired. Review again before confirming.
           </p>
         )}
-        <ReviewActions approval={approval} confirmDisabled={confirmDisabled} />
+        {blockers.length > 0 ? (
+          <div className="flex justify-end">
+            <Button onClick={approval.close}>OK</Button>
+          </div>
+        ) : (
+          <ReviewActions approval={approval} confirmDisabled={confirmDisabled} />
+        )}
       </DialogContent>
     </Dialog>
   );

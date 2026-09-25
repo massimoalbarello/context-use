@@ -380,7 +380,7 @@ test('comparison failure prevents approval until retry succeeds without changing
   expect(state.completes).toEqual(['approval-1']);
 });
 
-test('private resources stay collapsed until expanded and renewed review refreshes the count', async () => {
+test('private resources stay collapsed and OK returns to the page before publishing again', async () => {
   const { state, user, device } = await renderPage();
   state.blockers = [
     {
@@ -401,7 +401,7 @@ test('private resources stay collapsed until expanded and renewed review refresh
     },
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
-  const dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
+  let dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
   const toggle = await dialog.findByRole('button', { name: '4 private resources' });
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
   expect(dialog.getByRole('alert').textContent).toBe(
@@ -409,6 +409,8 @@ test('private resources stay collapsed until expanded and renewed review refresh
   );
   expect(dialog.queryByRole('link')).toBeNull();
   expect(dialog.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Review again' })).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Cancel' })).toBeNull();
   expect(device.calls).toHaveLength(0);
   expect(state.comparisons).toHaveLength(0);
   toggle.focus();
@@ -424,11 +426,17 @@ test('private resources stay collapsed until expanded and renewed review refresh
   expect(dialog.queryByText('Publish this referenced resource first.')).toBeNull();
   await user.click(toggle);
   expect(dialog.queryByRole('link')).toBeNull();
+  await user.click(dialog.getByRole('button', { name: 'OK' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(state.begins).toHaveLength(1);
   state.blockers = state.blockers.slice(0, 1);
-  await user.click(dialog.getByRole('button', { name: 'Review again' }));
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
   expect(await dialog.findByRole('button', { name: '1 private resource' })).toBeTruthy();
+  await user.click(dialog.getByRole('button', { name: 'OK' }));
   state.blockers = [];
-  await user.click(dialog.getByRole('button', { name: 'Review again' }));
+  await user.click(screen.getByRole('button', { name: 'Publish' }));
+  dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
   await dialog.findByText('Full content');
   await waitFor(() =>
     expect(
@@ -450,7 +458,7 @@ test('unavailable references and self-references retain specific guidance in a c
     },
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
-  await screen.findByRole('button', { name: 'Review again' });
+  await screen.findByRole('button', { name: 'OK' });
   expect(screen.queryByRole('link', { name: 'Removed source' })).toBeNull();
   await user.click(screen.getByRole('button', { name: '2 references to fix' }));
   expect(screen.getByRole('link', { name: 'Removed source' }).getAttribute('href')).toStartWith(
