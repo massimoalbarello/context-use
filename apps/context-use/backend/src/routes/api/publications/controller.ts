@@ -147,12 +147,22 @@ export function createPublicationsController({
 function publicationReadyResponse(
   result: Extract<PublicationApprovalBeginResult, { state: 'ready' }>,
 ) {
-  const { resource, publication, includedImage, pageRevision, blockers } = result.preparation;
+  const { resource, publication, includedImage, entityIdentity, pageRevision, blockers } =
+    result.preparation;
   return {
     state: result.state,
     approvalId: result.approvalId,
     expiresAt: result.expiresAt,
-    preparation: { resource, publication, includedImage, pageRevision, blockers },
+    preparation: {
+      resource,
+      publication,
+      includedImage,
+      entityIdentity: entityIdentity
+        ? { description: entityIdentity.description, entityType: entityIdentity.entityType }
+        : null,
+      pageRevision,
+      blockers,
+    },
     options: {
       challenge: result.options.challenge,
       rpId: result.options.rpId,

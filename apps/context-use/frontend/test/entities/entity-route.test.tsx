@@ -61,6 +61,11 @@ test('entity filters survive navigation, self stays a person, and other types ca
         if (url.pathname === '/api/profile') {
           return Response.json(profile);
         }
+        if (
+          people.some((person) => url.pathname === `/api/publications/entity/${person.readableId}`)
+        ) {
+          return Response.json({ resourceType: 'entity', publicId: null, publishedAt: null });
+        }
         const type = url.searchParams.get('entityType');
         const items = people.filter(
           (person) =>

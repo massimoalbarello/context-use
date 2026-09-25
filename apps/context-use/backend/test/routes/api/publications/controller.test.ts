@@ -140,7 +140,7 @@ async function controllerFixture(database: Parameters<typeof createAuth>[0]['dat
 
 test('owner HTTP approval publishes entity and its portrait, then withdraws only the entity; replay cannot mutate', async () => {
   await withController(async ({ database, begin, request, sign, complete, app, cookie }) => {
-    await database`update "entity" set "image_asset_id" = 'owner-a-asset-primary' where "id" = 'owner-a-entity-primary'`;
+    await database`update "entity" set "name" = 'Prepared name', "description" = 'Prepared description', "entity_type" = 'organization', "image_asset_id" = 'owner-a-asset-primary' where "id" = 'owner-a-entity-primary'`;
     const approval = await begin({ ...ASSET, resourceType: 'entity' });
     expect(approval.options).toMatchObject({ rpId: RP_ID, userVerification: 'required' });
     expect(approval.preparation.includedImage?.resource).toEqual({
@@ -148,6 +148,23 @@ test('owner HTTP approval publishes entity and its portrait, then withdraws only
       readableId: 'primary',
       name: 'Asset',
     });
+    expect(approval.preparation.resource).toEqual({
+      resourceType: 'entity',
+      readableId: 'primary',
+      name: 'Prepared name',
+    });
+    expect(approval.preparation.entityIdentity).toEqual({
+      description: 'Prepared description',
+      entityType: 'organization',
+    });
+    expect(Object.keys(approval.preparation).sort()).toEqual([
+      'blockers',
+      'entityIdentity',
+      'includedImage',
+      'pageRevision',
+      'publication',
+      'resource',
+    ]);
     expect(approval.preparation).not.toHaveProperty('expectedState');
     const assertion = sign(approval);
     const path = `/approvals/${approval.approvalId}/complete`;
@@ -177,6 +194,35 @@ test('owner HTTP approval publishes entity and its portrait, then withdraws only
     expect(await (await request({ path: '/asset/primary' })).json()).toMatchObject({
       publishedAt: NOW,
     });
+  });
+});
+
+test('entity review fields come from the prepared identity and cannot approve later identity edits', async () => {
+  await withController(async ({ database, begin, complete, request }) => {
+    for (const [field, value] of [
+      ['name', 'Updated name'],
+      ['description', 'Updated description'],
+      ['entity_type', 'location'],
+    ] as const) {
+      const approval = await begin({ ...ASSET, resourceType: 'entity' });
+      await database.unsafe(
+        `update "entity" set "${field}" = $1 where "id" = 'owner-a-entity-primary'`,
+        [value],
+      );
+      const response = await complete(approval);
+      expect(response.status).toBe(StatusMap.Conflict);
+      expect(await response.json()).toMatchObject({ state: 'state_changed' });
+      expect(await (await request({ path: '/entity/primary' })).json()).toMatchObject({
+        publishedAt: null,
+      });
+    }
+    const fresh = await begin({ ...ASSET, resourceType: 'entity' });
+    expect(fresh.preparation.resource.name).toBe('Updated name');
+    expect(fresh.preparation.entityIdentity).toEqual({
+      description: 'Updated description',
+      entityType: 'location',
+    });
+    expect((await complete(fresh)).status).toBe(StatusMap.OK);
   });
 });
 

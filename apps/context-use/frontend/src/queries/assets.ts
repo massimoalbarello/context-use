@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { getStreamAsArrayBuffer, MaxBufferError } from 'get-stream';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { assetContentUrl } from '../lib/asset-presentation';
@@ -36,12 +37,20 @@ async function assetSearchPage({
   query,
   limit,
   assetKind,
+  visibility,
 }: {
   query: string;
   limit?: number;
   assetKind?: 'entity_image';
+  visibility?: PublicationVisibility;
 }): Promise<AssetPage> {
-  const result = await searchHypermedia({ query, resourceTypes: 'asset', limit, assetKind });
+  const result = await searchHypermedia({
+    query,
+    resourceTypes: 'asset',
+    limit,
+    assetKind,
+    visibility,
+  });
   return {
     items: result.results.flatMap((hit) => (hit.resourceType === 'asset' ? [hit.asset] : [])),
     total: result.totalMatches,
@@ -70,17 +79,28 @@ export function assetsQueryOptions(query?: string) {
   });
 }
 
-export function imageAssetSuggestionsQueryOptions(query: string) {
+export function imageAssetSuggestionsQueryOptions({
+  query,
+  visibility,
+}: {
+  query: string;
+  visibility?: PublicationVisibility;
+}) {
   return queryOptions({
-    queryKey: [...assetSuggestionsQueryKey, 'image', query],
+    queryKey: [...assetSuggestionsQueryKey, 'image', query, visibility ?? 'all'],
     queryFn: async () => {
       if (query.trim()) {
         return (
-          await assetSearchPage({ query, limit: SUGGESTION_LIMIT, assetKind: 'entity_image' })
+          await assetSearchPage({
+            query,
+            limit: SUGGESTION_LIMIT,
+            assetKind: 'entity_image',
+            visibility,
+          })
         ).items;
       }
       const { data, error } = await api.api.assets.get({
-        query: { limit: SUGGESTION_LIMIT, offset: 0, kind: 'entity_image' },
+        query: { limit: SUGGESTION_LIMIT, offset: 0, kind: 'entity_image', visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

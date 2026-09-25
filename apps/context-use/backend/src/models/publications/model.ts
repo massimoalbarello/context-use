@@ -1,3 +1,5 @@
+import type { EntityType } from '#backend/models/entities/model.ts';
+
 export const PUBLICATION_VISIBILITIES = ['all', 'public', 'private'] as const;
 export type PublicationVisibility = (typeof PUBLICATION_VISIBILITIES)[number];
 
@@ -31,6 +33,7 @@ export interface PublicationPreparation {
   resource: PublicationResource;
   publication: PublicationStatus;
   includedImage: { resource: PublicationResource; publication: PublicationStatus } | null;
+  entityIdentity: { description: string; entityType: EntityType | null } | null;
   pageRevision: { revisionNumber: number | null; publishedRevisionNumber: number | null } | null;
   blockers: PublicationBlocker[];
   expectedState: string;
