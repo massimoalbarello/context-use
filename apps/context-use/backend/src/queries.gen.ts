@@ -814,6 +814,18 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindPublicEntity`. */
+export interface IFindPublicEntityResult {
+    name: string;
+    description: string;
+    entityType: string | null;
+    hasImage: number;
+    imagePublicId: string | null;
+    imageMediaType: string | null;
+    pagePublicId: string | null;
+    pageTitle: string | null;
+}
+
 /** Result of query `FindPublicPage`. */
 export interface IFindPublicPageResult {
     title: string;
@@ -1150,6 +1162,7 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindPublicEntity: IFindPublicEntityResult;
     FindPublicPage: IFindPublicPageResult;
     FindPublicAsset: IFindPublicAssetResult;
     FindPendingPublicationApproval: IFindPendingPublicationApprovalResult;

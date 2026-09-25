@@ -3,6 +3,7 @@ import { ErrorResponseSchema, NotFoundError } from '#backend/lib/errors.ts';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';
+import { publicEntityHtml } from '#backend/routes/public/entity.tsx';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 
@@ -18,6 +19,27 @@ export function createPublicController({
       set.headers['content-security-policy'] = PUBLIC_DOCUMENT_CSP;
       set.headers['referrer-policy'] = 'no-referrer';
     })
+    .get(
+      '/entities/:publicId',
+      async ({ params }) => {
+        const content = await publicResourcesService.entityContent({ publicId: params.publicId });
+        if (!content) {
+          throw new NotFoundError();
+        }
+        return new Response(publicEntityHtml(content), {
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      },
+      {
+        params: t.Object({ publicId: t.String() }),
+        detail: { tags: ['Entities'], summary: 'Read an active public entity', security: [] },
+        response: {
+          [StatusMap.OK]: t.String(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Internal Server Error']]: ErrorResponseSchema,
+        },
+      },
+    )
     .get(
       '/pages/:publicId',
       async ({ params }) => {
