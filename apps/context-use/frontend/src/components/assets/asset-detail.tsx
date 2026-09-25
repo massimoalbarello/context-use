@@ -351,7 +351,7 @@ function AssetPublicationReview({
       <p className="text-sm">
         {approval.request?.action === 'unpublish'
           ? 'The public file will stop being available. Copies already downloaded by others cannot be withdrawn.'
-          : 'Anyone with the public link can view or download the original file. Its contents stay fixed; edits to its name appear publicly as you save them.'}
+          : 'Anyone with the public link can view or download the original file.'}
       </p>
     </PublicationReviewDialog>
   );
