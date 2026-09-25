@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
 import { FieldError } from '../ui/field';
 
 const blockerExplanations: Record<PublicationBlocker['reason'], string> = {
-  public_page_reference: 'Unpublish this page first; its public revision uses this resource.',
+  public_page_reference:
+    'Unpublish this referring page or publish a revision of it without this reference first.',
   public_entity_image: 'Unpublish this entity or replace its image first.',
   image_unavailable: 'This image is unavailable. Choose an available image first.',
   reference_not_public: 'Publish this referenced resource first.',
@@ -45,16 +46,18 @@ export function PublicationReviewDialog({
   approval,
   children,
   confirmDisabled = false,
+  className,
 }: {
   approval: ReturnType<typeof usePublicationApproval>;
   children?: ReactNode;
   confirmDisabled?: boolean;
+  className?: string;
 }) {
   const { request, ready, error } = approval;
   const blockers = error instanceof PublicationError ? error.blockers : [];
   return (
     <Dialog open={!!request} onOpenChange={(open) => !open && approval.close()}>
-      <DialogContent>
+      <DialogContent className={className}>
         <DialogTitle>
           {request?.action === 'unpublish' ? 'Unpublish' : 'Publish'} {request?.resourceType}
         </DialogTitle>
@@ -73,7 +76,14 @@ export function PublicationReviewDialog({
                 key={`${blocker.reason}:${blocker.resource.resourceType}:${blocker.resource.readableId}`}
               >
                 <BlockerLink resource={blocker.resource} />
-                <p className="mt-1 text-muted-foreground">{blockerExplanations[blocker.reason]}</p>
+                <p className="mt-1 text-muted-foreground">
+                  {blocker.reason === 'reference_not_public' &&
+                  request?.resourceType === 'page' &&
+                  blocker.resource.resourceType === 'page' &&
+                  blocker.resource.readableId === request.readableId
+                    ? 'Publish a revision without this self-reference first.'
+                    : blockerExplanations[blocker.reason]}
+                </p>
               </li>
             ))}
           </ul>
