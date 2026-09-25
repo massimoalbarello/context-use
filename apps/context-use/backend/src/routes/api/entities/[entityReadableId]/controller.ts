@@ -127,6 +127,11 @@ export function createEntityReadableIdController({
             error: 'Entity images must be PNG, JPEG, GIF, or WebP assets',
           });
         }
+        if (result.state === 'image_not_public') {
+          return status(StatusMap.Conflict, {
+            error: 'Publish this image asset before assigning it to a public entity.',
+          });
+        }
         if (result.state === 'image_in_use') {
           return status(StatusMap.Conflict, {
             error: 'This image asset is already assigned to another entity',
@@ -183,6 +188,11 @@ export function createEntityReadableIdController({
         }
         if (result.state === 'self_entity') {
           return status(StatusMap.Conflict, { error: "Your own entity can't be archived" });
+        }
+        if (result.state === 'resource_published') {
+          return status(StatusMap.Conflict, {
+            error: 'Unpublish this resource before archiving it.',
+          });
         }
         if (result.state === 'resource_in_use') {
           return status(StatusMap.Conflict, resourceInUseResponse(result.blockers));

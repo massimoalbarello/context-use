@@ -119,6 +119,11 @@ export function createAssetReadableIdController({
           ownerId: user.id,
           readableId: params.assetReadableId,
         });
+        if (result.state === 'resource_published') {
+          return status(StatusMap.Conflict, {
+            error: 'Unpublish this resource before archiving it.',
+          });
+        }
         if (result.state === 'resource_in_use') {
           return status(StatusMap.Conflict, {
             error: 'Asset is in use',
@@ -137,7 +142,7 @@ export function createAssetReadableIdController({
         response: {
           [StatusMap['No Content']]: t.Void(),
           [StatusMap['Not Found']]: ErrorResponseSchema,
-          [StatusMap.Conflict]: AssetResourceInUseResponseSchema,
+          [StatusMap.Conflict]: t.Union([ErrorResponseSchema, AssetResourceInUseResponseSchema]),
         },
       },
     );

@@ -330,6 +330,12 @@ export function registerKnowledgePageTools({
       if (result.state === 'not_found') {
         return mcpToolError({ code: 'not_found', message: 'Knowledge page not found.' });
       }
+      if (result.state === 'resource_published') {
+        return mcpToolError({
+          code: 'resource_published',
+          message: 'The owner must unpublish this resource before it can be archived.',
+        });
+      }
       if (result.state === 'resource_in_use') {
         return mcpToolError({
           code: 'resource_in_use',

@@ -103,6 +103,7 @@ export interface IFindAssetArchiveTargetResult {
     id: string;
     name: string;
     archivedAt: string | null;
+    publishedAt: string | null;
 }
 
 /** Result of query `RemoveAssetSearchDocument`. */
@@ -214,13 +215,14 @@ export interface IUpdateEntityIdentityResult {
     id: string;
 }
 
-/** Result of query `SetEntityImage`. */
-export interface ISetEntityImageResult {
-    entityId: string;
+/** Result of query `FindEntityImagePublicationTarget`. */
+export interface IFindEntityImagePublicationTargetResult {
+    entityIsPublic: number;
+    assetIsPublic: number;
 }
 
-/** Result of query `FindEntityImageAssignment`. */
-export interface IFindEntityImageAssignmentResult {
+/** Result of query `SetEntityImage`. */
+export interface ISetEntityImageResult {
     entityId: string;
 }
 
@@ -234,6 +236,7 @@ export interface IFindEntityArchiveTargetResult {
     id: string;
     archivedAt: string | null;
     isSelf: number;
+    publishedAt: string | null;
 }
 
 /** Result of query `RemoveEntitySearchDocument`. */
@@ -616,6 +619,7 @@ export interface IFindKnowledgePageArchiveTargetResult {
     id: string;
     currentRevisionId: string;
     archivedAt: string | null;
+    publishedAt: string | null;
 }
 
 /** Result of query `RemoveKnowledgePageSearchDocument`. */
@@ -1023,8 +1027,8 @@ export interface Queries {
     CountEntities: ICountEntitiesResult;
     FindEntity: IFindEntityResult;
     UpdateEntityIdentity: IUpdateEntityIdentityResult;
+    FindEntityImagePublicationTarget: IFindEntityImagePublicationTargetResult;
     SetEntityImage: ISetEntityImageResult;
-    FindEntityImageAssignment: IFindEntityImageAssignmentResult;
     RemoveEntityImage: IRemoveEntityImageResult;
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;

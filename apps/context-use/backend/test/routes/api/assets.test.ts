@@ -275,6 +275,32 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(invalidImageResponse.status).toBe(StatusMap['Bad Request']);
 
+    await database`
+      update "entity" set "public_id" = 'entity_image-guard', "published_at" = ${timestamp}
+      where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
+    `;
+    const privateImageResponse = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/entities/luca-bianchi/image',
+        body: { assetReadableId: 'quarterly-chart' },
+      }),
+    );
+    expect(privateImageResponse.status).toBe(StatusMap.Conflict);
+    expect(await privateImageResponse.json()).toEqual({
+      error: 'Publish this image asset before assigning it to a public entity.',
+    });
+    expect(
+      await database<Array<{ imageAssetId: string | null }>>`
+      select "image_asset_id" as "imageAssetId" from "entity"
+      where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
+    `,
+    ).toEqual([{ imageAssetId: null }]);
+    await database`
+      update "asset" set "public_id" = 'asset_image-guard', "published_at" = ${timestamp}
+      where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'quarterly-chart'
+    `;
+
     const assignImageResponse = await app.handle(
       jsonRequest({
         method: 'PUT',
@@ -290,6 +316,13 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         image: expect.objectContaining({ readableId: 'quarterly-chart', mediaType: 'image/png' }),
       }),
     );
+
+    await database`
+      update "entity" set "published_at" = null where "owner_id" = ${OWNER_USER_ID}
+    `;
+    await database`
+      update "asset" set "published_at" = null where "owner_id" = ${OWNER_USER_ID}
+    `;
 
     const entityDetailResponse = await app.handle(
       new Request('http://localhost/api/entities/luca-bianchi'),
@@ -482,6 +515,28 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     const storedRows = await database<Array<{ storageKey: string }>>`
       select "storage_key" as "storageKey" from "asset"
       where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'quarterly-chart'
+    `;
+    await database`
+      update "asset" set "published_at" = ${timestamp}
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'asset_image-guard'
+    `;
+    const publishedAssetArchive = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
+    );
+    expect(publishedAssetArchive.status).toBe(StatusMap.Conflict);
+    expect(await publishedAssetArchive.json()).toEqual({
+      error: 'Unpublish this resource before archiving it.',
+    });
+    expect(
+      await database<Array<{ archivedAt: string | null; publishedAt: string | null }>>`
+      select asset."archived_at" as "archivedAt", asset."published_at" as "publishedAt"
+      from "asset" asset
+      where asset."owner_id" = ${OWNER_USER_ID} and asset."readable_id" = 'quarterly-chart'
+    `,
+    ).toEqual([{ archivedAt: null, publishedAt: timestamp }]);
+    await database`
+      update "asset" set "published_at" = null
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'asset_image-guard'
     `;
     const archiveResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
