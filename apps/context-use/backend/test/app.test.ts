@@ -102,6 +102,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     publicResourcesService: {
       assetContent: async () => null,
       pageContent: async () => null,
+      recordContent: async () => null,
       entityContent: async () => null,
     },
     historyService: unusedHistoryService,

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
+import type {
+  PublicationStatus,
+  PublicationVisibility,
+} from '#backend/models/publications/model.ts';
 
 export const MAX_RECORD_BODY_LENGTH = 2_000_000;
 const MAX_SOURCE_LABEL_LENGTH = 160;
@@ -31,11 +35,12 @@ export const RecordDeletionSchema = z.strictObject({
 export type RecordInput = z.input<typeof RecordInputSchema>;
 export type NativeRecord = z.output<typeof RecordInputSchema>;
 export type RecordDeletion = z.output<typeof RecordDeletionSchema>;
-export type RecordSummary = Omit<NativeRecord, 'body'> & {
-  readableId: string;
-  createdAt: string;
-  updatedAt: string;
-};
+export type RecordSummary = Omit<NativeRecord, 'body'> &
+  PublicationStatus & {
+    readableId: string;
+    createdAt: string;
+    updatedAt: string;
+  };
 export type RecordResource = RecordSummary & { body: string; backlinks: KnowledgePageSummary[] };
 export const RECORD_SORT_FIELDS = ['sourceCreatedAt', 'sourceUpdatedAt'] as const;
 export type RecordSortField = (typeof RECORD_SORT_FIELDS)[number];
@@ -48,6 +53,7 @@ export type RecordSourceFilters = {
   updatedTo?: string;
 };
 export type RecordListFilters = RecordSourceFilters & {
+  visibility?: PublicationVisibility;
   sortBy?: RecordSortField;
   sortDirection?: 'asc' | 'desc';
 };
@@ -78,3 +84,5 @@ export function parseRecord(input: RecordInput): NativeRecord {
     sourceUpdatedAt: timestamp(record.sourceUpdatedAt),
   };
 }
+
+export class RecordPublicationConflictError extends Error {}

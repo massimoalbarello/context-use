@@ -1,7 +1,11 @@
 import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import { InvalidRecordAssetError } from '#backend/models/records/assets.ts';
-import { RecordInputSchema, type RecordWriteResult } from '#backend/models/records/model.ts';
+import {
+  RecordInputSchema,
+  RecordPublicationConflictError,
+  type RecordWriteResult,
+} from '#backend/models/records/model.ts';
 import { API_KEY_SECURITY_SCHEME } from '#backend/routes/api/api-keys/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { withChangeMessage } from '#backend/routes/change-message.ts';
@@ -42,6 +46,9 @@ export function createRecordWriteController({
             },
           });
         } catch (error) {
+          if (error instanceof RecordPublicationConflictError) {
+            return status(StatusMap.Conflict, { error: error.message });
+          }
           if (error instanceof InvalidRecordAssetError) {
             return status(StatusMap['Bad Request'], { error: error.message });
           }

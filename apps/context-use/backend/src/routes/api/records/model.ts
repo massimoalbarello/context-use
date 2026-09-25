@@ -9,6 +9,7 @@ import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
+import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
 
 export const RecordSummarySchema = t.Object({
   readableId: ReadableIdSchema,
@@ -44,6 +45,7 @@ export const RecordListSchema = t.Object({
 
 export const RecordListQuerySchema = t.Object({
   ...PaginationQuerySchema.properties,
+  visibility: t.Optional(PublicationVisibilitySchema),
   provider: t.Optional(t.String({ minLength: 1, maxLength: 1024, pattern: '\\S' })),
   kind: t.Optional(t.String({ minLength: 1, maxLength: 1024, pattern: '\\S' })),
   createdFrom: t.Optional(t.Date()),
