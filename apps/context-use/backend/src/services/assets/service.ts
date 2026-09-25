@@ -10,6 +10,7 @@ import {
   type StoredAsset,
 } from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
@@ -217,7 +218,13 @@ export class AssetsService {
     return created;
   }
 
-  list(input: { ownerId: string; limit: number; offset: number; kind?: 'entity_image' }) {
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    visibility?: PublicationVisibility;
+    kind?: 'entity_image';
+  }) {
     return this.assets.list(input);
   }
 

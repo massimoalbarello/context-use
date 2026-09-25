@@ -9,6 +9,7 @@ import {
 } from '#backend/models/entities/model.ts';
 import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type { KnowledgePageReference } from '#backend/models/knowledge-pages/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom, entityTypeFrom } from '#backend/views/entities/entity-view.ts';
@@ -37,6 +38,7 @@ export interface EntityRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     entityType?: EntityTypeFilter;
   }): Promise<Page<Entity>>;
   find(input: { ownerId: string; readableId: string }): Promise<Entity | null>;
@@ -139,11 +141,13 @@ export class EntitiesRepository implements EntityRepositoryContract {
     ownerId,
     limit,
     offset,
+    visibility = 'all',
     entityType = 'all',
   }: {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     entityType?: EntityTypeFilter;
   }) {
     const rowsPromise = this.sql.ListEntities`
@@ -166,6 +170,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
        and image."archived_at" is null
       where entity."owner_id" = ${ownerId}
         and entity."archived_at" is null
+        and (${visibility} = 'all' or (${visibility} = 'public') = (entity."published_at" is not null))
         and (${entityType} = 'all' or entity."entity_type" = ${entityType}
           or (${entityType} = 'untyped' and entity."entity_type" is null))
       order by entity."name" collate nocase, entity."readable_id"
@@ -175,6 +180,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
       /* @notNull total */
       select count(*) as "total" from "entity"
       where "owner_id" = ${ownerId} and "archived_at" is null
+        and (${visibility} = 'all' or (${visibility} = 'public') = (entity."published_at" is not null))
         and (${entityType} = 'all' or "entity_type" = ${entityType}
           or (${entityType} = 'untyped' and "entity_type" is null))
     `;

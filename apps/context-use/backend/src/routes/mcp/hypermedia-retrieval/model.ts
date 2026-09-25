@@ -8,6 +8,7 @@ import {
   MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH,
 } from '#backend/models/hypermedia-retrieval/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
+import { PUBLICATION_VISIBILITIES } from '#backend/models/publications/model.ts';
 import {
   assetAddress,
   entityAddress,
@@ -28,6 +29,12 @@ import {
 } from '#backend/routes/mcp/entities/model.ts';
 
 export const SearchHypermediaInputSchema = z.object({
+  visibility: z
+    .enum(PUBLICATION_VISIBILITIES)
+    .optional()
+    .describe(
+      'Filter by active publication before ranking and limiting. Omit or use "all" for every resource; "public" excludes records; "private" includes records and withdrawn resources. Pages with a published revision remain public even when they have newer private edits. Results always show current workspace content.',
+    ),
   entityType: McpEntityTypeFilterSchema.optional().describe(
     'Search entities only, filtering by assigned type. Untyped selects entities with no assigned type; all selects every entity. This does not search pages mentioning those entities. Omit to allow other resource types.',
   ),

@@ -19,6 +19,7 @@ import type {
   ParsedTemporalCoverage,
   TemporalBounds,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom } from '#backend/views/entities/entity-view.ts';
@@ -79,6 +80,7 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }): Promise<Page<KnowledgePageSummary>>;
@@ -618,12 +620,14 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId,
     limit,
     offset,
+    visibility = 'all',
     interval,
     temporalBounds,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }) {
@@ -639,6 +643,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
         and page."archived_at" is null
+        and (${visibility} = 'all' or (${visibility} = 'public') = (page."published_at" is not null))
         and (
           ${interval} is null
           or (${interval} = 'without' and revision."temporal_coverage" is null)
@@ -682,6 +687,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
         and page."archived_at" is null
+        and (${visibility} = 'all' or (${visibility} = 'public') = (page."published_at" is not null))
         and (
           ${interval} is null
           or (${interval} = 'without' and revision."temporal_coverage" is null)

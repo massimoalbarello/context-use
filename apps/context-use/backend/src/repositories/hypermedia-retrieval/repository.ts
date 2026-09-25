@@ -205,6 +205,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     if (!expression) {
       return { results: [], totalMatches: 0, truncated: false };
     }
+    const visibility = filters?.visibility ?? 'all';
     const selectedTypes = JSON.stringify(resourceTypes);
     const entitiesOnly = filters?.entity?.type !== undefined;
     const entityType = filters?.entity?.type ?? 'all';
@@ -266,6 +267,9 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         where "hypermedia_search_fts" match ${expression}
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
+          and (${visibility} = 'all' or (${visibility} = 'public') = (
+            (entity."published_at" is not null) or (page."published_at" is not null) or (asset."published_at" is not null)
+          ))
           and (${entitiesOnly} = false or (document."resource_type" = 'entity'
             and (${entityType} = 'all' or entity."entity_type" = ${entityType}
               or (${entityType} = 'untyped' and entity."entity_type" is null))))

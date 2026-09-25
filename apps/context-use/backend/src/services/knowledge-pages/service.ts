@@ -20,6 +20,7 @@ import {
   parseTemporalCoverage as parseTemporalCoverageExpression,
   type TemporalBounds,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
@@ -129,6 +130,7 @@ export class KnowledgePagesService {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
   }) {

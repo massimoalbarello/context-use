@@ -37,6 +37,7 @@ export function registerHypermediaRetrievalTools({
     async ({
       query,
       resourceTypes,
+      visibility,
       interval,
       time,
       assetKind,
@@ -59,6 +60,7 @@ export function registerHypermediaRetrievalTools({
         resourceTypes,
         limit,
         filters: {
+          visibility,
           entity: { type: entityType },
           knowledgePage: { interval, temporalBounds },
           asset: { kind: assetKind },

@@ -27,6 +27,7 @@ import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
+import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
 import {
   RecordListQuerySchema,
   RecordSummarySchema,
@@ -42,6 +43,7 @@ const RecordFilterValueSchema = t.Optional(
 );
 
 export const HypermediaSearchQuerySchema = t.Object({
+  visibility: t.Optional(PublicationVisibilitySchema),
   entityType: t.Optional(EntityTypeFilterSchema),
   query: t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH, pattern: '\\S' }),
   resourceTypes: t.Optional(
