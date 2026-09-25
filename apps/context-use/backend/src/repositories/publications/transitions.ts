@@ -25,10 +25,8 @@ async function assetTarget({
     select asset."id", asset."readable_id" as "readableId", asset."name",
       asset."media_type" as "mediaType", asset."extension", asset."size_bytes" as "sizeBytes",
       asset."content_hash" as "contentHash", asset."archived_at" as "archivedAt",
-      publication."public_id" as "publicId", publication."published_at" as "publishedAt"
+      asset."public_id" as "publicId", asset."published_at" as "publishedAt"
     from "asset" asset
-    left join "asset_publication" publication
-      on publication."asset_id" = asset."id" and publication."owner_id" = asset."owner_id"
     where asset."owner_id" = ${ownerId} and asset."readable_id" = ${readableId}
   `;
   return rows[0] ?? null;
@@ -48,10 +46,8 @@ async function entityTarget({
     select entity."id", entity."readable_id" as "readableId", entity."name", entity."description",
       entity."entity_type" as "entityType", entity."image_asset_id" as "imageAssetId",
       image."readable_id" as "imageReadableId", entity."archived_at" as "archivedAt",
-      publication."public_id" as "publicId", publication."published_at" as "publishedAt"
+      entity."public_id" as "publicId", entity."published_at" as "publishedAt"
     from "entity" entity
-    left join "entity_publication" publication
-      on publication."entity_id" = entity."id" and publication."owner_id" = entity."owner_id"
     left join "asset" image
       on image."id" = entity."image_asset_id" and image."owner_id" = entity."owner_id"
     where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
@@ -165,10 +161,8 @@ export async function executePublication({
     await setAssetPublication({ db, ownerId: input.ownerId, id: target.id, ...publication });
   } else {
     await db.SetEntityPublication`
-      insert into "entity_publication" ("entity_id", "owner_id", "public_id", "published_at")
-      values (${target.id}, ${input.ownerId}, ${publication.publicId}, ${publication.publishedAt})
-      on conflict ("entity_id") do update set "published_at" = excluded."published_at"
-      where "entity_publication"."owner_id" = excluded."owner_id"
+      update "entity" set "public_id" = ${publication.publicId}, "published_at" = ${publication.publishedAt}
+      where "id" = ${target.id} and "owner_id" = ${input.ownerId}
     `;
   }
   return { state: 'changed', publication };
@@ -185,9 +179,7 @@ async function setAssetPublication({
   publishedAt: string | null;
 }) {
   await db.SetAssetPublication`
-    insert into "asset_publication" ("asset_id", "owner_id", "public_id", "published_at")
-    values (${input.id}, ${input.ownerId}, ${input.publicId}, ${input.publishedAt})
-    on conflict ("asset_id") do update set "published_at" = excluded."published_at"
-    where "asset_publication"."owner_id" = excluded."owner_id"
+    update "asset" set "public_id" = ${input.publicId}, "published_at" = ${input.publishedAt}
+    where "id" = ${input.id} and "owner_id" = ${input.ownerId}
   `;
 }

@@ -24,13 +24,11 @@ export async function withdrawalBlockers({
     )
     select page."readable_id" as "readableId", revision."title" as "name"
     from referring_revisions reference
-    join "knowledge_page_publication" publication
-      on publication."revision_id" = reference."source_revision_id"
-      and publication."owner_id" = ${input.ownerId} and publication."published_at" is not null
     join "knowledge_page" page
-      on page."id" = publication."page_id" and page."owner_id" = publication."owner_id"
+      on page."published_revision_id" = reference."source_revision_id"
+      and page."owner_id" = ${input.ownerId} and page."published_at" is not null
     join "knowledge_page_revision" revision
-      on revision."id" = publication."revision_id" and revision."owner_id" = publication."owner_id"
+      on revision."id" = page."published_revision_id" and revision."owner_id" = page."owner_id"
       and revision."page_id" = page."id"
     order by page."readable_id"
   `;
@@ -43,10 +41,8 @@ export async function withdrawalBlockers({
       /* @notNull readableId name */
       select entity."readable_id" as "readableId", entity."name"
       from "entity" entity
-      join "entity_publication" publication
-        on publication."entity_id" = entity."id" and publication."owner_id" = entity."owner_id"
-        and publication."published_at" is not null
       where entity."owner_id" = ${input.ownerId} and entity."image_asset_id" = ${input.id}
+        and entity."published_at" is not null
       order by entity."readable_id"
     `;
     blockers.push(

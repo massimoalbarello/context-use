@@ -163,8 +163,9 @@ for (const resourceType of ['asset', 'entity'] as const) {
       const prepared = await repository.prepare(input);
       await pageReference({ db, resourceType, revisionId: 'owner-a-page-primary-revision' });
       await db`
-        insert into "knowledge_page_publication" ("owner_id", "page_id", "public_id", "revision_id", "published_at")
-        values ('owner-a', 'owner-a-page-primary', 'page_referring', 'owner-a-page-primary-revision', ${NOW})
+        update "knowledge_page" set "public_id" = 'page_referring',
+          "published_revision_id" = 'owner-a-page-primary-revision', "published_at" = ${NOW}
+        where "owner_id" = 'owner-a' and "id" = 'owner-a-page-primary'
       `;
       const withoutReference = await pageRevision({ db, revisionNumber: 2 });
       const blocker = {
@@ -183,7 +184,7 @@ for (const resourceType of ['asset', 'entity'] as const) {
         blockers: [blocker],
       });
       expect((await repository.prepare(input))?.publication.publishedAt).toBe(NOW);
-      await db`update "knowledge_page_publication" set "revision_id" = ${withoutReference} where "owner_id" = 'owner-a'`;
+      await db`update "knowledge_page" set "published_revision_id" = ${withoutReference} where "owner_id" = 'owner-a' and "id" = 'owner-a-page-primary'`;
       const privateRevision = await pageRevision({ db, revisionNumber: PRIVATE_DRAFT_REVISION });
       await pageReference({ db, resourceType, revisionId: privateRevision });
       expect((await repository.prepare(input))?.blockers).toEqual([]);
@@ -314,7 +315,7 @@ test('entity and portrait publication roll back together if the second write fai
   await withDatabase(async ({ database: db }) => {
     const repository = new PublicationsRepository(db);
     await assignPortrait(db);
-    await db.unsafe(`create trigger reject_entity_publication before insert on "entity_publication"
+    await db.unsafe(`create trigger reject_entity_publication before update of "published_at" on "entity"
       begin select raise(abort, 'injected publication failure'); end`);
     await expect(change({ repository, input: request('entity') })).rejects.toThrow(
       'injected publication failure',
