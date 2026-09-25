@@ -93,7 +93,12 @@ for (const resourceType of ['asset', 'entity'] as const) {
       const published = await repository.execute(execution);
       expect(published).toMatchObject({
         state: 'changed',
-        publication: { publicId: expect.stringContaining(`${resourceType}_`), publishedAt: NOW },
+        publication: {
+          publicId: expect.stringMatching(
+            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+          ),
+          publishedAt: NOW,
+        },
       });
       expect(await repository.execute(execution)).toEqual({ state: 'state_changed' });
       expect(await change({ repository, input: input })).toMatchObject({ state: 'unchanged' });
@@ -163,7 +168,7 @@ for (const resourceType of ['asset', 'entity'] as const) {
       const prepared = await repository.prepare(input);
       await pageReference({ db, resourceType, revisionId: 'owner-a-page-primary-revision' });
       await db`
-        update "knowledge_page" set "public_id" = 'page_referring',
+        update "knowledge_page" set "public_id" = 'd373208a-112a-4685-975c-cefa01d17e63',
           "published_revision_id" = 'owner-a-page-primary-revision', "published_at" = ${NOW}
         where "owner_id" = 'owner-a' and "id" = 'owner-a-page-primary'
       `;

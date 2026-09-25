@@ -194,7 +194,9 @@ test('HTTP publication selects the exact reviewed page revision, with revision n
     const status = await (await request({ path: '/page/primary' })).json();
     expect(status).toEqual({
       resourceType: 'page',
-      publicId: expect.stringMatching(/^page_/),
+      publicId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
       publishedAt: NOW,
       publishedRevisionNumber: 1,
     });

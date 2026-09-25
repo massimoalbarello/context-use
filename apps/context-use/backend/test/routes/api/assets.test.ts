@@ -280,7 +280,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(invalidImageResponse.status).toBe(StatusMap['Bad Request']);
 
     await database`
-      update "entity" set "public_id" = 'entity_image-guard', "published_at" = ${timestamp}
+      update "entity" set "public_id" = '0e21c289-29c5-4f4b-bf66-1026c6a988c2', "published_at" = ${timestamp}
       where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
     `;
     const privateImageResponse = await app.handle(
@@ -301,7 +301,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     `,
     ).toEqual([{ imageAssetId: null }]);
     await database`
-      update "asset" set "public_id" = 'asset_image-guard', "published_at" = ${timestamp}
+      update "asset" set "public_id" = '410550a2-b79c-4178-aa58-d23cb19d8e47', "published_at" = ${timestamp}
       where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'quarterly-chart'
     `;
 
@@ -535,7 +535,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     `;
     await database`
       update "asset" set "published_at" = ${timestamp}
-      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'asset_image-guard'
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = '410550a2-b79c-4178-aa58-d23cb19d8e47'
     `;
     const publishedAssetArchive = await app.handle(
       jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
@@ -553,7 +553,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     ).toEqual([{ archivedAt: null, publishedAt: timestamp }]);
     await database`
       update "asset" set "published_at" = null
-      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'asset_image-guard'
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = '410550a2-b79c-4178-aa58-d23cb19d8e47'
     `;
     const archiveResponse = await app.handle(
       jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),

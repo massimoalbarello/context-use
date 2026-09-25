@@ -20,7 +20,9 @@ create table "asset" (
   unique ("storage_key"),
   foreign key ("owner_id") references "auth_user" ("id") on delete cascade,
   check ("public_id" is null or (
-    "public_id" glob 'asset_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "id"
+    length("public_id") = 36 and "public_id" glob '????????-????-????-????-????????????'
+    and length(replace("public_id", '-', '')) = 32 and "public_id" not glob '*[^a-f0-9-]*'
+    and "public_id" != "id" and "public_id" != "readable_id"
   )),
   check ("published_at" is null or (
     length(trim("published_at")) > 0 and "public_id" is not null

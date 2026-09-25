@@ -146,7 +146,9 @@ test('publishing selects the reviewed saved revision despite later private edits
       throw new Error('Expected page status');
     }
     expect(firstStatus).toEqual({
-      publicId: expect.stringContaining('page_'),
+      publicId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
       publishedAt: NOW,
       publishedRevisionNumber: 1,
     });

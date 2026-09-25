@@ -1118,7 +1118,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     ).toBe('2025-03/..');
 
     await database`
-      update "entity" set "public_id" = 'entity_archive-guard', "published_at" = ${timestamp} where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
+      update "entity" set "public_id" = 'c3ad57cc-4fc9-47eb-8eb8-b6eb921b04e7', "published_at" = ${timestamp} where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'luca-bianchi'
     `;
     const publicEntities = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities?visibility=public' }),
@@ -1149,7 +1149,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     ).toEqual([{ archivedAt: null, publishedAt: timestamp }]);
     await database`
       update "entity" set "published_at" = null
-      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'entity_archive-guard'
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'c3ad57cc-4fc9-47eb-8eb8-b6eb921b04e7'
     `;
 
     const archivedEntityResponse = await app.handle(
@@ -1247,7 +1247,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     expect(Number(pageBeforeArchive[0]?.revisions)).toBe(EXPECTED_GROWTH_REVISION_COUNT);
 
     await database`
-      update "knowledge_page" set "public_id" = 'page_archive-guard', "published_at" = ${timestamp}, "published_revision_id" = "current_revision_id" where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
+      update "knowledge_page" set "public_id" = 'b52552d9-6bfb-44b2-a5f6-0e947f162aae', "published_at" = ${timestamp}, "published_revision_id" = "current_revision_id" where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'growth-playbook'
     `;
     const publicPages = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?visibility=public' }),
@@ -1278,7 +1278,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
     ).toEqual([{ archivedAt: null, publishedAt: timestamp }]);
     await database`
       update "knowledge_page" set "published_at" = null, "published_revision_id" = null
-      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'page_archive-guard'
+      where "owner_id" = ${OWNER_USER_ID} and "public_id" = 'b52552d9-6bfb-44b2-a5f6-0e947f162aae'
     `;
 
     const archivedPageResponse = await app.handle(
