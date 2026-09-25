@@ -3,6 +3,7 @@ import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#backend/lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
@@ -17,6 +18,7 @@ export interface AssetsRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     kind?: 'entity_image';
   }): Promise<Page<AssetSummary>>;
   find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null>;
@@ -103,11 +105,13 @@ export class AssetsRepository implements AssetsRepositoryContract {
     ownerId,
     limit,
     offset,
+    visibility = 'all',
     kind,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
+    visibility?: PublicationVisibility;
     kind?: 'entity_image';
   }) {
     const normalizedKind = kind ?? null;
@@ -119,6 +123,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
         "updated_at" as "updatedAt"
       from "asset"
       where "owner_id" = ${ownerId} and "archived_at" is null
+        and (${visibility} = 'all' or (${visibility} = 'public') = (asset."published_at" is not null))
         and (${normalizedKind} is null or (
           "media_type" like 'image/%'
           and not exists (
@@ -133,6 +138,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @notNull total */
       select count(*) as "total" from "asset"
       where "owner_id" = ${ownerId} and "archived_at" is null
+        and (${visibility} = 'all' or (${visibility} = 'public') = (asset."published_at" is not null))
         and (${normalizedKind} is null or (
           "media_type" like 'image/%'
           and not exists (

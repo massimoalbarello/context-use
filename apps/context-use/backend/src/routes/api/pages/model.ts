@@ -21,6 +21,7 @@ import {
   PaginationQuerySchema,
   ReadableIdSchema,
 } from '#backend/routes/api/model.ts';
+import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
 
 export const KnowledgePageSummarySchema = t.Object({
   readableId: ReadableIdSchema,
@@ -97,6 +98,7 @@ export const KnowledgePageListSchema = t.Object({
   ...PaginationMetadataSchema.properties,
 });
 export const KnowledgePageListQuerySchema = t.Object({
+  visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
   interval: t.Optional(
     t.Union([

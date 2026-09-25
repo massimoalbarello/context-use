@@ -305,6 +305,19 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       where "owner_id" = ${OWNER_USER_ID} and "readable_id" = 'quarterly-chart'
     `;
 
+    const publicAssets = await app.handle(
+      jsonRequest({ method: 'GET', path: '/assets?visibility=public' }),
+    );
+    expect(publicAssets.status).toBe(StatusMap.OK);
+    expect(await publicAssets.json()).toMatchObject({
+      items: [{ readableId: 'quarterly-chart' }],
+      total: 1,
+    });
+    expect(
+      (await app.handle(jsonRequest({ method: 'GET', path: '/assets?visibility=published' })))
+        .status,
+    ).toBe(StatusMap['Bad Request']);
+
     const assignImageResponse = await app.handle(
       jsonRequest({
         method: 'PUT',

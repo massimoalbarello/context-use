@@ -6,6 +6,7 @@ import type {
   EntityTypeFilter,
 } from '#backend/models/entities/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import {
   READABLE_ID_SUFFIX_LENGTH,
   readableIdFrom,
@@ -71,7 +72,13 @@ export class EntitiesService {
       );
   }
 
-  list(input: { ownerId: string; limit: number; offset: number; entityType?: EntityTypeFilter }) {
+  list(input: {
+    ownerId: string;
+    limit: number;
+    offset: number;
+    visibility?: PublicationVisibility;
+    entityType?: EntityTypeFilter;
+  }) {
     return this.entities.list(input);
   }
 

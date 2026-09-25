@@ -1,6 +1,13 @@
 import { t } from 'elysia';
-import type { PublicationPreparation } from '#backend/models/publications/model.ts';
+import {
+  PUBLICATION_VISIBILITIES,
+  type PublicationPreparation,
+} from '#backend/models/publications/model.ts';
 import { ReadableIdSchema } from '#backend/routes/api/model.ts';
+
+export const PublicationVisibilitySchema = t.UnionEnum(PUBLICATION_VISIBILITIES, {
+  default: undefined,
+});
 
 const ResourceTypeSchema = t.Union([t.Literal('page'), t.Literal('entity'), t.Literal('asset')]);
 const ActionSchema = t.Union([t.Literal('publish'), t.Literal('unpublish')]);

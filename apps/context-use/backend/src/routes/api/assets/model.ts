@@ -18,6 +18,7 @@ import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
+import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
 
 export const KnowledgePageAssetUsageSchema = t.Object({
   kind: t.Literal('page'),
@@ -84,6 +85,7 @@ export const AssetListSchema = t.Object({
 });
 
 export const AssetListQuerySchema = t.Object({
+  visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
   kind: t.Optional(t.Literal('entity_image')),
 });
