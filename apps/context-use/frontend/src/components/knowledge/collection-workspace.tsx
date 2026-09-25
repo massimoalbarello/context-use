@@ -24,7 +24,6 @@ export function CollectionWorkspace({
   profile,
   search,
   filters,
-  visibleFilters,
   createTo,
   createLabel,
   error,
@@ -39,7 +38,6 @@ export function CollectionWorkspace({
   profile: KnowledgeProfile;
   search: ReactNode;
   filters?: ReactNode;
-  visibleFilters?: ReactNode;
   error?: Error | null;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
@@ -99,36 +97,31 @@ export function CollectionWorkspace({
           <ResourceBrowser
             from={`/${collection}`}
             toolbar={
-              <>
-                <KnowledgeWorkspaceHeader className="lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]">
-                  <h1
-                    className={cn(
-                      'shrink-0 whitespace-nowrap font-semibold text-lg tracking-tight max-[360px]:text-base sm:text-2xl',
-                      collapsed && 'pl-14',
-                    )}
-                  >
-                    {title}
-                  </h1>
-                  <div className="mx-auto flex min-w-0 max-w-md flex-1 lg:w-full">{search}</div>
-                  <div className="flex shrink-0 items-center justify-end gap-2 max-[360px]:gap-1">
-                    {filters}
-                    {createTo && (
-                      <Link
-                        className={cn(buttonVariants({ size: 'default' }), 'shrink-0')}
-                        to={createTo}
-                        aria-label={createLabel}
-                      >
-                        <Plus aria-hidden="true" />
-                        <span className="hidden sm:inline">{createLabel}</span>
-                        <span className="sr-only sm:hidden">{createLabel}</span>
-                      </Link>
-                    )}
-                  </div>
-                </KnowledgeWorkspaceHeader>
-                {visibleFilters && (
-                  <div className="border-b px-5 py-2 md:px-8">{visibleFilters}</div>
-                )}
-              </>
+              <KnowledgeWorkspaceHeader className="lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]">
+                <h1
+                  className={cn(
+                    'shrink-0 whitespace-nowrap font-semibold text-lg tracking-tight max-[360px]:text-base sm:text-2xl',
+                    collapsed && 'pl-14',
+                  )}
+                >
+                  {title}
+                </h1>
+                <div className="mx-auto flex min-w-0 max-w-md flex-1 lg:w-full">{search}</div>
+                <div className="flex shrink-0 items-center justify-end gap-2 max-[360px]:gap-1">
+                  {filters}
+                  {createTo && (
+                    <Link
+                      className={cn(buttonVariants({ size: 'default' }), 'shrink-0')}
+                      to={createTo}
+                      aria-label={createLabel}
+                    >
+                      <Plus aria-hidden="true" />
+                      <span className="hidden sm:inline">{createLabel}</span>
+                      <span className="sr-only sm:hidden">{createLabel}</span>
+                    </Link>
+                  )}
+                </div>
+              </KnowledgeWorkspaceHeader>
             }
           >
             <section className="flex h-full min-h-0 flex-col" aria-label={title}>

@@ -8,21 +8,29 @@ afterEach(cleanup);
 function renderPageFilters() {
   const onIntervalChange = mock(() => undefined);
   const onDateRangeApply = mock(() => undefined);
-  render(<PageFilters onIntervalChange={onIntervalChange} onDateRangeApply={onDateRangeApply} />);
+  render(
+    <PageFilters
+      onIntervalChange={onIntervalChange}
+      onDateRangeApply={onDateRangeApply}
+      onVisibilityChange={() => undefined}
+    />,
+  );
   return { onIntervalChange, onDateRangeApply };
 }
 
-test('Pages keeps only interval and date controls behind the filter icon', async () => {
+test('Pages keeps visibility, interval and date controls behind the filter icon', async () => {
   const user = userEvent.setup();
   const { onIntervalChange } = renderPageFilters();
   const trigger = screen.getByRole('button', { name: 'Filter pages' });
 
   expect(trigger.textContent).toBe('');
   expect(screen.queryByRole('searchbox', { name: 'Keyword' })).toBeNull();
+  expect(screen.queryByRole('group', { name: 'Visibility' })).toBeNull();
 
   await user.click(trigger);
 
   expect(screen.queryByRole('searchbox')).toBeNull();
+  expect(screen.getByRole('group', { name: 'Visibility' })).toBeTruthy();
   expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.getByRole('button', { name: 'Filter by date range: Choose dates' })).toBeTruthy();
 
@@ -37,6 +45,7 @@ test('Pages hides date filtering when pages without intervals are selected', asy
       interval="without"
       onIntervalChange={() => undefined}
       onDateRangeApply={() => undefined}
+      onVisibilityChange={() => undefined}
     />,
   );
 
