@@ -3,6 +3,7 @@ import { cn } from '@repo/ui/class-names';
 import { useState } from 'react';
 import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
 import { MAX_ASSET_MEBIBYTES } from '#backend/models/assets/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { useImageAssetSuggestions } from '../../lib/hooks/use-assets';
 import type { AssetSummary } from '../../queries/assets';
 import { AssetCardContent } from '../assets/asset-link';
@@ -15,16 +16,18 @@ import type { EntityImageInputProps } from './entity-form';
 const IMAGE_ACCEPT = EMBEDDABLE_ASSET_MEDIA_TYPES.join(',');
 
 export function EntityImagePicker({
+  visibility,
   selectedImageReadableId,
   pending,
   onSelect,
 }: {
+  visibility?: PublicationVisibility;
   selectedImageReadableId?: string;
   pending: boolean;
   onSelect: (asset: AssetSummary) => void;
 }) {
   const [query, setQuery] = useState('');
-  const suggestions = useImageAssetSuggestions(query);
+  const suggestions = useImageAssetSuggestions({ query, visibility });
 
   return (
     <div className="grid gap-3 pt-4">
