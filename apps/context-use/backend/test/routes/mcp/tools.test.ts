@@ -349,6 +349,8 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
       expect(assetToolDescriptions).toContain('identity, location, intent, or chronology');
       expect(JSON.stringify(tools)).not.toContain('storageKey');
       expect(JSON.stringify(tools)).not.toContain('uuid');
+      expect(JSON.stringify(tools)).not.toContain('publishedAt');
+      expect(JSON.stringify(tools)).not.toContain('publicId');
 
       const gatedTools = new Set([
         'create_knowledge_page',
@@ -414,7 +416,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
         results: [
           {
             resourceType: 'entity',
-            publication: { publicId: null, publishedAt: null },
+            publication: { isPublic: false },
             address: 'context-use://entity/luca-bianchi',
             readableId: 'luca-bianchi',
             name: 'Luca Bianchi',
@@ -424,7 +426,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
           },
           {
             resourceType: 'knowledge_page',
-            publication: { publicId: null, publishedAt: null, publishedRevisionNumber: null },
+            publication: { isPublic: false, publishedRevisionNumber: null },
             address: 'context-use://page/growth-playbook',
             readableId: 'growth-playbook',
             title: 'Growth playbook',
@@ -585,8 +587,10 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
 
       expect(guide).toContain('resource reads include `publication`');
-      expect(guide).toContain('Prefer pages with no active publication');
-      expect(guide).toMatch(/non-null `publishedAt`\s+means active; null means private/i);
+      expect(guide).toContain('Prefer private pages');
+      expect(guide).toMatch(/`publication.isPublic`:\s+true means public; false means private/);
+      expect(guide).not.toContain('publishedAt');
+      expect(guide).not.toContain('publicId');
       expect(guide).toMatch(/even when the latest revision is private/);
       expect(guide).toMatch(
         /prefer creating a new private page unless the user explicitly wants to modify\s+the public page/,
@@ -1751,16 +1755,16 @@ test('resource results carry current owner-scoped publication status through sea
           const result = await client.callTool(input);
           expect(result.isError).not.toBe(true);
           expectNoInternalResourceIds(result.structuredContent);
+          expect(JSON.stringify(result)).not.toContain('publishedAt');
+          expect(JSON.stringify(result)).not.toContain('publicId');
           return result.structuredContent as Record<string, unknown>;
         }
         async function assertStatus({
-          publicId,
-          publishedAt,
+          isPublic,
           publishedRevisionNumber,
           revisionNumber,
         }: {
-          publicId: unknown;
-          publishedAt: string | null;
+          isPublic: boolean;
           publishedRevisionNumber: number | null;
           revisionNumber: number;
         }) {
@@ -1770,8 +1774,7 @@ test('resource results carry current owner-scoped publication status through sea
           });
           for (const resource of resources) {
             const expected = {
-              publicId,
-              publishedAt,
+              isPublic,
               ...(resource.resourceType === 'page' ? { publishedRevisionNumber } : {}),
             };
             const address = `context-use://${resource.resourceType}/${resource.readableId}`;
@@ -1827,8 +1830,7 @@ test('resource results carry current owner-scoped publication status through sea
           }
         }
         await assertStatus({
-          publicId: null,
-          publishedAt: null,
+          isPublic: false,
           publishedRevisionNumber: null,
           revisionNumber: 1,
         });
@@ -1846,15 +1848,13 @@ test('resource results carry current owner-scoped publication status through sea
           ).state,
         ).toBe('saved');
         await assertStatus({
-          publicId: expect.any(String),
-          publishedAt: NOW,
+          isPublic: true,
           publishedRevisionNumber: 1,
           revisionNumber: 2,
         });
         await transition({ ownerId: OWNER_USER_ID, action: 'unpublish' });
         await assertStatus({
-          publicId: expect.any(String),
-          publishedAt: null,
+          isPublic: false,
           publishedRevisionNumber: null,
           revisionNumber: 2,
         });

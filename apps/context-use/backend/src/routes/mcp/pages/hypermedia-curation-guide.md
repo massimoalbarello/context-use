@@ -69,9 +69,9 @@ active graph. Do not add a stable/transient label; infer durability later from e
 ## Revise and archive carefully
 
 Search results, lists, and resource reads include `publication` for pages, entities, and assets.
-Prefer pages with no active publication. Before editing, read the resource and inspect
-`publication`: non-null `publishedAt` means active; null means private, even if `publicId` remains
-after withdrawal. Reread the resource if status is unavailable or stale before deciding how to edit.
+Prefer private pages. Before editing, read the resource and inspect `publication.isPublic`:
+true means public; false means private. Reread the resource if status is unavailable or stale
+before deciding how to edit.
 For a public page, prefer creating a new private page unless the user explicitly wants to modify
 the public page. Updating a public page requires explicit user confirmation of the proposed edit,
 even when the latest revision is private. Existing explicit confirmation counts.

@@ -5,19 +5,7 @@ import type {
 } from '#backend/models/publications/model.ts';
 
 export const McpPublicationSchema = z.object({
-  publicId: z
-    .string()
-    .nullable()
-    .describe(
-      'Stable public handle, retained after withdrawal. Its presence does not mean public.',
-    ),
-  publishedAt: z
-    .string()
-    .datetime()
-    .nullable()
-    .describe(
-      'Non-null means an active publication; null means private, even with a retained publicId.',
-    ),
+  isPublic: z.boolean().describe('Whether the resource is currently public.'),
 });
 
 export const McpPagePublicationSchema = McpPublicationSchema.extend({
@@ -33,8 +21,7 @@ export const McpPagePublicationSchema = McpPublicationSchema.extend({
 
 export function mcpPublication(publication: PublicationStatus) {
   return {
-    publicId: publication.publicId,
-    publishedAt: publication.publishedAt,
+    isPublic: publication.publishedAt !== null,
   };
 }
 
