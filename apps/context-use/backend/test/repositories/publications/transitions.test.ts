@@ -205,6 +205,7 @@ test('entity publication explicitly includes its current portrait and does not r
     await assignPortrait(db);
     const input = request('entity');
     expect(await repository.prepare(input)).toMatchObject({
+      entityIdentity: { description: 'Test entity', entityType: null },
       includedImage: {
         resource: { resourceType: 'asset', readableId: 'primary', name: 'Asset' },
         publication: { publicId: null, publishedAt: null },
@@ -285,6 +286,7 @@ test('already public portrait identity stays live without invalidating entity ap
     await db`update "entity" set "name" = 'Live entity name', "description" = 'Live description' where "id" = 'owner-a-entity-primary'`;
     expect(await repository.prepare(input)).toMatchObject({
       resource: { name: 'Live entity name' },
+      entityIdentity: { description: 'Live description', entityType: null },
       publication: { publishedAt: LATER },
       includedImage: { resource: { name: 'Live public name' } },
     });

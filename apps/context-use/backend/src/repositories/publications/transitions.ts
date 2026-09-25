@@ -5,6 +5,7 @@ import type {
   PublicationStatus,
 } from '#backend/models/publications/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
+import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
 import { pagePublicationBlockers, withdrawalBlockers } from './dependencies.ts';
 import { createPublicId } from './public-id.ts';
 import type { PublicationRequest, PublicationTransitionResult } from './repository.ts';
@@ -152,6 +153,10 @@ async function evaluate({ db, input }: { db: Transaction; input: PublicationRequ
       name: target.name,
     },
     publication: status(target),
+    entityIdentity:
+      'entityType' in target
+        ? { description: target.description, entityType: entityTypeFrom(target.entityType) }
+        : null,
     includedImage: image
       ? {
           resource: { resourceType: 'asset', readableId: image.readableId, name: image.name },
