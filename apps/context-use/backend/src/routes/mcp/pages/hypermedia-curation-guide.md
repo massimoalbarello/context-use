@@ -68,12 +68,12 @@ active graph. Do not add a stable/transient label; infer durability later from e
 
 ## Revise and archive carefully
 
-Before editing an existing page, call `read_publication_status` with its canonical address.
-Prefer pages with no active publication. Non-null `publishedAt` means active; null means private,
-even if `publicId` remains after withdrawal. Check again if status is unavailable or stale before
-deciding how to edit. For an active publication, obtain informed user confirmation of the proposed
-edit, even when the latest revision is private. Existing explicit, informed confirmation counts.
-This confirmation is agent guidance, not a server edit token.
+Search results, lists, and resource reads include `publication` for pages, entities, and assets.
+Prefer pages with no active publication. Before editing, read the resource and inspect
+`publication`: non-null `publishedAt` means active; null means private, even if `publicId` remains
+after withdrawal. Reread the resource if status is unavailable or stale before deciding how to edit.
+For an active publication, obtain informed user confirmation of the proposed edit, even when the latest revision is private.
+Existing explicit, informed confirmation counts. This confirmation is agent guidance, not a server edit token.
 
 Edits create private page revisions; `publishedRevisionNumber` identifies the unchanged public
 revision. Only the owner can publish or unpublish with a fresh passkey approval bound to that

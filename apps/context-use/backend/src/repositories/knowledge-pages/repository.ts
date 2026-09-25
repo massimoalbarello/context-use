@@ -209,6 +209,11 @@ async function findCurrentKnowledgePage({
       page."current_revision_id" as "currentRevisionId",
       revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
       revision."temporal_coverage" as "temporalCoverage",
+      page."public_id" as "publicId", page."published_at" as "publishedAt",
+      (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+        where published_revision."id" = page."published_revision_id"
+          and published_revision."owner_id" = page."owner_id"
+          and published_revision."page_id" = page."id") as "publishedRevisionNumber",
       revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
       revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
       page."updated_at" as "updatedAt"
@@ -472,6 +477,9 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           readableId: input.readableId,
           currentRevisionId: input.revisionId,
           revisionNumber: 1,
+          publicId: null,
+          publishedAt: null,
+          publishedRevisionNumber: null,
           title: input.title,
           excerpt: input.excerpt,
           temporalCoverage: temporal.expression,
@@ -634,6 +642,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt"
       from "knowledge_page" page
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
@@ -720,6 +733,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt"
       from "entity" entity
       join "knowledge_page_entity_mention" mention
@@ -795,6 +813,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         page."current_revision_id" as "currentRevisionId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         revision."storage_key" as "storageKey", revision."content_hash" as "contentHash",
         revision."size_bytes" as "sizeBytes", page."created_at" as "createdAt",
         page."updated_at" as "updatedAt"
@@ -901,8 +924,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf",
+        entity."description", entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+        image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",
         image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
@@ -979,6 +1005,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
         current_referring_revision."temporal_coverage" as "temporalCoverage",
+        referring_page."public_id" as "publicId", referring_page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = referring_page."published_revision_id"
+            and published_revision."owner_id" = referring_page."owner_id"
+            and published_revision."page_id" = referring_page."id") as "publishedRevisionNumber",
         referring_page."created_at" as "createdAt", referring_page."updated_at" as "updatedAt",
         inbound_reference."target_fragment" as "fragment"
       from "knowledge_page_reference" inbound_reference
@@ -1034,6 +1065,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
         reference."target_fragment" as "fragment"
       from "knowledge_page_reference" reference
@@ -1063,6 +1099,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt",
         reference."target_fragment" as "fragment"
       from "knowledge_page_reference" reference
@@ -1094,6 +1135,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
       /* @type presentation 'embed' | 'attachment' */
       select asset."id", asset."readable_id" as "readableId", asset."name",
+        asset."public_id" as "publicId", asset."published_at" as "publishedAt",
         asset."media_type" as "mediaType", asset."extension",
         asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt",
         asset."updated_at" as "updatedAt", usage."presentation"

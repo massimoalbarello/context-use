@@ -149,11 +149,6 @@ try {
   const mcpClientAuthorizationsService = new McpClientAuthorizationsService(
     new McpClientAuthorizationsRepository(database),
   );
-  const publicationApprovalService = new PublicationApprovalService({
-    publications: new PublicationsRepository(database),
-    approvals: new PublicationApprovalsRepository(database),
-    passkeys: passkeyConfiguration({ baseUrl: env.BASE_URL, nibrunHostname: env.NIBRUN_HOSTNAME }),
-  });
   const mcpTransport = createMcpTransport({
     createServer: ({ principal }) =>
       createContextUseMcpServer({
@@ -163,9 +158,6 @@ try {
         retrievalService,
         pagesService,
         profilesService,
-        publicationStatusService: {
-          status: publicationApprovalService.status.bind(publicationApprovalService),
-        },
         recordsService,
         transferCapabilities: assetTransferCapabilities,
       }),
@@ -173,6 +165,11 @@ try {
   const publicResourcesService = new PublicResourcesService({
     resources: new PublicResourcesRepository(database),
     storage,
+  });
+  const publicationApprovalService = new PublicationApprovalService({
+    publications: new PublicationsRepository(database),
+    approvals: new PublicationApprovalsRepository(database),
+    passkeys: passkeyConfiguration({ baseUrl: env.BASE_URL, nibrunHostname: env.NIBRUN_HOSTNAME }),
   });
   const auth = createAuth({
     database,

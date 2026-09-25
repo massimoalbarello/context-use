@@ -18,18 +18,26 @@ import type {
 } from '#backend/models/knowledge-pages/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
+import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
+import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
+import { HypermediaRetrievalRepository } from '#backend/repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
+import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
-import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
-import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
+import { AssetsService, type AssetsServiceContract } from '#backend/services/assets/service.ts';
+import {
+  EntitiesService,
+  type EntitiesServiceContract,
+} from '#backend/services/entities/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
+import { HypermediaRetrievalService } from '#backend/services/hypermedia-retrieval/service.ts';
 import {
   KnowledgePagesService,
   type KnowledgePagesServiceContract,
 } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { RecordResourcesServiceContract } from '#backend/services/records/service.ts';
-import { unusedAssetFacesService, unusedPublicationApprovalService } from '../../support/app.ts';
+import { unusedAssetFacesService } from '../../support/app.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
@@ -49,6 +57,8 @@ function unexpectedCall(): never {
 }
 
 const entity: Entity = {
+  publicId: null,
+  publishedAt: null,
   id: INTERNAL_ENTITY_ID,
   readableId: 'luca-bianchi',
   name: 'Luca Bianchi',
@@ -61,6 +71,9 @@ const entity: Entity = {
 };
 
 const page: KnowledgePage = {
+  publicId: null,
+  publishedAt: null,
+  publishedRevisionNumber: null,
   id: INTERNAL_PAGE_ID,
   readableId: 'growth-playbook',
   title: 'Growth playbook',
@@ -151,7 +164,6 @@ async function withMcpClient<T>({
     retrievalService,
     pagesService,
     profilesService,
-    publicationStatusService: { status: unusedPublicationApprovalService.status },
     transferCapabilities: unusedAssetTransferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -203,7 +215,6 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
-        'read_publication_status',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -291,7 +302,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
           createPageInput.required.includes('temporalCoverage'),
       ).toBe(false);
       const updatePageTool = tools.find(({ name }) => name === 'update_knowledge_page');
-      expect(updatePageTool?.description).toContain('First call read_publication_status');
+      expect(updatePageTool?.description).toContain('First read the page and inspect publication');
       expect(updatePageTool?.description).toContain('informed user confirmation');
       const updatePageInput = updatePageTool?.inputSchema;
       expect(updatePageTool?.description).toMatch(
@@ -396,6 +407,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
         results: [
           {
             resourceType: 'entity',
+            publication: { publicId: null, publishedAt: null },
             address: 'context-use://entity/luca-bianchi',
             readableId: 'luca-bianchi',
             name: 'Luca Bianchi',
@@ -405,6 +417,7 @@ test('search_hypermedia returns compact typed previews and canonical dereference
           },
           {
             resourceType: 'knowledge_page',
+            publication: { publicId: null, publishedAt: null, publishedRevisionNumber: null },
             address: 'context-use://page/growth-playbook',
             readableId: 'growth-playbook',
             title: 'Growth playbook',
@@ -564,9 +577,9 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('names, aliases, identifiers, and topic phrases');
       expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
 
-      expect(guide).toContain('call `read_publication_status`');
+      expect(guide).toContain('resource reads include `publication`');
       expect(guide).toContain('Prefer pages with no active publication');
-      expect(guide).toMatch(/Non-null `publishedAt` means active; null means private/);
+      expect(guide).toMatch(/non-null `publishedAt`\s+means active; null means private/i);
       expect(guide).toMatch(/even when the latest revision is private/);
       expect(guide).toContain('Existing explicit, informed confirmation counts');
       expect(guide).toMatch(/Edits create private page revisions/);
@@ -1591,4 +1604,271 @@ test('MCP archival reports published resources as errors for every resource grou
       }
     },
   });
+});
+
+test('resource results carry current owner-scoped publication status through search, lists and nested reads', async () => {
+  const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-mcp-publications-'));
+  const database = await createSqliteDatabase({ dataFolder });
+  try {
+    await runMigrations({ db: database });
+    await seedMcpAuthorization(database);
+    await database`
+      insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt")
+      values ('foreign-owner', 'Other owner', 'other@example.invalid', 1, ${NOW}, ${NOW})
+    `;
+    const storage = new LocalStorage(join(dataFolder, 'objects'));
+    const assets = new AssetsRepository(database);
+    const pages = new KnowledgePagesRepository(database);
+    const entitiesService = new EntitiesService({
+      entities: new EntitiesRepository(database),
+      assets,
+      pages,
+      onPersonPortraitAvailable: async () => {},
+    });
+    const assetsService = new AssetsService({ assets, storage, faces: unusedAssetFacesService });
+    const pagesService = new KnowledgePagesService({ pages, storage });
+    const retrievalService = new HypermediaRetrievalService({
+      retrieval: new HypermediaRetrievalRepository({ database, storage }),
+    });
+    const publications = new PublicationsRepository(database);
+    const change = { clientName: null, message: 'Create publication test resources' };
+    const markdown =
+      '# Awareness page\n\n[Person](context-use://entity/awareness-person)\n\n[File](context-use://asset/awareness-file)';
+    for (const ownerId of [OWNER_USER_ID, 'foreign-owner']) {
+      expect(
+        (
+          await entitiesService.create({
+            ownerId,
+            change,
+            name: 'Awareness person',
+            description: 'A collaborator',
+          })
+        ).state,
+      ).toBe('created');
+      expect(
+        (
+          await assetsService.create({
+            ownerId,
+            change,
+            name: 'Awareness file',
+            file: new Blob(['Awareness attachment'], { type: 'text/plain' }),
+          })
+        ).state,
+      ).toBe('created');
+      expect(
+        (
+          await pagesService.create({
+            ownerId,
+            actor: { kind: 'owner' },
+            message: change.message,
+            markdown,
+          })
+        ).state,
+      ).toBe('saved');
+    }
+    expect(
+      (
+        await pagesService.create({
+          ownerId: OWNER_USER_ID,
+          actor: { kind: 'owner' },
+          message: change.message,
+          markdown: '# Awareness overview\n\n[Details](context-use://page/awareness-page)',
+        })
+      ).state,
+    ).toBe('saved');
+    const resources = [
+      {
+        resourceType: 'asset',
+        readableId: 'awareness-file',
+        read: 'read_asset',
+        list: 'list_assets',
+      },
+      {
+        resourceType: 'entity',
+        readableId: 'awareness-person',
+        read: 'read_entity',
+        list: 'list_entities',
+      },
+      {
+        resourceType: 'page',
+        readableId: 'awareness-page',
+        read: 'read_knowledge_page',
+        list: 'list_knowledge_pages',
+      },
+    ] as const;
+    async function transition({
+      ownerId,
+      action,
+    }: {
+      ownerId: string;
+      action: 'publish' | 'unpublish';
+    }) {
+      // Dependencies publish first and withdraw last.
+      for (const resource of action === 'publish' ? resources : [...resources].reverse()) {
+        const request = {
+          ownerId,
+          resourceType: resource.resourceType,
+          readableId: resource.readableId,
+          action,
+          revisionNumber: 1,
+        };
+        const preparation = await publications.prepare(request);
+        if (!preparation) {
+          throw new Error('Missing publication preparation');
+        }
+        expect(
+          (
+            await publications.execute({
+              ...request,
+              expectedState: preparation.expectedState,
+              publishedAt: NOW,
+            })
+          ).state,
+        ).toBe('changed');
+      }
+    }
+    // Identical readable IDs in another account must not affect this owner's status.
+    await transition({ ownerId: 'foreign-owner', action: 'publish' });
+    await withMcpClient({
+      actor: { ...principal, ownerId: OWNER_USER_ID },
+      entitiesService,
+      assetsService,
+      pagesService,
+      retrievalService,
+      run: async (client) => {
+        async function read(input: Parameters<Client['callTool']>[0]) {
+          const result = await client.callTool(input);
+          expect(result.isError).not.toBe(true);
+          expectNoInternalResourceIds(result.structuredContent);
+          return result.structuredContent as Record<string, unknown>;
+        }
+        async function assertStatus({
+          publicId,
+          publishedAt,
+          publishedRevisionNumber,
+          revisionNumber,
+        }: {
+          publicId: unknown;
+          publishedAt: string | null;
+          publishedRevisionNumber: number | null;
+          revisionNumber: number;
+        }) {
+          const search = await read({
+            name: 'search_hypermedia',
+            arguments: { query: 'Awareness' },
+          });
+          for (const resource of resources) {
+            const expected = {
+              publicId,
+              publishedAt,
+              ...(resource.resourceType === 'page' ? { publishedRevisionNumber } : {}),
+            };
+            const address = `context-use://${resource.resourceType}/${resource.readableId}`;
+            const detail = await read({
+              name: resource.read,
+              arguments: { address, ownerId: 'foreign-owner' },
+            });
+            expect(detail.publication).toEqual(expected);
+            const list = await read({ name: resource.list, arguments: {} });
+            expect(list.items).toContainEqual(
+              expect.objectContaining({ address, publication: expected }),
+            );
+            expect(search.results).toContainEqual(
+              expect.objectContaining({ address, publication: expected }),
+            );
+            if (resource.resourceType === 'page') {
+              expect(detail.revisionNumber).toBe(revisionNumber);
+              const overview = await read({
+                name: 'read_knowledge_page',
+                arguments: { address: 'context-use://page/awareness-overview' },
+              });
+              expect(overview.references).toEqual([
+                expect.objectContaining({
+                  page: expect.objectContaining({ publication: expected }),
+                }),
+              ]);
+              expect(
+                await read({
+                  name: 'read_entity',
+                  arguments: { address: 'context-use://entity/awareness-person' },
+                }),
+              ).toMatchObject({ pages: [expect.objectContaining({ publication: expected })] });
+              expect(
+                await read({
+                  name: 'read_asset',
+                  arguments: { address: 'context-use://asset/awareness-file' },
+                }),
+              ).toMatchObject({
+                usages: [
+                  expect.objectContaining({
+                    page: expect.objectContaining({ publication: expected }),
+                  }),
+                ],
+              });
+            } else if (resource.resourceType === 'entity') {
+              expect(
+                await read({
+                  name: 'read_knowledge_page',
+                  arguments: { address: 'context-use://page/awareness-page' },
+                }),
+              ).toMatchObject({ mentions: [expect.objectContaining({ publication: expected })] });
+            }
+          }
+        }
+        await assertStatus({
+          publicId: null,
+          publishedAt: null,
+          publishedRevisionNumber: null,
+          revisionNumber: 1,
+        });
+        await transition({ ownerId: OWNER_USER_ID, action: 'publish' });
+        expect(
+          (
+            await pagesService.update({
+              ownerId: OWNER_USER_ID,
+              actor: { kind: 'owner' },
+              message: 'Draft a private revision',
+              readableId: 'awareness-page',
+              expectedRevisionNumber: 1,
+              markdown: `${markdown}\n\nPrivate draft.`,
+            })
+          ).state,
+        ).toBe('saved');
+        await assertStatus({
+          publicId: expect.any(String),
+          publishedAt: NOW,
+          publishedRevisionNumber: 1,
+          revisionNumber: 2,
+        });
+        await transition({ ownerId: OWNER_USER_ID, action: 'unpublish' });
+        await assertStatus({
+          publicId: expect.any(String),
+          publishedAt: null,
+          publishedRevisionNumber: null,
+          revisionNumber: 2,
+        });
+        for (const resource of resources) {
+          const result = await client.callTool({
+            name: resource.read,
+            arguments: { address: `context-use://${resource.resourceType}/missing` },
+          });
+          expect(errorCode(result)).toBe('not_found');
+        }
+      },
+    });
+    // Foreign resources have not been withdrawn along with this owner's resources.
+    for (const resource of resources) {
+      const status = await publications[
+        resource.resourceType === 'page'
+          ? 'pageStatus'
+          : resource.resourceType === 'entity'
+            ? 'entityStatus'
+            : 'assetStatus'
+      ]({ ownerId: 'foreign-owner', readableId: resource.readableId });
+      expect(status?.publishedAt).toBe(NOW);
+    }
+  } finally {
+    await database.close();
+    await rm(dataFolder, { recursive: true, force: true });
+  }
 });

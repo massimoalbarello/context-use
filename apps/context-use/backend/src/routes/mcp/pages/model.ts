@@ -14,9 +14,14 @@ import {
   RecordAddressSchema,
 } from '#backend/routes/mcp/coordinates.ts';
 import { McpEntitySchema, mcpEntity } from '#backend/routes/mcp/entities/model.ts';
+import {
+  McpPagePublicationSchema,
+  mcpPagePublication,
+} from '#backend/routes/mcp/publications/model.ts';
 
 export const McpKnowledgePageSummarySchema = z.object({
   address: PageAddressSchema,
+  publication: McpPagePublicationSchema,
   readableId: McpReadableIdSchema,
   title: z.string(),
   excerpt: z.string(),
@@ -65,6 +70,7 @@ export function mcpKnowledgePageSummary(page: KnowledgePageSummary) {
   return {
     address: pageAddress(page.readableId),
     readableId: page.readableId,
+    publication: mcpPagePublication(page),
     title: page.title,
     excerpt: page.excerpt,
     temporalCoverage: page.temporalCoverage,
