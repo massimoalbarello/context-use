@@ -33,7 +33,10 @@ export function PagePublicationReview({
     >
       {publishing ? (
         <>
-          <PagePublicationScope selected={selected} published={published} />
+          <p className="text-sm">
+            Anyone with the link can read this page. Future edits stay private until you publish
+            them.
+          </p>
           <PagePublicationComparison
             error={comparison.error}
             diff={reviewed ? diff : undefined}
@@ -48,25 +51,6 @@ export function PagePublicationReview({
         </p>
       )}
     </PublicationReviewDialog>
-  );
-}
-
-function PagePublicationScope({
-  selected,
-  published,
-}: {
-  selected: number | null | undefined;
-  published: number | null | undefined;
-}) {
-  return (
-    <p className="text-sm">
-      Publish revision {selected}.{' '}
-      {published == null
-        ? 'There is no active public revision. Review the full content below.'
-        : `This replaces public revision ${published}. Review the changes below.`}{' '}
-      Anyone with the public link can read this revision. Later private revisions are not included;
-      saving changes does not publish them.
-    </p>
   );
 }
 

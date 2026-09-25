@@ -268,8 +268,11 @@ test('first publication reviews full selected content before allowing confirmati
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   const dialog = await screen.findByRole('dialog', { name: 'Publish page' });
   expect(within(dialog).getByText('Prepared title')).toBeTruthy();
-  expect(within(dialog).getByText(/Publish revision 7/)).toBeTruthy();
-  expect(within(dialog).getByText(/no active public revision/)).toBeTruthy();
+  expect(
+    within(dialog).getByText(
+      'Anyone with the link can read this page. Future edits stay private until you publish them.',
+    ),
+  ).toBeTruthy();
   await screen.findByText('Loading changes…');
   const button = screen.getByRole('button', { name: 'Confirm with passkey' });
   expect(button.hasAttribute('disabled')).toBe(true);
@@ -318,7 +321,7 @@ test('skipped private revisions compare active public to selected and a later re
   page.markdown = '# New private title\n\nNew private text';
   await refreshPage(client);
   expect(within(dialog).getByText('Prepared title')).toBeTruthy();
-  expect(within(dialog).getByText(/Publish revision 3/)).toBeTruthy();
+  expect(within(dialog).getByText('Revision 1 → 3')).toBeTruthy();
   expect(within(dialog).queryByText('New private title')).toBeNull();
   await confirm(user);
   await screen.findByText('Public revision 3');
@@ -341,7 +344,6 @@ test('a changed public baseline requires explicit renewed review and its own rea
   state.diffResponse = () => response.promise;
   state.completeError = false;
   await user.click(screen.getByRole('button', { name: 'Review again' }));
-  await screen.findByText(/replaces public revision 2/);
   await screen.findByText('Loading changes…');
   expect(screen.queryByText('Revision 1 → 3')).toBeNull();
   expect(
