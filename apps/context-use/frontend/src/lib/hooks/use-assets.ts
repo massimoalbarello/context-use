@@ -1,14 +1,15 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import {
+  type AssetListFilters,
   assetPreviewQueryOptions,
   assetQueryOptions,
   assetsQueryOptions,
   imageAssetSuggestionsQueryOptions,
 } from '../../queries/assets';
 
-export function useAssets(query?: string) {
-  const result = useInfiniteQuery(assetsQueryOptions(query));
+export function useAssets(filters: AssetListFilters = {}) {
+  const result = useInfiniteQuery(assetsQueryOptions(filters));
   return {
     ...result,
     assets: result.data?.pages.flatMap((page) => page.items) ?? [],

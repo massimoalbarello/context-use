@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { KnowledgePageIntervalFilter } from '#backend/models/knowledge-pages/model.ts';
+import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
@@ -13,6 +14,7 @@ export type KnowledgePageListFilters = {
   dateRange?: CalendarDateRange;
   query?: string;
   interval?: KnowledgePageIntervalFilter;
+  visibility?: PublicationVisibility;
 };
 
 export type KnowledgePage = NonNullable<
@@ -77,10 +79,12 @@ async function pageSearchPage({
   limit,
   interval,
   time,
+  visibility,
 }: {
   query: string;
   limit?: number;
   interval?: KnowledgePageIntervalFilter;
+  visibility?: PublicationVisibility;
   time?: string;
 }): Promise<KnowledgePagePage> {
   const result = await searchHypermedia({
@@ -89,6 +93,7 @@ async function pageSearchPage({
     limit,
     interval,
     time,
+    visibility,
   });
   return {
     items: result.results.flatMap((hit) =>
@@ -99,17 +104,25 @@ async function pageSearchPage({
   };
 }
 
-export function pagesQueryOptions({ dateRange, query, interval }: KnowledgePageListFilters = {}) {
+export function pagesQueryOptions({
+  dateRange,
+  query,
+  interval,
+  visibility,
+}: KnowledgePageListFilters = {}) {
   return infiniteQueryOptions({
-    queryKey: [...pagesListQueryKey, { dateRange: dateRange ?? null, query, interval }],
+    queryKey: [
+      ...pagesListQueryKey,
+      { dateRange: dateRange ?? null, query, interval, visibility: visibility ?? 'all' },
+    ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
       if (query?.trim()) {
-        return pageSearchPage({ query, interval, time });
+        return pageSearchPage({ query, interval, time, visibility });
       }
       const { data, error } = await api.api.pages.get({
-        query: { offset: pageParam, time, interval },
+        query: { offset: pageParam, time, interval, visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
