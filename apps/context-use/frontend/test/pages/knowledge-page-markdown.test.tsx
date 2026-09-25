@@ -88,7 +88,7 @@ describe('knowledge page Markdown', () => {
     expect(markdown).not.toBeNull();
     const privateHtml = renderToStaticMarkup(<KnowledgePageMarkdown markdown={source} />);
     const publicHtml = publicPageHtml({
-      publicId: '1822999b-37d0-4277-b578-697b704e6e27',
+      publicId: 'page_parity',
       title: 'Heading parity',
       markdown: markdown!,
     });
