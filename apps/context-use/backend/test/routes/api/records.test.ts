@@ -357,9 +357,19 @@ test('pages reference owner records across revisions, source deletion and archiv
         (await records.findResource({ ownerId: OWNER_USER_ID, readableId: own.readableId }))
           ?.backlinks,
       ).toEqual([]);
-      const remaining =
-        await database`select * from "knowledge_page_record_reference" where "owner_id" = ${OWNER_USER_ID}`;
-      expect(remaining).toHaveLength(0);
+      const remaining = await database`
+        select revision."revision_number" as "revisionNumber",
+          reference."target_record_readable_id" as "recordReadableId"
+        from "knowledge_page_record_reference" reference
+        join "knowledge_page_revision" revision on revision."id" = reference."source_revision_id"
+        where reference."owner_id" = ${OWNER_USER_ID}
+        order by revision."revision_number"
+      `;
+      expect(remaining).toEqual([
+        { revisionNumber: 1, recordReadableId: own.readableId },
+        { revisionNumber: 2, recordReadableId: own.readableId },
+        { revisionNumber: 4, recordReadableId: own.readableId },
+      ]);
     },
   });
 });

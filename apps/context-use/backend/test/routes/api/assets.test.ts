@@ -448,7 +448,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
         path: `/pages/${page.readableId}`,
         body: {
           expectedRevisionNumber: page.revisionNumber,
-          markdown: '# Evidence report\n\nThe chart was removed before archiving the asset.',
+          markdown:
+            '# Evidence report\n\nThe chart was removed before archiving the asset. Keep the [memo](context-use://asset/investment-memo).',
         },
       }),
     );
@@ -493,6 +494,33 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(
       (await app.handle(new Request('http://localhost/api/assets/quarterly-chart/content'))).status,
     ).toBe(StatusMap['Not Found']);
+    expect(
+      (await app.handle(jsonRequest({ method: 'PUT', path: `/pages/${page.readableId}/archive` })))
+        .status,
+    ).toBe(StatusMap['No Content']);
+    const savedUsages = await database`
+      select revision."revision_number" as "revisionNumber",
+        asset."readable_id" as "assetReadableId", usage."presentation"
+      from "knowledge_page_asset_usage" usage
+      join "knowledge_page_revision" revision on revision."id" = usage."source_revision_id"
+      join "asset" asset on asset."id" = usage."target_asset_id"
+      where usage."owner_id" = ${OWNER_USER_ID}
+      order by revision."revision_number", asset."readable_id", usage."presentation"
+    `;
+    expect(savedUsages).toEqual([
+      { revisionNumber: 1, assetReadableId: 'investment-memo', presentation: 'attachment' },
+      { revisionNumber: 1, assetReadableId: 'quarterly-chart', presentation: 'attachment' },
+      { revisionNumber: 1, assetReadableId: 'quarterly-chart', presentation: 'embed' },
+      { revisionNumber: 2, assetReadableId: 'investment-memo', presentation: 'attachment' },
+    ]);
+    const memoResponse = await app.handle(
+      new Request('http://localhost/api/assets/investment-memo'),
+    );
+    expect(await memoResponse.json()).toMatchObject({ usages: [] });
+    expect(
+      (await app.handle(jsonRequest({ method: 'PUT', path: '/assets/investment-memo/archive' })))
+        .status,
+    ).toBe(StatusMap['No Content']);
   } finally {
     await database.close();
     await rm(dataFolder, { recursive: true, force: true });
