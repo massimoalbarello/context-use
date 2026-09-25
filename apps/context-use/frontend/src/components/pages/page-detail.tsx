@@ -247,16 +247,18 @@ function KnowledgePageDetailContent({
         setArchiveConflict(null);
         setEditing(true);
       }}
+      publicationActions={
+        publication.isSuccess && (
+          <PagePublicationActions
+            publicId={isPublic ? publication.data.publicId : null}
+            isPublic={isPublic}
+            hasUnpublishedChanges={hasUnpublishedChanges}
+            unavailable={!!approval.request}
+            onReview={review}
+          />
+        )
+      }
     >
-      {publication.isSuccess && (
-        <PagePublicationActions
-          publicId={isPublic ? publication.data.publicId : null}
-          isPublic={isPublic}
-          hasUnpublishedChanges={hasUnpublishedChanges}
-          unavailable={!!approval.request}
-          onReview={review}
-        />
-      )}
       <ResourceArchiveAction
         blocked={isPublic || hasInboundUsages}
         pending={archivePage.isPending}
