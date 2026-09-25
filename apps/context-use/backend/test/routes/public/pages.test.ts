@@ -76,11 +76,14 @@ test('HTML and Markdown expose only the exact approved revision and retained lin
         ).toBe(body);
       }
       expect(before[0]).toContain('<title>Approved title</title>');
+      expect(before[0]).toContain('href="https://github.com/massimoalbarello/context-use"');
+      expect(before[0]).toContain(`<time dateTime="${page.updatedAt}">`);
       expect(before[0]).toContain(`href="/public/assets/${target.assetId}">Download chart</a>`);
       expect(before[1]).toContain(`[Download chart](/public/assets/${target.assetId})`);
-      expect(before[0]).toContain('View Markdown');
+      expect(before[0]).toContain('View as Markdown');
       expect(Object.keys((await resources.findPage({ publicId: id }))!).sort()).toEqual([
         'contentHash',
+        'modifiedAt',
         'sizeBytes',
         'storageKey',
         'targets',
@@ -88,6 +91,7 @@ test('HTML and Markdown expose only the exact approved revision and retained lin
       ]);
       expect(Object.keys((await service.pageContent({ publicId: id }))!).sort()).toEqual([
         'markdown',
+        'modifiedAt',
         'title',
       ]);
       await update({

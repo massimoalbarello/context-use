@@ -819,6 +819,7 @@ export interface IFindPublicEntityResult {
     name: string;
     description: string;
     entityType: string | null;
+    modifiedAt: string;
     hasImage: number;
     imagePublicId: string | null;
     imageMediaType: string | null;
@@ -829,6 +830,7 @@ export interface IFindPublicEntityResult {
 /** Result of query `FindPublicPage`. */
 export interface IFindPublicPageResult {
     title: string;
+    modifiedAt: string;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;

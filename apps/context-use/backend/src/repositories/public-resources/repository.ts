@@ -15,6 +15,7 @@ export interface StoredPublicAsset {
 }
 
 export interface StoredPublicPage {
+  modifiedAt: string;
   title: string;
   storageKey: string;
   contentHash: string;
@@ -23,6 +24,7 @@ export interface StoredPublicPage {
 }
 
 export interface PublicEntity {
+  modifiedAt: string;
   name: string;
   description: string;
   entityType: EntityType | null;
@@ -46,11 +48,11 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
   async findEntity({ publicId }: { publicId: string }): Promise<PublicEntity | null> {
     // Live identity and the exact published revision index share one database snapshot.
     const rows = await this.sql.FindPublicEntity`
-      /* @notNull name description */
+      /* @notNull name description modifiedAt */
       /* @type hasImage number */
       with active_entity as (
         select entity."id", entity."owner_id", entity."name", entity."description",
-          entity."entity_type", entity."image_asset_id"
+          entity."entity_type", entity."image_asset_id", entity."updated_at"
         from "entity" entity
         where entity."public_id" = ${publicId} and entity."published_at" is not null
           and entity."archived_at" is null
@@ -66,6 +68,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
           and page."published_at" is not null and page."published_revision_id" = revision."id"
       )
       select entity."name", entity."description", entity."entity_type" as "entityType",
+        entity."updated_at" as "modifiedAt",
         entity."image_asset_id" is not null as "hasImage",
         image."public_id" as "imagePublicId", image."media_type" as "imageMediaType",
         page."public_id" as "pagePublicId", page."title" as "pageTitle"
@@ -91,6 +94,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       return null;
     }
     return {
+      modifiedAt: entity.modifiedAt,
       name: entity.name,
       description: entity.description,
       entityType,
@@ -106,12 +110,12 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
   async findPage({ publicId }: { publicId: string }): Promise<StoredPublicPage | null> {
     // One statement selects the approved revision and its retained relationships together.
     const rows = await this.sql.FindPublicPage`
-      /* @notNull title storageKey contentHash sizeBytes */
+      /* @notNull title storageKey contentHash sizeBytes modifiedAt */
       /* @type publicId string | null */
       /* @type mediaType string | null */
       with active_page as (
         select revision."id", revision."owner_id", revision."title", revision."storage_key",
-          revision."content_hash", revision."size_bytes"
+          revision."content_hash", revision."size_bytes", revision."created_at"
         from "knowledge_page" page
         join "knowledge_page_revision" revision on revision."id" = page."published_revision_id"
           and revision."page_id" = page."id" and revision."owner_id" = page."owner_id"
@@ -152,7 +156,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
         join "knowledge_page_record_reference" link on link."source_revision_id" = source."id"
           and link."owner_id" = source."owner_id"
       )
-      select source."title", source."storage_key" as "storageKey",
+      select source."title", source."created_at" as "modifiedAt", source."storage_key" as "storageKey",
         source."content_hash" as "contentHash", source."size_bytes" as "sizeBytes",
         target."kind", target."readable_id" as "readableId", target."public_id" as "publicId",
         target."media_type" as "mediaType"
@@ -183,6 +187,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
     }
     return {
       title: page.title,
+      modifiedAt: page.modifiedAt,
       storageKey: page.storageKey,
       contentHash: page.contentHash,
       sizeBytes: Number(page.sizeBytes),

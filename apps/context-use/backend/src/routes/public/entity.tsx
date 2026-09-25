@@ -7,7 +7,9 @@ export function publicEntityHtml({
   entityType,
   imagePublicId,
   pages,
+  modifiedAt,
 }: {
+  modifiedAt: string;
   name: string;
   description: string;
   entityType: EntityType | null;
@@ -16,6 +18,7 @@ export function publicEntityHtml({
 }): string {
   return publicDocument({
     title: name,
+    modifiedAt,
     children: (
       <article>
         <header className="entity-identity">
