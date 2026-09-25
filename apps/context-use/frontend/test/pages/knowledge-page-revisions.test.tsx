@@ -70,7 +70,7 @@ function setup(response: (url: URL) => Promise<Response>) {
   });
   const result = render(
     <QueryClientProvider client={client}>
-      <KnowledgePageRevisions page={page} />
+      <KnowledgePageRevisions page={page} publication={null} />
     </QueryClientProvider>,
   );
   return { ...result, requests, user: userEvent.setup() };
