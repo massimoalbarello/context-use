@@ -1,5 +1,6 @@
 import { type UseMutationResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type ArchivePageResult, archivePage } from '../../queries/pages';
+import { publicationStatusQueryOptions } from '../../queries/publications';
 import { settleArchivedPageQueries } from './archive-query-cache';
 
 export function useArchivePage(): UseMutationResult<
@@ -14,5 +15,9 @@ export function useArchivePage(): UseMutationResult<
     onSuccess: (...[result, { readableId }]) => {
       settleArchivedPageQueries({ queryClient, readableId, result });
     },
+    onError: (...[_error, { readableId }]) =>
+      queryClient.invalidateQueries(
+        publicationStatusQueryOptions({ resourceType: 'page', readableId }),
+      ),
   });
 }
