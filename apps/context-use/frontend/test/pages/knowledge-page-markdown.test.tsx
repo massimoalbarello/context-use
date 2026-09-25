@@ -1,4 +1,12 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterContextProvider,
+} from '@tanstack/react-router';
+import { cleanup, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { publicPageMarkdown } from '#backend/models/public-resources/markdown.ts';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
@@ -8,7 +16,53 @@ import {
   knowledgeHeadingId,
 } from '../../src/components/pages/knowledge-page-markdown';
 
+afterEach(cleanup);
+
 describe('knowledge page Markdown', () => {
+  test('keeps a link focused across refreshes while updating entity and record information', async () => {
+    const router = createRouter({
+      routeTree: createRootRoute(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+    await router.load();
+    function Reader({ name = 'Alex Morgan', available = true }) {
+      return (
+        <RouterContextProvider router={router}>
+          <KnowledgePageMarkdown
+            markdown={
+              '# Evidence\n\n[Alex](context-use://entity/alex-morgan) read the [source](context-use://record/source-record).'
+            }
+            mentions={[{ readableId: 'alex-morgan', name, image: null }]}
+            recordReferences={[{ readableId: 'source-record', available }]}
+          />
+        </RouterContextProvider>
+      );
+    }
+    const { rerender } = render(<Reader />);
+    const link = screen.getByRole('link', { name: 'Alex' });
+    const user = userEvent.setup();
+    await user.tab();
+    expect(document.activeElement).toBe(link);
+    expect(within(link).getByText('A')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'source' })).toBeTruthy();
+
+    rerender(<Reader />);
+    expect(screen.getByRole('link', { name: 'Alex' })).toBe(link);
+    expect(document.activeElement).toBe(link);
+
+    rerender(<Reader name="Bailey Morgan" available={false} />);
+    expect(screen.getByRole('link', { name: 'Alex' })).toBe(link);
+    expect(document.activeElement).toBe(link);
+    expect(within(link).getByText('B')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'source' })).toBeNull();
+    expect(screen.getByText('(record unavailable)')).toBeTruthy();
+
+    rerender(<Reader name="Bailey Morgan" />);
+    expect(document.activeElement).toBe(link);
+    expect(screen.getByRole('link', { name: 'source' })).toBeTruthy();
+    expect(screen.queryByText('(record unavailable)')).toBeNull();
+  });
+
   test('derives readable anchors for linked page sections', () => {
     expect(knowledgeHeadingId('The Feedback Loop')).toBe('the-feedback-loop');
     expect(knowledgeHeadingId('Evidence, action & learning')).toBe('evidence-action-learning');
