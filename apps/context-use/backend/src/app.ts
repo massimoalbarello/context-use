@@ -1,5 +1,5 @@
 import { openapi } from '@elysiajs/openapi';
-import { Elysia } from 'elysia';
+import { Elysia, StatusMap } from 'elysia';
 import { type Auth, sessionSecuritySchemes } from '#backend/lib/auth/better-auth.ts';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import type { McpTransportContract } from '#backend/lib/mcp/transport.ts';
@@ -32,6 +32,7 @@ import type { KnowledgeProfilesServiceContract } from '#backend/services/knowled
 import type { McpClientAuthorizationsServiceContract } from '#backend/services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
+import type { PublicSiteServiceContract } from '#backend/services/public-site/service.ts';
 import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
@@ -61,6 +62,8 @@ export function createApp({
   profilesService,
   publicationApprovalService,
   publicResourcesService,
+  publicSiteService,
+  publicOwnerId,
   recordsService,
   apiKeysService,
   managedSyncsService,
@@ -85,6 +88,8 @@ export function createApp({
   profilesService: KnowledgeProfilesServiceContract;
   publicationApprovalService: PublicationApprovalServiceContract;
   publicResourcesService: PublicResourcesServiceContract;
+  publicSiteService: PublicSiteServiceContract;
+  publicOwnerId: string;
   recordsService: RecordsIngestionContract & RecordResourcesServiceContract;
   apiKeysService: ApiKeyAuthenticationContract & ApiKeysServiceContract;
 }) {
@@ -158,7 +163,8 @@ export function createApp({
         },
       }),
     )
-    .use(createPublicController({ publicResourcesService }))
+    .get('/', ({ redirect }) => redirect('/public', StatusMap.Found), { detail: { hide: true } })
+    .use(createPublicController({ publicResourcesService, ownerId: publicOwnerId }))
     .use(createSyncCallbacks({ auth, fetch: syncFetch, syncs: managedSyncsService }))
     .use(createAuthDiscoveryController({ auth }))
     .use(
@@ -189,6 +195,7 @@ export function createApp({
         pagesService,
         profilesService,
         publicationApprovalService,
+        publicSiteService,
         recordsService,
         apiKeysService,
         managedSyncsService,

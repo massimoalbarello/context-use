@@ -31,6 +31,7 @@ import {
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicResourcesService,
+  unusedPublicSiteService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../support/app.ts';
@@ -112,6 +113,8 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       storage: new LocalStorage(join(dataFolder, 'objects')),
     });
     const app = createApp({
+      publicOwnerId: 'owner-a',
+      publicSiteService: unusedPublicSiteService,
       publicationApprovalService: unusedPublicationApprovalService,
       publicResourcesService: unusedPublicResourcesService,
       historyService: unusedHistoryService,

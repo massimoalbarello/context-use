@@ -1,4 +1,4 @@
-import { Elysia } from 'elysia';
+import { Elysia, StatusMap } from 'elysia';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import { createAssetReadableIdController } from '#backend/routes/api/assets/[assetReadableId]/controller.ts';
 import { createAssetFacesController } from '#backend/routes/api/assets/[assetReadableId]/faces/controller.ts';
@@ -74,13 +74,13 @@ function publicReadResponse({
 
 function isWorkspacePath(path: string): boolean {
   return (
-    path === '/' ||
-    path === '/map' ||
-    path === '/history' ||
-    path === '/settings' ||
-    path === '/settings/api-keys' ||
-    path === '/settings/faces' ||
-    /^\/(?:entities|pages|assets|records)(?:\/[a-z0-9][a-z0-9-]*)?$/.test(path)
+    path === '/app' ||
+    path === '/app/map' ||
+    path === '/app/history' ||
+    path === '/app/settings' ||
+    path === '/app/settings/api-keys' ||
+    path === '/app/settings/faces' ||
+    /^\/app\/(?:entities|pages|assets|records)(?:\/[a-z0-9][a-z0-9-]*)?$/.test(path)
   );
 }
 
@@ -135,7 +135,9 @@ export function createDemoApp({
       );
     }
     let response: ReturnType<Response['clone']>;
-    if (path === '/api/auth/get-session') {
+    if (path === '/') {
+      response = new Response(null, { status: StatusMap.Found, headers: { location: '/app/map' } });
+    } else if (path === '/api/auth/get-session') {
       response = Response.json(await auth.getSession({ headers: request.headers }));
     } else if (READ_API_PATHS.some((pattern) => pattern.test(path))) {
       // Elysia's shared resource controllers declare GET, so handle HEAD at this boundary.

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { mapSearch } from '../../src/routes/map';
+import { mapSearch } from '../../src/routes/app.map';
 
 test('Map validates its scroll month in URL state', () => {
   expect(mapSearch({ month: '2025-03' }).month).toBe('2025-03');

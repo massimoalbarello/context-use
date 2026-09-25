@@ -3,23 +3,23 @@ import { knowledgeResourceFromPath } from '../src/lib/knowledge-navigation';
 
 describe('knowledge navigation', () => {
   test('recognizes detail routes without treating creation as a remembered resource', () => {
-    expect(knowledgeResourceFromPath('/pages/context-portability')).toEqual({
+    expect(knowledgeResourceFromPath('/app/pages/context-portability')).toEqual({
       collection: 'pages',
       readableId: 'context-portability',
     });
-    expect(knowledgeResourceFromPath('/entities/luca')).toEqual({
+    expect(knowledgeResourceFromPath('/app/entities/luca')).toEqual({
       collection: 'entities',
       readableId: 'luca',
     });
-    expect(knowledgeResourceFromPath('/assets/quarterly-chart')).toEqual({
+    expect(knowledgeResourceFromPath('/app/assets/quarterly-chart')).toEqual({
       collection: 'assets',
       readableId: 'quarterly-chart',
     });
-    expect(knowledgeResourceFromPath('/records/github-pr-42')).toEqual({
+    expect(knowledgeResourceFromPath('/app/records/github-pr-42')).toEqual({
       collection: 'records',
       readableId: 'github-pr-42',
     });
-    expect(knowledgeResourceFromPath('/pages/new')).toBeNull();
-    expect(knowledgeResourceFromPath('/pages')).toBeNull();
+    expect(knowledgeResourceFromPath('/app/pages/new')).toBeNull();
+    expect(knowledgeResourceFromPath('/app/pages')).toBeNull();
   });
 });

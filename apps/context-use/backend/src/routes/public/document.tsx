@@ -65,7 +65,7 @@ export function publicDocument({
       <body>
         <main>
           <nav aria-label="Public resource">
-            <span>Context Use</span>
+            <a href="/public">Context Use</a>
             {navigation}
           </nav>
           {children}

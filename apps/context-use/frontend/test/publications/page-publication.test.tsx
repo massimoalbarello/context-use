@@ -59,10 +59,12 @@ async function renderPage({
   published = null,
   revision = 3,
   statusError = false,
+  publicHomepage = false,
 }: {
   published?: number | null;
   revision?: number;
   statusError?: boolean;
+  publicHomepage?: boolean;
 } = {}) {
   const timestamp = new Date('2026-01-01');
   const page: KnowledgePage = {
@@ -148,6 +150,7 @@ async function renderPage({
           publishedAt: state.publication.publishedAt,
         },
         pageRevision: {
+          publicHomepage,
           revisionNumber:
             body.resourceType === 'page' && body.action === 'publish' ? body.revisionNumber : null,
           publishedRevisionNumber: state.publication.publishedRevisionNumber,
@@ -224,7 +227,7 @@ async function renderPage({
   const root = createRootRoute();
   const route = createRoute({
     getParentRoute: () => root,
-    path: '/pages/$id',
+    path: '/app/pages/$id',
     validateSearch: (search: { view?: 'preview' | 'links' | 'revisions' }) => search,
     component: () => {
       const { view } = route.useSearch();
@@ -241,7 +244,7 @@ async function renderPage({
   });
   const router = createRouter({
     routeTree: root.addChildren([route]),
-    history: createMemoryHistory({ initialEntries: ['/pages/notes'] }),
+    history: createMemoryHistory({ initialEntries: ['/app/pages/notes'] }),
   });
   await router.load();
   render(
@@ -494,10 +497,10 @@ test('private resources stay collapsed and OK returns to the page before publish
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   expect(dialog.getAllByRole('link')).toHaveLength(state.blockers.length);
   expect(dialog.getByRole('link', { name: 'Related page' }).getAttribute('href')).toStartWith(
-    '/pages/related',
+    '/app/pages/related',
   );
   expect(dialog.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
-    '/records/source',
+    '/app/records/source',
   );
   expect(dialog.queryByText('Publish this referenced resource first.')).toBeNull();
   await user.click(toggle);
@@ -538,7 +541,7 @@ test('unavailable references and self-references retain specific guidance in a c
   expect(screen.queryByRole('link', { name: 'Removed source' })).toBeNull();
   await user.click(screen.getByRole('button', { name: '2 references to fix' }));
   expect(screen.getByRole('link', { name: 'Removed source' }).getAttribute('href')).toStartWith(
-    '/records/removed',
+    '/app/records/removed',
   );
   expect(screen.getByText(/Publish a revision without this self-reference/)).toBeTruthy();
   expect(screen.getByText(/Remove or replace this unavailable reference/)).toBeTruthy();
@@ -561,7 +564,7 @@ test('inbound public references explain both withdrawal and publishing a replace
     ),
   ).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Referring page' }).getAttribute('href')).toStartWith(
-    '/pages/referring',
+    '/app/pages/referring',
   );
 });
 
@@ -627,4 +630,14 @@ test('page resource failure aborts a pending ceremony and late assertions cannot
     await assertion.promise;
   });
   expect(state.completes).toHaveLength(0);
+});
+
+test('unpublishing the homepage warns before passkey confirmation', async () => {
+  const { user, device, state } = await renderPage({ published: 1, publicHomepage: true });
+  await user.click(screen.getByRole('button', { name: 'Unpublish' }));
+  const dialog = within(await screen.findByRole('dialog', { name: 'Unpublish page' }));
+  expect((await dialog.findByRole('alert')).textContent).toContain('This is your public homepage.');
+  expect(dialog.getByRole('alert').textContent).toContain('Nothing published yet');
+  expect(device.calls).toHaveLength(0);
+  expect(state.completes).toEqual([]);
 });

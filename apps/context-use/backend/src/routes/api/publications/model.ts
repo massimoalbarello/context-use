@@ -127,6 +127,7 @@ const PreparationSchema = t.Object({
   ),
   pageRevision: t.Nullable(
     t.Object({
+      publicHomepage: t.Boolean(),
       revisionNumber: t.Nullable(RevisionNumberSchema),
       publishedRevisionNumber: t.Nullable(RevisionNumberSchema),
     }),

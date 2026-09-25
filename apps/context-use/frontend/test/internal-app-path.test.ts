@@ -3,8 +3,8 @@ import { internalAppPath } from '../src/lib/internal-app-path';
 
 describe('internalAppPath', () => {
   test('preserves an application path with its query and fragment', () => {
-    expect(internalAppPath('/pages/context-portability?view=links#sources')).toBe(
-      '/pages/context-portability?view=links#sources',
+    expect(internalAppPath('/app/pages/context-portability?view=links#sources')).toBe(
+      '/app/pages/context-portability?view=links#sources',
     );
   });
 

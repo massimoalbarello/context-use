@@ -7,11 +7,14 @@ import { publicEntityHtml } from '#backend/routes/public/entity.tsx';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
 import { publicRecordHtml } from '#backend/routes/public/record.tsx';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
+import { emptyPublicHomepageHtml } from './homepage.tsx';
 
 export function createPublicController({
   publicResourcesService,
+  ownerId,
 }: {
   publicResourcesService: PublicResourcesServiceContract;
+  ownerId: string;
 }) {
   return new Elysia({ prefix: '/public' })
     .onBeforeHandle(({ set }) => {
@@ -20,6 +23,16 @@ export function createPublicController({
       set.headers['content-security-policy'] = PUBLIC_DOCUMENT_CSP;
       set.headers['referrer-policy'] = 'no-referrer';
     })
+    .get(
+      '/',
+      async () => {
+        const content = await publicResourcesService.homepageContent({ ownerId });
+        return new Response(content ? publicPageHtml(content) : emptyPublicHomepageHtml(), {
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      },
+      { detail: { tags: ['Public site'], summary: 'Read the public homepage', security: [] } },
+    )
     .get(
       '/entities/:publicId',
       async ({ params }) => {

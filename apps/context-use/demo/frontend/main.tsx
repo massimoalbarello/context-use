@@ -44,5 +44,5 @@ function DemoRouteError(props: ErrorComponentProps) {
   if (!props.error.message.startsWith('This public demo is read-only.')) {
     return <ErrorComponent {...props} />;
   }
-  return <DemoNoticeDialog open onClose={() => void navigate({ to: '/map', replace: true })} />;
+  return <DemoNoticeDialog open onClose={() => void navigate({ to: '/app/map', replace: true })} />;
 }

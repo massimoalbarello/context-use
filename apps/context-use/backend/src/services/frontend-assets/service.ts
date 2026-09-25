@@ -2,7 +2,6 @@ import { extname } from 'node:path';
 import { createLogger } from '#backend/lib/logger.ts';
 import type { FrontendAssetsRepositoryContract } from '#backend/repositories/frontend-assets/repository.ts';
 
-const ROOT_ASSET_PATH = '/';
 const INDEX_HTML_PATH = '/index.html';
 // Vite content-hashes the filenames in this folder, so they never change.
 const IMMUTABLE_PATH_PREFIX = '/assets/';
@@ -23,11 +22,6 @@ export class FrontendAssetsService {
 
     for (const [path, asset] of assets) {
       routes.set(path, this.respond({ asset, path }));
-    }
-
-    const indexHtml = assets.get(INDEX_HTML_PATH);
-    if (indexHtml) {
-      routes.set(ROOT_ASSET_PATH, this.respond({ asset: indexHtml, path: INDEX_HTML_PATH }));
     }
 
     this.logger.info(`Serving ${routes.size} frontend routes`);

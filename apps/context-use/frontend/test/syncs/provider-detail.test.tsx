@@ -11,7 +11,7 @@ import { cleanup, render, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { ProviderDetail } from '../../src/components/syncs/provider-detail';
-import { syncProviderSearch } from '../../src/routes/syncs.$providerId';
+import { syncProviderSearch } from '../../src/routes/app.syncs.$providerId';
 import { providerFixture } from './fixture';
 
 afterEach(cleanup);
@@ -20,7 +20,7 @@ test('Authorization separates configured app status from account connection and 
   const root = createRootRoute();
   const route = createRoute({
     getParentRoute: () => root,
-    path: '/syncs/$providerId',
+    path: '/app/syncs/$providerId',
     validateSearch: syncProviderSearch,
     component: Screen,
   });
@@ -52,7 +52,7 @@ test('Authorization separates configured app status from account connection and 
       />
     );
   }
-  const history = createMemoryHistory({ initialEntries: ['/syncs/github?tab=authorization'] });
+  const history = createMemoryHistory({ initialEntries: ['/app/syncs/github?tab=authorization'] });
   const router = createRouter({ routeTree: root.addChildren([route]), history });
   await router.load();
   const view = render(<RouterProvider router={router} />);

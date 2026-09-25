@@ -56,7 +56,7 @@ export function ManagedSyncCard(input: {
           </dl>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              to="/records"
+              to="/app/records"
               search={{
                 provider: sync.provider,
                 kind: sync.kinds.length === 1 ? sync.kinds[0] : undefined,

@@ -137,8 +137,8 @@ export function createAuthOptions({
       }),
       mcp({
         resource: mcpResource,
-        loginPage: '/login',
-        consentPage: '/mcp/authorize',
+        loginPage: '/app/login',
+        consentPage: '/app/mcp/authorize',
         scopes: [MCP_SCOPE, 'offline_access'],
         accessTokenExpiresIn: ACCESS_TOKEN_LIFETIME_SECONDS,
         // Rotation renews this finite provider window. Ten years preserves the product contract

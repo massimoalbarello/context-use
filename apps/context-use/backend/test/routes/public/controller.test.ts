@@ -58,9 +58,12 @@ async function publicAssetsFixture({
   const resources = new PublicResourcesRepository(database);
   const service = new PublicResourcesService({ resources, storage });
   const publications = new PublicationsRepository(database);
-  const app = new Elysia()
-    .onError(elysiaErrorHandler)
-    .use(createPublicController({ publicResourcesService: service }));
+  const app = new Elysia().onError(elysiaErrorHandler).use(
+    createPublicController({
+      publicResourcesService: service,
+      ownerId: 'owner-a',
+    }),
+  );
   async function create({
     name,
     bytes = PNG,

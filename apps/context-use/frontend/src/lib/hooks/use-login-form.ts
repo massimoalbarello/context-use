@@ -25,7 +25,7 @@ export function useLoginForm({
   const submit = () => {
     const onSuccess = async () => {
       if (isSigningUp) {
-        await navigate({ to: '/setup', search: { redirect: redirectTo } });
+        await navigate({ to: '/app/setup', search: { redirect: redirectTo } });
         return;
       }
       await navigate({ href: redirectTo });

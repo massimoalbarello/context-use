@@ -107,11 +107,11 @@ test('page previews reuse resource links and keep unavailable records unlinked',
   const pageHtml = await renderPreview({ kind: 'page', readableId: 'project-brief' });
 
   expect(pageHtml).toContain('>launch plan</a>');
-  expect(pageHtml).toContain('href="/assets/rollout-metrics"');
-  expect(pageHtml).toContain('href="/entities/maya-chen"');
-  expect(pageHtml).toContain('href="/pages/launch-plan?');
+  expect(pageHtml).toContain('href="/app/assets/rollout-metrics"');
+  expect(pageHtml).toContain('href="/app/entities/maya-chen"');
+  expect(pageHtml).toContain('href="/app/pages/launch-plan?');
   expect(pageHtml).toContain('(record unavailable)');
-  expect(pageHtml).not.toContain('href="/records/research');
+  expect(pageHtml).not.toContain('href="/app/records/research');
 });
 
 test('each selected preview receives focus and handles Escape locally', async () => {

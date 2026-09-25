@@ -167,7 +167,7 @@ async function authorizeClient({
   );
   expect(authorization.status).toBe(HTTP_FOUND);
   const approvalLocation = authorization.headers.get('location');
-  expect(approvalLocation).toStartWith('/mcp/authorize?');
+  expect(approvalLocation).toStartWith('/app/mcp/authorize?');
 
   const oauthQuery = new URL(approvalLocation!, urls.origin).search.slice(1);
   const consent = await handler(

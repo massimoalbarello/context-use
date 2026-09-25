@@ -1,10 +1,10 @@
 export type KnowledgeCollection = 'entities' | 'pages' | 'assets' | 'records';
-export const MAIN_KNOWLEDGE_PATH = '/map' as const;
+export const MAIN_KNOWLEDGE_PATH = '/app/map' as const;
 
 export function knowledgeResourceFromPath(
   pathname: string,
 ): { collection: KnowledgeCollection; readableId: string } | null {
-  const match = /^\/(entities|pages|assets|records)\/([^/]+)\/?$/.exec(pathname);
+  const match = /^\/app\/(entities|pages|assets|records)\/([^/]+)\/?$/.exec(pathname);
   const collection = match?.[1];
   const encodedReadableId = match?.[2];
   if (!collection || !encodedReadableId || encodedReadableId === 'new') {
