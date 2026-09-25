@@ -587,7 +587,8 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
 
       expect(guide).toContain('resource reads include `publication`');
-      expect(guide).toContain('Prefer private pages');
+      expect(guide).toContain('Prefer private pages only when editing');
+      expect(guide).toMatch(/Public and private pages are equally suitable for reading\s+context/);
       expect(guide).toMatch(/`publication.isPublic`:\s+true means public; false means private/);
       expect(guide).not.toContain('publishedAt');
       expect(guide).not.toContain('publicId');
