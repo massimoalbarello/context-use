@@ -28,6 +28,8 @@ function unexpectedCall(): never {
 }
 
 const entity: EntityDetail = {
+  publicId: null,
+  publishedAt: null,
   id: 'internal-entity-id',
   readableId: 'luca-bianchi',
   name: 'Luca Bianchi',

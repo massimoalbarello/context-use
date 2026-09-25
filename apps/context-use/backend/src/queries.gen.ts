@@ -37,6 +37,8 @@ export interface ICreateAssetResult {
     ownerId: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -51,6 +53,8 @@ export interface IListAssetsResult {
     id: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -69,6 +73,8 @@ export interface IFindAssetResult {
     ownerId: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -89,6 +95,8 @@ export interface IUpdateAssetNameResult {
     ownerId: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -117,6 +125,8 @@ export interface IListAssetDepictedPeopleResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
     source: "detected" | "confirmed";
 }
@@ -129,6 +139,9 @@ export interface IListActivePageAssetUsagesResult {
     excerpt: string;
     revisionNumber: number;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
     presentation: "embed" | "attachment";
@@ -141,6 +154,8 @@ export interface IListActiveEntityImageAssetUsagesResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
 }
 
@@ -160,6 +175,8 @@ export interface ICreateEntityResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -172,9 +189,13 @@ export interface IListEntitiesResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imagePublicId: string | null;
+    imagePublishedAt: string | null;
     imageId: string | null;
     imageReadableId: string | null;
     imageName: string | null;
@@ -197,9 +218,13 @@ export interface IFindEntityResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imagePublicId: string | null;
+    imagePublishedAt: string | null;
     imageId: string | null;
     imageReadableId: string | null;
     imageName: string | null;
@@ -251,6 +276,9 @@ export interface IListActiveEntityMentioningPagesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -305,6 +333,8 @@ export interface IReadAssetFaceViewsResult {
     name: string | null;
     description: string | null;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     selfEntityId: string | null;
     similarity: number | null;
 }
@@ -320,6 +350,8 @@ export interface IFaceProcessingQueueResult {
     id: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -398,6 +430,8 @@ export interface IListPersonImagesResult {
     id: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -436,7 +470,11 @@ export interface IListHypermediaNeighborhoodsResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
+    imagePublicId: string | null;
+    imagePublishedAt: string | null;
     imageId: string | null;
     imageReadableId: string | null;
     imageName: string | null;
@@ -457,6 +495,9 @@ export interface IListHypermediaPagesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     ongoingSort: number;
     latestSort: unknown | null;
     startSort: unknown | null;
@@ -481,8 +522,12 @@ export interface ISearchHypermediaResult {
     entityId: string | null;
     entityName: string | null;
     entityDescription: string | null;
+    entityPublicId: string | null;
+    entityPublishedAt: string | null;
     entityType: string | null;
     isSelf: number;
+    imagePublicId: string | null;
+    imagePublishedAt: string | null;
     imageId: string | null;
     imageReadableId: string | null;
     imageName: string | null;
@@ -496,8 +541,13 @@ export interface ISearchHypermediaResult {
     pageExcerpt: string | null;
     revisionNumber: number;
     temporalCoverage: string | null;
+    pagePublicId: string | null;
+    pagePublishedAt: string | null;
+    publishedRevisionNumber: number | null;
     assetId: string | null;
     assetName: string | null;
+    assetPublicId: string | null;
+    assetPublishedAt: string | null;
     mediaType: string | null;
     assetExtension: string | null;
     assetSizeBytes: number | null;
@@ -527,6 +577,9 @@ export interface IFindCurrentKnowledgePageResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -567,6 +620,9 @@ export interface IListKnowledgePagesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -584,6 +640,9 @@ export interface IListKnowledgePagesByEntityResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -607,6 +666,9 @@ export interface IFindKnowledgePageResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     storageKey: string;
     contentHash: string;
     sizeBytes: number;
@@ -633,9 +695,13 @@ export interface IListKnowledgePageMentionsResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imagePublicId: string | null;
+    imagePublishedAt: string | null;
     imageId: string | null;
     imageReadableId: string | null;
     imageName: string | null;
@@ -664,6 +730,9 @@ export interface IListActiveKnowledgePageReferrersResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
     fragment: string;
@@ -686,6 +755,9 @@ export interface IListKnowledgePageReferencesResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
     fragment: string;
@@ -699,6 +771,9 @@ export interface IListKnowledgePageBacklinksResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
     fragment: string;
@@ -709,6 +784,8 @@ export interface IListKnowledgePageAssetUsagesResult {
     id: string;
     readableId: string;
     name: string;
+    publicId: string | null;
+    publishedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -729,6 +806,8 @@ export interface ICreateKnowledgeProfileEntityResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -740,9 +819,13 @@ export interface IFindKnowledgeProfileResult {
     name: string;
     description: string;
     entityType: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
+    imagePublicId: string | null;
+    imagePublishedAt: string | null;
     imageId: string | null;
     imageReadableId: string | null;
     imageName: string | null;
@@ -1074,6 +1157,9 @@ export interface IListRecordBacklinksResult {
     title: string;
     excerpt: string;
     temporalCoverage: string | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
 }

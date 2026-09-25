@@ -196,7 +196,7 @@ export function registerAssetTools({
     {
       title: 'Update asset',
       description:
-        'Update the complete editable representation of one active asset, currently its meaningful name. The supplied bytes are immutable; create a new asset when content must change.',
+        'Update the complete editable representation of one active asset, currently its meaningful name. First read the asset and inspect publication; a published asset name changes publicly immediately. The supplied bytes are immutable; create a new asset when content must change.',
       inputSchema: withChangeMessage(UpdateAssetInputSchema),
       outputSchema: UpdateAssetOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,

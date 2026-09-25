@@ -398,6 +398,8 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
 
 test('raw upload endpoints enforce required headers and byte limits before one AssetsService call', async () => {
   const createdAsset: Asset = {
+    publicId: null,
+    publishedAt: null,
     depicts: [],
     id: 'internal-asset-id',
     readableId: 'bounded-upload',
@@ -551,6 +553,8 @@ test('raw upload endpoints enforce required headers and byte limits before one A
 
 test('asset updates return no echoed state and archive blockers expose only public usage coordinates', async () => {
   const asset: Asset = {
+    publicId: null,
+    publishedAt: null,
     depicts: [],
     id: 'internal-asset-id',
     readableId: 'quarterly-chart',
@@ -564,6 +568,9 @@ test('asset updates return no echoed state and archive blockers expose only publ
       {
         kind: 'page',
         page: {
+          publicId: null,
+          publishedAt: null,
+          publishedRevisionNumber: null,
           id: 'internal-page-id',
           readableId: 'evidence-report',
           title: 'Evidence report',
@@ -578,6 +585,8 @@ test('asset updates return no echoed state and archive blockers expose only publ
       {
         kind: 'entity_image',
         entity: {
+          publicId: null,
+          publishedAt: null,
           id: 'internal-entity-id',
           readableId: 'luca-bianchi',
           name: 'Luca Bianchi',

@@ -256,7 +256,7 @@ export function registerKnowledgePageTools({
     'update_knowledge_page',
     {
       title: 'Update knowledge page',
-      description: `Create a new revision of one knowledge page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
+      description: `Create a new revision of one knowledge page. Updating a public page requires explicit user confirmation. Prefer creating a new private page unless the user explicitly wants to modify the public page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
       inputSchema: withChangeMessage(UpdateKnowledgePageInputSchema),
       outputSchema: GuidedUpdateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,

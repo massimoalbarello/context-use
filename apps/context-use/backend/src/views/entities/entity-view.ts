@@ -16,6 +16,8 @@ export function entityTypeFrom(value: string | null): EntityType | null {
 
 export function entityFrom(row: EntityRow): Entity {
   const {
+    imagePublicId,
+    imagePublishedAt,
     imageId,
     imageReadableId,
     imageName,
@@ -39,6 +41,8 @@ export function entityFrom(row: EntityRow): Entity {
       imageCreatedAt &&
       imageUpdatedAt
         ? {
+            publicId: imagePublicId,
+            publishedAt: imagePublishedAt,
             id: imageId,
             readableId: imageReadableId,
             name: imageName,

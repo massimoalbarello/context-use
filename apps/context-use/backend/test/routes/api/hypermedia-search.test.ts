@@ -55,6 +55,8 @@ test('HTTP search maps pipeline results to compact typed previews without intern
         resourceType: 'entity',
         matchExcerpt: 'Researches retrieval.',
         entity: {
+          publicId: null,
+          publishedAt: null,
           id: 'private-entity-id',
           readableId: 'luca',
           name: 'Luca',
@@ -69,6 +71,9 @@ test('HTTP search maps pipeline results to compact typed previews without intern
         resourceType: 'knowledge_page',
         matchExcerpt: 'A sentence deep in the page.',
         knowledgePage: {
+          publicId: null,
+          publishedAt: null,
+          publishedRevisionNumber: null,
           id: 'private-page-id',
           readableId: 'research',
           title: 'Research',
@@ -82,6 +87,8 @@ test('HTTP search maps pipeline results to compact typed previews without intern
         resourceType: 'asset',
         matchExcerpt: null,
         asset: {
+          publicId: null,
+          publishedAt: null,
           id: 'private-asset-id',
           readableId: 'chart',
           name: 'Chart',

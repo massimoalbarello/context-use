@@ -15,9 +15,11 @@ import {
   McpKnowledgePageSummarySchema,
   mcpKnowledgePageSummary,
 } from '#backend/routes/mcp/pages/model.ts';
+import { McpPublicationSchema, mcpPublication } from '#backend/routes/mcp/publications/model.ts';
 
 export const McpAssetSummarySchema = z.object({
   address: AssetAddressSchema,
+  publication: McpPublicationSchema,
   readableId: McpReadableIdSchema,
   name: z.string(),
   mediaType: z.string(),
@@ -68,6 +70,7 @@ export function mcpAssetSummary(asset: AssetSummary) {
   return {
     address: assetAddress(asset.readableId),
     readableId: asset.readableId,
+    publication: mcpPublication(asset),
     name: asset.name,
     mediaType: asset.mediaType,
     extension: asset.extension,

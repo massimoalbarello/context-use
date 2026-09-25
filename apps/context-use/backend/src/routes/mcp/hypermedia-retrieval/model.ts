@@ -26,6 +26,12 @@ import {
   McpEntityTypeFilterSchema,
   McpEntityTypeSchema,
 } from '#backend/routes/mcp/entities/model.ts';
+import {
+  McpPagePublicationSchema,
+  McpPublicationSchema,
+  mcpPagePublication,
+  mcpPublication,
+} from '#backend/routes/mcp/publications/model.ts';
 
 export const SearchHypermediaInputSchema = z.object({
   entityType: McpEntityTypeFilterSchema.optional().describe(
@@ -110,6 +116,7 @@ const EntityResultSchema = z.object({
   entityType: McpEntityTypeSchema,
   resourceType: z.literal('entity'),
   address: EntityAddressSchema,
+  publication: McpPublicationSchema,
   readableId: McpReadableIdSchema,
   name: z.string(),
   description: z.string(),
@@ -119,6 +126,7 @@ const EntityResultSchema = z.object({
 const KnowledgePageResultSchema = z.object({
   resourceType: z.literal('knowledge_page'),
   address: PageAddressSchema,
+  publication: McpPagePublicationSchema,
   readableId: McpReadableIdSchema,
   title: z.string(),
   excerpt: z.string(),
@@ -129,6 +137,7 @@ const KnowledgePageResultSchema = z.object({
 const AssetResultSchema = z.object({
   resourceType: z.literal('asset'),
   address: AssetAddressSchema,
+  publication: McpPublicationSchema,
   readableId: McpReadableIdSchema,
   name: z.string(),
   mediaType: z.string(),
@@ -162,6 +171,7 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
       resourceType: result.resourceType,
       address: entityAddress(result.entity.readableId),
       readableId: result.entity.readableId,
+      publication: mcpPublication(result.entity),
       name: result.entity.name,
       description: result.entity.description,
       entityType: result.entity.entityType,
@@ -173,6 +183,7 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
       resourceType: result.resourceType,
       address: pageAddress(result.knowledgePage.readableId),
       readableId: result.knowledgePage.readableId,
+      publication: mcpPagePublication(result.knowledgePage),
       title: result.knowledgePage.title,
       excerpt: result.knowledgePage.excerpt,
       temporalCoverage: result.knowledgePage.temporalCoverage,
@@ -195,6 +206,7 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
     resourceType: result.resourceType,
     address: assetAddress(result.asset.readableId),
     readableId: result.asset.readableId,
+    publication: mcpPublication(result.asset),
     name: result.asset.name,
     mediaType: result.asset.mediaType,
     extension: result.asset.extension,
