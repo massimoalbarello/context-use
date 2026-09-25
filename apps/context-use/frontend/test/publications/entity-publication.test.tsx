@@ -210,26 +210,41 @@ async function refresh(client: QueryClient) {
   });
 }
 
-test('entity review shows only the prepared identity and image, publishes the whole image and refreshes asset state', async () => {
+test('entity review keeps its prepared name and refreshes entity and image publication state', async () => {
   const { state, user, client, entity, device } = await renderEntity();
+  expect(
+    screen
+      .getByRole('button', { name: 'Publish' })
+      .compareDocumentPosition(screen.getByRole('button', { name: 'Edit entity' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   const dialog = await screen.findByRole('dialog', { name: 'Publish entity' });
   expect(within(dialog).getByText('Prepared studio')).toBeTruthy();
-  expect(within(dialog).getByText('Prepared description')).toBeTruthy();
-  expect(within(dialog).getByText('Location')).toBeTruthy();
+  expect(
+    within(dialog).getByText(
+      'Anyone with the public link can view this entity and its public page index.',
+    ),
+  ).toBeTruthy();
   expect(within(dialog).queryByText('Cached studio')).toBeNull();
-  expect(within(dialog).getByText(/entire image asset “prepared-portrait”/)).toBeTruthy();
-  expect(within(dialog).getByText(/image remains public after/)).toBeTruthy();
+  expect(within(dialog).queryByText('Prepared description')).toBeNull();
+  expect(within(dialog).queryByText(/entire image asset/)).toBeNull();
   entity.name = 'New live identity';
   entity.description = 'New live description';
   // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
   await act(async () => {
     await client.invalidateQueries(entityQueryOptions('studio'));
   });
-  expect(within(dialog).getByText('Prepared description')).toBeTruthy();
-  expect(within(dialog).queryByText('New live description')).toBeNull();
+  expect(within(dialog).getByText('Prepared studio')).toBeTruthy();
+  expect(within(dialog).queryByText('New live identity')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Confirm with passkey' }));
   await screen.findByRole('button', { name: 'Unpublish' });
+  expect(
+    screen
+      .getByRole('button', { name: 'Unpublish' })
+      .compareDocumentPosition(screen.getByRole('button', { name: 'Edit entity' })) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
     '/public/entities/entity_handle',
   );
@@ -249,14 +264,6 @@ test('entity review shows only the prepared identity and image, publishes the wh
   expect(state.begins.map((request) => request.action)).toEqual(['publish', 'unpublish']);
   expect(state.completes).toEqual(['approval-1', 'approval-2']);
   expect(device.calls).toHaveLength(2);
-});
-
-test('entity without image is reviewed without implying another asset will be published', async () => {
-  const { state, user } = await renderEntity();
-  state.image = null;
-  await user.click(screen.getByRole('button', { name: 'Publish' }));
-  expect(await screen.findByText('This entity has no image.')).toBeTruthy();
-  expect(screen.queryByText(/entire image asset/)).toBeNull();
 });
 
 test('public image picker requests public list and keyword results while preserving the identity draft', async () => {
