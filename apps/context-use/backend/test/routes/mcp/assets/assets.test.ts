@@ -22,7 +22,7 @@ import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
-import { unusedAssetFacesService } from '../../../support/app.ts';
+import { unusedAssetFacesService, unusedPublicationApprovalService } from '../../../support/app.ts';
 import {
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
@@ -142,6 +142,7 @@ async function withAssetMcp({
     retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
+    publicationStatusService: { status: unusedPublicationApprovalService.status },
     transferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -621,6 +622,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
+    publicationStatusService: { status: unusedPublicationApprovalService.status },
     transferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

@@ -29,7 +29,7 @@ import {
 } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { RecordResourcesServiceContract } from '#backend/services/records/service.ts';
-import { unusedAssetFacesService } from '../../support/app.ts';
+import { unusedAssetFacesService, unusedPublicationApprovalService } from '../../support/app.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
@@ -42,7 +42,7 @@ const INTERNAL_ENTITY_ID = '01900000-0000-7000-8000-000000000001';
 const INTERNAL_PAGE_ID = '01900000-0000-7000-8000-000000000002';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
 const NOW = '2026-09-01T12:00:00.000Z';
-const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 650;
+const MAX_HYPERMEDIA_CURATION_GUIDE_WORDS = 850;
 
 function unexpectedCall(): never {
   throw new Error('Unexpected MCP service call');
@@ -151,6 +151,7 @@ async function withMcpClient<T>({
     retrievalService,
     pagesService,
     profilesService,
+    publicationStatusService: { status: unusedPublicationApprovalService.status },
     transferCapabilities: unusedAssetTransferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -202,6 +203,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'read_publication_status',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -289,6 +291,8 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
           createPageInput.required.includes('temporalCoverage'),
       ).toBe(false);
       const updatePageTool = tools.find(({ name }) => name === 'update_knowledge_page');
+      expect(updatePageTool?.description).toContain('First call read_publication_status');
+      expect(updatePageTool?.description).toContain('informed user confirmation');
       const updatePageInput = updatePageTool?.inputSchema;
       expect(updatePageTool?.description).toMatch(
         /temporalCoverage.*omit.*preserve.*null.*clear.*value.*replace/,
@@ -559,6 +563,17 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('`recordFilter`');
       expect(guide).toContain('names, aliases, identifiers, and topic phrases');
       expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
+
+      expect(guide).toContain('call `read_publication_status`');
+      expect(guide).toContain('Prefer pages with no active publication');
+      expect(guide).toMatch(/Non-null `publishedAt` means active; null means private/);
+      expect(guide).toMatch(/even when the latest revision is private/);
+      expect(guide).toContain('Existing explicit, informed confirmation counts');
+      expect(guide).toMatch(/Edits create private page revisions/);
+      expect(guide).toMatch(/Only the owner can publish or unpublish with a fresh passkey/);
+      expect(guide).toMatch(/Public entity fields are live, not versioned/);
+      expect(guide).toMatch(/Records always\s+remain private/);
+      expect(guide).toContain('References never publish their targets automatically');
 
       const availableToolNames = new Set(tools.map(({ name }) => name));
       const guideToolNames = [...guide.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].flatMap((match) =>

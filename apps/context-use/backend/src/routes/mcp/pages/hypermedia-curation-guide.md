@@ -68,6 +68,21 @@ active graph. Do not add a stable/transient label; infer durability later from e
 
 ## Revise and archive carefully
 
+Before editing an existing page, call `read_publication_status` with its canonical address.
+Prefer pages with no active publication. Non-null `publishedAt` means active; null means private,
+even if `publicId` remains after withdrawal. Check again if status is unavailable or stale before
+deciding how to edit. For an active publication, obtain informed user confirmation of the proposed
+edit, even when the latest revision is private. Existing explicit, informed confirmation counts.
+This confirmation is agent guidance, not a server edit token.
+
+Edits create private page revisions; `publishedRevisionNumber` identifies the unchanged public
+revision. Only the owner can publish or unpublish with a fresh passkey approval bound to that
+action. MCP cannot perform either action. Public entity fields are live, not versioned; public asset
+names are live too, while file bytes are immutable. Check their status before editing too.
+References never publish their targets automatically. Records always remain private, and pages
+referencing records cannot be published. A page's managed page, entity, and asset targets must
+already be public before publication.
+
 Read the current revision before updating. Preserve unrelated and owner-authored content; make the
 smallest coherent revision that incorporates new information. On conflict, read the latest version
 and reconcile rather than overwrite. Before creating a page, consider whether an existing page fits.

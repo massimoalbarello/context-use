@@ -5,12 +5,14 @@ import type { EntitiesServiceContract } from '#backend/services/entities/service
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
+import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type { RecordResourcesServiceContract } from '#backend/services/records/service.ts';
 import { registerAssetTools } from './assets/tools.ts';
 import type { AssetTransferCapabilitiesContract } from './assets/transfer-capabilities.ts';
 import { registerEntityTools } from './entities/tools.ts';
 import { registerHypermediaRetrievalTools } from './hypermedia-retrieval/tools.ts';
 import { registerKnowledgePageTools } from './pages/tools.ts';
+import { registerPublicationTools } from './publications/tools.ts';
 import { registerRecordTools } from './records/tools.ts';
 
 export const MCP_SUPPORTED_LEGACY_PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18'] as const;
@@ -22,6 +24,7 @@ export function createContextUseMcpServer({
   retrievalService,
   pagesService,
   profilesService,
+  publicationStatusService,
   recordsService,
   transferCapabilities,
 }: {
@@ -31,6 +34,7 @@ export function createContextUseMcpServer({
   retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'>;
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
+  publicationStatusService: Pick<PublicationApprovalServiceContract, 'status'>;
   recordsService: Pick<RecordResourcesServiceContract, 'findResource'>;
   transferCapabilities: AssetTransferCapabilitiesContract;
 }): McpServer {
@@ -42,6 +46,7 @@ export function createContextUseMcpServer({
   registerEntityTools({ server, principal, entitiesService, profilesService });
   registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
+  registerPublicationTools({ server, principal, publicationStatusService });
   registerRecordTools({ server, principal, recordsService });
   return server;
 }

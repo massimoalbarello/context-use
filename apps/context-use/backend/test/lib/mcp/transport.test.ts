@@ -10,7 +10,7 @@ import {
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
-import { unusedAssetFacesService } from '../../support/app.ts';
+import { unusedAssetFacesService, unusedPublicationApprovalService } from '../../support/app.ts';
 import {
   unusedAssetTransferCapabilities,
   unusedHypermediaRetrievalService,
@@ -91,6 +91,7 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
         retrievalService: unusedHypermediaRetrievalService,
         pagesService,
         profilesService: unusedKnowledgeProfilesService,
+        publicationStatusService: { status: unusedPublicationApprovalService.status },
         transferCapabilities: unusedAssetTransferCapabilities,
       }),
   });
