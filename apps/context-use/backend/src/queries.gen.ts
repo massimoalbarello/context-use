@@ -822,6 +822,20 @@ export interface IFindPublicationPortraitEntitiesResult {
     name: string;
 }
 
+/** Result of query `FindPagePublicationDependencies`. */
+export interface IFindPagePublicationDependenciesResult {
+    resourceType: "page" | "entity" | "asset";
+    readableId: string;
+    name: string;
+    archivedAt: string | null;
+    publishedAt: string | null;
+}
+
+/** Result of query `FindPagePublicationRecordReferences`. */
+export interface IFindPagePublicationRecordReferencesResult {
+    readableId: string;
+}
+
 /** Result of query `FindPagePublicationStatus`. */
 export interface IFindPagePublicationStatusResult {
     publicId: string | null;
@@ -839,6 +853,25 @@ export interface IFindEntityPublicationStatusResult {
 export interface IFindAssetPublicationStatusResult {
     publicId: string | null;
     publishedAt: string | null;
+}
+
+/** Result of query `FindPagePublicationTarget`. */
+export interface IFindPagePublicationTargetResult {
+    id: string;
+    readableId: string;
+    archivedAt: string | null;
+    name: string;
+    revisionId: string | null;
+    revisionNumber: number | null;
+    excerpt: string | null;
+    temporalCoverage: string | null;
+    createdAt: string | null;
+    contentHash: string | null;
+    sizeBytes: number | null;
+    publicId: string | null;
+    publishedAt: string | null;
+    publishedRevisionId: string | null;
+    publishedRevisionNumber: number | null;
 }
 
 /** Result of query `FindAssetPublicationTarget`. */
@@ -867,6 +900,10 @@ export interface IFindEntityPublicationTargetResult {
     archivedAt: string | null;
     publicId: string | null;
     publishedAt: string | null;
+}
+
+/** Result of query `SetPagePublication`. */
+export interface ISetPagePublicationResult {
 }
 
 /** Result of query `SetEntityPublication`. */
@@ -1049,11 +1086,15 @@ export interface Queries {
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
     FindPublicationReferringPages: IFindPublicationReferringPagesResult;
     FindPublicationPortraitEntities: IFindPublicationPortraitEntitiesResult;
+    FindPagePublicationDependencies: IFindPagePublicationDependenciesResult;
+    FindPagePublicationRecordReferences: IFindPagePublicationRecordReferencesResult;
     FindPagePublicationStatus: IFindPagePublicationStatusResult;
     FindEntityPublicationStatus: IFindEntityPublicationStatusResult;
     FindAssetPublicationStatus: IFindAssetPublicationStatusResult;
+    FindPagePublicationTarget: IFindPagePublicationTargetResult;
     FindAssetPublicationTarget: IFindAssetPublicationTargetResult;
     FindEntityPublicationTarget: IFindEntityPublicationTargetResult;
+    SetPagePublication: ISetPagePublicationResult;
     SetEntityPublication: ISetEntityPublicationResult;
     SetAssetPublication: ISetAssetPublicationResult;
     InsertResourceChange: IInsertResourceChangeResult;

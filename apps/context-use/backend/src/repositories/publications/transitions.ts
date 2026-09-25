@@ -5,11 +5,52 @@ import type {
   PublicationStatus,
 } from '#backend/models/publications/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
-import { withdrawalBlockers } from './dependencies.ts';
+import { pagePublicationBlockers, withdrawalBlockers } from './dependencies.ts';
 import { createPublicId } from './public-id.ts';
 import type { PublicationRequest, PublicationTransitionResult } from './repository.ts';
 
 type Transaction = TypedTransactionSQL<Queries>;
+
+async function pageTarget({
+  db,
+  input,
+}: {
+  db: Transaction;
+  input: Extract<PublicationRequest, { resourceType: 'page' }>;
+}) {
+  const revisionNumber = input.action === 'publish' ? input.revisionNumber : null;
+  const rows = await db.FindPagePublicationTarget`
+    /* @notNull id readableId name */
+    /* @type name string */
+    select page."id", page."readable_id" as "readableId", page."archived_at" as "archivedAt",
+      coalesce(revision."title", page."readable_id") as "name",
+      revision."id" as "revisionId", revision."revision_number" as "revisionNumber",
+      revision."excerpt", revision."temporal_coverage" as "temporalCoverage",
+      revision."created_at" as "createdAt", revision."content_hash" as "contentHash",
+      revision."size_bytes" as "sizeBytes", page."public_id" as "publicId",
+      page."published_at" as "publishedAt", page."published_revision_id" as "publishedRevisionId",
+      published_revision."revision_number" as "publishedRevisionNumber"
+    from "knowledge_page" page
+    left join "knowledge_page_revision" published_revision
+      on published_revision."id" = page."published_revision_id"
+      and published_revision."page_id" = page."id" and published_revision."owner_id" = page."owner_id"
+    left join "knowledge_page_revision" revision
+      on revision."page_id" = page."id" and revision."owner_id" = page."owner_id"
+      and ((${input.action} = 'publish' and revision."revision_number" = ${revisionNumber})
+        or (${input.action} = 'unpublish' and revision."id" = page."published_revision_id"))
+    where page."owner_id" = ${input.ownerId} and page."readable_id" = ${input.readableId}
+      and (${input.action} = 'unpublish' or revision."id" is not null)
+  `;
+  const row = rows[0];
+  return row
+    ? {
+        ...row,
+        revisionNumber: row.revisionNumber === null ? null : Number(row.revisionNumber),
+        publishedRevisionNumber:
+          row.publishedRevisionNumber === null ? null : Number(row.publishedRevisionNumber),
+      }
+    : null;
+}
 
 async function assetTarget({
   db,
@@ -61,9 +102,11 @@ function status(target: PublicationStatus): PublicationStatus {
 
 async function evaluate({ db, input }: { db: Transaction; input: PublicationRequest }) {
   const target =
-    input.resourceType === 'asset'
-      ? await assetTarget({ db, ...input })
-      : await entityTarget({ db, ...input });
+    input.resourceType === 'page'
+      ? await pageTarget({ db, input })
+      : input.resourceType === 'asset'
+        ? await assetTarget({ db, ...input })
+        : await entityTarget({ db, ...input });
   if (!target || target.archivedAt) {
     return null;
   }
@@ -74,6 +117,15 @@ async function evaluate({ db, input }: { db: Transaction; input: PublicationRequ
       : null;
   const blockers: PublicationBlocker[] =
     input.action === 'unpublish' ? await withdrawalBlockers({ db, ...input, id: target.id }) : [];
+  if (input.action === 'publish' && 'revisionId' in target && target.revisionId) {
+    blockers.push(
+      ...(await pagePublicationBlockers({
+        db,
+        ownerId: input.ownerId,
+        revisionId: target.revisionId,
+      })),
+    );
+  }
   if (image?.archivedAt) {
     blockers.push({
       reason: 'image_unavailable',
@@ -106,6 +158,13 @@ async function evaluate({ db, input }: { db: Transaction; input: PublicationRequ
           publication: status(image),
         }
       : null,
+    pageRevision:
+      'revisionNumber' in target
+        ? {
+            revisionNumber: target.revisionNumber,
+            publishedRevisionNumber: target.publishedRevisionNumber,
+          }
+        : null,
     blockers,
     expectedState,
   };
@@ -120,6 +179,22 @@ export async function preparePublication({
   input: PublicationRequest;
 }): Promise<PublicationPreparation | null> {
   return (await evaluate({ db, input }))?.preparation ?? null;
+}
+
+function isUnchanged({
+  target,
+  action,
+}: {
+  target: NonNullable<Awaited<ReturnType<typeof evaluate>>>['target'];
+  action: PublicationRequest['action'];
+}) {
+  if (action === 'unpublish') {
+    return target.publishedAt === null;
+  }
+  return (
+    target.publishedAt !== null &&
+    (!('revisionId' in target) || target.revisionId === target.publishedRevisionId)
+  );
 }
 
 export async function executePublication({
@@ -140,7 +215,7 @@ export async function executePublication({
   if (preparation.blockers.length) {
     return { state: 'blocked', blockers: preparation.blockers };
   }
-  if ((target.publishedAt !== null) === (input.action === 'publish')) {
+  if (isUnchanged({ target, action: input.action })) {
     return { state: 'unchanged', publication: status(target) };
   }
 
@@ -159,6 +234,13 @@ export async function executePublication({
   }
   if (input.resourceType === 'asset') {
     await setAssetPublication({ db, ownerId: input.ownerId, id: target.id, ...publication });
+  } else if ('revisionId' in target) {
+    const revisionId = input.action === 'publish' ? target.revisionId : null;
+    await db.SetPagePublication`
+      update "knowledge_page" set "public_id" = ${publication.publicId},
+        "published_at" = ${publication.publishedAt}, "published_revision_id" = ${revisionId}
+      where "id" = ${target.id} and "owner_id" = ${input.ownerId}
+    `;
   } else {
     await db.SetEntityPublication`
       update "entity" set "public_id" = ${publication.publicId}, "published_at" = ${publication.publishedAt}
