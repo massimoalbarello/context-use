@@ -27,11 +27,9 @@ export class PublicationsRepository implements PublicationsRepositoryContract {
     readableId: string;
   }): Promise<PagePublicationStatus | null> {
     const rows = await this.sql.FindPagePublicationStatus`
-      select publication."public_id" as "publicId", publication."published_at" as "publishedAt",
-        publication."revision_id" as "revisionId"
+      select page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."published_revision_id" as "revisionId"
       from "knowledge_page" page
-      left join "knowledge_page_publication" publication
-        on publication."page_id" = page."id" and publication."owner_id" = page."owner_id"
       where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
         and page."archived_at" is null
     `;
@@ -46,10 +44,8 @@ export class PublicationsRepository implements PublicationsRepositoryContract {
     readableId: string;
   }): Promise<PublicationStatus | null> {
     const rows = await this.sql.FindEntityPublicationStatus`
-      select publication."public_id" as "publicId", publication."published_at" as "publishedAt"
+      select entity."public_id" as "publicId", entity."published_at" as "publishedAt"
       from "entity" entity
-      left join "entity_publication" publication
-        on publication."entity_id" = entity."id" and publication."owner_id" = entity."owner_id"
       where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
         and entity."archived_at" is null
     `;
@@ -64,10 +60,8 @@ export class PublicationsRepository implements PublicationsRepositoryContract {
     readableId: string;
   }): Promise<PublicationStatus | null> {
     const rows = await this.sql.FindAssetPublicationStatus`
-      select publication."public_id" as "publicId", publication."published_at" as "publishedAt"
+      select asset."public_id" as "publicId", asset."published_at" as "publishedAt"
       from "asset" asset
-      left join "asset_publication" publication
-        on publication."asset_id" = asset."id" and publication."owner_id" = asset."owner_id"
       where asset."owner_id" = ${ownerId} and asset."readable_id" = ${readableId}
         and asset."archived_at" is null
     `;

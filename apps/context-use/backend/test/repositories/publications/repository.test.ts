@@ -85,14 +85,14 @@ for (const { type, table, status } of RESOURCES) {
       expect(publicId).not.toBe(resourceId);
 
       await database.unsafe(
-        `insert into "${table}_publication" ("${type}_id", "owner_id", "public_id") values ($1, $2, $3)`,
-        [resourceId, input.ownerId, publicId],
+        `update "${table}" set "public_id" = $1 where "id" = $2 and "owner_id" = $3`,
+        [publicId, resourceId, input.ownerId],
       );
       expect(await repository[status](input)).toEqual({ ...privateStatus, publicId });
       const publish = () =>
         database.unsafe(
-          `update "${table}_publication" set "published_at" = $1${type === 'page' ? ', "revision_id" = $2' : ''}
-         where "${type}_id" = ${type === 'page' ? '$3' : '$2'}`,
+          `update "${table}" set "published_at" = $1${type === 'page' ? ', "published_revision_id" = $2' : ''}
+         where "id" = ${type === 'page' ? '$3' : '$2'}`,
           type === 'page' ? [NOW, `${resourceId}-revision`, resourceId] : [NOW, resourceId],
         );
       await publish();
@@ -106,9 +106,15 @@ for (const { type, table, status } of RESOURCES) {
         expect(await repository[status]({ ...input, readableId })).toBeNull();
       }
 
+      await expect(
+        Promise.resolve(
+          database.unsafe(`update "${table}" set "public_id" = null where "id" = $1`, [resourceId]),
+        ),
+      ).rejects.toThrow('CHECK');
+
       await database.unsafe(
-        `update "${table}_publication" set "published_at" = null${type === 'page' ? ', "revision_id" = null' : ''}
-         where "${type}_id" = $1`,
+        `update "${table}" set "published_at" = null${type === 'page' ? ', "published_revision_id" = null' : ''}
+         where "id" = $1`,
         [resourceId],
       );
       expect(await repository[status](input)).toEqual({ ...privateStatus, publicId });
@@ -118,6 +124,11 @@ for (const { type, table, status } of RESOURCES) {
         publishedAt: NOW,
         ...activeRevision,
       });
+      await database.unsafe(`update "${table}" set "archived_at" = $1 where "id" = $2`, [
+        LATER,
+        resourceId,
+      ]);
+      expect(await repository[status](input)).toBeNull();
     });
   });
 
@@ -125,32 +136,48 @@ for (const { type, table, status } of RESOURCES) {
     await withDatabase(async (database) => {
       const resourceId = `owner-a-${type}-primary`;
       const publicId = createPublicId(type);
-      const insert = async ({ id = resourceId, owner = 'owner-a', handle = publicId } = {}) =>
+      const reserve = async ({ id = resourceId, owner = 'owner-a', handle = publicId } = {}) =>
         database.unsafe(
-          `insert into "${table}_publication" ("${type}_id", "owner_id", "public_id") values ($1, $2, $3)`,
-          [id, owner, handle],
+          `update "${table}" set "public_id" = $1 where "id" = $2 and "owner_id" = $3`,
+          [handle, id, owner],
         );
-      await expect(insert({ owner: 'owner-b' })).rejects.toThrow('FOREIGN KEY');
-      await expect(insert({ id: 'missing-resource' })).rejects.toThrow('FOREIGN KEY');
+      await reserve({ owner: 'owner-b' });
+      await reserve({ id: 'missing-resource' });
+      expect(
+        await new PublicationsRepository(database)[status]({
+          ownerId: 'owner-a',
+          readableId: 'primary',
+        }),
+      ).toEqual({
+        publicId: null,
+        publishedAt: null,
+        ...(type === 'page' ? { revisionId: null } : {}),
+      });
       for (const handle of [
         'primary',
         resourceId,
         createPublicId(type === 'asset' ? 'entity' : 'asset'),
       ]) {
-        await expect(insert({ handle })).rejects.toThrow('CHECK');
+        await expect(reserve({ handle })).rejects.toThrow('CHECK');
       }
-      await insert();
-      await expect(insert({ handle: createPublicId(type) })).rejects.toThrow('UNIQUE');
-      await expect(insert({ id: `owner-a-${type}-secondary` })).rejects.toThrow('UNIQUE');
-      await expect(insert({ id: `owner-b-${type}-primary`, owner: 'owner-b' })).rejects.toThrow(
+      await expect(
+        Promise.resolve(
+          database.unsafe(
+            `update "${table}" set "published_at" = $1${type === 'page' ? ', "published_revision_id" = $2' : ''} where "id" = ${type === 'page' ? '$3' : '$2'}`,
+            type === 'page' ? [NOW, `${resourceId}-revision`, resourceId] : [NOW, resourceId],
+          ),
+        ),
+      ).rejects.toThrow('CHECK');
+      await reserve();
+      await expect(reserve({ id: `owner-a-${type}-secondary` })).rejects.toThrow('UNIQUE');
+      await expect(reserve({ id: `owner-b-${type}-primary`, owner: 'owner-b' })).rejects.toThrow(
         'UNIQUE',
       );
       await expect(
         Promise.resolve(
-          database.unsafe(
-            `update "${table}_publication" set "published_at" = ' ' where "${type}_id" = $1`,
-            [resourceId],
-          ),
+          database.unsafe(`update "${table}" set "published_at" = ' ' where "id" = $1`, [
+            resourceId,
+          ]),
         ),
       ).rejects.toThrow('CHECK');
 
@@ -165,19 +192,23 @@ for (const { type, table, status } of RESOURCES) {
         }
       });
       await expect(
-        insert({ id: `${type}_private-database-id`, handle: `${type}_private-database-id` }),
+        reserve({ id: `${type}_private-database-id`, handle: `${type}_private-database-id` }),
       ).rejects.toThrow('CHECK');
 
-      await insert({
+      await reserve({
         id: `owner-b-${type}-primary`,
         owner: 'owner-b',
         handle: createPublicId(type),
       });
       await database.unsafe(`delete from "${table}" where "id" = $1`, [resourceId]);
-      const retained = await database.unsafe(`select "owner_id" from "${table}_publication"`);
+      const retained = await database.unsafe(
+        `select "owner_id" from "${table}" where "public_id" is not null`,
+      );
       expect([...retained]).toEqual([{ owner_id: 'owner-b' }]);
       await database`delete from "auth_user" where "id" = 'owner-b'`;
-      const removed = await database.unsafe(`select "owner_id" from "${table}_publication"`);
+      const removed = await database.unsafe(
+        `select "owner_id" from "${table}" where "public_id" is not null`,
+      );
       expect([...removed]).toEqual([]);
     });
   });
@@ -189,17 +220,19 @@ test('a page publication selects exactly one revision of its own page and surviv
     const input = { ownerId: 'owner-a', readableId: 'primary' };
     const publicId = createPublicId('page');
     await database`
-      insert into "knowledge_page_publication" ("page_id", "owner_id", "public_id")
-      values ('owner-a-page-primary', 'owner-a', ${publicId})
+      update "knowledge_page" set "public_id" = ${publicId}
+      where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
     `;
     await expect(
       Promise.resolve(database`
-      update "knowledge_page_publication" set "published_at" = ${NOW}
+      update "knowledge_page" set "published_at" = ${NOW}
+      where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
     `),
     ).rejects.toThrow('CHECK');
     await expect(
       Promise.resolve(database`
-      update "knowledge_page_publication" set "revision_id" = 'owner-a-page-primary-revision'
+      update "knowledge_page" set "published_revision_id" = 'owner-a-page-primary-revision'
+      where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
     `),
     ).rejects.toThrow('CHECK');
     for (const revisionId of [
@@ -209,12 +242,14 @@ test('a page publication selects exactly one revision of its own page and surviv
     ]) {
       await expect(
         Promise.resolve(database`
-        update "knowledge_page_publication" set "published_at" = ${NOW}, "revision_id" = ${revisionId}
+        update "knowledge_page" set "published_at" = ${NOW}, "published_revision_id" = ${revisionId}
+        where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
       `),
       ).rejects.toThrow('FOREIGN KEY');
     }
     await database`
-      update "knowledge_page_publication" set "published_at" = ${NOW}, "revision_id" = 'owner-a-page-primary-revision'
+      update "knowledge_page" set "published_at" = ${NOW}, "published_revision_id" = 'owner-a-page-primary-revision'
+      where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
     `;
     await database.begin(async (db) => {
       await db`
@@ -239,7 +274,8 @@ test('a page publication selects exactly one revision of its own page and surviv
       ),
     ).rejects.toThrow('FOREIGN KEY');
     await database`
-      update "knowledge_page_publication" set "revision_id" = 'new-revision', "published_at" = ${LATER}
+      update "knowledge_page" set "published_revision_id" = 'new-revision', "published_at" = ${LATER}
+      where "id" = 'owner-a-page-primary' and "owner_id" = 'owner-a'
     `;
     expect(await repository.pageStatus(input)).toEqual({
       publicId,
@@ -248,7 +284,8 @@ test('a page publication selects exactly one revision of its own page and surviv
     });
     await database`delete from "knowledge_page_revision" where "id" = 'owner-a-page-primary-revision'`;
     await database`delete from "knowledge_page" where "id" = 'owner-a-page-primary'`;
-    const removed = await database`select "public_id" from "knowledge_page_publication"`;
+    const removed =
+      await database`select "public_id" from "knowledge_page" where "public_id" is not null`;
     expect([...removed]).toEqual([]);
   });
 });

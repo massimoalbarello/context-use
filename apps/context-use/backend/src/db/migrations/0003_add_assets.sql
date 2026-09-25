@@ -2,6 +2,8 @@ create table "asset" (
   "id" text not null,
   "owner_id" text not null,
   "readable_id" text not null,
+  "public_id" text,
+  "published_at" text,
   "name" text not null,
   "media_type" text not null,
   "extension" text,
@@ -12,10 +14,17 @@ create table "asset" (
   "updated_at" text not null,
   "archived_at" text,
   primary key ("id"),
+  unique ("public_id"),
   unique ("id", "owner_id"),
   unique ("owner_id", "readable_id"),
   unique ("storage_key"),
   foreign key ("owner_id") references "auth_user" ("id") on delete cascade,
+  check ("public_id" is null or (
+    "public_id" glob 'asset_?*' and "public_id" not glob '*[^a-z0-9_-]*' and "public_id" != "id"
+  )),
+  check ("published_at" is null or (
+    length(trim("published_at")) > 0 and "public_id" is not null
+  )),
   check (length("readable_id") between 1 and 120),
   check ("readable_id" = lower("readable_id")),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
