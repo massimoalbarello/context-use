@@ -19,18 +19,7 @@ import { neighborhoodsFromRows } from './neighborhoods.ts';
 
 const MAX_HYPERMEDIA_PAGE_ENTITY_REFERENCES = 120;
 
-type PageRow = {
-  id: string;
-  readableId: string;
-  revisionNumber: number;
-  title: string;
-  excerpt: string;
-  temporalCoverage: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-function pageSummaryFrom(row: PageRow): KnowledgePageSummary {
+function pageSummaryFrom(row: KnowledgePageSummary): KnowledgePageSummary {
   return { ...row, revisionNumber: Number(row.revisionNumber) };
 }
 
@@ -149,7 +138,9 @@ export class HypermediaGraphRepository implements HypermediaGraphRepositoryContr
       select graph_row."rowType", graph_row."sourceReadableId", graph_row."sharedPageCount", graph_row."position",
         entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
         coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
+        image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",
         image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
@@ -267,6 +258,11 @@ export class HypermediaGraphRepository implements HypermediaGraphRepositoryContr
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
           revision."temporal_coverage" as "temporalCoverage",
+          page."public_id" as "publicId", page."published_at" as "publishedAt",
+          (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+            where published_revision."id" = page."published_revision_id"
+              and published_revision."owner_id" = page."owner_id"
+              and published_revision."page_id" = page."id") as "publishedRevisionNumber",
           revision."temporal_coverage" is not null
             and revision."temporal_end_exclusive_ms" is null as "ongoingSort",
           case when revision."temporal_coverage" is not null

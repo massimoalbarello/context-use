@@ -68,12 +68,13 @@ active graph. Do not add a stable/transient label; infer durability later from e
 
 ## Revise and archive carefully
 
-Before editing an existing page, call `read_publication_status` with its canonical address.
-Prefer pages with no active publication. Non-null `publishedAt` means active; null means private,
-even if `publicId` remains after withdrawal. Check again if status is unavailable or stale before
-deciding how to edit. For an active publication, obtain informed user confirmation of the proposed
-edit, even when the latest revision is private. Existing explicit, informed confirmation counts.
-This confirmation is agent guidance, not a server edit token.
+Search results, lists, and resource reads include `publication` for pages, entities, and assets.
+Prefer private pages only when editing. Public and private pages are equally suitable for reading
+context. Before editing, read the resource and inspect `publication.isPublic`:
+true means public; false means private.
+For a public page, prefer creating a new private page unless the user explicitly wants to modify
+the public page. Updating a public page requires explicit user confirmation of the proposed edit,
+even when the latest revision is private. Existing explicit confirmation counts.
 
 Edits create private page revisions; `publishedRevisionNumber` identifies the unchanged public
 revision. Only the owner can publish or unpublish with a fresh passkey approval bound to that
@@ -85,7 +86,7 @@ already be public before publication.
 
 Read the current revision before updating. Preserve unrelated and owner-authored content; make the
 smallest coherent revision that incorporates new information. On conflict, read the latest version
-and reconcile rather than overwrite. Before creating a page, consider whether an existing page fits.
+and reconcile rather than overwrite. Before creating a page, consider whether an existing private page fits.
 
 Decomposition is normal curation: create and connect atomic pages, surface inbound references, then
 revise sources and archive the mixed page after a user-informed decision.

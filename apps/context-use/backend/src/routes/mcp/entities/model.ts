@@ -8,6 +8,7 @@ import {
 } from '#backend/models/entities/model.ts';
 import { entityAddress } from '#backend/models/readable-ids/addresses.ts';
 import { EntityAddressSchema, McpReadableIdSchema } from '#backend/routes/mcp/coordinates.ts';
+import { McpPublicationSchema, mcpPublication } from '#backend/routes/mcp/publications/model.ts';
 
 export const McpEntityTypeSchema = z
   .enum(ENTITY_TYPES)
@@ -21,6 +22,7 @@ export const McpEntityTypeFilterSchema = z
 
 export const McpEntityReferenceSchema = z.object({
   address: EntityAddressSchema,
+  publication: McpPublicationSchema,
   readableId: McpReadableIdSchema,
   name: z.string(),
   description: z.string(),
@@ -37,6 +39,7 @@ export function mcpEntityReference(entity: EntityReference) {
   return {
     address: entityAddress(entity.readableId),
     readableId: entity.readableId,
+    publication: mcpPublication(entity),
     name: entity.name,
     description: entity.description,
     entityType: entity.entityType,

@@ -289,7 +289,7 @@ export function registerEntityTools({
     'update_entity',
     {
       title: 'Update entity',
-      description: `Update the name, description, optional entity type, and optionally the image of one active entity at its exact address. ${ENTITY_IMAGE_UPDATE_DESCRIPTION}`,
+      description: `Update the name, description, optional entity type, and optionally the image of one active entity at its exact address. First read the entity and inspect publication; published entity fields change publicly immediately. ${ENTITY_IMAGE_UPDATE_DESCRIPTION}`,
       inputSchema: withChangeMessage(UpdateEntityInputSchema),
       outputSchema: UpdateEntityOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,

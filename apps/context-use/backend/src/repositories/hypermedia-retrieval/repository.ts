@@ -36,6 +36,8 @@ function imageFrom(row: SearchRow) {
     row.imageCreatedAt &&
     row.imageUpdatedAt
     ? {
+        publicId: row.imagePublicId,
+        publishedAt: row.imagePublishedAt,
         id: row.imageId,
         readableId: row.imageReadableId,
         name: row.imageName,
@@ -62,6 +64,8 @@ function resultFrom({
     return {
       resourceType: row.resourceType,
       entity: {
+        publicId: row.entityPublicId,
+        publishedAt: row.entityPublishedAt,
         id: row.entityId,
         readableId: row.readableId,
         name: row.entityName,
@@ -82,6 +86,9 @@ function resultFrom({
     return {
       resourceType: row.resourceType,
       knowledgePage: {
+        publicId: row.pagePublicId,
+        publishedAt: row.pagePublishedAt,
+        publishedRevisionNumber: row.publishedRevisionNumber,
         id: row.pageId,
         readableId: row.readableId,
         title: row.pageTitle,
@@ -123,6 +130,8 @@ function resultFrom({
   return {
     resourceType: row.resourceType,
     asset: {
+      publicId: row.assetPublicId,
+      publishedAt: row.assetPublishedAt,
       id: row.assetId,
       readableId: row.readableId,
       name: row.assetName,
@@ -327,8 +336,10 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
         entity."id" as "entityId", entity."name" as "entityName",
         entity."description" as "entityDescription",
+        entity."public_id" as "entityPublicId", entity."published_at" as "entityPublishedAt",
         entity."entity_type" as "entityType",
         coalesce(profile."self_entity_id" is not null, 0) as "isSelf",
+        image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",
         image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
@@ -336,7 +347,13 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         page."id" as "pageId", revision."title" as "pageTitle",
         revision."excerpt" as "pageExcerpt", revision."revision_number" as "revisionNumber",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "pagePublicId", page."published_at" as "pagePublishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         asset."id" as "assetId", asset."name" as "assetName",
+        asset."public_id" as "assetPublicId", asset."published_at" as "assetPublishedAt",
         asset."media_type" as "mediaType", asset."extension" as "assetExtension",
         asset."size_bytes" as "assetSizeBytes",
         record."title" as "recordTitle", record."provider" as "recordProvider",

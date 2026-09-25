@@ -1,41 +1,33 @@
 import { z } from 'zod';
-import {
-  AssetAddressSchema,
-  EntityAddressSchema,
-  PageAddressSchema,
-} from '#backend/routes/mcp/coordinates.ts';
+import type {
+  PagePublicationStatus,
+  PublicationStatus,
+} from '#backend/models/publications/model.ts';
 
-export const PublicationStatusInputSchema = z.object({
-  address: z.union([PageAddressSchema, EntityAddressSchema, AssetAddressSchema]),
+export const McpPublicationSchema = z.object({
+  isPublic: z.boolean().describe('Whether the resource is currently public.'),
 });
 
-const PublicationSchema = z.object({
-  publicId: z
-    .string()
+export const McpPagePublicationSchema = McpPublicationSchema.extend({
+  publishedRevisionNumber: z
+    .number()
+    .int()
+    .positive()
     .nullable()
     .describe(
-      'Stable public handle, retained after withdrawal. Its presence does not mean public.',
-    ),
-  publishedAt: z
-    .string()
-    .datetime()
-    .nullable()
-    .describe(
-      'Non-null means an active publication; null means private, even with a retained publicId.',
+      'The active public revision, which may differ from the latest private revision; null when private.',
     ),
 });
 
-export const PublicationStatusOutputSchema = z.union([
-  PublicationSchema.extend({
-    resourceType: z.literal('page'),
-    publishedRevisionNumber: z
-      .number()
-      .int()
-      .positive()
-      .nullable()
-      .describe(
-        'The active public revision, which may differ from the latest private revision; null when private.',
-      ),
-  }),
-  PublicationSchema.extend({ resourceType: z.enum(['entity', 'asset']) }),
-]);
+export function mcpPublication(publication: PublicationStatus) {
+  return {
+    isPublic: publication.publishedAt !== null,
+  };
+}
+
+export function mcpPagePublication(publication: PagePublicationStatus) {
+  return {
+    ...mcpPublication(publication),
+    publishedRevisionNumber: publication.publishedRevisionNumber,
+  };
+}

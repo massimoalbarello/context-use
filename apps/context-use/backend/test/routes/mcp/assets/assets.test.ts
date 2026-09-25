@@ -22,7 +22,7 @@ import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
 import { AssetsService, type AssetsServiceContract } from '#backend/services/assets/service.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
-import { unusedAssetFacesService, unusedPublicationApprovalService } from '../../../support/app.ts';
+import { unusedAssetFacesService } from '../../../support/app.ts';
 import {
   unusedHypermediaRetrievalService,
   unusedKnowledgeProfilesService,
@@ -142,7 +142,6 @@ async function withAssetMcp({
     retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
-    publicationStatusService: { status: unusedPublicationApprovalService.status },
     transferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -399,6 +398,8 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
 
 test('raw upload endpoints enforce required headers and byte limits before one AssetsService call', async () => {
   const createdAsset: Asset = {
+    publicId: null,
+    publishedAt: null,
     depicts: [],
     id: 'internal-asset-id',
     readableId: 'bounded-upload',
@@ -552,6 +553,8 @@ test('raw upload endpoints enforce required headers and byte limits before one A
 
 test('asset updates return no echoed state and archive blockers expose only public usage coordinates', async () => {
   const asset: Asset = {
+    publicId: null,
+    publishedAt: null,
     depicts: [],
     id: 'internal-asset-id',
     readableId: 'quarterly-chart',
@@ -565,6 +568,9 @@ test('asset updates return no echoed state and archive blockers expose only publ
       {
         kind: 'page',
         page: {
+          publicId: null,
+          publishedAt: null,
+          publishedRevisionNumber: null,
           id: 'internal-page-id',
           readableId: 'evidence-report',
           title: 'Evidence report',
@@ -579,6 +585,8 @@ test('asset updates return no echoed state and archive blockers expose only publ
       {
         kind: 'entity_image',
         entity: {
+          publicId: null,
+          publishedAt: null,
           id: 'internal-entity-id',
           readableId: 'luca-bianchi',
           name: 'Luca Bianchi',
@@ -622,7 +630,6 @@ test('asset updates return no echoed state and archive blockers expose only publ
     retrievalService: unusedHypermediaRetrievalService,
     pagesService: unusedPagesService,
     profilesService: unusedKnowledgeProfilesService,
-    publicationStatusService: { status: unusedPublicationApprovalService.status },
     transferCapabilities,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

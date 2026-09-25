@@ -173,7 +173,7 @@ export class AssetsService {
     const media = await detectAssetMedia(input.bytes);
     const storageKey = `${input.ownerId}/assets/${input.id}/content${media.extension ? `.${media.extension}` : ''}`;
     const now = new Date().toISOString();
-    const stored: StoredAsset = {
+    const stored: Omit<StoredAsset, 'publicId' | 'publishedAt'> = {
       id: input.id,
       ownerId: input.ownerId,
       readableId: input.readableId,

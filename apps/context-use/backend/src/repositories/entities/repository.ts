@@ -100,6 +100,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
            ${input.createdAt}, ${input.createdAt})
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "readable_id" as "readableId", "name", "description", "entity_type" as "entityType",
+          "public_id" as "publicId", "published_at" as "publishedAt",
           0 as "isSelf", "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;
       const entity = rows[0];
@@ -154,8 +155,11 @@ export class EntitiesRepository implements EntityRepositoryContract {
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf",
+        entity."description", entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+        image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",
         image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
@@ -209,8 +213,11 @@ export class EntitiesRepository implements EntityRepositoryContract {
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf",
+        entity."description", entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
+        image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
         image."id" as "imageId", image."readable_id" as "imageReadableId",
         image."name" as "imageName", image."media_type" as "imageMediaType",
         image."extension" as "imageExtension", image."size_bytes" as "imageSizeBytes",
@@ -510,6 +517,11 @@ export class EntitiesRepository implements EntityRepositoryContract {
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
         current_referring_revision."temporal_coverage" as "temporalCoverage",
+        referring_page."public_id" as "publicId", referring_page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = referring_page."published_revision_id"
+            and published_revision."owner_id" = referring_page."owner_id"
+            and published_revision."page_id" = referring_page."id") as "publishedRevisionNumber",
         referring_page."created_at" as "createdAt", referring_page."updated_at" as "updatedAt"
       from "knowledge_page_entity_mention" inbound_mention
       join "knowledge_page_revision" current_referring_revision

@@ -106,7 +106,9 @@ export class FacesRepository implements FacesRepositoryContract {
         /* @type similarity number | null */
         select face."readable_id" as "readableId", face."box", face."current", face."needs_review" as "needsReview",
           face."annotation_decision" as "decision", entity."id" as "entityId", entity."readable_id" as "entityReadableId",
-          entity."name", entity."description", entity."entity_type" as "entityType", profile."self_entity_id" as "selfEntityId",
+          entity."name", entity."description", entity."entity_type" as "entityType",
+          entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+          profile."self_entity_id" as "selfEntityId",
           case when face."annotation_decision" is null and entity."id" is not null then face."match_similarity" end as "similarity"
         from "asset_face" face
         left join "asset_depicts_entity" link on link."face_id" = face."id" and link."owner_id" = face."owner_id"
@@ -130,6 +132,8 @@ export class FacesRepository implements FacesRepositoryContract {
           entity:
             row.entityId && row.entityReadableId && row.name !== null && row.description !== null
               ? {
+                  publicId: row.publicId,
+                  publishedAt: row.publishedAt,
                   id: row.entityId,
                   readableId: row.entityReadableId,
                   name: row.name,
@@ -166,7 +170,8 @@ export class FacesRepository implements FacesRepositoryContract {
         /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt state */
         /* @type state 'queued' | 'ready' | 'failed' | 'unsupported' */
         with images as (
-          select asset."id", asset."readable_id" as "readableId", asset."name", asset."media_type" as "mediaType",
+          select asset."id", asset."readable_id" as "readableId", asset."name",
+            asset."public_id" as "publicId", asset."published_at" as "publishedAt", asset."media_type" as "mediaType",
             asset."extension", asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt", asset."updated_at" as "updatedAt",
             case when asset."media_type" not in (select value from json_each(${JSON.stringify(input.supportedMediaTypes)})) then 'unsupported'
               when analysis."asset_id" is null or analysis."state" = 'processing' or analysis."content_hash" <> asset."content_hash" then 'queued'
@@ -563,7 +568,9 @@ export class FacesRepository implements FacesRepositoryContract {
           select link."asset_id" as "id" from "asset_depicts_entity" link
           join person on person."id" = link."entity_id" and person."owner_id" = link."owner_id"
         )
-        select asset."id", asset."readable_id" as "readableId", asset."name", asset."media_type" as "mediaType", asset."extension", asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt", asset."updated_at" as "updatedAt"
+        select asset."id", asset."readable_id" as "readableId", asset."name",
+          asset."public_id" as "publicId", asset."published_at" as "publishedAt",
+          asset."media_type" as "mediaType", asset."extension", asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt", asset."updated_at" as "updatedAt"
         from image_ids join "asset" asset on asset."id" = image_ids."id"
         where asset."owner_id" = ${input.ownerId} and asset."archived_at" is null
         order by asset."created_at" desc, asset."readable_id" limit ${input.limit} offset ${input.offset}

@@ -417,6 +417,11 @@ export class RecordsRepository implements RecordsRepositoryContract {
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId", revision."revision_number" as "revisionNumber",
         revision."title", revision."excerpt", revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt"
       from "knowledge_page_record_reference" reference
       join "knowledge_page" page on page."current_revision_id" = reference."source_revision_id"

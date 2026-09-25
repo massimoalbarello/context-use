@@ -72,6 +72,7 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
            ${input.description}, ${SELF_ENTITY_TYPE}, ${input.createdAt}, ${input.createdAt})
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "readable_id" as "readableId", "name", "description", "entity_type" as "entityType",
+          "public_id" as "publicId", "published_at" as "publishedAt",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;
       const entity = entities[0];
@@ -111,8 +112,12 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", entity."entity_type" as "entityType", 1 as "isSelf", entity."created_at" as "createdAt",
-        entity."updated_at" as "updatedAt", image."id" as "imageId",
+        entity."description", entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        1 as "isSelf", entity."created_at" as "createdAt",
+        entity."updated_at" as "updatedAt",
+        image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
+        image."id" as "imageId",
         image."readable_id" as "imageReadableId", image."name" as "imageName",
         image."media_type" as "imageMediaType", image."extension" as "imageExtension",
         image."size_bytes" as "imageSizeBytes", image."created_at" as "imageCreatedAt",

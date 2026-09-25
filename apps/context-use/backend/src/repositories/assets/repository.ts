@@ -12,7 +12,7 @@ import { replaceSearchDocument } from '../search-index.ts';
 
 export interface AssetsRepositoryContract {
   create(
-    input: StoredAsset & { change: ChangeContext },
+    input: Omit<StoredAsset, 'publicId' | 'publishedAt'> & { change: ChangeContext },
   ): Promise<{ state: 'created'; asset: StoredAsset } | { state: 'readable_id_conflict' }>;
   list(input: {
     ownerId: string;
@@ -57,7 +57,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     this.sql = withTypes<Queries>(sql);
   }
 
-  create(input: StoredAsset & { change: ChangeContext }) {
+  create(input: Omit<StoredAsset, 'publicId' | 'publishedAt'> & { change: ChangeContext }) {
     return this.sql.begin(async (db) => {
       const rows = await db.CreateAsset`
         /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
@@ -70,6 +70,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
            ${input.createdAt}, ${input.updatedAt})
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
+          "public_id" as "publicId", "published_at" as "publishedAt",
           "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
           "storage_key" as "storageKey", "content_hash" as "contentHash",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
@@ -116,7 +117,8 @@ export class AssetsRepository implements AssetsRepositoryContract {
     const normalizedKind = kind ?? null;
     const rowsPromise = this.sql.ListAssets`
       /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
-      select "id", "readable_id" as "readableId", "name", "media_type" as "mediaType",
+      select "id", "readable_id" as "readableId", "name", "public_id" as "publicId", "published_at" as "publishedAt",
+        "media_type" as "mediaType",
         "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
         "updated_at" as "updatedAt"
       from "asset"
@@ -158,6 +160,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     const rows = await this.sql.FindAsset`
       /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
       select "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
+        "public_id" as "publicId", "published_at" as "publishedAt",
         "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
         "storage_key" as "storageKey", "content_hash" as "contentHash",
         "created_at" as "createdAt", "updated_at" as "updatedAt"
@@ -207,6 +210,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
           and "archived_at" is null
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
+          "public_id" as "publicId", "published_at" as "publishedAt",
           "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
           "storage_key" as "storageKey", "content_hash" as "contentHash",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
@@ -316,7 +320,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @type isSelf number */
       /* @type source 'detected' | 'confirmed' */
       select entity."id", entity."readable_id" as "readableId", entity."name", entity."description",
-        entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf",
+        entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        profile."self_entity_id" is not null as "isSelf",
         case when max(link."source" = 'confirmed') then 'confirmed' else 'detected' end as "source"
       from "asset_depicts_entity" link
       join "entity" entity on entity."id" = link."entity_id" and entity."owner_id" = link."owner_id"
@@ -361,6 +367,11 @@ export class AssetsRepository implements AssetsRepositoryContract {
       select page."id", page."readable_id" as "readableId", revision."title",
         revision."excerpt", revision."revision_number" as "revisionNumber",
         revision."temporal_coverage" as "temporalCoverage",
+        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
+          where published_revision."id" = page."published_revision_id"
+            and published_revision."owner_id" = page."owner_id"
+            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
         page."created_at" as "createdAt", page."updated_at" as "updatedAt", usage."presentation"
       from "knowledge_page_asset_usage" usage
       join "knowledge_page" page
@@ -375,7 +386,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @notNull id readableId name description */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
-        entity."description", entity."entity_type" as "entityType", profile."self_entity_id" is not null as "isSelf"
+        entity."description", entity."entity_type" as "entityType",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        profile."self_entity_id" is not null as "isSelf"
       from "entity" entity
       left join "knowledge_profile" profile
         on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"

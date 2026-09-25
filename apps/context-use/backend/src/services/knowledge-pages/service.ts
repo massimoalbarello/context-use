@@ -345,6 +345,9 @@ export class KnowledgePagesService {
 
   private summary(page: StoredKnowledgePage): KnowledgePageSummary {
     return {
+      publicId: page.publicId,
+      publishedAt: page.publishedAt,
+      publishedRevisionNumber: page.publishedRevisionNumber,
       id: page.id,
       readableId: page.readableId,
       title: page.title,
