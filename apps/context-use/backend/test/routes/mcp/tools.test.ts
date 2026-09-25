@@ -302,8 +302,15 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
           createPageInput.required.includes('temporalCoverage'),
       ).toBe(false);
       const updatePageTool = tools.find(({ name }) => name === 'update_knowledge_page');
-      expect(updatePageTool?.description).toContain('First read the page and inspect publication');
-      expect(updatePageTool?.description).toContain('informed user confirmation');
+      expect(updatePageTool?.description).toStartWith(
+        'Create a new revision of one knowledge page.',
+      );
+      expect(updatePageTool?.description).toContain(
+        'Updating a public page requires explicit user confirmation',
+      );
+      expect(updatePageTool?.description).toContain(
+        'Prefer creating a new private page unless the user explicitly wants to modify the public page',
+      );
       const updatePageInput = updatePageTool?.inputSchema;
       expect(updatePageTool?.description).toMatch(
         /temporalCoverage.*omit.*preserve.*null.*clear.*value.*replace/,
@@ -581,7 +588,11 @@ test('the concise guide is deterministic and names only available retrieval tool
       expect(guide).toContain('Prefer pages with no active publication');
       expect(guide).toMatch(/non-null `publishedAt`\s+means active; null means private/i);
       expect(guide).toMatch(/even when the latest revision is private/);
-      expect(guide).toContain('Existing explicit, informed confirmation counts');
+      expect(guide).toMatch(
+        /prefer creating a new private page unless the user explicitly wants to modify\s+the public page/,
+      );
+      expect(guide).toContain('Updating a public page requires explicit user confirmation');
+      expect(guide).toContain('Existing explicit confirmation counts');
       expect(guide).toMatch(/Edits create private page revisions/);
       expect(guide).toMatch(/Only the owner can publish or unpublish with a fresh passkey/);
       expect(guide).toMatch(/Public entity fields are live, not versioned/);
