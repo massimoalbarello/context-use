@@ -85,12 +85,6 @@ export function PublicationReviewDialog({
             This review has expired. Review again before confirming.
           </p>
         )}
-        {ready && !approval.needsReview && (
-          <p className="text-muted-foreground text-sm">
-            Confirm this operation with your passkey. This review expires shortly; if anything
-            changes, you’ll need to review again.
-          </p>
-        )}
         <ReviewActions approval={approval} confirmDisabled={confirmDisabled} />
       </DialogContent>
     </Dialog>

@@ -74,22 +74,24 @@ function EntityDetailContent({ entity, onArchived }: { entity: Entity; onArchive
                   setArchiveConflict(null);
                   setEditing(true);
                 }}
+                publicationActions={
+                  publication.isSuccess && (
+                    <EntityPublicationActions
+                      publicId={isPublic ? publication.data.publicId : null}
+                      isPublic={isPublic}
+                      unavailable={!!approval.request}
+                      onReview={() => {
+                        setArchiveConflict(null);
+                        approval.review({
+                          resourceType: 'entity',
+                          readableId: entity.readableId,
+                          action: isPublic ? 'unpublish' : 'publish',
+                        });
+                      }}
+                    />
+                  )
+                }
               >
-                {publication.isSuccess && (
-                  <EntityPublicationActions
-                    publicId={isPublic ? publication.data.publicId : null}
-                    isPublic={isPublic}
-                    unavailable={!!approval.request}
-                    onReview={() => {
-                      setArchiveConflict(null);
-                      approval.review({
-                        resourceType: 'entity',
-                        readableId: entity.readableId,
-                        action: isPublic ? 'unpublish' : 'publish',
-                      });
-                    }}
-                  />
-                )}
                 {!entity.isSelf && (
                   <ResourceArchiveAction
                     blocked={isPublic || hasInboundUsages}

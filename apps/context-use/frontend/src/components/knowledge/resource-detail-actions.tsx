@@ -7,6 +7,7 @@ type ResourceDetailActionsProps = { resource: ResourceName } & (
   | {
       mode: 'view';
       onEdit: () => void;
+      publicationActions?: ReactNode;
       children?: ReactNode;
     }
   | {
@@ -33,6 +34,7 @@ export function ResourceDetailActions(props: ResourceDetailActionsProps) {
 
   return (
     <>
+      {props.publicationActions}
       <Button size="lg" type="button" onClick={props.onEdit}>
         Edit {props.resource}
       </Button>
