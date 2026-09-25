@@ -43,8 +43,8 @@ export function PagePublicationReview({
       ) : (
         <p className="text-sm">
           {published == null ? 'This page' : `Public revision ${published}`} will stop being
-          available at this page’s public URL and in public entity page indices. Referenced pages,
-          mentioned entities, and attached or embedded assets keep their own publication state.
+          available at this page’s public URL and in public entity page indices. Linked resources
+          keep their own publication state.
         </p>
       )}
     </PublicationReviewDialog>

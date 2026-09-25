@@ -385,6 +385,10 @@ test('private resources stay collapsed until expanded and renewed review refresh
   state.blockers = [
     {
       reason: 'reference_not_public',
+      resource: { resourceType: 'record', readableId: 'source', name: 'Private source' },
+    },
+    {
+      reason: 'reference_not_public',
       resource: { resourceType: 'entity', readableId: 'studio', name: 'Private studio' },
     },
     {
@@ -398,7 +402,7 @@ test('private resources stay collapsed until expanded and renewed review refresh
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   const dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
-  const toggle = await dialog.findByRole('button', { name: '3 private resources' });
+  const toggle = await dialog.findByRole('button', { name: '4 private resources' });
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
   expect(dialog.getByRole('alert').textContent).toBe(
     'Publish all resources referenced in this page before publishing it.',
@@ -413,6 +417,9 @@ test('private resources stay collapsed until expanded and renewed review refresh
   expect(dialog.getAllByRole('link')).toHaveLength(state.blockers.length);
   expect(dialog.getByRole('link', { name: 'Related page' }).getAttribute('href')).toStartWith(
     '/pages/related',
+  );
+  expect(dialog.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
+    '/records/source',
   );
   expect(dialog.queryByText('Publish this referenced resource first.')).toBeNull();
   await user.click(toggle);
@@ -430,21 +437,9 @@ test('private resources stay collapsed until expanded and renewed review refresh
   );
 });
 
-test('record, private dependency, unavailable reference and self-reference blockers give actionable resource links', async () => {
+test('unavailable references and self-references retain specific guidance in a compact disclosure', async () => {
   const { state, user, device } = await renderPage();
   state.blockers = [
-    {
-      reason: 'record_reference',
-      resource: { resourceType: 'record', readableId: 'source', name: 'Private source' },
-    },
-    {
-      reason: 'reference_not_public',
-      resource: { resourceType: 'entity', readableId: 'studio', name: 'Private studio' },
-    },
-    {
-      reason: 'reference_not_public',
-      resource: { resourceType: 'asset', readableId: 'chart', name: 'Private chart' },
-    },
     {
       reason: 'reference_not_public',
       resource: { resourceType: 'page', readableId: 'notes', name: 'This page' },
@@ -456,21 +451,13 @@ test('record, private dependency, unavailable reference and self-reference block
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   await screen.findByRole('button', { name: 'Review again' });
-  expect(screen.queryByRole('link', { name: 'Private source' })).toBeNull();
-  await user.click(screen.getByRole('button', { name: '3 references to fix' }));
-  expect(screen.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
-    '/records/source',
+  expect(screen.queryByRole('link', { name: 'Removed source' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: '2 references to fix' }));
+  expect(screen.getByRole('link', { name: 'Removed source' }).getAttribute('href')).toStartWith(
+    '/records/removed',
   );
   expect(screen.getByText(/Publish a revision without this self-reference/)).toBeTruthy();
-  expect(screen.getByText(/Pages that reference records cannot be published/)).toBeTruthy();
   expect(screen.getByText(/Remove or replace this unavailable reference/)).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: '2 private resources' }));
-  expect(screen.getByRole('link', { name: 'Private studio' }).getAttribute('href')).toStartWith(
-    '/entities/studio',
-  );
-  expect(screen.getByRole('link', { name: 'Private chart' }).getAttribute('href')).toStartWith(
-    '/assets/chart',
-  );
   expect(device.calls).toHaveLength(0);
   expect(state.comparisons).toHaveLength(0);
 });
