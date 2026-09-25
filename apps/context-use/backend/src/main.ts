@@ -38,6 +38,7 @@ import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-pro
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
 import { PublicResourcesRepository } from '#backend/repositories/public-resources/repository.ts';
+import { PublicSiteRepository } from '#backend/repositories/public-site/repository.ts';
 import { PublicationApprovalsRepository } from '#backend/repositories/publications/approvals.ts';
 import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
@@ -58,6 +59,7 @@ import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/s
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import { PublicResourcesService } from '#backend/services/public-resources/service.ts';
+import { PublicSiteService } from '#backend/services/public-site/service.ts';
 import { PublicationApprovalService } from '#backend/services/publications/approval-service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
@@ -228,6 +230,8 @@ try {
     profilesService,
     publicationApprovalService,
     publicResourcesService,
+    publicSiteService: new PublicSiteService(new PublicSiteRepository(database)),
+    publicOwnerId: OWNER_USER_ID,
     recordsService,
     apiKeysService,
   }).onStop(async () => {

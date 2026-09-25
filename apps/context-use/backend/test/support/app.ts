@@ -6,6 +6,7 @@ import type { AssetFacesServiceContract } from '#backend/services/assets/faces.t
 import type { HistoryServiceContract } from '#backend/services/history/service.ts';
 import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
+import type { PublicSiteServiceContract } from '#backend/services/public-site/service.ts';
 import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
@@ -71,8 +72,14 @@ export const unusedPublicationApprovalService: PublicationApprovalServiceContrac
 };
 
 export const unusedPublicResourcesService: PublicResourcesServiceContract = {
+  homepageContent: unexpectedCall,
   assetContent: unexpectedCall,
   pageContent: unexpectedCall,
   recordContent: unexpectedCall,
   entityContent: unexpectedCall,
+};
+
+export const unusedPublicSiteService: PublicSiteServiceContract = {
+  settings: unexpectedCall,
+  setHomepage: unexpectedCall,
 };

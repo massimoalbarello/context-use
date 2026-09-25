@@ -26,7 +26,7 @@ test(
         env: { DATA_FOLDER: personal, TMPDIR: temporary },
       });
       const { request } = binary;
-      const page = await request({ path: '/pages/bringing-our-music-work-into-phones' });
+      const page = await request({ path: '/app/pages/bringing-our-music-work-into-phones' });
       assert.equal(page.status, StatusMap.OK);
       const html = await page.text();
       assert.match(html, /<html/);
@@ -94,11 +94,11 @@ test(
         assert.equal((await request({ path })).status, StatusMap.Forbidden, path);
       }
       for (const path of [
-        '/pages/new',
-        '/entities/new',
-        '/assets/new',
-        '/settings',
-        '/settings/api-keys',
+        '/app/pages/new',
+        '/app/entities/new',
+        '/app/assets/new',
+        '/app/settings',
+        '/app/settings/api-keys',
       ]) {
         assert.match(await (await request({ path })).text(), /Read-only demo/);
       }

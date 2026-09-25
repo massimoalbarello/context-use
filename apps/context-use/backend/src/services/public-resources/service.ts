@@ -22,6 +22,15 @@ export class PublicResourcesService {
     this.storage = storage;
   }
 
+  async homepageContent(input: { ownerId: string }) {
+    const homepage = await this.resources.findHomepage(input);
+    if (!homepage) {
+      return null;
+    }
+    const content = await this.pageContent(homepage);
+    return content ? { publicId: homepage.publicId, ...content } : null;
+  }
+
   async pageContent(input: { publicId: string }) {
     const page = await this.resources.findPage(input);
     if (!page) {
@@ -93,5 +102,5 @@ export class PublicResourcesService {
 
 export type PublicResourcesServiceContract = Pick<
   PublicResourcesService,
-  'assetContent' | 'pageContent' | 'entityContent' | 'recordContent'
+  'homepageContent' | 'assetContent' | 'pageContent' | 'entityContent' | 'recordContent'
 >;

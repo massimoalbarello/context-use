@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { pageListFilters, pageSearch } from '../../src/routes/pages';
+import { pageListFilters, pageSearch } from '../../src/routes/app.pages';
 
 test('Pages search, interval, and date filters are canonical URL state', () => {
   const search = pageSearch({

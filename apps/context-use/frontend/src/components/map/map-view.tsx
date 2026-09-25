@@ -225,7 +225,7 @@ export function MapPageLink({
   return (
     <a
       {...props}
-      href={`/pages/${encodeURIComponent(page.readableId)}?view=preview`}
+      href={`/app/pages/${encodeURIComponent(page.readableId)}?view=preview`}
       className={cn(
         'cursor-pointer outline-none',
         page.temporalCoverage !== null ? 'text-chart-1' : 'text-[oklch(0.81_0.1_145)]',

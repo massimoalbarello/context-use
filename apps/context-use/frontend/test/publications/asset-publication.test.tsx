@@ -239,9 +239,9 @@ test('public dependencies provide private resource links without starting a pass
   );
   await user.click(screen.getByRole('button', { name: 'Unpublish' }));
   const link = await screen.findByRole('link', { name: 'Launch page' });
-  expect(link.getAttribute('href')).toStartWith('/pages/launch');
+  expect(link.getAttribute('href')).toStartWith('/app/pages/launch');
   expect(screen.getByRole('link', { name: 'Alex' }).getAttribute('href')).toStartWith(
-    '/entities/alex',
+    '/app/entities/alex',
   );
   expect(screen.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
   expect(device.calls).toHaveLength(1);

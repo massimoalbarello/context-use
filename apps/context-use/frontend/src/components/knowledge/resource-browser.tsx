@@ -30,7 +30,7 @@ export function ResourceBrowser({
 }: {
   children: ReactNode;
   toolbar?: ReactNode;
-  from: '/map' | '/entities' | '/pages' | '/assets' | '/records';
+  from: '/app/map' | '/app/entities' | '/app/pages' | '/app/assets' | '/app/records';
 }) {
   const narrow = useNarrowWorkspace();
   const { collapsed } = useKnowledgeWorkspace();

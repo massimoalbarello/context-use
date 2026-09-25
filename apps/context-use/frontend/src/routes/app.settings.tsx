@@ -1,0 +1,108 @@
+import { buttonVariants } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
+import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router';
+import { ArrowLeft, Bot, Globe, KeyRound, Plug, ScanFace } from 'lucide-react';
+import { WorkspaceSplitLayout } from '../components/layout/workspace-split-layout';
+import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
+
+export const Route = createFileRoute('/app/settings')({
+  beforeLoad: ({ context, location }) => {
+    if (!context.session) {
+      throw redirect({ to: '/app/login', search: { redirect: location.href } });
+    }
+  },
+  component: SettingsLayout,
+});
+
+function SettingsLayout() {
+  return (
+    <WorkspaceSplitLayout className="grid-rows-[auto_minmax(0,1fr)]">
+      <aside className="grid content-start gap-6 px-4 py-5 md:px-5 md:py-7">
+        <div className="grid gap-5">
+          <Link
+            className={cn(buttonVariants({ variant: 'ghost' }), 'w-fit justify-start')}
+            to={MAIN_KNOWLEDGE_PATH}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Back to Map
+          </Link>
+          <strong className="px-2 font-semibold text-xl tracking-tight">Settings</strong>
+        </div>
+        <nav aria-label="Settings" className="grid gap-1">
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/app/settings/public-site"
+          >
+            <Globe aria-hidden="true" />
+            Public site
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/app/settings/passkeys"
+          >
+            <KeyRound aria-hidden="true" />
+            Passkeys
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            activeOptions={{ exact: true }}
+            to="/app/settings"
+          >
+            <Bot aria-hidden="true" />
+            MCP
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/app/settings/plugins"
+          >
+            <Plug aria-hidden="true" />
+            Plugins
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/app/settings/api-keys"
+          >
+            <KeyRound aria-hidden="true" />
+            API keys
+          </Link>
+          <Link
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'w-full justify-start text-muted-foreground',
+            )}
+            activeProps={{ className: 'bg-muted text-foreground' }}
+            to="/app/settings/faces"
+          >
+            <ScanFace aria-hidden="true" />
+            Face recognition
+          </Link>
+        </nav>
+      </aside>
+      <section className="flex min-h-0 min-w-0 flex-col overflow-clip p-2 md:p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl bg-card">
+          <Outlet />
+        </div>
+      </section>
+    </WorkspaceSplitLayout>
+  );
+}

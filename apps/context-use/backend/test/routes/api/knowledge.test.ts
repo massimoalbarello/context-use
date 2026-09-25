@@ -40,6 +40,7 @@ import {
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicResourcesService,
+  unusedPublicSiteService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../support/app.ts';
@@ -148,6 +149,8 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
       storage,
     });
     const app = createApp({
+      publicOwnerId: 'owner-a',
+      publicSiteService: unusedPublicSiteService,
       publicationApprovalService: unusedPublicationApprovalService,
       publicResourcesService: unusedPublicResourcesService,
       historyService: new HistoryService(new HistoryRepository(database)),

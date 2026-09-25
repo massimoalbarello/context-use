@@ -16,13 +16,13 @@ import { KnowledgeSidebarFooter, KnowledgeSidebarHeader } from './knowledge-side
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 
 const destinations = [
-  { to: '/map', label: 'Map', icon: MapIcon },
-  { to: '/history', label: 'History', icon: History },
-  { to: '/syncs', label: 'Syncs', icon: RefreshCw },
-  { to: '/entities', label: 'Entities', icon: Users },
-  { to: '/pages', label: 'Pages', icon: FileText },
-  { to: '/assets', label: 'Assets', icon: Image },
-  { to: '/records', label: 'Records', icon: FileInput },
+  { to: '/app/map', label: 'Map', icon: MapIcon },
+  { to: '/app/history', label: 'History', icon: History },
+  { to: '/app/syncs', label: 'Syncs', icon: RefreshCw },
+  { to: '/app/entities', label: 'Entities', icon: Users },
+  { to: '/app/pages', label: 'Pages', icon: FileText },
+  { to: '/app/assets', label: 'Assets', icon: Image },
+  { to: '/app/records', label: 'Records', icon: FileInput },
 ] as const;
 
 export function KnowledgeSidebar({ profile }: { profile: KnowledgeProfile }) {
@@ -54,7 +54,7 @@ export function KnowledgeSidebar({ profile }: { profile: KnowledgeProfile }) {
                 <Icon className="size-5" aria-hidden="true" />
                 {label}
               </Link>
-              {to === '/syncs' && <hr className="mx-3 my-2 border-border" />}
+              {to === '/app/syncs' && <hr className="mx-3 my-2 border-border" />}
             </Fragment>
           ))}
         </nav>

@@ -68,7 +68,7 @@ function EntityDot({
 }) {
   const label = entity.entity.name;
   const reference = mapEntityReference(entity.entity);
-  const href = `/entities/${encodeURIComponent(reference.readableId)}`;
+  const href = `/app/entities/${encodeURIComponent(reference.readableId)}`;
 
   return (
     <a

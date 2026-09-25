@@ -81,7 +81,7 @@ export function KnowledgePageLink({
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
-        to="/pages/$id"
+        to="/app/pages/$id"
         params={{ id: page.readableId }}
         search={(previous) => ({ ...previous, view: 'preview' })}
         hash={fragment}
@@ -96,7 +96,7 @@ export function KnowledgePageLink({
       onClick={resourceLink.onClick}
       preload={resourceLink.preload}
       className={cn(resourceCardVariants(), 'h-auto min-h-20 transition')}
-      to="/pages/$id"
+      to="/app/pages/$id"
       params={{ id: page.readableId }}
       search={(previous) => ({ ...previous, view: 'preview' })}
       hash={fragment}

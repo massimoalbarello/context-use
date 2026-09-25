@@ -125,7 +125,7 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
     routeTree,
     context: { queryClient: client },
     history: createMemoryHistory({
-      initialEntries: ['/entities/new?redirect=%2Fentities%2Falice'],
+      initialEntries: ['/app/entities/new?redirect=%2Fapp%2Fentities%2Falice'],
     }),
   });
   await router.load();
@@ -185,7 +185,7 @@ for (const onboarding of [false, true]) {
       }
       await world.submit();
       await screen.findByText('Image is already assigned');
-      expect(world.router.state.location.pathname).toBe('/entities/new');
+      expect(world.router.state.location.pathname).toBe('/app/entities/new');
       expect(
         (screen.getByRole('textbox', { name: 'Name' }) as HTMLInputElement).closest('fieldset')
           ?.disabled,
@@ -194,7 +194,7 @@ for (const onboarding of [false, true]) {
         expect(world.client.getQueryData(profileQueryOptions.queryKey)).toBeNull();
       }
       await world.user.click(screen.getByRole('button', { name: 'Continue' }));
-      await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
+      await waitFor(() => expect(world.router.state.location.pathname).toBe('/app/entities/alice'));
       expect(world.writes.map((write) => write.path)).toEqual([
         ...(onboarding ? ['/api/assets', '/api/profile'] : ['/api/entities']),
         '/api/entities/alice/image',
@@ -232,7 +232,7 @@ test('onboarding validates uploads, preserves the draft after upload failure, an
     await screen.findByText('Upload failed');
     expect(world.writes.map((write) => write.path)).toEqual(['/api/assets']);
     await world.submit();
-    await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
+    await waitFor(() => expect(world.router.state.location.pathname).toBe('/app/entities/alice'));
     expect(world.writes.map((write) => write.path)).toEqual([
       '/api/assets',
       '/api/assets',
@@ -256,7 +256,7 @@ test('removing the image after assignment failure continues without creating ano
     await screen.findByText('Image is already assigned');
     await world.user.click(screen.getByRole('button', { name: 'Remove image' }));
     await world.user.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
+    await waitFor(() => expect(world.router.state.location.pathname).toBe('/app/entities/alice'));
     expect(world.writes.map((write) => write.path)).toEqual([
       '/api/assets',
       '/api/entities',
@@ -272,7 +272,7 @@ for (const onboarding of [false, true]) {
     const world = await creationWorld({ onboarding });
     try {
       await world.submit();
-      await waitFor(() => expect(world.router.state.location.pathname).toBe('/entities/alice'));
+      await waitFor(() => expect(world.router.state.location.pathname).toBe('/app/entities/alice'));
       expect(world.writes.map((write) => write.path)).toEqual([
         onboarding ? '/api/profile' : '/api/entities',
       ]);

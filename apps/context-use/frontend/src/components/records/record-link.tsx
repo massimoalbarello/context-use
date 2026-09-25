@@ -53,7 +53,7 @@ export function RecordLink({
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 transition hover:decoration-foreground"
-        to="/records/$id"
+        to="/app/records/$id"
         params={{ id: record.readableId }}
         search={(previous) => ({ ...previous, view: 'preview' })}
       >
@@ -66,7 +66,7 @@ export function RecordLink({
       onClick={resourceLink.onClick}
       preload={resourceLink.preload}
       className={`${resourceCardVariants()} h-auto min-h-24`}
-      to="/records/$id"
+      to="/app/records/$id"
       params={{ id: record.readableId }}
       search={(previous) => ({ ...previous, view: 'preview' })}
       activeOptions={{ exact: true, includeSearch: false }}

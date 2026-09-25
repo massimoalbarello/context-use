@@ -4,7 +4,7 @@ import { Eyebrow } from '../layout/eyebrow';
 
 type WorkspaceEmptyAction =
   | {
-      createTo: '/entities/new' | '/pages/new' | '/assets/new';
+      createTo: '/app/entities/new' | '/app/pages/new' | '/app/assets/new';
       createLabel: string;
     }
   | { createTo?: never; createLabel?: never };

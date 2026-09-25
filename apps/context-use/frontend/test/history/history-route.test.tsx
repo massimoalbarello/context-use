@@ -36,7 +36,7 @@ function entry(overrides: Partial<HistoryEntry> & { sequence: number }): History
 async function withHistory({
   read,
   run,
-  initialEntry = '/history',
+  initialEntry = '/app/history',
 }: {
   read: (url: URL) => Response;
   run: (router: Router<typeof routeTree>) => Promise<void>;
@@ -202,7 +202,7 @@ test('History shows summaries without previews and links pages to revisions', as
       } satisfies HistoryPage),
     run: async () => {
       const link = await screen.findByRole('link', { name: 'Project notes' });
-      expect(link.getAttribute('href')).toBe('/pages/notes?view=revisions');
+      expect(link.getAttribute('href')).toBe('/app/pages/notes?view=revisions');
       expect(screen.getByText('by Research assistant')).toBeTruthy();
       expect(within(link.closest('li')!).queryByText(/^by\b/)).toBeNull();
       expect(screen.getByText('Clarified the next steps')).toBeTruthy();
@@ -219,7 +219,7 @@ test('History filters from the URL, paginates within the filter, and restores it
   const user = userEvent.setup();
   const requests: { resourceType: string | null; cursor: string | null }[] = [];
   await withHistory({
-    initialEntry: '/history?resourceType=page',
+    initialEntry: '/app/history?resourceType=page',
     read: (url) => {
       const type = url.searchParams.get('resourceType');
       requests.push({ resourceType: type, cursor: url.searchParams.get('cursor') });

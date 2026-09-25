@@ -9,705 +9,759 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AssetsRouteImport } from './routes/assets'
-import { Route as EntitiesRouteImport } from './routes/entities'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as MapRouteImport } from './routes/map'
-import { Route as PagesRouteImport } from './routes/pages'
-import { Route as RecordsRouteImport } from './routes/records'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as SyncsRouteImport } from './routes/syncs'
-import { Route as AssetsIndexRouteImport } from './routes/assets.index'
-import { Route as AssetsIdRouteImport } from './routes/assets.$id'
-import { Route as AssetsNewRouteImport } from './routes/assets.new'
-import { Route as EntitiesIndexRouteImport } from './routes/entities.index'
-import { Route as EntitiesIdRouteImport } from './routes/entities.$id'
-import { Route as EntitiesNewRouteImport } from './routes/entities.new'
-import { Route as McpAuthorizeRouteImport } from './routes/mcp.authorize'
-import { Route as PagesIndexRouteImport } from './routes/pages.index'
-import { Route as PagesIdRouteImport } from './routes/pages.$id'
-import { Route as PagesNewRouteImport } from './routes/pages.new'
-import { Route as RecordsIndexRouteImport } from './routes/records.index'
-import { Route as RecordsIdRouteImport } from './routes/records.$id'
-import { Route as SettingsIndexRouteImport } from './routes/settings.index'
-import { Route as SettingsApiKeysRouteImport } from './routes/settings.api-keys'
-import { Route as SettingsFacesRouteImport } from './routes/settings.faces'
-import { Route as SettingsPasskeysRouteImport } from './routes/settings.passkeys'
-import { Route as SettingsPluginsRouteImport } from './routes/settings.plugins'
-import { Route as SyncsIndexRouteImport } from './routes/syncs.index'
-import { Route as SyncsProviderIdRouteImport } from './routes/syncs.$providerId'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAssetsRouteImport } from './routes/app.assets'
+import { Route as AppEntitiesRouteImport } from './routes/app.entities'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
+import { Route as AppLoginRouteImport } from './routes/app.login'
+import { Route as AppMapRouteImport } from './routes/app.map'
+import { Route as AppPagesRouteImport } from './routes/app.pages'
+import { Route as AppRecordsRouteImport } from './routes/app.records'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppSetupRouteImport } from './routes/app.setup'
+import { Route as AppSyncsRouteImport } from './routes/app.syncs'
+import { Route as AppAssetsIndexRouteImport } from './routes/app.assets.index'
+import { Route as AppAssetsIdRouteImport } from './routes/app.assets.$id'
+import { Route as AppAssetsNewRouteImport } from './routes/app.assets.new'
+import { Route as AppEntitiesIndexRouteImport } from './routes/app.entities.index'
+import { Route as AppEntitiesIdRouteImport } from './routes/app.entities.$id'
+import { Route as AppEntitiesNewRouteImport } from './routes/app.entities.new'
+import { Route as AppMcpAuthorizeRouteImport } from './routes/app.mcp.authorize'
+import { Route as AppPagesIndexRouteImport } from './routes/app.pages.index'
+import { Route as AppPagesIdRouteImport } from './routes/app.pages.$id'
+import { Route as AppPagesNewRouteImport } from './routes/app.pages.new'
+import { Route as AppRecordsIndexRouteImport } from './routes/app.records.index'
+import { Route as AppRecordsIdRouteImport } from './routes/app.records.$id'
+import { Route as AppSettingsIndexRouteImport } from './routes/app.settings.index'
+import { Route as AppSettingsApiKeysRouteImport } from './routes/app.settings.api-keys'
+import { Route as AppSettingsFacesRouteImport } from './routes/app.settings.faces'
+import { Route as AppSettingsPasskeysRouteImport } from './routes/app.settings.passkeys'
+import { Route as AppSettingsPluginsRouteImport } from './routes/app.settings.plugins'
+import { Route as AppSettingsPublicSiteRouteImport } from './routes/app.settings.public-site'
+import { Route as AppSyncsIndexRouteImport } from './routes/app.syncs.index'
+import { Route as AppSyncsProviderIdRouteImport } from './routes/app.syncs.$providerId'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AssetsRoute = AssetsRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssetsRoute = AppAssetsRouteImport.update({
   id: '/assets',
   path: '/assets',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const EntitiesRoute = EntitiesRouteImport.update({
+const AppEntitiesRoute = AppEntitiesRouteImport.update({
   id: '/entities',
   path: '/entities',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
+const AppHistoryRoute = AppHistoryRouteImport.update({
   id: '/history',
   path: '/history',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const LoginRoute = LoginRouteImport.update({
+const AppLoginRoute = AppLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const MapRoute = MapRouteImport.update({
+const AppMapRoute = AppMapRouteImport.update({
   id: '/map',
   path: '/map',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const PagesRoute = PagesRouteImport.update({
+const AppPagesRoute = AppPagesRouteImport.update({
   id: '/pages',
   path: '/pages',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const RecordsRoute = RecordsRouteImport.update({
+const AppRecordsRoute = AppRecordsRouteImport.update({
   id: '/records',
   path: '/records',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const SettingsRoute = SettingsRouteImport.update({
+const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const SetupRoute = SetupRouteImport.update({
+const AppSetupRoute = AppSetupRouteImport.update({
   id: '/setup',
   path: '/setup',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const SyncsRoute = SyncsRouteImport.update({
+const AppSyncsRoute = AppSyncsRouteImport.update({
   id: '/syncs',
   path: '/syncs',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const AssetsIndexRoute = AssetsIndexRouteImport.update({
+const AppAssetsIndexRoute = AppAssetsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AssetsRoute,
+  getParentRoute: () => AppAssetsRoute,
 } as any)
-const AssetsIdRoute = AssetsIdRouteImport.update({
+const AppAssetsIdRoute = AppAssetsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => AssetsRoute,
+  getParentRoute: () => AppAssetsRoute,
 } as any)
-const AssetsNewRoute = AssetsNewRouteImport.update({
+const AppAssetsNewRoute = AppAssetsNewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => AssetsRoute,
+  getParentRoute: () => AppAssetsRoute,
 } as any)
-const EntitiesIndexRoute = EntitiesIndexRouteImport.update({
+const AppEntitiesIndexRoute = AppEntitiesIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => EntitiesRoute,
+  getParentRoute: () => AppEntitiesRoute,
 } as any)
-const EntitiesIdRoute = EntitiesIdRouteImport.update({
+const AppEntitiesIdRoute = AppEntitiesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => EntitiesRoute,
+  getParentRoute: () => AppEntitiesRoute,
 } as any)
-const EntitiesNewRoute = EntitiesNewRouteImport.update({
+const AppEntitiesNewRoute = AppEntitiesNewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => EntitiesRoute,
+  getParentRoute: () => AppEntitiesRoute,
 } as any)
-const McpAuthorizeRoute = McpAuthorizeRouteImport.update({
+const AppMcpAuthorizeRoute = AppMcpAuthorizeRouteImport.update({
   id: '/mcp/authorize',
   path: '/mcp/authorize',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const PagesIndexRoute = PagesIndexRouteImport.update({
+const AppPagesIndexRoute = AppPagesIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => PagesRoute,
+  getParentRoute: () => AppPagesRoute,
 } as any)
-const PagesIdRoute = PagesIdRouteImport.update({
+const AppPagesIdRoute = AppPagesIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => PagesRoute,
+  getParentRoute: () => AppPagesRoute,
 } as any)
-const PagesNewRoute = PagesNewRouteImport.update({
+const AppPagesNewRoute = AppPagesNewRouteImport.update({
   id: '/new',
   path: '/new',
-  getParentRoute: () => PagesRoute,
+  getParentRoute: () => AppPagesRoute,
 } as any)
-const RecordsIndexRoute = RecordsIndexRouteImport.update({
+const AppRecordsIndexRoute = AppRecordsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => RecordsRoute,
+  getParentRoute: () => AppRecordsRoute,
 } as any)
-const RecordsIdRoute = RecordsIdRouteImport.update({
+const AppRecordsIdRoute = AppRecordsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
-  getParentRoute: () => RecordsRoute,
+  getParentRoute: () => AppRecordsRoute,
 } as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => SettingsRoute,
+  getParentRoute: () => AppSettingsRoute,
 } as any)
-const SettingsApiKeysRoute = SettingsApiKeysRouteImport.update({
+const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
   id: '/api-keys',
   path: '/api-keys',
-  getParentRoute: () => SettingsRoute,
+  getParentRoute: () => AppSettingsRoute,
 } as any)
-const SettingsFacesRoute = SettingsFacesRouteImport.update({
+const AppSettingsFacesRoute = AppSettingsFacesRouteImport.update({
   id: '/faces',
   path: '/faces',
-  getParentRoute: () => SettingsRoute,
+  getParentRoute: () => AppSettingsRoute,
 } as any)
-const SettingsPasskeysRoute = SettingsPasskeysRouteImport.update({
+const AppSettingsPasskeysRoute = AppSettingsPasskeysRouteImport.update({
   id: '/passkeys',
   path: '/passkeys',
-  getParentRoute: () => SettingsRoute,
+  getParentRoute: () => AppSettingsRoute,
 } as any)
-const SettingsPluginsRoute = SettingsPluginsRouteImport.update({
+const AppSettingsPluginsRoute = AppSettingsPluginsRouteImport.update({
   id: '/plugins',
   path: '/plugins',
-  getParentRoute: () => SettingsRoute,
+  getParentRoute: () => AppSettingsRoute,
 } as any)
-const SyncsIndexRoute = SyncsIndexRouteImport.update({
+const AppSettingsPublicSiteRoute = AppSettingsPublicSiteRouteImport.update({
+  id: '/public-site',
+  path: '/public-site',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSyncsIndexRoute = AppSyncsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => SyncsRoute,
+  getParentRoute: () => AppSyncsRoute,
 } as any)
-const SyncsProviderIdRoute = SyncsProviderIdRouteImport.update({
+const AppSyncsProviderIdRoute = AppSyncsProviderIdRouteImport.update({
   id: '/$providerId',
   path: '/$providerId',
-  getParentRoute: () => SyncsRoute,
+  getParentRoute: () => AppSyncsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/assets': typeof AssetsRouteWithChildren
-  '/entities': typeof EntitiesRouteWithChildren
-  '/history': typeof HistoryRoute
-  '/login': typeof LoginRoute
-  '/map': typeof MapRoute
-  '/pages': typeof PagesRouteWithChildren
-  '/records': typeof RecordsRouteWithChildren
-  '/settings': typeof SettingsRouteWithChildren
-  '/setup': typeof SetupRoute
-  '/syncs': typeof SyncsRouteWithChildren
-  '/assets/$id': typeof AssetsIdRoute
-  '/assets/new': typeof AssetsNewRoute
-  '/entities/$id': typeof EntitiesIdRoute
-  '/entities/new': typeof EntitiesNewRoute
-  '/mcp/authorize': typeof McpAuthorizeRoute
-  '/pages/$id': typeof PagesIdRoute
-  '/pages/new': typeof PagesNewRoute
-  '/records/$id': typeof RecordsIdRoute
-  '/settings/api-keys': typeof SettingsApiKeysRoute
-  '/settings/faces': typeof SettingsFacesRoute
-  '/settings/passkeys': typeof SettingsPasskeysRoute
-  '/settings/plugins': typeof SettingsPluginsRoute
-  '/syncs/$providerId': typeof SyncsProviderIdRoute
-  '/assets/': typeof AssetsIndexRoute
-  '/entities/': typeof EntitiesIndexRoute
-  '/pages/': typeof PagesIndexRoute
-  '/records/': typeof RecordsIndexRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/syncs/': typeof SyncsIndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/assets': typeof AppAssetsRouteWithChildren
+  '/app/entities': typeof AppEntitiesRouteWithChildren
+  '/app/history': typeof AppHistoryRoute
+  '/app/login': typeof AppLoginRoute
+  '/app/map': typeof AppMapRoute
+  '/app/pages': typeof AppPagesRouteWithChildren
+  '/app/records': typeof AppRecordsRouteWithChildren
+  '/app/settings': typeof AppSettingsRouteWithChildren
+  '/app/setup': typeof AppSetupRoute
+  '/app/syncs': typeof AppSyncsRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/app/assets/$id': typeof AppAssetsIdRoute
+  '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/entities/$id': typeof AppEntitiesIdRoute
+  '/app/entities/new': typeof AppEntitiesNewRoute
+  '/app/mcp/authorize': typeof AppMcpAuthorizeRoute
+  '/app/pages/$id': typeof AppPagesIdRoute
+  '/app/pages/new': typeof AppPagesNewRoute
+  '/app/records/$id': typeof AppRecordsIdRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/faces': typeof AppSettingsFacesRoute
+  '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
+  '/app/settings/plugins': typeof AppSettingsPluginsRoute
+  '/app/settings/public-site': typeof AppSettingsPublicSiteRoute
+  '/app/syncs/$providerId': typeof AppSyncsProviderIdRoute
+  '/app/assets/': typeof AppAssetsIndexRoute
+  '/app/entities/': typeof AppEntitiesIndexRoute
+  '/app/pages/': typeof AppPagesIndexRoute
+  '/app/records/': typeof AppRecordsIndexRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
+  '/app/syncs/': typeof AppSyncsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/history': typeof HistoryRoute
-  '/login': typeof LoginRoute
-  '/map': typeof MapRoute
-  '/setup': typeof SetupRoute
-  '/assets/$id': typeof AssetsIdRoute
-  '/assets/new': typeof AssetsNewRoute
-  '/entities/$id': typeof EntitiesIdRoute
-  '/entities/new': typeof EntitiesNewRoute
-  '/mcp/authorize': typeof McpAuthorizeRoute
-  '/pages/$id': typeof PagesIdRoute
-  '/pages/new': typeof PagesNewRoute
-  '/records/$id': typeof RecordsIdRoute
-  '/settings/api-keys': typeof SettingsApiKeysRoute
-  '/settings/faces': typeof SettingsFacesRoute
-  '/settings/passkeys': typeof SettingsPasskeysRoute
-  '/settings/plugins': typeof SettingsPluginsRoute
-  '/syncs/$providerId': typeof SyncsProviderIdRoute
-  '/assets': typeof AssetsIndexRoute
-  '/entities': typeof EntitiesIndexRoute
-  '/pages': typeof PagesIndexRoute
-  '/records': typeof RecordsIndexRoute
-  '/settings': typeof SettingsIndexRoute
-  '/syncs': typeof SyncsIndexRoute
+  '/app/history': typeof AppHistoryRoute
+  '/app/login': typeof AppLoginRoute
+  '/app/map': typeof AppMapRoute
+  '/app/setup': typeof AppSetupRoute
+  '/app': typeof AppIndexRoute
+  '/app/assets/$id': typeof AppAssetsIdRoute
+  '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/entities/$id': typeof AppEntitiesIdRoute
+  '/app/entities/new': typeof AppEntitiesNewRoute
+  '/app/mcp/authorize': typeof AppMcpAuthorizeRoute
+  '/app/pages/$id': typeof AppPagesIdRoute
+  '/app/pages/new': typeof AppPagesNewRoute
+  '/app/records/$id': typeof AppRecordsIdRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/faces': typeof AppSettingsFacesRoute
+  '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
+  '/app/settings/plugins': typeof AppSettingsPluginsRoute
+  '/app/settings/public-site': typeof AppSettingsPublicSiteRoute
+  '/app/syncs/$providerId': typeof AppSyncsProviderIdRoute
+  '/app/assets': typeof AppAssetsIndexRoute
+  '/app/entities': typeof AppEntitiesIndexRoute
+  '/app/pages': typeof AppPagesIndexRoute
+  '/app/records': typeof AppRecordsIndexRoute
+  '/app/settings': typeof AppSettingsIndexRoute
+  '/app/syncs': typeof AppSyncsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/assets': typeof AssetsRouteWithChildren
-  '/entities': typeof EntitiesRouteWithChildren
-  '/history': typeof HistoryRoute
-  '/login': typeof LoginRoute
-  '/map': typeof MapRoute
-  '/pages': typeof PagesRouteWithChildren
-  '/records': typeof RecordsRouteWithChildren
-  '/settings': typeof SettingsRouteWithChildren
-  '/setup': typeof SetupRoute
-  '/syncs': typeof SyncsRouteWithChildren
-  '/assets/$id': typeof AssetsIdRoute
-  '/assets/new': typeof AssetsNewRoute
-  '/entities/$id': typeof EntitiesIdRoute
-  '/entities/new': typeof EntitiesNewRoute
-  '/mcp/authorize': typeof McpAuthorizeRoute
-  '/pages/$id': typeof PagesIdRoute
-  '/pages/new': typeof PagesNewRoute
-  '/records/$id': typeof RecordsIdRoute
-  '/settings/api-keys': typeof SettingsApiKeysRoute
-  '/settings/faces': typeof SettingsFacesRoute
-  '/settings/passkeys': typeof SettingsPasskeysRoute
-  '/settings/plugins': typeof SettingsPluginsRoute
-  '/syncs/$providerId': typeof SyncsProviderIdRoute
-  '/assets/': typeof AssetsIndexRoute
-  '/entities/': typeof EntitiesIndexRoute
-  '/pages/': typeof PagesIndexRoute
-  '/records/': typeof RecordsIndexRoute
-  '/settings/': typeof SettingsIndexRoute
-  '/syncs/': typeof SyncsIndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/assets': typeof AppAssetsRouteWithChildren
+  '/app/entities': typeof AppEntitiesRouteWithChildren
+  '/app/history': typeof AppHistoryRoute
+  '/app/login': typeof AppLoginRoute
+  '/app/map': typeof AppMapRoute
+  '/app/pages': typeof AppPagesRouteWithChildren
+  '/app/records': typeof AppRecordsRouteWithChildren
+  '/app/settings': typeof AppSettingsRouteWithChildren
+  '/app/setup': typeof AppSetupRoute
+  '/app/syncs': typeof AppSyncsRouteWithChildren
+  '/app/': typeof AppIndexRoute
+  '/app/assets/$id': typeof AppAssetsIdRoute
+  '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/entities/$id': typeof AppEntitiesIdRoute
+  '/app/entities/new': typeof AppEntitiesNewRoute
+  '/app/mcp/authorize': typeof AppMcpAuthorizeRoute
+  '/app/pages/$id': typeof AppPagesIdRoute
+  '/app/pages/new': typeof AppPagesNewRoute
+  '/app/records/$id': typeof AppRecordsIdRoute
+  '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/faces': typeof AppSettingsFacesRoute
+  '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
+  '/app/settings/plugins': typeof AppSettingsPluginsRoute
+  '/app/settings/public-site': typeof AppSettingsPublicSiteRoute
+  '/app/syncs/$providerId': typeof AppSyncsProviderIdRoute
+  '/app/assets/': typeof AppAssetsIndexRoute
+  '/app/entities/': typeof AppEntitiesIndexRoute
+  '/app/pages/': typeof AppPagesIndexRoute
+  '/app/records/': typeof AppRecordsIndexRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
+  '/app/syncs/': typeof AppSyncsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/assets'
-    | '/entities'
-    | '/history'
-    | '/login'
-    | '/map'
-    | '/pages'
-    | '/records'
-    | '/settings'
-    | '/setup'
-    | '/syncs'
-    | '/assets/$id'
-    | '/assets/new'
-    | '/entities/$id'
-    | '/entities/new'
-    | '/mcp/authorize'
-    | '/pages/$id'
-    | '/pages/new'
-    | '/records/$id'
-    | '/settings/api-keys'
-    | '/settings/faces'
-    | '/settings/passkeys'
-    | '/settings/plugins'
-    | '/syncs/$providerId'
-    | '/assets/'
-    | '/entities/'
-    | '/pages/'
-    | '/records/'
-    | '/settings/'
-    | '/syncs/'
+    | '/app'
+    | '/app/assets'
+    | '/app/entities'
+    | '/app/history'
+    | '/app/login'
+    | '/app/map'
+    | '/app/pages'
+    | '/app/records'
+    | '/app/settings'
+    | '/app/setup'
+    | '/app/syncs'
+    | '/app/'
+    | '/app/assets/$id'
+    | '/app/assets/new'
+    | '/app/entities/$id'
+    | '/app/entities/new'
+    | '/app/mcp/authorize'
+    | '/app/pages/$id'
+    | '/app/pages/new'
+    | '/app/records/$id'
+    | '/app/settings/api-keys'
+    | '/app/settings/faces'
+    | '/app/settings/passkeys'
+    | '/app/settings/plugins'
+    | '/app/settings/public-site'
+    | '/app/syncs/$providerId'
+    | '/app/assets/'
+    | '/app/entities/'
+    | '/app/pages/'
+    | '/app/records/'
+    | '/app/settings/'
+    | '/app/syncs/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/history'
-    | '/login'
-    | '/map'
-    | '/setup'
-    | '/assets/$id'
-    | '/assets/new'
-    | '/entities/$id'
-    | '/entities/new'
-    | '/mcp/authorize'
-    | '/pages/$id'
-    | '/pages/new'
-    | '/records/$id'
-    | '/settings/api-keys'
-    | '/settings/faces'
-    | '/settings/passkeys'
-    | '/settings/plugins'
-    | '/syncs/$providerId'
-    | '/assets'
-    | '/entities'
-    | '/pages'
-    | '/records'
-    | '/settings'
-    | '/syncs'
+    | '/app/history'
+    | '/app/login'
+    | '/app/map'
+    | '/app/setup'
+    | '/app'
+    | '/app/assets/$id'
+    | '/app/assets/new'
+    | '/app/entities/$id'
+    | '/app/entities/new'
+    | '/app/mcp/authorize'
+    | '/app/pages/$id'
+    | '/app/pages/new'
+    | '/app/records/$id'
+    | '/app/settings/api-keys'
+    | '/app/settings/faces'
+    | '/app/settings/passkeys'
+    | '/app/settings/plugins'
+    | '/app/settings/public-site'
+    | '/app/syncs/$providerId'
+    | '/app/assets'
+    | '/app/entities'
+    | '/app/pages'
+    | '/app/records'
+    | '/app/settings'
+    | '/app/syncs'
   id:
     | '__root__'
-    | '/'
-    | '/assets'
-    | '/entities'
-    | '/history'
-    | '/login'
-    | '/map'
-    | '/pages'
-    | '/records'
-    | '/settings'
-    | '/setup'
-    | '/syncs'
-    | '/assets/$id'
-    | '/assets/new'
-    | '/entities/$id'
-    | '/entities/new'
-    | '/mcp/authorize'
-    | '/pages/$id'
-    | '/pages/new'
-    | '/records/$id'
-    | '/settings/api-keys'
-    | '/settings/faces'
-    | '/settings/passkeys'
-    | '/settings/plugins'
-    | '/syncs/$providerId'
-    | '/assets/'
-    | '/entities/'
-    | '/pages/'
-    | '/records/'
-    | '/settings/'
-    | '/syncs/'
+    | '/app'
+    | '/app/assets'
+    | '/app/entities'
+    | '/app/history'
+    | '/app/login'
+    | '/app/map'
+    | '/app/pages'
+    | '/app/records'
+    | '/app/settings'
+    | '/app/setup'
+    | '/app/syncs'
+    | '/app/'
+    | '/app/assets/$id'
+    | '/app/assets/new'
+    | '/app/entities/$id'
+    | '/app/entities/new'
+    | '/app/mcp/authorize'
+    | '/app/pages/$id'
+    | '/app/pages/new'
+    | '/app/records/$id'
+    | '/app/settings/api-keys'
+    | '/app/settings/faces'
+    | '/app/settings/passkeys'
+    | '/app/settings/plugins'
+    | '/app/settings/public-site'
+    | '/app/syncs/$providerId'
+    | '/app/assets/'
+    | '/app/entities/'
+    | '/app/pages/'
+    | '/app/records/'
+    | '/app/settings/'
+    | '/app/syncs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AssetsRoute: typeof AssetsRouteWithChildren
-  EntitiesRoute: typeof EntitiesRouteWithChildren
-  HistoryRoute: typeof HistoryRoute
-  LoginRoute: typeof LoginRoute
-  MapRoute: typeof MapRoute
-  PagesRoute: typeof PagesRouteWithChildren
-  RecordsRoute: typeof RecordsRouteWithChildren
-  SettingsRoute: typeof SettingsRouteWithChildren
-  SetupRoute: typeof SetupRoute
-  SyncsRoute: typeof SyncsRouteWithChildren
-  McpAuthorizeRoute: typeof McpAuthorizeRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/assets': {
-      id: '/assets'
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/assets': {
+      id: '/app/assets'
       path: '/assets'
-      fullPath: '/assets'
-      preLoaderRoute: typeof AssetsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/assets'
+      preLoaderRoute: typeof AppAssetsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/entities': {
-      id: '/entities'
+    '/app/entities': {
+      id: '/app/entities'
       path: '/entities'
-      fullPath: '/entities'
-      preLoaderRoute: typeof EntitiesRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/entities'
+      preLoaderRoute: typeof AppEntitiesRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/history': {
-      id: '/history'
+    '/app/history': {
+      id: '/app/history'
       path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/login': {
-      id: '/login'
+    '/app/login': {
+      id: '/app/login'
       path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/login'
+      preLoaderRoute: typeof AppLoginRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/map': {
-      id: '/map'
+    '/app/map': {
+      id: '/app/map'
       path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof MapRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/map'
+      preLoaderRoute: typeof AppMapRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/pages': {
-      id: '/pages'
+    '/app/pages': {
+      id: '/app/pages'
       path: '/pages'
-      fullPath: '/pages'
-      preLoaderRoute: typeof PagesRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/pages'
+      preLoaderRoute: typeof AppPagesRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/records': {
-      id: '/records'
+    '/app/records': {
+      id: '/app/records'
       path: '/records'
-      fullPath: '/records'
-      preLoaderRoute: typeof RecordsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/records'
+      preLoaderRoute: typeof AppRecordsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/settings': {
-      id: '/settings'
+    '/app/settings': {
+      id: '/app/settings'
       path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/setup': {
-      id: '/setup'
+    '/app/setup': {
+      id: '/app/setup'
       path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof SetupRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/setup'
+      preLoaderRoute: typeof AppSetupRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/syncs': {
-      id: '/syncs'
+    '/app/syncs': {
+      id: '/app/syncs'
       path: '/syncs'
-      fullPath: '/syncs'
-      preLoaderRoute: typeof SyncsRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/syncs'
+      preLoaderRoute: typeof AppSyncsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/assets/': {
-      id: '/assets/'
+    '/app/assets/': {
+      id: '/app/assets/'
       path: '/'
-      fullPath: '/assets/'
-      preLoaderRoute: typeof AssetsIndexRouteImport
-      parentRoute: typeof AssetsRoute
+      fullPath: '/app/assets/'
+      preLoaderRoute: typeof AppAssetsIndexRouteImport
+      parentRoute: typeof AppAssetsRoute
     }
-    '/assets/$id': {
-      id: '/assets/$id'
+    '/app/assets/$id': {
+      id: '/app/assets/$id'
       path: '/$id'
-      fullPath: '/assets/$id'
-      preLoaderRoute: typeof AssetsIdRouteImport
-      parentRoute: typeof AssetsRoute
+      fullPath: '/app/assets/$id'
+      preLoaderRoute: typeof AppAssetsIdRouteImport
+      parentRoute: typeof AppAssetsRoute
     }
-    '/assets/new': {
-      id: '/assets/new'
+    '/app/assets/new': {
+      id: '/app/assets/new'
       path: '/new'
-      fullPath: '/assets/new'
-      preLoaderRoute: typeof AssetsNewRouteImport
-      parentRoute: typeof AssetsRoute
+      fullPath: '/app/assets/new'
+      preLoaderRoute: typeof AppAssetsNewRouteImport
+      parentRoute: typeof AppAssetsRoute
     }
-    '/entities/': {
-      id: '/entities/'
+    '/app/entities/': {
+      id: '/app/entities/'
       path: '/'
-      fullPath: '/entities/'
-      preLoaderRoute: typeof EntitiesIndexRouteImport
-      parentRoute: typeof EntitiesRoute
+      fullPath: '/app/entities/'
+      preLoaderRoute: typeof AppEntitiesIndexRouteImport
+      parentRoute: typeof AppEntitiesRoute
     }
-    '/entities/$id': {
-      id: '/entities/$id'
+    '/app/entities/$id': {
+      id: '/app/entities/$id'
       path: '/$id'
-      fullPath: '/entities/$id'
-      preLoaderRoute: typeof EntitiesIdRouteImport
-      parentRoute: typeof EntitiesRoute
+      fullPath: '/app/entities/$id'
+      preLoaderRoute: typeof AppEntitiesIdRouteImport
+      parentRoute: typeof AppEntitiesRoute
     }
-    '/entities/new': {
-      id: '/entities/new'
+    '/app/entities/new': {
+      id: '/app/entities/new'
       path: '/new'
-      fullPath: '/entities/new'
-      preLoaderRoute: typeof EntitiesNewRouteImport
-      parentRoute: typeof EntitiesRoute
+      fullPath: '/app/entities/new'
+      preLoaderRoute: typeof AppEntitiesNewRouteImport
+      parentRoute: typeof AppEntitiesRoute
     }
-    '/mcp/authorize': {
-      id: '/mcp/authorize'
+    '/app/mcp/authorize': {
+      id: '/app/mcp/authorize'
       path: '/mcp/authorize'
-      fullPath: '/mcp/authorize'
-      preLoaderRoute: typeof McpAuthorizeRouteImport
-      parentRoute: typeof rootRouteImport
+      fullPath: '/app/mcp/authorize'
+      preLoaderRoute: typeof AppMcpAuthorizeRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/pages/': {
-      id: '/pages/'
+    '/app/pages/': {
+      id: '/app/pages/'
       path: '/'
-      fullPath: '/pages/'
-      preLoaderRoute: typeof PagesIndexRouteImport
-      parentRoute: typeof PagesRoute
+      fullPath: '/app/pages/'
+      preLoaderRoute: typeof AppPagesIndexRouteImport
+      parentRoute: typeof AppPagesRoute
     }
-    '/pages/$id': {
-      id: '/pages/$id'
+    '/app/pages/$id': {
+      id: '/app/pages/$id'
       path: '/$id'
-      fullPath: '/pages/$id'
-      preLoaderRoute: typeof PagesIdRouteImport
-      parentRoute: typeof PagesRoute
+      fullPath: '/app/pages/$id'
+      preLoaderRoute: typeof AppPagesIdRouteImport
+      parentRoute: typeof AppPagesRoute
     }
-    '/pages/new': {
-      id: '/pages/new'
+    '/app/pages/new': {
+      id: '/app/pages/new'
       path: '/new'
-      fullPath: '/pages/new'
-      preLoaderRoute: typeof PagesNewRouteImport
-      parentRoute: typeof PagesRoute
+      fullPath: '/app/pages/new'
+      preLoaderRoute: typeof AppPagesNewRouteImport
+      parentRoute: typeof AppPagesRoute
     }
-    '/records/': {
-      id: '/records/'
+    '/app/records/': {
+      id: '/app/records/'
       path: '/'
-      fullPath: '/records/'
-      preLoaderRoute: typeof RecordsIndexRouteImport
-      parentRoute: typeof RecordsRoute
+      fullPath: '/app/records/'
+      preLoaderRoute: typeof AppRecordsIndexRouteImport
+      parentRoute: typeof AppRecordsRoute
     }
-    '/records/$id': {
-      id: '/records/$id'
+    '/app/records/$id': {
+      id: '/app/records/$id'
       path: '/$id'
-      fullPath: '/records/$id'
-      preLoaderRoute: typeof RecordsIdRouteImport
-      parentRoute: typeof RecordsRoute
+      fullPath: '/app/records/$id'
+      preLoaderRoute: typeof AppRecordsIdRouteImport
+      parentRoute: typeof AppRecordsRoute
     }
-    '/settings/': {
-      id: '/settings/'
+    '/app/settings/': {
+      id: '/app/settings/'
       path: '/'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof SettingsRoute
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
-    '/settings/api-keys': {
-      id: '/settings/api-keys'
+    '/app/settings/api-keys': {
+      id: '/app/settings/api-keys'
       path: '/api-keys'
-      fullPath: '/settings/api-keys'
-      preLoaderRoute: typeof SettingsApiKeysRouteImport
-      parentRoute: typeof SettingsRoute
+      fullPath: '/app/settings/api-keys'
+      preLoaderRoute: typeof AppSettingsApiKeysRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
-    '/settings/faces': {
-      id: '/settings/faces'
+    '/app/settings/faces': {
+      id: '/app/settings/faces'
       path: '/faces'
-      fullPath: '/settings/faces'
-      preLoaderRoute: typeof SettingsFacesRouteImport
-      parentRoute: typeof SettingsRoute
+      fullPath: '/app/settings/faces'
+      preLoaderRoute: typeof AppSettingsFacesRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
-    '/settings/passkeys': {
-      id: '/settings/passkeys'
+    '/app/settings/passkeys': {
+      id: '/app/settings/passkeys'
       path: '/passkeys'
-      fullPath: '/settings/passkeys'
-      preLoaderRoute: typeof SettingsPasskeysRouteImport
-      parentRoute: typeof SettingsRoute
+      fullPath: '/app/settings/passkeys'
+      preLoaderRoute: typeof AppSettingsPasskeysRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
-    '/settings/plugins': {
-      id: '/settings/plugins'
+    '/app/settings/plugins': {
+      id: '/app/settings/plugins'
       path: '/plugins'
-      fullPath: '/settings/plugins'
-      preLoaderRoute: typeof SettingsPluginsRouteImport
-      parentRoute: typeof SettingsRoute
+      fullPath: '/app/settings/plugins'
+      preLoaderRoute: typeof AppSettingsPluginsRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
-    '/syncs/': {
-      id: '/syncs/'
+    '/app/settings/public-site': {
+      id: '/app/settings/public-site'
+      path: '/public-site'
+      fullPath: '/app/settings/public-site'
+      preLoaderRoute: typeof AppSettingsPublicSiteRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/app/syncs/': {
+      id: '/app/syncs/'
       path: '/'
-      fullPath: '/syncs/'
-      preLoaderRoute: typeof SyncsIndexRouteImport
-      parentRoute: typeof SyncsRoute
+      fullPath: '/app/syncs/'
+      preLoaderRoute: typeof AppSyncsIndexRouteImport
+      parentRoute: typeof AppSyncsRoute
     }
-    '/syncs/$providerId': {
-      id: '/syncs/$providerId'
+    '/app/syncs/$providerId': {
+      id: '/app/syncs/$providerId'
       path: '/$providerId'
-      fullPath: '/syncs/$providerId'
-      preLoaderRoute: typeof SyncsProviderIdRouteImport
-      parentRoute: typeof SyncsRoute
+      fullPath: '/app/syncs/$providerId'
+      preLoaderRoute: typeof AppSyncsProviderIdRouteImport
+      parentRoute: typeof AppSyncsRoute
     }
   }
 }
 
-interface AssetsRouteChildren {
-  AssetsIdRoute: typeof AssetsIdRoute
-  AssetsNewRoute: typeof AssetsNewRoute
-  AssetsIndexRoute: typeof AssetsIndexRoute
+interface AppAssetsRouteChildren {
+  AppAssetsIdRoute: typeof AppAssetsIdRoute
+  AppAssetsNewRoute: typeof AppAssetsNewRoute
+  AppAssetsIndexRoute: typeof AppAssetsIndexRoute
 }
 
-const AssetsRouteChildren: AssetsRouteChildren = {
-  AssetsIdRoute: AssetsIdRoute,
-  AssetsNewRoute: AssetsNewRoute,
-  AssetsIndexRoute: AssetsIndexRoute,
+const AppAssetsRouteChildren: AppAssetsRouteChildren = {
+  AppAssetsIdRoute: AppAssetsIdRoute,
+  AppAssetsNewRoute: AppAssetsNewRoute,
+  AppAssetsIndexRoute: AppAssetsIndexRoute,
 }
 
-const AssetsRouteWithChildren =
-  AssetsRoute._addFileChildren(AssetsRouteChildren)
-
-interface EntitiesRouteChildren {
-  EntitiesIdRoute: typeof EntitiesIdRoute
-  EntitiesNewRoute: typeof EntitiesNewRoute
-  EntitiesIndexRoute: typeof EntitiesIndexRoute
-}
-
-const EntitiesRouteChildren: EntitiesRouteChildren = {
-  EntitiesIdRoute: EntitiesIdRoute,
-  EntitiesNewRoute: EntitiesNewRoute,
-  EntitiesIndexRoute: EntitiesIndexRoute,
-}
-
-const EntitiesRouteWithChildren = EntitiesRoute._addFileChildren(
-  EntitiesRouteChildren,
+const AppAssetsRouteWithChildren = AppAssetsRoute._addFileChildren(
+  AppAssetsRouteChildren,
 )
 
-interface PagesRouteChildren {
-  PagesIdRoute: typeof PagesIdRoute
-  PagesNewRoute: typeof PagesNewRoute
-  PagesIndexRoute: typeof PagesIndexRoute
+interface AppEntitiesRouteChildren {
+  AppEntitiesIdRoute: typeof AppEntitiesIdRoute
+  AppEntitiesNewRoute: typeof AppEntitiesNewRoute
+  AppEntitiesIndexRoute: typeof AppEntitiesIndexRoute
 }
 
-const PagesRouteChildren: PagesRouteChildren = {
-  PagesIdRoute: PagesIdRoute,
-  PagesNewRoute: PagesNewRoute,
-  PagesIndexRoute: PagesIndexRoute,
+const AppEntitiesRouteChildren: AppEntitiesRouteChildren = {
+  AppEntitiesIdRoute: AppEntitiesIdRoute,
+  AppEntitiesNewRoute: AppEntitiesNewRoute,
+  AppEntitiesIndexRoute: AppEntitiesIndexRoute,
 }
 
-const PagesRouteWithChildren = PagesRoute._addFileChildren(PagesRouteChildren)
-
-interface RecordsRouteChildren {
-  RecordsIdRoute: typeof RecordsIdRoute
-  RecordsIndexRoute: typeof RecordsIndexRoute
-}
-
-const RecordsRouteChildren: RecordsRouteChildren = {
-  RecordsIdRoute: RecordsIdRoute,
-  RecordsIndexRoute: RecordsIndexRoute,
-}
-
-const RecordsRouteWithChildren =
-  RecordsRoute._addFileChildren(RecordsRouteChildren)
-
-interface SettingsRouteChildren {
-  SettingsApiKeysRoute: typeof SettingsApiKeysRoute
-  SettingsFacesRoute: typeof SettingsFacesRoute
-  SettingsPasskeysRoute: typeof SettingsPasskeysRoute
-  SettingsPluginsRoute: typeof SettingsPluginsRoute
-  SettingsIndexRoute: typeof SettingsIndexRoute
-}
-
-const SettingsRouteChildren: SettingsRouteChildren = {
-  SettingsApiKeysRoute: SettingsApiKeysRoute,
-  SettingsFacesRoute: SettingsFacesRoute,
-  SettingsPasskeysRoute: SettingsPasskeysRoute,
-  SettingsPluginsRoute: SettingsPluginsRoute,
-  SettingsIndexRoute: SettingsIndexRoute,
-}
-
-const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
-  SettingsRouteChildren,
+const AppEntitiesRouteWithChildren = AppEntitiesRoute._addFileChildren(
+  AppEntitiesRouteChildren,
 )
 
-interface SyncsRouteChildren {
-  SyncsProviderIdRoute: typeof SyncsProviderIdRoute
-  SyncsIndexRoute: typeof SyncsIndexRoute
+interface AppPagesRouteChildren {
+  AppPagesIdRoute: typeof AppPagesIdRoute
+  AppPagesNewRoute: typeof AppPagesNewRoute
+  AppPagesIndexRoute: typeof AppPagesIndexRoute
 }
 
-const SyncsRouteChildren: SyncsRouteChildren = {
-  SyncsProviderIdRoute: SyncsProviderIdRoute,
-  SyncsIndexRoute: SyncsIndexRoute,
+const AppPagesRouteChildren: AppPagesRouteChildren = {
+  AppPagesIdRoute: AppPagesIdRoute,
+  AppPagesNewRoute: AppPagesNewRoute,
+  AppPagesIndexRoute: AppPagesIndexRoute,
 }
 
-const SyncsRouteWithChildren = SyncsRoute._addFileChildren(SyncsRouteChildren)
+const AppPagesRouteWithChildren = AppPagesRoute._addFileChildren(
+  AppPagesRouteChildren,
+)
+
+interface AppRecordsRouteChildren {
+  AppRecordsIdRoute: typeof AppRecordsIdRoute
+  AppRecordsIndexRoute: typeof AppRecordsIndexRoute
+}
+
+const AppRecordsRouteChildren: AppRecordsRouteChildren = {
+  AppRecordsIdRoute: AppRecordsIdRoute,
+  AppRecordsIndexRoute: AppRecordsIndexRoute,
+}
+
+const AppRecordsRouteWithChildren = AppRecordsRoute._addFileChildren(
+  AppRecordsRouteChildren,
+)
+
+interface AppSettingsRouteChildren {
+  AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
+  AppSettingsFacesRoute: typeof AppSettingsFacesRoute
+  AppSettingsPasskeysRoute: typeof AppSettingsPasskeysRoute
+  AppSettingsPluginsRoute: typeof AppSettingsPluginsRoute
+  AppSettingsPublicSiteRoute: typeof AppSettingsPublicSiteRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
+  AppSettingsFacesRoute: AppSettingsFacesRoute,
+  AppSettingsPasskeysRoute: AppSettingsPasskeysRoute,
+  AppSettingsPluginsRoute: AppSettingsPluginsRoute,
+  AppSettingsPublicSiteRoute: AppSettingsPublicSiteRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
+
+interface AppSyncsRouteChildren {
+  AppSyncsProviderIdRoute: typeof AppSyncsProviderIdRoute
+  AppSyncsIndexRoute: typeof AppSyncsIndexRoute
+}
+
+const AppSyncsRouteChildren: AppSyncsRouteChildren = {
+  AppSyncsProviderIdRoute: AppSyncsProviderIdRoute,
+  AppSyncsIndexRoute: AppSyncsIndexRoute,
+}
+
+const AppSyncsRouteWithChildren = AppSyncsRoute._addFileChildren(
+  AppSyncsRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppAssetsRoute: typeof AppAssetsRouteWithChildren
+  AppEntitiesRoute: typeof AppEntitiesRouteWithChildren
+  AppHistoryRoute: typeof AppHistoryRoute
+  AppLoginRoute: typeof AppLoginRoute
+  AppMapRoute: typeof AppMapRoute
+  AppPagesRoute: typeof AppPagesRouteWithChildren
+  AppRecordsRoute: typeof AppRecordsRouteWithChildren
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
+  AppSetupRoute: typeof AppSetupRoute
+  AppSyncsRoute: typeof AppSyncsRouteWithChildren
+  AppIndexRoute: typeof AppIndexRoute
+  AppMcpAuthorizeRoute: typeof AppMcpAuthorizeRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAssetsRoute: AppAssetsRouteWithChildren,
+  AppEntitiesRoute: AppEntitiesRouteWithChildren,
+  AppHistoryRoute: AppHistoryRoute,
+  AppLoginRoute: AppLoginRoute,
+  AppMapRoute: AppMapRoute,
+  AppPagesRoute: AppPagesRouteWithChildren,
+  AppRecordsRoute: AppRecordsRouteWithChildren,
+  AppSettingsRoute: AppSettingsRouteWithChildren,
+  AppSetupRoute: AppSetupRoute,
+  AppSyncsRoute: AppSyncsRouteWithChildren,
+  AppIndexRoute: AppIndexRoute,
+  AppMcpAuthorizeRoute: AppMcpAuthorizeRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AssetsRoute: AssetsRouteWithChildren,
-  EntitiesRoute: EntitiesRouteWithChildren,
-  HistoryRoute: HistoryRoute,
-  LoginRoute: LoginRoute,
-  MapRoute: MapRoute,
-  PagesRoute: PagesRouteWithChildren,
-  RecordsRoute: RecordsRouteWithChildren,
-  SettingsRoute: SettingsRouteWithChildren,
-  SetupRoute: SetupRoute,
-  SyncsRoute: SyncsRouteWithChildren,
-  McpAuthorizeRoute: McpAuthorizeRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

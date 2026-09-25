@@ -5,7 +5,7 @@ import {
 } from '@context-use/openclaw-memory/setup-prompt';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PluginsSettings } from '../../src/routes/settings.plugins';
+import { PluginsSettings } from '../../src/routes/app.settings.plugins';
 
 afterEach(cleanup);
 

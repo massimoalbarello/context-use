@@ -60,7 +60,7 @@ test('the @ picker identifies records, inserts a labelled reference, and preview
   const editor = createRoute({ getParentRoute: () => root, path: '/', component: ReferenceEditor });
   const target = createRoute({
     getParentRoute: () => root,
-    path: '/records/$id',
+    path: '/app/records/$id',
     component: () => <h1>Source record detail</h1>,
   });
   const router = createRouter({
@@ -83,7 +83,7 @@ test('the @ picker identifies records, inserts a labelled reference, and preview
   expect(screen.queryByRole('listbox')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Preview' }));
   const link = screen.getByRole('link', { name: record.title });
-  expect(link.getAttribute('href')).toBe('/records/source-record?view=preview');
+  expect(link.getAttribute('href')).toBe('/app/records/source-record?view=preview');
   await user.click(link);
   expect(await screen.findByRole('heading', { name: 'Source record detail' })).toBeTruthy();
 });
@@ -122,7 +122,7 @@ test('unavailable references retain their labels without navigation and become l
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: 'Restore source' }));
   expect(screen.getByRole('link', { name: 'Launch decision' }).getAttribute('href')).toBe(
-    '/records/source-record?view=preview',
+    '/app/records/source-record?view=preview',
   );
   expect(screen.queryByText('(record unavailable)')).toBeNull();
 });

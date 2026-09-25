@@ -39,7 +39,7 @@ export function KnowledgeSidebarFooter({ profile }: { profile: KnowledgeProfile 
     <footer className="flex shrink-0 items-center gap-2 px-3 py-3">
       <Link
         className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 hover:bg-card"
-        to="/entities/$id"
+        to="/app/entities/$id"
         params={{ id: profile.selfEntity.readableId }}
       >
         <EntityAvatar entity={profile.selfEntity} className="size-8" />
@@ -50,7 +50,7 @@ export function KnowledgeSidebarFooter({ profile }: { profile: KnowledgeProfile 
       </Link>
       <Link
         className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-        to="/settings"
+        to="/app/settings"
         aria-label="Settings"
         title="Settings"
       >

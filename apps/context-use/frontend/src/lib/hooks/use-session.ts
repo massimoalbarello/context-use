@@ -1,4 +1,4 @@
-import { Route } from '../../routes/__root';
+import { Route } from '../../routes/app';
 import type { Session } from '../auth';
 
 export function useSession(): Session | null {

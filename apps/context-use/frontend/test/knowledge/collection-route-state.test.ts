@@ -6,8 +6,8 @@ import { entitySearch } from '../../src/lib/entity-filters';
 import { assetsQueryOptions } from '../../src/queries/assets';
 import { entitiesQueryOptions } from '../../src/queries/entities';
 import { pagesQueryOptions } from '../../src/queries/pages';
-import { assetSearch } from '../../src/routes/assets';
-import { pageListFilters, pageSearch } from '../../src/routes/pages';
+import { assetSearch } from '../../src/routes/app.assets';
+import { pageListFilters, pageSearch } from '../../src/routes/app.pages';
 
 test('entity and asset keyword searches are canonical URL state', () => {
   expect(entitySearch({ q: '  Maya  ' })).toEqual({ q: 'Maya' });

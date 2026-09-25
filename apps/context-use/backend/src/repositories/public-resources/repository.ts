@@ -36,6 +36,7 @@ export interface PublicEntity {
 }
 
 export interface PublicResourcesRepositoryContract {
+  findHomepage(input: { ownerId: string }): Promise<{ publicId: string } | null>;
   findEntity(input: { publicId: string }): Promise<PublicEntity | null>;
   findPage(input: { publicId: string }): Promise<StoredPublicPage | null>;
   findRecord(input: { publicId: string }): Promise<StoredPublicMarkdown | null>;
@@ -47,6 +48,16 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
+  }
+
+  async findHomepage({ ownerId }: { ownerId: string }): Promise<{ publicId: string } | null> {
+    const rows = await this.sql.FindPublicHomepageId`
+      /* @notNull publicId */
+      select "public_id" as "publicId" from "knowledge_page"
+      where "owner_id" = ${ownerId} and "public_homepage" = 1
+        and "published_at" is not null and "archived_at" is null
+    `;
+    return rows[0] ?? null;
   }
 
   async findEntity({ publicId }: { publicId: string }): Promise<PublicEntity | null> {

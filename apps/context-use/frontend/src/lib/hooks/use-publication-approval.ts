@@ -5,6 +5,7 @@ import { assetSuggestionsQueryKey, assetsListQueryKey } from '../../queries/asse
 import { entitiesListQueryKey } from '../../queries/entities';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
 import { pagesListQueryKey } from '../../queries/pages';
+import { publicSiteQueryKey } from '../../queries/public-site';
 import {
   beginPublication,
   type CompletePublicationVariables,
@@ -32,7 +33,7 @@ export function usePublicationApproval() {
     onSettled: async (...[_data, _error, { request }]) => {
       const listKeys =
         request.resourceType === 'page'
-          ? [pagesListQueryKey]
+          ? [pagesListQueryKey, publicSiteQueryKey]
           : request.resourceType === 'entity'
             ? [entitiesListQueryKey, assetsListQueryKey, assetSuggestionsQueryKey]
             : request.resourceType === 'record'

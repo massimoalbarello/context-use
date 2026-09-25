@@ -31,10 +31,11 @@ export default defineConfig({
     // Vite is the public origin in development. Better Auth's BASE_URL points here, so preserve
     // the browser's Origin header while proxying instead of pretending it came from the backend.
     proxy: {
+      '^/(?:\\?.*)?$': { target: BACKEND_ORIGIN },
       '/api': { target: BACKEND_ORIGIN },
       [PUBLIC_RESOURCES_PROXY_CONTEXT]: { target: BACKEND_ORIGIN },
       // Vite treats keys beginning with ^ as regular expressions. Keep the frontend-owned
-      // /mcp/authorize route out of the proxy while preserving the transport (with query strings
+      // /app/mcp/authorize route out of the proxy while preserving the transport (with query strings
       // or a trailing slash) and the separate asset-transfer endpoints.
       [MCP_TRANSPORT_PROXY_CONTEXT]: { target: BACKEND_ORIGIN },
       [MCP_ASSET_TRANSFERS_PROXY_CONTEXT]: { target: BACKEND_ORIGIN },

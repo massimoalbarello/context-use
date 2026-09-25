@@ -24,6 +24,7 @@ import {
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicResourcesService,
+  unusedPublicSiteService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../../support/app.ts';
@@ -100,6 +101,8 @@ test('owner registration API exposes only complete registration states', async (
       migrations: new Map([['0000_better_auth_schema.sql', Bun.file(AUTH_MIGRATION)]]),
     });
     const app = createApp({
+      publicOwnerId: 'owner-a',
+      publicSiteService: unusedPublicSiteService,
       publicationApprovalService: unusedPublicationApprovalService,
       publicResourcesService: unusedPublicResourcesService,
       historyService: unusedHistoryService,

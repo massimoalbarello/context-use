@@ -33,7 +33,7 @@ async function pageTarget({
       revision."excerpt", revision."temporal_coverage" as "temporalCoverage",
       revision."created_at" as "createdAt", revision."content_hash" as "contentHash",
       revision."size_bytes" as "sizeBytes", page."public_id" as "publicId",
-      page."published_at" as "publishedAt", page."published_revision_id" as "publishedRevisionId",
+      page."public_homepage" as "publicHomepage", page."published_at" as "publishedAt", page."published_revision_id" as "publishedRevisionId",
       published_revision."revision_number" as "publishedRevisionNumber"
     from "knowledge_page" page
     left join "knowledge_page_revision" published_revision
@@ -201,6 +201,7 @@ async function evaluate({ db, input }: { db: Transaction; input: PublicationRequ
     pageRevision:
       'revisionNumber' in target
         ? {
+            publicHomepage: Boolean(target.publicHomepage),
             revisionNumber: target.revisionNumber,
             publishedRevisionNumber: target.publishedRevisionNumber,
           }
@@ -283,7 +284,8 @@ export async function executePublication({
     const revisionId = input.action === 'publish' ? target.revisionId : null;
     await db.SetPagePublication`
       update "knowledge_page" set "public_id" = ${publication.publicId},
-        "published_at" = ${publication.publishedAt}, "published_revision_id" = ${revisionId}
+        "published_at" = ${publication.publishedAt}, "published_revision_id" = ${revisionId},
+        "public_homepage" = case when ${publication.publishedAt} is null then 0 else "public_homepage" end
       where "id" = ${target.id} and "owner_id" = ${input.ownerId}
     `;
   } else {

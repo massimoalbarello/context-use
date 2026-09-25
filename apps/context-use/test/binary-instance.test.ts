@@ -20,7 +20,7 @@ test(
       });
       expect((await binary.request({ path: '/api/health' })).status).toBe(OK);
       expect((await binary.request({ path: '/api/profile' })).status).toBe(UNAUTHORIZED);
-      const html = await (await binary.request({ path: '/login' })).text();
+      const html = await (await binary.request({ path: '/app/login' })).text();
       expect(html).toContain('<div id="app"></div>');
       expect(html).not.toContain('Read-only demo');
       const assets = join(import.meta.dir, '../dist/instance/public');

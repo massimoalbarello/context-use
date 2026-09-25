@@ -39,6 +39,7 @@ import {
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicResourcesService,
+  unusedPublicSiteService,
   unusedRecordsService,
   unusedSyncFetch,
 } from '../../support/app.ts';
@@ -185,6 +186,8 @@ async function fixture({ automatic = true } = {}) {
     protectMcpRequest: unusedMcpProtection,
   };
   const app = createApp({
+    publicOwnerId: 'owner-a',
+    publicSiteService: unusedPublicSiteService,
     publicationApprovalService: unusedPublicationApprovalService,
     publicResourcesService: unusedPublicResourcesService,
     historyService: unusedHistoryService,

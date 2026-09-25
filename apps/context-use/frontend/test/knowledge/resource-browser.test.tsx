@@ -19,7 +19,7 @@ function collectionResponse({ url, item }: { url: URL; item: unknown }) {
   return { items, total: items.length, nextOffset: null };
 }
 
-async function renderResourceBrowser(path = '/pages') {
+async function renderResourceBrowser(path = '/app/pages') {
   const timestamp = new Date('2026-01-01T00:00:00Z');
   const entity: EntityDetail = {
     readableId: 'owner',
@@ -272,7 +272,7 @@ test('resource navigation opens unselected collections with their own toolbar an
       );
       expect(await screen.findByRole('searchbox', { name: query })).toBeTruthy();
       expect(screen.queryByRole('complementary', { name: /preview$/ })).toBeNull();
-      expect(app.router.state.location.pathname).toBe(`/${destination.toLowerCase()}`);
+      expect(app.router.state.location.pathname).toBe(`/app/${destination.toLowerCase()}`);
       if (creation) {
         expect(screen.getByRole('link', { name: creation })).toBeTruthy();
       } else {
@@ -298,14 +298,14 @@ test('resource navigation opens unselected collections with their own toolbar an
 });
 
 test('side previews preserve the collection and filters while navigating related resources', async () => {
-  const app = await renderResourceBrowser('/pages?interval=without');
+  const app = await renderResourceBrowser('/app/pages?interval=without');
   const user = userEvent.setup();
   try {
     const listLink = await screen.findByRole('link', { name: 'Launch plan Launch overview' });
     await user.click(listLink);
     await user.click(await screen.findByRole('link', { name: 'Owner' }));
     expect(await screen.findByRole('complementary', { name: 'Entity preview' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/pages');
+    expect(app.router.state.location.pathname).toBe('/app/pages');
     expect(app.router.state.location.search).toMatchObject({
       interval: 'without',
       resource: 'entity',
@@ -317,7 +317,7 @@ test('side previews preserve the collection and filters while navigating related
     ).toBeTruthy();
     await user.click(screen.getByRole('link', { name: 'chart' }));
     expect(await screen.findByRole('img', { name: 'Launch chart' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/pages');
+    expect(app.router.state.location.pathname).toBe('/app/pages');
     app.router.history.back();
     await user.click(await screen.findByRole('link', { name: 'research' }));
     expect(await screen.findByText('Research source content.')).toBeTruthy();
@@ -352,7 +352,7 @@ test('narrow screens open expanded detail directly and restore browsing on retur
     expect(app.router.state.location.search.expanded).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
     expect(await screen.findByRole('searchbox', { name: 'Search pages' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/pages');
+    expect(app.router.state.location.pathname).toBe('/app/pages');
     expect(app.router.state.location.search.resource).toBeUndefined();
   } finally {
     app.dispose();
@@ -371,14 +371,14 @@ test('preview failures can be retried without leaving the collection', async () 
     app.failRecord(false);
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Research source content.')).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/pages');
+    expect(app.router.state.location.pathname).toBe('/app/pages');
   } finally {
     app.dispose();
   }
 });
 
 test('direct detail URLs keep related resources expanded and support browser Back', async () => {
-  const app = await renderResourceBrowser('/pages/launch');
+  const app = await renderResourceBrowser('/app/pages/launch');
   try {
     const user = userEvent.setup();
     expect(await screen.findByRole('heading', { name: 'Launch plan' })).toBeTruthy();
@@ -386,11 +386,11 @@ test('direct detail URLs keep related resources expanded and support browser Bac
     await user.click(screen.getByRole('link', { name: 'Owner' }));
     expect(await screen.findByRole('region', { name: 'Expanded resource' })).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'Owner' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/pages');
+    expect(app.router.state.location.pathname).toBe('/app/pages');
     expect(screen.queryByRole('searchbox')).toBeNull();
     app.router.history.back();
     expect(await screen.findByRole('heading', { name: 'Launch plan' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/pages/launch');
+    expect(app.router.state.location.pathname).toBe('/app/pages/launch');
     expect(screen.queryByRole('searchbox')).toBeNull();
   } finally {
     app.dispose();
@@ -398,22 +398,22 @@ test('direct detail URLs keep related resources expanded and support browser Bac
 });
 
 test('preview links retain canonical URLs and modifier clicks without leaving the collection', async () => {
-  const app = await renderResourceBrowser('/pages?resource=page&resourceId=launch');
+  const app = await renderResourceBrowser('/app/pages?resource=page&resourceId=launch');
   const user = userEvent.setup();
   try {
     const preview = await screen.findByRole('complementary', { name: 'Knowledge page preview' });
     for (const [name, path] of [
-      ['Owner', '/entities/owner'],
-      ['chart', '/assets/chart'],
-      ['research', '/records/research'],
-      ['timeline', '/pages/launch'],
+      ['Owner', '/app/entities/owner'],
+      ['chart', '/app/assets/chart'],
+      ['research', '/app/records/research'],
+      ['timeline', '/app/pages/launch'],
     ] as const) {
       const link = await within(preview).findByRole('link', { name });
       expect(link.getAttribute('href')).toStartWith(path);
       await user.keyboard('{Control>}');
       await user.click(link);
       await user.keyboard('{/Control}');
-      expect(app.router.state.location.pathname).toBe('/pages');
+      expect(app.router.state.location.pathname).toBe('/app/pages');
       expect(app.router.state.location.search.resourceId).toBe('launch');
     }
     expect(within(preview).getByRole('img', { name: 'Chart' }).getAttribute('src')).toBe(
@@ -445,7 +445,7 @@ for (const { kind, id, name, edit, relationships } of [
 ]) {
   test(`${kind} previews omit relationships and Expand loads full detail`, async () => {
     const app = await renderResourceBrowser(
-      `/${kind === 'asset' ? 'assets' : 'entities'}?resource=${kind}&resourceId=${id}`,
+      `/app/${kind === 'asset' ? 'assets' : 'entities'}?resource=${kind}&resourceId=${id}`,
     );
     try {
       const user = userEvent.setup();
@@ -476,7 +476,7 @@ for (const { kind, id, name, edit, relationships } of [
 }
 
 test('searching and clearing an asset query preserves its preview', async () => {
-  const app = await renderResourceBrowser('/assets?resource=asset&resourceId=chart');
+  const app = await renderResourceBrowser('/app/assets?resource=asset&resourceId=chart');
   try {
     const user = userEvent.setup();
     const input = await screen.findByRole('searchbox', { name: 'Search assets' });
@@ -493,13 +493,13 @@ test('searching and clearing an asset query preserves its preview', async () => 
 
 for (const { path, filter, reset, key } of [
   {
-    path: '/entities?entityType=person&visibility=private&resource=page&resourceId=launch',
+    path: '/app/entities?entityType=person&visibility=private&resource=page&resourceId=launch',
     filter: 'Filter entities',
     reset: 'Reset filters',
     key: 'entityType',
   },
   {
-    path: '/records?provider=notion&resource=page&resourceId=launch',
+    path: '/app/records?provider=notion&resource=page&resourceId=launch',
     filter: 'Filter and sort records',
     reset: 'Reset filters and order',
     key: 'provider',
@@ -525,7 +525,7 @@ for (const { path, filter, reset, key } of [
 
 test('page interval and date filters keep the selected resource', async () => {
   const app = await renderResourceBrowser(
-    '/pages?from=2026-01-01&to=2026-01-31&resource=page&resourceId=launch',
+    '/app/pages?from=2026-01-01&to=2026-01-31&resource=page&resourceId=launch',
   );
   try {
     const user = userEvent.setup();
@@ -553,12 +553,12 @@ for (const { link, kind, id } of [
 ]) {
   test(`expanded ${kind} links retain focus and return to the original collection`, async () => {
     const app = await renderResourceBrowser(
-      '/pages?interval=without&resource=page&resourceId=launch&expanded=true',
+      '/app/pages?interval=without&resource=page&resourceId=launch&expanded=true',
     );
     try {
       const user = userEvent.setup();
       await user.click(await screen.findByRole('link', { name: link }));
-      expect(app.router.state.location.pathname).toBe('/pages');
+      expect(app.router.state.location.pathname).toBe('/app/pages');
       expect(app.router.state.location.search).toMatchObject({
         resource: kind,
         resourceId: id,
@@ -572,7 +572,7 @@ for (const { link, kind, id } of [
       expect(screen.queryByRole('searchbox')).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
       await waitFor(() => expect(app.router.state.location.search.expanded).toBeUndefined());
-      expect(app.router.state.location.pathname).toBe('/pages');
+      expect(app.router.state.location.pathname).toBe('/app/pages');
       expect(await screen.findByRole('searchbox')).toBeTruthy();
       expect(screen.getByRole('complementary', { name: /preview$/ })).toBeTruthy();
       expect(app.router.state.location.search).toMatchObject({ resource: kind, resourceId: id });
@@ -580,7 +580,7 @@ for (const { link, kind, id } of [
       expect(app.router.state.location.search.interval).toBe('without');
       app.router.history.back();
       await waitFor(() => expect(app.router.state.location.search.expanded).toBe(true));
-      expect(app.router.state.location.pathname).toBe('/pages');
+      expect(app.router.state.location.pathname).toBe('/app/pages');
       expect(screen.queryByRole('searchbox')).toBeNull();
     } finally {
       app.dispose();
@@ -590,18 +590,18 @@ for (const { link, kind, id } of [
 
 test('expanded navigation from Map returns to Map with its original month', async () => {
   const app = await renderResourceBrowser(
-    '/map?month=2007-08&resource=page&resourceId=launch&expanded=true',
+    '/app/map?month=2007-08&resource=page&resourceId=launch&expanded=true',
   );
   try {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('link', { name: 'Owner' }));
     expect(await screen.findByRole('heading', { name: 'Owner' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/map');
+    expect(app.router.state.location.pathname).toBe('/app/map');
     expect(app.router.state.location.search.expanded).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
     expect(await screen.findByRole('complementary', { name: 'Entity preview' })).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
-    expect(app.router.state.location.pathname).toBe('/map');
+    expect(app.router.state.location.pathname).toBe('/app/map');
     expect(app.router.state.location.search.month).toBe('2007-08');
     expect(app.router.state.location.search.resourceId).toBe('owner');
   } finally {
@@ -612,7 +612,7 @@ test('expanded navigation from Map returns to Map with its original month', asyn
 for (const expanded of [false, true]) {
   test(`section links reveal asynchronously loaded content in ${expanded ? 'expanded detail' : 'preview'}`, async () => {
     const app = await renderResourceBrowser(
-      `/pages?resource=page&resourceId=launch${expanded ? '&expanded=true' : ''}`,
+      `/app/pages?resource=page&resourceId=launch${expanded ? '&expanded=true' : ''}`,
     );
     const revealed: HTMLElement[] = [];
     const scroll = spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(function (
@@ -639,7 +639,7 @@ for (const expanded of [false, true]) {
 for (const collection of ['pages', 'entities', 'assets'] as const) {
   test(`${collection} visibility changes preserve selection, search, and browsing history`, async () => {
     const app = await renderResourceBrowser(
-      `/${collection}?visibility=private&resource=page&resourceId=launch`,
+      `/app/${collection}?visibility=private&resource=page&resourceId=launch`,
     );
     try {
       const user = userEvent.setup();

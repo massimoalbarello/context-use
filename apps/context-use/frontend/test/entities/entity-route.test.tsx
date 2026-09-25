@@ -111,7 +111,7 @@ test('entity filters survive navigation, self stays a person, and other types ca
     const router = createRouter({
       routeTree,
       context: { queryClient: client },
-      history: createMemoryHistory({ initialEntries: ['/entities?entityType=person'] }),
+      history: createMemoryHistory({ initialEntries: ['/app/entities?entityType=person'] }),
     });
     await router.load();
     render(
@@ -122,7 +122,7 @@ test('entity filters survive navigation, self stays a person, and other types ca
     const user = userEvent.setup();
     await user.click(await screen.findByRole('link', { name: /zoe Person Research colleague/ }));
     await waitFor(() => expect(router.state.location.search.resourceId).toBe('zoe'));
-    expect(router.state.location.pathname).toBe('/entities');
+    expect(router.state.location.pathname).toBe('/app/entities');
     expect(router.state.location.search.entityType).toBe('person');
     await user.click(screen.getByRole('button', { name: 'Close preview' }));
     await user.type(screen.getByRole('searchbox', { name: 'Search entities' }), 'research');
@@ -156,7 +156,7 @@ test('entity filters survive navigation, self stays a person, and other types ca
     await user.click(screen.getByRole('button', { name: 'Close preview' }));
     await user.click(screen.getByRole('link', { name: /zoe Person Research colleague/ }));
     await waitFor(() => expect(router.state.location.search.resourceId).toBe('zoe'));
-    expect(router.state.location.pathname).toBe('/entities');
+    expect(router.state.location.pathname).toBe('/app/entities');
     await user.click(await screen.findByRole('button', { name: 'Expand' }));
     await user.click(await screen.findByRole('button', { name: 'Edit entity' }));
     await user.click(screen.getByRole('combobox', { name: 'Type (optional)' }));
