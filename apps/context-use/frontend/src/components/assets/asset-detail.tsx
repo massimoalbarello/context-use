@@ -237,22 +237,24 @@ function AssetDetailContent({ asset, onArchived }: { asset: Asset; onArchived: (
                   setArchiveConflict(null);
                   setEditing(true);
                 }}
+                publicationActions={
+                  publication.isSuccess && (
+                    <AssetPublicationActions
+                      publicId={isPublic ? publication.data?.publicId : null}
+                      isPublic={isPublic}
+                      unavailable={!!approval.request}
+                      onReview={() => {
+                        setArchiveConflict(null);
+                        approval.review({
+                          resourceType: 'asset',
+                          readableId: asset.readableId,
+                          action: isPublic ? 'unpublish' : 'publish',
+                        });
+                      }}
+                    />
+                  )
+                }
               >
-                {publication.isSuccess && (
-                  <AssetPublicationActions
-                    publicId={isPublic ? publication.data?.publicId : null}
-                    isPublic={isPublic}
-                    unavailable={!!approval.request}
-                    onReview={() => {
-                      setArchiveConflict(null);
-                      approval.review({
-                        resourceType: 'asset',
-                        readableId: asset.readableId,
-                        action: isPublic ? 'unpublish' : 'publish',
-                      });
-                    }}
-                  />
-                )}
                 <ResourceArchiveAction
                   blocked={isPublic || hasInboundUsages}
                   pending={archiveAsset.isPending}
@@ -351,7 +353,7 @@ function AssetPublicationReview({
       <p className="text-sm">
         {approval.request?.action === 'unpublish'
           ? 'The public file will stop being available. Copies already downloaded by others cannot be withdrawn.'
-          : 'Anyone with the public link can view or download the original file. Its contents stay fixed; edits to its name appear publicly as you save them.'}
+          : 'Anyone with the public link can view or download the original file.'}
       </p>
     </PublicationReviewDialog>
   );

@@ -81,8 +81,8 @@ for the screen.
 - Resource detail views share their content alignment, heading row, spacing rhythm, and top-right
   action anchor. Extend that shell when adding a resource type rather than creating another detail
   pattern.
-- The shared detail-action component owns action wording, order, size, and pending state. At rest,
-  `Edit {resource}` precedes lifecycle actions. Edit mode replaces the entire group with `Cancel`
+- The shared detail-action component owns action wording, order, size, and pending state.
+  Edit mode replaces the entire group with `Cancel`
   followed by `Save {resource}` at the same anchor; entering edit mode must not shift the layout.
 - Resource-like management cards follow the same action contract. Values are read-only at rest;
   edit mode mounts fields in place and replaces all resting actions with `Cancel` and
