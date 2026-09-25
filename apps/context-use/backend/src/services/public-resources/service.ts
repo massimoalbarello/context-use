@@ -36,7 +36,9 @@ export class PublicResourcesService {
     });
     try {
       const markdown = publicPageMarkdown({ markdown: source, targets: page.targets });
-      return markdown === null ? null : { title: page.title, markdown };
+      return markdown === null
+        ? null
+        : { title: page.title, markdown, modifiedAt: page.modifiedAt };
     } catch (error) {
       if (error instanceof InvalidKnowledgePageMarkdownError) {
         return null;

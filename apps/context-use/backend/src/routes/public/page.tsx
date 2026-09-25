@@ -5,16 +5,17 @@ export function publicPageHtml({
   publicId,
   title,
   markdown,
+  modifiedAt,
 }: {
   publicId: string;
   title: string;
   markdown: string;
+  modifiedAt: string;
 }): string {
   return publicDocument({
     title,
-    navigation: (
-      <a href={`/public/pages/${encodeURIComponent(publicId)}/markdown`}>View Markdown</a>
-    ),
+    modifiedAt,
+    markdownUrl: `/public/pages/${encodeURIComponent(publicId)}/markdown`,
     children: (
       <article>
         <PublicMarkdown markdown={markdown} />
