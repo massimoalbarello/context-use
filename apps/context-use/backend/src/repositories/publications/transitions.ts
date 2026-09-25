@@ -6,7 +6,11 @@ import type {
 } from '#backend/models/publications/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
-import { pagePublicationBlockers, withdrawalBlockers } from './dependencies.ts';
+import {
+  pagePublicationBlockers,
+  recordPublicationBlockers,
+  withdrawalBlockers,
+} from './dependencies.ts';
 import { createPublicId } from './public-id.ts';
 import type { PublicationRequest, PublicationTransitionResult } from './repository.ts';
 
@@ -97,17 +101,45 @@ async function entityTarget({
   return rows[0] ?? null;
 }
 
+async function recordTarget({
+  db,
+  ownerId,
+  readableId,
+}: {
+  db: Transaction;
+  ownerId: string;
+  readableId: string;
+}) {
+  const rows = await db.FindRecordPublicationTarget`
+    /* @notNull id readableId name contentHash sizeBytes */
+    select "readable_id" as "id", "readable_id" as "readableId", "title" as "name",
+      "content_hash" as "contentHash", "size_bytes" as "sizeBytes", "deleted_at" as "archivedAt",
+      "public_id" as "publicId", "published_at" as "publishedAt"
+    from "record" where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
+      and "deleted_at" is null
+  `;
+  return rows[0] ?? null;
+}
+
 function status(target: PublicationStatus): PublicationStatus {
   return { publicId: target.publicId, publishedAt: target.publishedAt };
 }
 
+function publicationTarget({ db, input }: { db: Transaction; input: PublicationRequest }) {
+  switch (input.resourceType) {
+    case 'page':
+      return pageTarget({ db, input });
+    case 'asset':
+      return assetTarget({ db, ...input });
+    case 'entity':
+      return entityTarget({ db, ...input });
+    case 'record':
+      return recordTarget({ db, ...input });
+  }
+}
+
 async function evaluate({ db, input }: { db: Transaction; input: PublicationRequest }) {
-  const target =
-    input.resourceType === 'page'
-      ? await pageTarget({ db, input })
-      : input.resourceType === 'asset'
-        ? await assetTarget({ db, ...input })
-        : await entityTarget({ db, ...input });
+  const target = await publicationTarget({ db, input });
   if (!target || target.archivedAt) {
     return null;
   }
@@ -126,6 +158,9 @@ async function evaluate({ db, input }: { db: Transaction; input: PublicationRequ
         revisionId: target.revisionId,
       })),
     );
+  }
+  if (input.action === 'publish' && input.resourceType === 'record') {
+    blockers.push(...(await recordPublicationBlockers({ db, ...input })));
   }
   if (image?.archivedAt) {
     blockers.push({
@@ -239,6 +274,11 @@ export async function executePublication({
   }
   if (input.resourceType === 'asset') {
     await setAssetPublication({ db, ownerId: input.ownerId, id: target.id, ...publication });
+  } else if (input.resourceType === 'record') {
+    await db.SetRecordPublication`
+      update "record" set "public_id" = ${publication.publicId}, "published_at" = ${publication.publishedAt}
+      where "readable_id" = ${input.readableId} and "owner_id" = ${input.ownerId}
+    `;
   } else if ('revisionId' in target) {
     const revisionId = input.action === 'publish' ? target.revisionId : null;
     await db.SetPagePublication`

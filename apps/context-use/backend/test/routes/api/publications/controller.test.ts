@@ -357,7 +357,7 @@ test('required fields are validated and supplied identity, target, state and clo
       { ...ASSET, resourceType: 'page' },
       { ...ASSET, resourceType: 'page', revisionNumber: 0 },
       { ...ASSET, resourceType: 'page', revisionNumber: NON_INTEGER_REVISION },
-      { ...ASSET, resourceType: 'record' },
+      { ...ASSET, resourceType: 'unknown' },
       { ...ASSET, action: 'execute' },
     ]) {
       expect((await request({ path: '/approvals', body })).status).toBe(StatusMap['Bad Request']);
@@ -506,3 +506,39 @@ test('transaction failures use the normal HTTP error response and preserve appro
     });
   });
 });
+
+test('records use owner passkey approval and stale content cannot be published', () =>
+  withController(async ({ database, begin, complete, request }) => {
+    await database`
+    insert into "record" ("owner_id", "readable_id", "provider", "kind", "source_id", "title", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
+    values ('owner-a', 'record', 'test', 'note', 'source', 'Record', 'record-key', ${HASH}, 1, ${NOW}, ${NOW})
+  `;
+    const target = { resourceType: 'record', readableId: 'record', action: 'publish' };
+    const stale = await begin(target);
+    await database`update "record" set "title" = 'Changed record' where "owner_id" = 'owner-a' and "readable_id" = 'record'`;
+    expect(await (await complete(stale)).json()).toMatchObject({ state: 'state_changed' });
+    expect(await (await request({ path: '/record/record' })).json()).toEqual({
+      resourceType: 'record',
+      publicId: null,
+      publishedAt: null,
+    });
+    const approval = await begin(target);
+    expect(approval.preparation.resource.name).toBe('Changed record');
+    expect((await complete(approval)).status).toBe(StatusMap.OK);
+    expect((await complete(approval)).status).toBe(StatusMap.Conflict);
+    const published = await (await request({ path: '/record/record' })).json();
+    expect(published).toMatchObject({
+      resourceType: 'record',
+      publishedAt: NOW,
+      publicId: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      ),
+    });
+    expect((await complete(await begin({ ...target, action: 'unpublish' }))).status).toBe(
+      StatusMap.OK,
+    );
+    expect(await (await request({ path: '/record/record' })).json()).toEqual({
+      ...published,
+      publishedAt: null,
+    });
+  }));

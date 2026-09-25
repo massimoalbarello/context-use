@@ -4,9 +4,10 @@ import { toMarkdown } from 'mdast-util-to-markdown';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { internalReferenceFromLink } from '#backend/models/knowledge-pages/markdown.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
+import { ASSET_ADDRESS_PREFIX } from '#backend/models/readable-ids/addresses.ts';
 
 export interface PublicMarkdownTarget {
-  kind: 'page' | 'entity' | 'asset';
+  kind: 'page' | 'entity' | 'asset' | 'record';
   readableId: string;
   publicId: string;
   mediaType: string | null;
@@ -34,9 +35,6 @@ function linkDestination({
       ? link.target.url
       : null;
   }
-  if (reference.kind === 'record') {
-    return undefined;
-  }
   const target = targets.get(`${reference.kind}:${reference.readableId}`);
   if (!target) {
     return undefined;
@@ -44,7 +42,9 @@ function linkDestination({
   if (link.embedded && !isEmbeddableAssetMedia(target.mediaType ?? '')) {
     return null;
   }
-  const resource = { page: 'pages', entity: 'entities', asset: 'assets' }[target.kind];
+  const resource = { page: 'pages', entity: 'entities', asset: 'assets', record: 'records' }[
+    target.kind
+  ];
   const fragment = reference.kind === 'page' && reference.fragment ? `#${reference.fragment}` : '';
   return `/public/${resource}/${encodeURIComponent(target.publicId)}${fragment}`;
 }
@@ -81,20 +81,17 @@ function cleanTree({
 }
 
 /** Produce the sole Markdown source used by both public representations. */
-export function publicPageMarkdown({
+function projectPublicMarkdown({
   markdown,
-  targets,
+  destination,
 }: {
   markdown: string;
-  targets: PublicMarkdownTarget[];
+  destination: (link: MarkdownLink) => string | null | undefined;
 }): string | null {
   const tree = fromMarkdown(markdown);
-  const byAddress = new Map(
-    targets.map((target) => [`${target.kind}:${target.readableId}`, target]),
-  );
   const replacements = new Map<Nodes, RootContent[]>();
   for (const link of markdownLinks(tree)) {
-    const url = linkDestination({ link, targets: byAddress });
+    const url = destination(link);
     // An unavailable managed destination invalidates the whole public projection.
     if (url === undefined) {
       return null;
@@ -102,4 +99,44 @@ export function publicPageMarkdown({
     replacements.set(link.node, projectLink({ link, url }));
   }
   return toMarkdown(cleanTree({ node: tree, replacements })[0] as Root);
+}
+
+export function publicPageMarkdown({
+  markdown,
+  targets,
+}: {
+  markdown: string;
+  targets: PublicMarkdownTarget[];
+}): string | null {
+  const byAddress = new Map(
+    targets.map((target) => [`${target.kind}:${target.readableId}`, target]),
+  );
+  return projectPublicMarkdown({
+    markdown,
+    destination: (link) => linkDestination({ link, targets: byAddress }),
+  });
+}
+
+export function publicRecordMarkdown({
+  markdown,
+  targets,
+}: {
+  markdown: string;
+  targets: PublicMarkdownTarget[];
+}): string | null {
+  const byAddress = new Map(
+    targets.map((target) => [`${target.kind}:${target.readableId}`, target]),
+  );
+  return projectPublicMarkdown({
+    markdown,
+    destination: (link) => {
+      if (link.target.url.startsWith(ASSET_ADDRESS_PREFIX)) {
+        return linkDestination({ link, targets: byAddress });
+      }
+      return !link.embedded &&
+        (link.target.url.startsWith('#') || safeExternalDestination(link.target.url))
+        ? link.target.url
+        : null;
+    },
+  });
 }

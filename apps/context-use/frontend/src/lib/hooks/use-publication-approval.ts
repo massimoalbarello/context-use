@@ -12,6 +12,7 @@ import {
   type PublicationRequest,
   publicationsQueryKey,
 } from '../../queries/publications';
+import { recordsListQueryKey } from '../../queries/records';
 import { passkeyErrorMessage } from '../passkey-error';
 
 export function usePublicationApproval() {
@@ -34,7 +35,9 @@ export function usePublicationApproval() {
           ? [pagesListQueryKey]
           : request.resourceType === 'entity'
             ? [entitiesListQueryKey, assetsListQueryKey, assetSuggestionsQueryKey]
-            : [assetsListQueryKey, assetSuggestionsQueryKey];
+            : request.resourceType === 'record'
+              ? [recordsListQueryKey]
+              : [assetsListQueryKey, assetSuggestionsQueryKey];
       await Promise.all(
         [publicationsQueryKey, ...listKeys, knowledgeSuggestionsQueryKey].map((queryKey) =>
           queryClient.invalidateQueries({ queryKey }),

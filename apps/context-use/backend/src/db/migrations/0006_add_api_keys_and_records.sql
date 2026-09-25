@@ -28,6 +28,8 @@ create table "record" (
   "sync_id" text not null default '',
   "sync_revision" integer not null default 0,
   "readable_id" text not null,
+  "public_id" text unique,
+  "published_at" text,
   "provider" text not null,
   "kind" text not null,
   "source_id" text not null,
@@ -48,6 +50,14 @@ create table "record" (
   check (length("readable_id") between 1 and 120),
   check (substr("readable_id", 1, 1) glob '[a-z0-9]'),
   check ("readable_id" not glob '*[^a-z0-9-]*'),
+  check ("public_id" is null or (
+    length("public_id") = 36 and "public_id" glob '????????-????-????-????-????????????'
+    and length(replace("public_id", '-', '')) = 32 and "public_id" not glob '*[^a-f0-9-]*'
+    and "public_id" != "readable_id"
+  )),
+  check ("published_at" is null or (
+    length(trim("published_at")) > 0 and "public_id" is not null and "deleted_at" is null
+  )),
   check (("sync_id" = '' and "sync_revision" = 0) or (length("sync_id") > 0 and "sync_revision" > 0)),
   check (length(trim("source_id")) > 0),
   check (length(trim("kind")) > 0),

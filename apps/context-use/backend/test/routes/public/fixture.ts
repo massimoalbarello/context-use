@@ -14,10 +14,12 @@ import {
   type PublicationRequest,
   PublicationsRepository,
 } from '#backend/repositories/publications/repository.ts';
+import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { createPublicController } from '#backend/routes/public/controller.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { PublicResourcesService } from '#backend/services/public-resources/service.ts';
+import { RecordsService } from '#backend/services/records/service.ts';
 import { unusedAssetFacesService } from '../../support/app.ts';
 
 export const NOW = '2026-09-24T09:00:00.000Z';
@@ -62,6 +64,7 @@ async function createFixture({
     storage,
     faces: unusedAssetFacesService,
   });
+  const records = new RecordsService({ records: new RecordsRepository(database), storage });
   const resources = new PublicResourcesRepository(database);
   const service = new PublicResourcesService({ resources, storage });
   const publications = new PublicationsRepository(database);
@@ -187,6 +190,7 @@ async function createFixture({
     repository,
     resources,
     publications,
+    records,
     service,
     entities,
     assets,

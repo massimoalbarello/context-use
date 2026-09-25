@@ -66,7 +66,7 @@ export function RevisionDiff({ diff }: { diff: KnowledgePageDiff }) {
     <div className="grid min-w-0 gap-3">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
         <span className="text-muted-foreground">
-          {diff.from === 0 ? 'Page created' : `Revision ${diff.from} → ${diff.to}`}
+          {diff.from === 0 ? 'Full content' : `Revision ${diff.from} → ${diff.to}`}
         </span>
         <span className="text-diff-added">+{diff.additions} added</span>
         <span className="text-diff-removed">−{diff.deletions} removed</span>
