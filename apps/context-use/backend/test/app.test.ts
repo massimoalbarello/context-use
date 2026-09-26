@@ -104,6 +104,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     publicationApprovalService: unusedPublicationApprovalService,
     publicResourcesService: {
       homepageContent: () => Promise.resolve(null),
+      index: async () => ({ entries: [], total: 0 }),
       assetContent: async () => null,
       pageContent: async () => null,
       recordContent: async () => null,
@@ -290,20 +291,11 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
 
 async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
   const root = await app.handle(new Request('http://localhost/'));
-  expect(root.status).toBe(StatusMap.Found);
-  expect(root.headers.get('location')).toBe('/public');
-  for (const path of ['/public', '/public/']) {
-    const homepage = await app.handle(new Request(`http://localhost${path}`));
-    expect(homepage.status).toBe(StatusMap.OK);
-    expect(await homepage.text()).toContain('Nothing published yet');
-  }
+  expect(root.status).toBe(StatusMap.OK);
+  expect(root.headers.get('location')).toBeNull();
+  expect(await root.text()).toContain('<h1>Nothing published yet</h1>');
   for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
     for (const path of [
-      '/pages',
-      '/assets',
-      '/entities',
-      '/publicity',
-      '/public-assets',
       '/public/unknown',
       '/public/assets',
       '/public/assets/unknown',
@@ -316,20 +308,83 @@ async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
         new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),
       );
       expect(response.status).toBe(StatusMap['Not Found']);
-      expect(await response.json()).toEqual({ error: 'Not Found' });
+      const body = await response.text();
+      expect(body).not.toBe('frontend');
+      expect(body.toLowerCase()).toContain('not found');
+    }
+    for (const path of [
+      '/public',
+      '/public/',
+      '/public/directory',
+      '/llms.txt',
+      '/robots.txt',
+      '/sitemap.xml',
+      '/sitemap.xml?page=1',
+    ]) {
+      const response = await app.handle(new Request(`http://localhost${path}`));
+      expect(response.status).toBe(StatusMap.OK);
+      expect(await response.text()).not.toBe('frontend');
     }
     for (const path of [
       '/app',
+      '/app/settings/public-site',
+      '/app/login',
+      '/app/map',
       '/app/pages',
       '/app/assets',
       '/app/entities',
-      '/app/settings/public-site',
+      '/app/pages/example',
+      '/app/settings/api-keys',
+      '/app/mcp/authorize',
     ]) {
       const response = await app.handle(
         new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),
       );
       expect(response.status).toBe(StatusMap.OK);
       expect(await response.text()).toBe('frontend');
+    }
+    await expectUnknownRouteBoundary({ app, cookie });
+    const apiMissing = await app.handle(
+      new Request('http://localhost/api/unknown', {
+        headers: { accept: 'text/markdown' },
+      }),
+    );
+    expect(apiMissing.status).toBe(StatusMap['Not Found']);
+    expect(apiMissing.headers.get('content-type')).toContain('application/json');
+  }
+}
+
+async function expectUnknownRouteBoundary({
+  app,
+  cookie,
+}: {
+  app: ReturnType<typeof createApp>;
+  cookie: string | undefined;
+}) {
+  for (const accept of ['text/html', 'text/markdown']) {
+    for (const path of [
+      '/some-path-that-does-not-exist',
+      '/publicity',
+      '/public-assets',
+      '/app/settings/unknown',
+      '/pages',
+      '/map',
+      '/login',
+      '/pages/example/unknown',
+      '/missing.js',
+    ]) {
+      const response = await app.handle(
+        new Request(`http://localhost${path}`, {
+          headers: { accept, ...(cookie ? { cookie } : {}) },
+        }),
+      );
+      expect(response.status).toBe(StatusMap['Not Found']);
+      expect(response.headers.get('content-type')).toBe(`${accept}; charset=utf-8`);
+      expect(response.headers.get('vary')).toBe('Accept');
+      expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+      const body = await response.text();
+      expect(body).toContain('This address is unavailable.');
+      expect(body).toContain('/llms.txt');
     }
   }
 }

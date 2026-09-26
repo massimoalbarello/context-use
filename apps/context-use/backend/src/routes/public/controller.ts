@@ -2,46 +2,73 @@ import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema, NotFoundError } from '#backend/lib/errors.ts';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
+import { createPublicDiscoveryController } from '#backend/routes/public/discovery-controller.ts';
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';
 import { publicEntityHtml } from '#backend/routes/public/entity.tsx';
+import { publicEntityMarkdown } from '#backend/routes/public/markdown.ts';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
 import { publicRecordHtml } from '#backend/routes/public/record.tsx';
+import { publicNotFound, publicReadingResponse } from '#backend/routes/public/response.tsx';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 import { emptyPublicHomepageHtml } from './homepage.tsx';
 
 export function createPublicController({
   publicResourcesService,
+  publicOrigin,
+  siteName,
   ownerId,
 }: {
   publicResourcesService: PublicResourcesServiceContract;
+  publicOrigin: string;
   ownerId: string;
+  siteName?: string;
 }) {
-  return new Elysia({ prefix: '/public' })
+  const readHomepage = async ({ request }: { request: Request }) => {
+    const content = await publicResourcesService.homepageContent({ ownerId });
+    const canonicalUrl = new URL('/', publicOrigin).href;
+    return publicReadingResponse({
+      request,
+      canonicalUrl,
+      markdownUrl: content ? `/public/pages/${content.publicId}/markdown` : undefined,
+      html: () =>
+        content
+          ? publicPageHtml({ ...content, canonicalUrl, siteName })
+          : emptyPublicHomepageHtml({ canonicalUrl, siteName }),
+      markdown: () =>
+        content?.markdown ??
+        '# Nothing published yet\n\nThis knowledge base doesn’t have a public homepage yet. [Browse public content](/public/directory) or use the [AI-readable site index](/llms.txt).\n',
+    });
+  };
+  return new Elysia()
+    .use(createPublicDiscoveryController({ publicResourcesService, publicOrigin, siteName }))
     .onBeforeHandle(({ set }) => {
       set.headers['cache-control'] = 'private, no-store';
       set.headers['x-content-type-options'] = 'nosniff';
       set.headers['content-security-policy'] = PUBLIC_DOCUMENT_CSP;
       set.headers['referrer-policy'] = 'no-referrer';
     })
+    .get('/', readHomepage, { detail: { hide: true } })
+    .get('/public', readHomepage, {
+      detail: { tags: ['Public site'], summary: 'Read the public homepage', security: [] },
+    })
     .get(
-      '/',
-      async () => {
-        const content = await publicResourcesService.homepageContent({ ownerId });
-        return new Response(content ? publicPageHtml(content) : emptyPublicHomepageHtml(), {
-          headers: { 'content-type': 'text/html; charset=utf-8' },
-        });
-      },
-      { detail: { tags: ['Public site'], summary: 'Read the public homepage', security: [] } },
-    )
-    .get(
-      '/entities/:publicId',
-      async ({ params }) => {
+      '/public/entities/:publicId',
+      async ({ params, request }) => {
         const content = await publicResourcesService.entityContent({ publicId: params.publicId });
         if (!content) {
-          throw new NotFoundError();
+          return publicNotFound({ request });
         }
-        return new Response(publicEntityHtml(content), {
-          headers: { 'content-type': 'text/html; charset=utf-8' },
+        const canonicalUrl = new URL(
+          `/public/entities/${encodeURIComponent(params.publicId)}`,
+          publicOrigin,
+        ).href;
+        return publicReadingResponse({
+          request,
+          canonicalUrl,
+          markdownUrl: `${new URL(canonicalUrl).pathname}/markdown`,
+          html: () =>
+            publicEntityHtml({ ...content, publicId: params.publicId, canonicalUrl, siteName }),
+          markdown: () => publicEntityMarkdown(content),
         });
       },
       {
@@ -49,20 +76,30 @@ export function createPublicController({
         detail: { tags: ['Entities'], summary: 'Read an active public entity', security: [] },
         response: {
           [StatusMap.OK]: t.String(),
-          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
+          [StatusMap['Not Acceptable']]: t.String(),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
     )
     .get(
-      '/pages/:publicId',
-      async ({ params }) => {
+      '/public/pages/:publicId',
+      async ({ params, request }) => {
         const content = await publicResourcesService.pageContent({ publicId: params.publicId });
         if (!content) {
-          throw new NotFoundError();
+          return publicNotFound({ request });
         }
-        return new Response(publicPageHtml({ publicId: params.publicId, ...content }), {
-          headers: { 'content-type': 'text/html; charset=utf-8' },
+        const canonicalUrl = new URL(
+          `/public/pages/${encodeURIComponent(params.publicId)}`,
+          publicOrigin,
+        ).href;
+        return publicReadingResponse({
+          request,
+          canonicalUrl,
+          markdownUrl: `${new URL(canonicalUrl).pathname}/markdown`,
+          html: () =>
+            publicPageHtml({ publicId: params.publicId, ...content, canonicalUrl, siteName }),
+          markdown: () => content.markdown,
         });
       },
       {
@@ -70,20 +107,24 @@ export function createPublicController({
         detail: { tags: ['Pages'], summary: 'Read an active public page', security: [] },
         response: {
           [StatusMap.OK]: t.String(),
-          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
+          [StatusMap['Not Acceptable']]: t.String(),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
     )
     .get(
-      '/pages/:publicId/markdown',
-      async ({ params }) => {
+      '/public/pages/:publicId/markdown',
+      async ({ params, request }) => {
         const content = await publicResourcesService.pageContent({ publicId: params.publicId });
         if (!content) {
-          throw new NotFoundError();
+          return publicNotFound({ request, markdown: true });
         }
         return new Response(content.markdown, {
-          headers: { 'content-type': 'text/markdown; charset=utf-8' },
+          headers: {
+            'content-type': 'text/markdown; charset=utf-8',
+            link: '</llms.txt>; rel="describedby"',
+          },
         });
       },
       {
@@ -95,13 +136,29 @@ export function createPublicController({
         },
         response: {
           [StatusMap.OK]: t.String(),
-          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
     )
     .get(
-      '/records/:publicId',
+      '/public/entities/:publicId/markdown',
+      async ({ params, request }) => {
+        const content = await publicResourcesService.entityContent({ publicId: params.publicId });
+        if (!content) {
+          return publicNotFound({ request, markdown: true });
+        }
+        return new Response(publicEntityMarkdown(content), {
+          headers: {
+            'content-type': 'text/markdown; charset=utf-8',
+            link: '</llms.txt>; rel="describedby"',
+          },
+        });
+      },
+      { params: t.Object({ publicId: t.String() }), detail: { hide: true } },
+    )
+    .get(
+      '/public/records/:publicId',
       async ({ params }) => {
         const content = await publicResourcesService.recordContent({ publicId: params.publicId });
         if (!content) {
@@ -122,7 +179,7 @@ export function createPublicController({
       },
     )
     .get(
-      '/records/:publicId/markdown',
+      '/public/records/:publicId/markdown',
       async ({ params }) => {
         const content = await publicResourcesService.recordContent({ publicId: params.publicId });
         if (!content) {
@@ -147,7 +204,7 @@ export function createPublicController({
       },
     )
     .get(
-      '/assets/:publicId',
+      '/public/assets/:publicId',
       async ({ params }) => {
         const content = await publicResourcesService.assetContent({ publicId: params.publicId });
         if (!content) {
@@ -167,9 +224,10 @@ export function createPublicController({
         detail: { tags: ['Assets'], summary: 'Read an active public asset', security: [] },
         response: {
           [StatusMap.OK]: t.File(),
-          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
-    );
+    )
+    .get('/public/*', ({ request }) => publicNotFound({ request }), { detail: { hide: true } });
 }

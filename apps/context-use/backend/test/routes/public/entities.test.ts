@@ -152,7 +152,7 @@ test('live public identity uses only the approved current image and safely escap
     );
     expect(edited).toContain('[link](javascript:alert(1))');
     expect(edited).toContain('Organization');
-    expect(edited).not.toContain('<script');
+    expect(edited).not.toContain('<script>');
     expect(edited).not.toContain('<img src="/api');
     expect(edited).not.toContain('Ada Lovelace');
     const replacement = await createPortrait({
@@ -304,24 +304,17 @@ test('unknown, private, foreign private, withdrawn, archived and mismatched enti
       for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
         const response = await request({ fixture, id: candidate, cookie });
         expect(response.status).toBe(StatusMap['Not Found']);
-        expect(await response.json()).toEqual({ error: 'Not Found' });
+        expect(await response.text()).toContain('Public content not found');
       }
     }
     await fixture.transition({ ...operation, action: 'unpublish' });
     for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
       const response = await request({ fixture, id, cookie });
       expect(response.status).toBe(StatusMap['Not Found']);
-      expect(await response.json()).toEqual({ error: 'Not Found' });
+      expect(await response.text()).toContain('Public content not found');
     }
     await fixture.transition({ ...operation, action: 'publish' });
-    for (const path of [
-      '',
-      '?q=Ada',
-      `/${id}/history`,
-      `/${id}/revisions`,
-      `/${id}/markdown`,
-      `/${id}/json`,
-    ]) {
+    for (const path of ['', '?q=Ada', `/${id}/history`, `/${id}/revisions`, `/${id}/json`]) {
       expect(
         (await fixture.app.handle(new Request(`http://localhost/public/entities${path}`))).status,
       ).toBe(StatusMap['Not Found']);

@@ -89,6 +89,7 @@ describe('knowledge page Markdown', () => {
     const privateHtml = renderToStaticMarkup(<KnowledgePageMarkdown markdown={source} />);
     const publicHtml = publicPageHtml({
       publicId: 'page_parity',
+      canonicalUrl: 'https://example.com/public/pages/page_parity',
       modifiedAt: '2026-09-25T00:00:00.000Z',
       title: 'Heading parity',
       markdown: markdown!,

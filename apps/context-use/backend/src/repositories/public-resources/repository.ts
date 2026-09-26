@@ -35,8 +35,20 @@ export interface PublicEntity {
   pages: { publicId: string; title: string }[];
 }
 
+export interface PublicResourceSummary {
+  kind: 'page' | 'entity';
+  publicId: string;
+  title: string;
+  modifiedAt: string;
+}
+
 export interface PublicResourcesRepositoryContract {
   findHomepage(input: { ownerId: string }): Promise<{ publicId: string } | null>;
+  list(input: {
+    offset: number;
+    limit: number;
+  }): Promise<{ entries: PublicResourceSummary[]; total: number }>;
+
   findEntity(input: { publicId: string }): Promise<PublicEntity | null>;
   findPage(input: { publicId: string }): Promise<StoredPublicPage | null>;
   findRecord(input: { publicId: string }): Promise<StoredPublicMarkdown | null>;
@@ -58,6 +70,45 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
         and "published_at" is not null and "archived_at" is null
     `;
     return rows[0] ?? null;
+  }
+
+  async list({ offset, limit }: { offset: number; limit: number }) {
+    // Discovery deliberately spans owners, but only their explicitly published projections.
+    const rows = await this.sql.ListPublicResources`
+      /* @notNull publicId title modifiedAt total */
+      /* @type kind 'page' | 'entity' */
+      with published_resources as (
+        select 'page' as "kind", page."public_id" as "publicId", revision."title" as "title",
+          revision."created_at" as "modifiedAt"
+        from "knowledge_page" page
+        join "knowledge_page_revision" revision on revision."id" = page."published_revision_id"
+          and revision."page_id" = page."id" and revision."owner_id" = page."owner_id"
+        where page."public_id" is not null and page."published_at" is not null
+          and page."archived_at" is null
+        union all
+        select 'entity', entity."public_id", entity."name", entity."updated_at"
+        from "entity" entity
+        where entity."public_id" is not null and entity."published_at" is not null
+          and entity."archived_at" is null
+          and (entity."image_asset_id" is null or exists (
+            select 1 from "asset" image where image."id" = entity."image_asset_id"
+              and image."owner_id" = entity."owner_id" and image."published_at" is not null
+              and image."archived_at" is null
+          ))
+      )
+      select "kind", "publicId", "title", "modifiedAt", count(*) over () as "total"
+      from published_resources order by "publicId"
+      limit ${limit} offset ${offset}
+    `;
+    return {
+      entries: rows.map(({ kind, publicId, title, modifiedAt }) => ({
+        kind,
+        publicId,
+        title,
+        modifiedAt,
+      })),
+      total: Number(rows[0]?.total ?? 0),
+    };
   }
 
   async findEntity({ publicId }: { publicId: string }): Promise<PublicEntity | null> {

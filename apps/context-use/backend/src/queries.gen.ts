@@ -904,6 +904,15 @@ export interface IFindPublicHomepageIdResult {
     publicId: string;
 }
 
+/** Result of query `ListPublicResources`. */
+export interface IListPublicResourcesResult {
+    kind: "page" | "entity";
+    publicId: string;
+    title: string;
+    modifiedAt: string;
+    total: unknown;
+}
+
 /** Result of query `FindPublicEntity`. */
 export interface IFindPublicEntityResult {
     name: string;
@@ -1332,6 +1341,7 @@ export interface Queries {
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
     FindPublicHomepageId: IFindPublicHomepageIdResult;
+    ListPublicResources: IListPublicResourcesResult;
     FindPublicEntity: IFindPublicEntityResult;
     FindPublicPage: IFindPublicPageResult;
     FindPublicRecord: IFindPublicRecordResult;
