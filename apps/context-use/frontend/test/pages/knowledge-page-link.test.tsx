@@ -34,6 +34,6 @@ test('page cards outside a browser link directly to the canonical detail preview
   await router.load();
   render(<RouterProvider router={router} />);
   const link = screen.getByRole('link', { name: 'Target page Summary' });
-  expect(link.getAttribute('href')).toBe('/pages/target-page?view=preview');
+  expect(link.getAttribute('href')).toBe('/app/pages/target-page?view=preview');
   expect(link.getAttribute('aria-current')).toBe('page');
 });

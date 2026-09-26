@@ -166,6 +166,9 @@ test(
           },
         });
         const read = (path: string) => fetchDemo(new Request(`http://demo.test${path}`));
+        const root = await read('/');
+        expect(root.status).toBe(StatusMap.Found);
+        expect(root.headers.get('location')).toBe('/app/map');
         for (const [path, count] of [
           ['/api/pages?limit=50', MAX_LIST_LIMIT],
           ['/api/pages?limit=50&offset=50', EXPECTED_PAGES - MAX_LIST_LIMIT],
@@ -202,13 +205,14 @@ test(
           '/api/records/filter-options',
           '/api/map/pages',
           '/api/hypermedia/search?query=iPhone',
-          '/map',
-          '/pages/new',
-          '/entities/new',
-          '/assets/new',
-          '/settings',
-          '/settings/api-keys',
-          '/settings/faces',
+          '/app',
+          '/app/map',
+          '/app/pages/new',
+          '/app/entities/new',
+          '/app/assets/new',
+          '/app/settings',
+          '/app/settings/api-keys',
+          '/app/settings/faces',
           '/test.js',
         ]) {
           const response = await read(path);
@@ -455,9 +459,9 @@ test(
           '/api/pages/a%2farchive',
           '/api//pages',
           '/api/pages/',
-          '/setup',
-          '/login',
-          '/mcp/authorize',
+          '/app/setup',
+          '/app/login',
+          '/app/mcp/authorize',
         ]) {
           expect((await read(path)).status, path).toBe(StatusMap.Forbidden);
         }

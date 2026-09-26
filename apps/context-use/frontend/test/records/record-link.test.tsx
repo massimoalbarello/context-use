@@ -38,13 +38,13 @@ test('record links navigate by local readable ID and expose their selected state
   const rootRoute = createRootRoute({ component: Outlet });
   const recordRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: 'records/$id',
+    path: 'app/records/$id',
     component: () => <RecordLink record={record} active />,
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([recordRoute]),
     history: createMemoryHistory({
-      initialEntries: [`/records/${record.readableId}?provider=github&view=metadata`],
+      initialEntries: [`/app/records/${record.readableId}?provider=github&view=metadata`],
     }),
   });
   await router.load();
@@ -52,7 +52,7 @@ test('record links navigate by local readable ID and expose their selected state
 
   const link = screen.getByRole('link', { name: new RegExp(record.source.kind, 'i') });
   expect(link.getAttribute('href')).toBe(
-    `/records/${record.readableId}?provider=github&view=preview`,
+    `/app/records/${record.readableId}?provider=github&view=preview`,
   );
   expect(link.getAttribute('aria-current')).toBe('page');
 });

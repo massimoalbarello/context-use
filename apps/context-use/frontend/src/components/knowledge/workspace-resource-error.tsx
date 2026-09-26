@@ -8,22 +8,22 @@ const resourceCopy = {
   page: {
     eyebrow: 'Knowledge page',
     collection: 'pages',
-    collectionPath: '/pages',
+    collectionPath: '/app/pages',
   },
   entity: {
     eyebrow: 'Entity',
     collection: 'entities',
-    collectionPath: '/entities',
+    collectionPath: '/app/entities',
   },
   asset: {
     eyebrow: 'Asset',
     collection: 'assets',
-    collectionPath: '/assets',
+    collectionPath: '/app/assets',
   },
   record: {
     eyebrow: 'Record',
     collection: 'records',
-    collectionPath: '/records',
+    collectionPath: '/app/records',
   },
 } as const;
 

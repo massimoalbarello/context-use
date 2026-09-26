@@ -178,7 +178,7 @@ test('private record attachments block confirmation and expose an actionable ass
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   const link = await screen.findByRole('link', { name: 'Private attachment' });
-  expect(link.getAttribute('href')).toStartWith('/assets/attachment');
+  expect(link.getAttribute('href')).toStartWith('/app/assets/attachment');
   expect(screen.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
   expect(device.calls).toHaveLength(0);
 });

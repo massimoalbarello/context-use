@@ -134,7 +134,7 @@ test('publishing selects the reviewed saved revision despite later private edits
     expect(await repository.prepare(publish())).toMatchObject({
       resource: { resourceType: 'page', readableId: 'primary', name: 'Page' },
       publication: { publicId: null, publishedAt: null },
-      pageRevision: { revisionNumber: 1, publishedRevisionNumber: null },
+      pageRevision: { publicHomepage: false, revisionNumber: 1, publishedRevisionNumber: null },
       blockers: [],
     });
     const first = await execution({ repository, input: publish() });
@@ -155,7 +155,7 @@ test('publishing selects the reviewed saved revision despite later private edits
     expect(await repository.execute(first)).toEqual({ state: 'state_changed' });
     expect(await change({ repository, input: publish() })).toMatchObject({ state: 'unchanged' });
     expect(await repository.prepare(publish({ revisionNumber: 2 }))).toMatchObject({
-      pageRevision: { revisionNumber: 2, publishedRevisionNumber: 1 },
+      pageRevision: { publicHomepage: false, revisionNumber: 2, publishedRevisionNumber: 1 },
     });
     const replacement = await execution({ repository, input: publish({ revisionNumber: 2 }) });
     expect(await repository.execute({ ...replacement, publishedAt: LATER })).toMatchObject({

@@ -142,7 +142,9 @@ test('settings restores the queue filter, retries a failed image, and changes qu
   );
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: ['/settings/faces?filter=failed&offset=20'] }),
+    history: createMemoryHistory({
+      initialEntries: ['/app/settings/faces?filter=failed&offset=20'],
+    }),
     context: { queryClient: client },
   });
   const view = render(
@@ -155,7 +157,7 @@ test('settings restores the queue filter, retries a failed image, and changes qu
     expect(await view.findByText('Image could not be decoded.')).toBeTruthy();
     expect(view.getByRole('button', { name: 'Failed', pressed: true })).toBeTruthy();
     expect(view.getByRole('link', { name: /Group photo/ }).getAttribute('href')).toBe(
-      '/assets/group-photo',
+      '/app/assets/group-photo',
     );
     await user.click(view.getByRole('button', { name: 'Retry Group photo' }));
     expect(await view.findByText('No failed images.')).toBeTruthy();
@@ -273,7 +275,7 @@ test('scrolling appends queue images, preserves them after a page failure, and c
   );
   const router = createRouter({
     routeTree,
-    history: createMemoryHistory({ initialEntries: ['/settings/faces?filter=ready'] }),
+    history: createMemoryHistory({ initialEntries: ['/app/settings/faces?filter=ready'] }),
     context: { queryClient: client },
   });
   const view = render(

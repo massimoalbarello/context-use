@@ -6,8 +6,6 @@ const READING_STYLES = `
 * { box-sizing: border-box; }
 body { margin: 0; }
 main { max-width: 48rem; margin: auto; padding: 3rem 1.5rem 0; }
-nav { display: flex; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 3rem; font-size: .875rem; color: #69655d; }
-nav span { font-weight: 600; letter-spacing: .02em; }
 article { overflow-wrap: anywhere; line-height: 1.8; font-size: 1.0625rem; }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; letter-spacing: -.025em; scroll-margin-top: 1.5rem; }
 h1 { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 2rem; }
@@ -36,19 +34,17 @@ hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
 img.entity-portrait { width: 10rem; height: 10rem; object-fit: cover; margin: 0; }
 .entity-type { margin: 0 0 .5rem; font-size: .875rem; }
 .entity-description { white-space: pre-wrap; }
-@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } nav { margin-bottom: 2rem; } }
-@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } nav, blockquote, .footer-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
+@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } }
+@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } blockquote, .footer-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
 `;
 
 export function publicDocument({
   title,
-  navigation,
   modifiedAt,
   markdownUrl,
   children,
 }: {
   title: string;
-  navigation?: ReactNode;
   modifiedAt?: string;
   markdownUrl?: string;
   children: ReactNode;
@@ -63,13 +59,7 @@ export function publicDocument({
         <style>{READING_STYLES}</style>
       </head>
       <body>
-        <main>
-          <nav aria-label="Public resource">
-            <span>Context Use</span>
-            {navigation}
-          </nav>
-          {children}
-        </main>
+        <main>{children}</main>
         <footer>
           <p>
             self-hosted with{' '}
@@ -98,6 +88,7 @@ export function publicDocument({
             ) : null}
             <div className="footer-links">
               {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
+              <a href="/app">Owner login</a>
             </div>
           </div>
         </footer>

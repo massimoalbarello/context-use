@@ -68,9 +68,12 @@ async function createFixture({
   const resources = new PublicResourcesRepository(database);
   const service = new PublicResourcesService({ resources, storage });
   const publications = new PublicationsRepository(database);
-  const app = new Elysia()
-    .onError(elysiaErrorHandler)
-    .use(createPublicController({ publicResourcesService: service }));
+  const app = new Elysia().onError(elysiaErrorHandler).use(
+    createPublicController({
+      publicResourcesService: service,
+      ownerId: 'owner-a',
+    }),
+  );
   async function create({ markdown, ownerId = 'owner-a' }: { markdown: string; ownerId?: string }) {
     const result = await pages.create({
       ownerId,

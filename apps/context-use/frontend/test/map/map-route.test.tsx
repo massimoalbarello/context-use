@@ -120,7 +120,7 @@ test('Map previews entities without filtering pages and recovers from page failu
       routeTree,
       context: { queryClient: client },
       history: createMemoryHistory({
-        initialEntries: ['/map?month=2026-01'],
+        initialEntries: ['/app/map?month=2026-01'],
       }),
     });
     await router.load();

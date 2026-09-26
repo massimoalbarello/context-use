@@ -34,7 +34,11 @@ export interface PublicationPreparation {
   publication: PublicationStatus;
   includedImage: { resource: PublicationResource; publication: PublicationStatus } | null;
   entityIdentity: { description: string; entityType: EntityType | null } | null;
-  pageRevision: { revisionNumber: number | null; publishedRevisionNumber: number | null } | null;
+  pageRevision: {
+    publicHomepage: boolean;
+    revisionNumber: number | null;
+    publishedRevisionNumber: number | null;
+  } | null;
   blockers: PublicationBlocker[];
   expectedState: string;
 }

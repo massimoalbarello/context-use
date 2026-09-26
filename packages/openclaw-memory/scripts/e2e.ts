@@ -314,7 +314,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert.equal(removed.plugins.entries['active-memory'].config.timeoutMs, USER_TIMEOUT_MS);
   assert.notEqual(removed.plugins.slots?.memory, PLUGIN_ID);
   assert(!(await Bun.file(connectionFile).exists()), 'Credentials survived disconnect');
-  await owner.page.goto(`${app.origin}/map`);
+  await owner.page.goto(`${app.origin}/app/map`);
   const remote = await owner.page.request.get(`${app.origin}/api/pages`);
   assert(remote.ok(), 'Could not verify memories survived disconnect');
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
@@ -514,7 +514,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       assert(content.ok());
       assert.deepEqual(await content.body(), fixture.bytes, 'Captured asset bytes changed');
     }
-    await owner.page.goto(`${app.origin}/map?resource=page&resourceId=exhibition-visit`);
+    await owner.page.goto(`${app.origin}/app/map?resource=page&resourceId=exhibition-visit`);
     await owner.page
       .getByRole('heading', { name: 'Exhibition visit', exact: true })
       .first()

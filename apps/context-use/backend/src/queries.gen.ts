@@ -899,6 +899,11 @@ export interface IReadOwnerRegistrationStateResult {
     passkeyExists: number;
 }
 
+/** Result of query `FindPublicHomepageId`. */
+export interface IFindPublicHomepageIdResult {
+    publicId: string;
+}
+
 /** Result of query `FindPublicEntity`. */
 export interface IFindPublicEntityResult {
     name: string;
@@ -945,6 +950,26 @@ export interface IFindPublicAssetResult {
     sizeBytes: number;
     contentHash: string;
     storageKey: string;
+}
+
+/** Result of query `FindPublicHomepage`. */
+export interface IFindPublicHomepageResult {
+    readableId: string;
+    publicId: string;
+    title: string;
+}
+
+/** Result of query `FindHomepageCandidate`. */
+export interface IFindHomepageCandidateResult {
+    id: string;
+}
+
+/** Result of query `ClearPublicHomepage`. */
+export interface IClearPublicHomepageResult {
+}
+
+/** Result of query `SetPublicHomepage`. */
+export interface ISetPublicHomepageResult {
 }
 
 /** Result of query `FindPendingPublicationApproval`. */
@@ -1061,6 +1086,7 @@ export interface IFindPagePublicationTargetResult {
     contentHash: string | null;
     sizeBytes: number | null;
     publicId: string | null;
+    publicHomepage: number | null;
     publishedAt: string | null;
     publishedRevisionId: string | null;
     publishedRevisionNumber: number | null;
@@ -1305,10 +1331,15 @@ export interface Queries {
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;
+    FindPublicHomepageId: IFindPublicHomepageIdResult;
     FindPublicEntity: IFindPublicEntityResult;
     FindPublicPage: IFindPublicPageResult;
     FindPublicRecord: IFindPublicRecordResult;
     FindPublicAsset: IFindPublicAssetResult;
+    FindPublicHomepage: IFindPublicHomepageResult;
+    FindHomepageCandidate: IFindHomepageCandidateResult;
+    ClearPublicHomepage: IClearPublicHomepageResult;
+    SetPublicHomepage: ISetPublicHomepageResult;
     FindPendingPublicationApproval: IFindPendingPublicationApprovalResult;
     DeleteExpiredPublicationApprovals: IDeleteExpiredPublicationApprovalsResult;
     CreatePublicationApproval: ICreatePublicationApprovalResult;

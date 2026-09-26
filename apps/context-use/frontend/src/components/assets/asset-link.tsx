@@ -60,7 +60,7 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
         className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
-        to="/assets/$id"
+        to="/app/assets/$id"
         params={{ id: asset.readableId }}
       >
         <ImageIcon className="size-4" aria-hidden="true" />
@@ -73,7 +73,7 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
       onClick={resourceLink.onClick}
       preload={resourceLink.preload}
       className={cn(resourceCardVariants(), 'transition')}
-      to="/assets/$id"
+      to="/app/assets/$id"
       params={{ id: asset.readableId }}
       data-route-selected={(resourceLink.selected ?? active) ? 'true' : undefined}
       aria-current={(resourceLink.selected ?? active) ? 'page' : undefined}

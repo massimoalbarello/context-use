@@ -16,6 +16,7 @@ import { createOwnerRegistrationController } from '#backend/routes/api/owner-reg
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#backend/routes/api/profile/controller.ts';
+import { createPublicSiteController } from '#backend/routes/api/public-site/controller.ts';
 import { createPublicationsController } from '#backend/routes/api/publications/controller.ts';
 import { createRecordReadableIdController } from '#backend/routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#backend/routes/api/records/controller.ts';
@@ -34,6 +35,7 @@ import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { McpClientAuthorizationsServiceContract } from '#backend/services/mcp-client-authorizations/service.ts';
 import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
+import type { PublicSiteServiceContract } from '#backend/services/public-site/service.ts';
 import type { PublicationApprovalServiceContract } from '#backend/services/publications/approval-service.ts';
 import type {
   RecordResourcesServiceContract,
@@ -60,6 +62,7 @@ export function createApiController({
   pagesService,
   profilesService,
   publicationApprovalService,
+  publicSiteService,
   recordsService,
   apiKeysService,
   managedSyncsService,
@@ -78,6 +81,7 @@ export function createApiController({
   pagesService: KnowledgePagesServiceContract;
   profilesService: KnowledgeProfilesServiceContract;
   publicationApprovalService: PublicationApprovalServiceContract;
+  publicSiteService: PublicSiteServiceContract;
   recordsService: RecordsIngestionContract & RecordResourcesServiceContract;
   apiKeysService: ApiKeyAuthenticationContract & ApiKeysServiceContract;
 }) {
@@ -100,6 +104,7 @@ export function createApiController({
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
     .use(createMapController({ auth, graphService }))
+    .use(createPublicSiteController({ auth, publicSiteService }))
     .use(createPublicationsController({ auth, publicationApprovalService }))
     .use(createPagesController({ auth, pagesService }))
     .use(createPageReadableIdController({ auth, pagesService }))

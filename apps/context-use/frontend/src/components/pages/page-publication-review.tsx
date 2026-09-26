@@ -44,11 +44,19 @@ export function PagePublicationReview({
           />
         </>
       ) : (
-        <p className="text-sm">
-          {published == null ? 'This page' : `Public revision ${published}`} will stop being
-          available at this page’s public URL and in public entity page indices. Linked resources
-          keep their own publication state.
-        </p>
+        <div className="grid gap-3">
+          {preparation?.pageRevision?.publicHomepage && (
+            <p className="font-medium text-sm" role="alert">
+              This is your public homepage. Unpublishing it will make your public site show “Nothing
+              published yet”.
+            </p>
+          )}
+          <p className="text-sm">
+            {published == null ? 'This page' : `Public revision ${published}`} will stop being
+            available at this page’s public URL and in public entity page indices. Linked resources
+            keep their own publication state.
+          </p>
+        </div>
       )}
     </PublicationReviewDialog>
   );

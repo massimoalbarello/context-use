@@ -91,11 +91,11 @@ async function passkeyWorld({ signedIn, path }: { signedIn: boolean; path: strin
 }
 
 test('signed-in owners can find passkey settings for custom domains', async () => {
-  const world = await passkeyWorld({ signedIn: true, path: '/settings/passkeys' });
+  const world = await passkeyWorld({ signedIn: true, path: '/app/settings/passkeys' });
   try {
     await screen.findByRole('heading', { name: 'Passkeys' });
     expect(screen.getByRole('link', { name: 'Passkeys' }).getAttribute('href')).toBe(
-      '/settings/passkeys',
+      '/app/settings/passkeys',
     );
     expect(screen.getByText('BASE_URL=https://context.example.com')).toBeTruthy();
     expect(screen.getByText(/only if you set a custom domain/)).toBeTruthy();
@@ -108,11 +108,11 @@ test('signed-in owners can find passkey settings for custom domains', async () =
 });
 
 test('passkey settings retain the settings authentication boundary', async () => {
-  const world = await passkeyWorld({ signedIn: false, path: '/settings/passkeys' });
+  const world = await passkeyWorld({ signedIn: false, path: '/app/settings/passkeys' });
   try {
     await screen.findByRole('heading', { name: 'Create the owner account' });
-    expect(world.router.state.location.pathname).toBe('/login');
-    expect(world.router.state.location.search).toEqual({ redirect: '/settings/passkeys' });
+    expect(world.router.state.location.pathname).toBe('/app/login');
+    expect(world.router.state.location.search).toEqual({ redirect: '/app/settings/passkeys' });
   } finally {
     world.dispose();
   }

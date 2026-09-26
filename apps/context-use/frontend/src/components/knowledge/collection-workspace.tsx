@@ -15,7 +15,7 @@ import { ResourceNavigation } from './resource-navigation';
 import { ResourceScrollArea } from './resource-scroll-area';
 
 type Creation =
-  | { createTo: '/entities/new' | '/pages/new' | '/assets/new'; createLabel: string }
+  | { createTo: '/app/entities/new' | '/app/pages/new' | '/app/assets/new'; createLabel: string }
   | { createTo?: never; createLabel?: never };
 export function CollectionWorkspace({
   collection,
@@ -44,9 +44,9 @@ export function CollectionWorkspace({
   loadMore: () => Promise<unknown>;
   children: ReactNode;
 }) {
-  const navigate = useNavigate({ from: `/${collection}` });
+  const navigate = useNavigate({ from: `/app/${collection}` });
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isDetailRoute = pathname.replace(/\/$/, '') !== `/${collection}`;
+  const isDetailRoute = pathname.replace(/\/$/, '') !== `/app/${collection}`;
   const { collapsed } = useKnowledgeWorkspace();
   return (
     <KnowledgeWorkspace>
@@ -57,7 +57,7 @@ export function CollectionWorkspace({
             <KnowledgeWorkspaceHeader className={cn(collapsed && 'pl-14')}>
               <Link
                 className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-                to={`/${collection}`}
+                to={`/app/${collection}`}
                 search={(previous) => ({
                   ...previous,
                   resource: undefined,
@@ -74,7 +74,7 @@ export function CollectionWorkspace({
               value={{
                 onSelect: (selection) => {
                   void navigate({
-                    to: `/${collection}`,
+                    to: `/app/${collection}`,
                     search: (previous) => ({
                       ...previous,
                       resource: selection.kind,
@@ -95,7 +95,7 @@ export function CollectionWorkspace({
           </>
         ) : (
           <ResourceBrowser
-            from={`/${collection}`}
+            from={`/app/${collection}`}
             toolbar={
               <KnowledgeWorkspaceHeader className="lg:grid lg:grid-cols-[1fr_minmax(0,28rem)_1fr]">
                 <h1

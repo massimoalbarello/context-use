@@ -233,6 +233,7 @@ test('HTTP publication selects the exact reviewed page revision, with revision n
     const approval = await begin({ ...ASSET, resourceType: 'page', revisionNumber: 1 });
     expect(approval.preparation.resource.name).toBe('Page');
     expect(approval.preparation.pageRevision).toEqual({
+      publicHomepage: false,
       revisionNumber: 1,
       publishedRevisionNumber: null,
     });
@@ -248,6 +249,7 @@ test('HTTP publication selects the exact reviewed page revision, with revision n
     });
     const newer = await begin({ ...ASSET, resourceType: 'page', revisionNumber: 2 });
     expect(newer.preparation.pageRevision).toEqual({
+      publicHomepage: false,
       revisionNumber: 2,
       publishedRevisionNumber: 1,
     });

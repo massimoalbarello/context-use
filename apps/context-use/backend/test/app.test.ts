@@ -16,6 +16,7 @@ import {
   unusedHypermediaGraphService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
+  unusedPublicSiteService,
   unusedSyncFetch,
 } from './support/app.ts';
 import {
@@ -98,8 +99,11 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   const deliveryApiKey = '01991f43-0c00-7000-8000-000000000010';
 
   const app = createApp({
+    publicOwnerId: 'owner-a',
+    publicSiteService: unusedPublicSiteService,
     publicationApprovalService: unusedPublicationApprovalService,
     publicResourcesService: {
+      homepageContent: () => Promise.resolve(null),
       assetContent: async () => null,
       pageContent: async () => null,
       recordContent: async () => null,
@@ -256,7 +260,11 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
   let mutationContracts = 0;
   for (const [path, operations] of Object.entries(paths)) {
     // Approval ceremonies carry the stored operation and assertion, not content edits.
-    if (!path.startsWith('/api/') || PUBLICATION_APPROVAL_PATHS.includes(path)) {
+    if (
+      !path.startsWith('/api/') ||
+      PUBLICATION_APPROVAL_PATHS.includes(path) ||
+      path === '/api/public-site/homepage'
+    ) {
       continue;
     }
     for (const [method, operation] of Object.entries(operations)) {
@@ -281,10 +289,21 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
 }
 
 async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
+  const root = await app.handle(new Request('http://localhost/'));
+  expect(root.status).toBe(StatusMap.Found);
+  expect(root.headers.get('location')).toBe('/public');
+  for (const path of ['/public', '/public/']) {
+    const homepage = await app.handle(new Request(`http://localhost${path}`));
+    expect(homepage.status).toBe(StatusMap.OK);
+    expect(await homepage.text()).toContain('Nothing published yet');
+  }
   for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
     for (const path of [
-      '/public',
-      '/public/',
+      '/pages',
+      '/assets',
+      '/entities',
+      '/publicity',
+      '/public-assets',
       '/public/unknown',
       '/public/assets',
       '/public/assets/unknown',
@@ -299,7 +318,13 @@ async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
       expect(response.status).toBe(StatusMap['Not Found']);
       expect(await response.json()).toEqual({ error: 'Not Found' });
     }
-    for (const path of ['/pages', '/assets', '/entities', '/publicity', '/public-assets']) {
+    for (const path of [
+      '/app',
+      '/app/pages',
+      '/app/assets',
+      '/app/entities',
+      '/app/settings/public-site',
+    ]) {
       const response = await app.handle(
         new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),
       );

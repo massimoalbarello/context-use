@@ -280,7 +280,7 @@ test('public image picker requests public list and keyword results while preserv
   expect(screen.queryByRole('button', { name: /private-landscape/ })).toBeNull();
   expect(screen.queryByRole('tab', { name: 'Upload new' })).toBeNull();
   const guidance = screen.getByRole('link', { name: 'Assets (opens in a new tab)' });
-  expect(guidance.getAttribute('href')).toBe('/assets');
+  expect(guidance.getAttribute('href')).toBe('/app/assets');
   expect(guidance.getAttribute('target')).toBe('_blank');
   await user.type(screen.getByRole('textbox', { name: 'Search image assets' }), 'landscape');
   await waitFor(() =>

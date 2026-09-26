@@ -77,7 +77,7 @@ export function EntityImageEditor({
             {isPublic ? (
               <>
                 Choose an existing public image. To use a new image, add and publish it in{' '}
-                <a className="underline" href="/assets" target="_blank" rel="noreferrer">
+                <a className="underline" href="/app/assets" target="_blank" rel="noreferrer">
                   Assets (opens in a new tab)
                 </a>{' '}
                 first. Choosing or removing an image updates the public entity immediately.

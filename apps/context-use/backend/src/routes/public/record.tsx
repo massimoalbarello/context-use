@@ -12,9 +12,7 @@ export function publicRecordHtml({
 }): string {
   return publicDocument({
     title,
-    navigation: (
-      <a href={`/public/records/${encodeURIComponent(publicId)}/markdown`}>View Markdown</a>
-    ),
+    markdownUrl: `/public/records/${encodeURIComponent(publicId)}/markdown`,
     children: (
       <article>
         <h1>{title}</h1>
