@@ -65,6 +65,7 @@
       "env": [
         "BETTER_AUTH_SECRET",
         "DATA_FOLDER",
+        "PUBLIC_SITE_NAME",
         "VITE_ISOLATED_CALENDAR_NOW"
       ],
       "persistent": true

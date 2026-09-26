@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DEFAULT_PUBLIC_SITE_NAME } from '#backend/lib/runtime-config.ts';
+
+const DESCRIPTION_LENGTH = 280;
 
 const READING_STYLES = `
 :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; color: #292723; background: #faf9f6; }
 * { box-sizing: border-box; }
 body { margin: 0; }
 main { max-width: 48rem; margin: auto; padding: 3rem 1.5rem 0; }
+nav { display: flex; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 3rem; font-size: .875rem; color: #69655d; }
 article { overflow-wrap: anywhere; line-height: 1.8; font-size: 1.0625rem; }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; letter-spacing: -.025em; scroll-margin-top: 1.5rem; }
 h1 { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 2rem; }
@@ -34,17 +38,23 @@ hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
 img.entity-portrait { width: 10rem; height: 10rem; object-fit: cover; margin: 0; }
 .entity-type { margin: 0 0 .5rem; font-size: .875rem; }
 .entity-description { white-space: pre-wrap; }
-@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } }
-@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } blockquote, .footer-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
+@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } nav { margin-bottom: 2rem; } }
+@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } nav, blockquote, .footer-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
 `;
 
 export function publicDocument({
   title,
+  siteName = DEFAULT_PUBLIC_SITE_NAME,
+  description = title,
+  canonicalUrl,
   modifiedAt,
   markdownUrl,
   children,
 }: {
   title: string;
+  siteName?: string;
+  description?: string;
+  canonicalUrl?: string;
   modifiedAt?: string;
   markdownUrl?: string;
   children: ReactNode;
@@ -56,10 +66,51 @@ export function publicDocument({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="referrer" content="no-referrer" />
         <title>{title}</title>
+        <meta name="description" content={description.slice(0, DESCRIPTION_LENGTH)} />
+        <meta property="og:title" content={title} />
+        <meta property="og:site_name" content={siteName} />
+        <meta property="og:description" content={description.slice(0, DESCRIPTION_LENGTH)} />
+        <meta property="og:type" content="website" />
+        {canonicalUrl ? <link rel="canonical" href={canonicalUrl} /> : null}
+        {canonicalUrl ? <meta property="og:url" content={canonicalUrl} /> : null}
+        {markdownUrl ? <link rel="alternate" type="text/markdown" href={markdownUrl} /> : null}
+        <link rel="describedby" href="/llms.txt" />
+        <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+        {canonicalUrl ? (
+          <script type="application/ld+json">
+            {JSON.stringify({
+              '@context': 'https://schema.org',
+              '@graph': [
+                {
+                  '@type': 'WebPage',
+                  '@id': canonicalUrl,
+                  name: title,
+                  description: description.slice(0, DESCRIPTION_LENGTH),
+                  url: canonicalUrl,
+                  dateModified: modifiedAt,
+                  isAccessibleForFree: true,
+                  isPartOf: { '@id': new URL('/#website', canonicalUrl).href },
+                },
+                {
+                  '@type': 'WebSite',
+                  '@id': new URL('/#website', canonicalUrl).href,
+                  name: siteName,
+                  url: new URL('/', canonicalUrl).href,
+                },
+              ],
+            }).replace(/</g, '\\u003c')}
+          </script>
+        ) : null}
         <style>{READING_STYLES}</style>
       </head>
       <body>
-        <main>{children}</main>
+        <main>
+          <nav aria-label="Public resource">
+            <a href="/public">{siteName}</a>
+            <a href="/public/directory">Public directory</a>
+          </nav>
+          {children}
+        </main>
         <footer>
           <p>
             self-hosted with{' '}
@@ -89,6 +140,7 @@ export function publicDocument({
             <div className="footer-links">
               {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
               <a href="/app">Owner login</a>
+              <a href="/llms.txt">AI-readable site index</a>
             </div>
           </div>
         </footer>

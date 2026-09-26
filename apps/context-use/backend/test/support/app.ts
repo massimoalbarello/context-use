@@ -73,6 +73,7 @@ export const unusedPublicationApprovalService: PublicationApprovalServiceContrac
 
 export const unusedPublicResourcesService: PublicResourcesServiceContract = {
   homepageContent: unexpectedCall,
+  index: unexpectedCall,
   assetContent: unexpectedCall,
   pageContent: unexpectedCall,
   recordContent: unexpectedCall,

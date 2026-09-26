@@ -62,6 +62,7 @@ test('public record readers use a stable handle, sanitize source Markdown, and s
     const body = await html.text();
     expect(body).toContain('Meeting notes');
     expect(body).toContain('Approved evidence.');
+    expect(body).toContain(`href="/public/records/${publicId}/markdown"`);
     for (const secret of [
       readableId,
       SOURCE.id,

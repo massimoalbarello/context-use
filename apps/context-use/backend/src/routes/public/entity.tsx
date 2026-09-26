@@ -3,6 +3,9 @@ import { publicDocument } from './document.tsx';
 
 export function publicEntityHtml({
   name,
+  publicId,
+  canonicalUrl,
+  siteName,
   description,
   entityType,
   imagePublicId,
@@ -11,6 +14,9 @@ export function publicEntityHtml({
 }: {
   modifiedAt: string;
   name: string;
+  publicId: string;
+  canonicalUrl: string;
+  siteName?: string;
   description: string;
   entityType: EntityType | null;
   imagePublicId: string | null;
@@ -18,6 +24,10 @@ export function publicEntityHtml({
 }): string {
   return publicDocument({
     title: name,
+    description,
+    canonicalUrl,
+    siteName,
+    markdownUrl: `/public/entities/${encodeURIComponent(publicId)}/markdown`,
     modifiedAt,
     children: (
       <article>

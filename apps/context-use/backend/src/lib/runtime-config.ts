@@ -1,11 +1,13 @@
 export const DEFAULT_BACKEND_PORT = 3000;
 export const DEFAULT_FRONTEND_PORT = 5173;
 export const DEFAULT_DATA_FOLDER = './data';
+export const DEFAULT_PUBLIC_SITE_NAME = 'Public knowledge';
 export const NIBRUN_DATA_FOLDER = '/app/data';
 
 export const BACKEND_ENVIRONMENT = {
   port: 'PORT',
   baseUrl: 'BASE_URL',
+  publicSiteName: 'PUBLIC_SITE_NAME',
   dataFolder: 'DATA_FOLDER',
   authSecret: 'BETTER_AUTH_SECRET',
   nibrunHostname: 'NIBRUN_HOSTNAME',

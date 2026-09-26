@@ -10,12 +10,14 @@ describe('backend environment', () => {
       environment: {
         [BACKEND_ENVIRONMENT.nibrunHostname]: 'context-use-test.nibrun.app',
         [BACKEND_ENVIRONMENT.baseUrl]: 'https://knowledge.example.com',
+        [BACKEND_ENVIRONMENT.publicSiteName]: '  Orchard Notes  ',
       },
       workingDirectory: WORKING_DIRECTORY,
     });
 
     expect(env.NIBRUN_HOSTNAME).toBe('context-use-test.nibrun.app');
     expect(env.BASE_URL.origin).toBe('https://knowledge.example.com');
+    expect(env.PUBLIC_SITE_NAME).toBe('Orchard Notes');
   });
 
   test('uses the persistent nibrun volume for application and authorization state', () => {
@@ -26,6 +28,7 @@ describe('backend environment', () => {
 
     expect(env.DATA_FOLDER).toBe(NIBRUN_DATA_FOLDER);
     expect(env.BASE_URL.href).toBe('https://context-use-abc.nibrun.app/');
+    expect(env.PUBLIC_SITE_NAME).toBe('Public knowledge');
   });
 
   test('allows a nibrun data subdirectory on the persistent volume', () => {
