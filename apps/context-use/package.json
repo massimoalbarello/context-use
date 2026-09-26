@@ -21,7 +21,7 @@
     "test:backend": "bun test --cwd backend",
     "test:frontend": "bun test --cwd frontend",
     "test:demo": "bun test ./demo/test/app.test.ts && bun test --cwd demo/frontend --preload ../test/dom.ts",
-    "test:build": "bun test ./test/dev.test.ts ./test/build-targets.test.ts ./test/face-build-cache.test.ts",
+    "test:build": "bun test ./test/dev.test.ts ./test/build-targets.test.ts",
     "test:binary:instance": "bun test ./test/binary-instance.test.ts",
     "test:binary:demo": "bun test ./demo/test/binary.test.ts"
   },

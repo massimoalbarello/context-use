@@ -25,7 +25,7 @@
       "outputs": ["dist/demo/public/**"]
     },
     "build:faces": {
-      "cache": false,
+      "passThroughEnv": ["FACE_ENGINE_CACHE_HIT"],
       "outputLogs": "new-only",
       "inputs": [
         "backend/native/faces/**",
