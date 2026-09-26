@@ -4,18 +4,18 @@ const START_TIMEOUT_MS = 90_000;
 const PROBE_TIMEOUT_MS = 1_000;
 const PROBE_INTERVAL_MS = 200;
 
-export function availablePort(): number {
-  const server = Bun.serve({ port: 0, fetch: () => new Response() });
-  const port = server.port!;
-  server.stop(true);
-  return port;
+export function reservePort() {
+  return Bun.serve({ port: 0, fetch: () => new Response(null, { status: 503 }) });
 }
 
 /** Exercise the public app in disposable storage without importing application code. */
 export async function startApp(input: { repo: string; directory: string; node: string }) {
-  const backendPort = availablePort();
-  const frontendPort = availablePort();
+  using backendReservation = reservePort();
+  using frontendReservation = reservePort();
+  const backendPort = backendReservation.port!;
+  const frontendPort = frontendReservation.port!;
   const origin = `http://localhost:${frontendPort}`;
+  await backendReservation.stop(true);
   const backend = Bun.spawn(
     ['bun', 'run', '--cwd', join(input.repo, 'apps/context-use'), 'dev:server'],
     {
@@ -38,6 +38,7 @@ config.server.port = ${frontendPort};
 config.cacheDir = ${JSON.stringify(join(input.directory, 'vite-cache'))};
 export default config;`,
   );
+  await frontendReservation.stop(true);
   const frontend = Bun.spawn(
     [
       input.node,

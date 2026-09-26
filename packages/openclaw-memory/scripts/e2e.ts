@@ -8,7 +8,7 @@ import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
 import { LearningStore } from '../src/learning-store';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
-import { availablePort, startApp } from './e2e-app';
+import { reservePort, startApp } from './e2e-app';
 import { startModel } from './e2e-model';
 
 const USER_TIMEOUT_MS = 45_000;
@@ -43,7 +43,8 @@ const env = {
 };
 const sdkConfig = import.meta.resolve('openclaw/plugin-sdk/config-mutation');
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
-const gatewayPort = availablePort();
+using gatewayReservation = reservePort();
+const gatewayPort = gatewayReservation.port!;
 
 async function command(input: string[] | { args: string[]; stdin: string }): Promise<string> {
   const { args, stdin } = Array.isArray(input) ? { args: input, stdin: undefined } : input;
@@ -372,6 +373,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   assert(reinstalledRecall.includes('architecture'));
+  await gatewayReservation.stop(true);
   gateway = Bun.spawn(['openclaw', 'gateway', 'run'], {
     cwd: directory,
     // This test owns restart and shutdown, even under CI's service manager.
