@@ -59,8 +59,6 @@ test('records use the shared retrieval pipeline, preserve relevance order, and k
         createdTo: '2026-02-01T00:00:00.000Z',
         updatedFrom: '2026-03-01T00:00:00.000Z',
         updatedTo: '2026-04-01T00:00:00.000Z',
-        sortBy: 'sourceCreatedAt',
-        sortDirection: 'asc',
       }),
     );
     expect(requests.map((url) => url.pathname)).toEqual([

@@ -18,8 +18,6 @@ test('record URL state validates ranges and gives each server filter a distinct 
     createdTo: '2026-03-01',
     updatedFrom: '2026-01-01',
     updatedTo: '2026-01-02',
-    sortBy: 'sourceCreatedAt',
-    sortDirection: 'asc',
   });
   const filters = recordListFilters(search);
   expect(filters).toEqual({
@@ -30,25 +28,17 @@ test('record URL state validates ranges and gives each server filter a distinct 
     createdTo: '2026-03-02T00:00:00.000Z',
     updatedFrom: '2026-01-01T00:00:00.000Z',
     updatedTo: '2026-01-03T00:00:00.000Z',
-    sortBy: 'sourceCreatedAt',
-    sortDirection: 'asc',
   });
   expect(
     recordSearch({
       provider: 3,
       kind: '  ',
-      sortBy: 'body',
-      sortDirection: 'sideways',
       createdFrom: '2026-02-30',
       createdTo: '2026-03-01',
       updatedFrom: '2026-01-02',
       updatedTo: '2026-01-01',
     }),
   ).toEqual({});
-  expect(recordListFilters({})).toMatchObject({ sortBy: 'updatedAt', sortDirection: 'desc' });
-  expect(recordSearch({ sortBy: 'updatedAt' })).toEqual({ sortBy: 'updatedAt' });
-  expect(recordSearch({ sortBy: 'provider' })).toEqual({});
-  expect(recordSearch({ sortBy: 'kind' })).toEqual({});
   expect(recordSearch({ q: ' ' })).toEqual({});
   expect(recordSearch({ q: 'a'.repeat(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH + 1) }).q).toHaveLength(
     MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH,
@@ -60,7 +50,7 @@ test('record URL state validates ranges and gives each server filter a distinct 
   }
 });
 
-test('record controls select metadata, sort direction, and reset the current view', async () => {
+test('record controls select metadata and reset the current view', async () => {
   const user = userEvent.setup();
   function Controls() {
     const [search, setSearch] = useState<RecordSearch>({});
@@ -76,36 +66,20 @@ test('record controls select metadata, sort direction, and reset the current vie
     );
   }
   render(<Controls />);
-  await user.click(screen.getByRole('button', { name: 'Filter and sort records' }));
-  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain('Updated');
-  expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('Newest first');
+  await user.click(screen.getByRole('button', { name: 'Filter records' }));
   await user.click(screen.getByRole('combobox', { name: 'Provider' }));
   await user.click(await screen.findByRole('option', { name: 'slack' }));
   await user.click(screen.getByRole('combobox', { name: 'Data kind' }));
   await user.click(await screen.findByRole('option', { name: 'message' }));
-  await user.click(screen.getByRole('combobox', { name: 'Order by' }));
-  expect(screen.queryByRole('option', { name: 'Provider' })).toBeNull();
-  expect(screen.queryByRole('option', { name: 'Data kind' })).toBeNull();
-  await user.click(await screen.findByRole('option', { name: 'Source created' }));
-  await user.click(screen.getByRole('combobox', { name: 'Direction' }));
-  await user.click(await screen.findByRole('option', { name: 'Oldest first' }));
-  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain(
-    'Source created',
-  );
-  expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('Oldest first');
   expect(screen.getByLabelText('Selected filters').textContent).toBe(
     JSON.stringify({
       provider: 'slack',
       kind: 'message',
-      sortBy: 'sourceCreatedAt',
-      sortDirection: 'asc',
     }),
   );
   expect(screen.getByRole('button', { name: 'Source created: Choose dates' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Source updated: Choose dates' })).toBeTruthy();
   expect(screen.queryByRole('searchbox')).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Reset filters and order' }));
+  await user.click(screen.getByRole('button', { name: 'Reset filters' }));
   expect(screen.getByLabelText('Selected filters').textContent).toBe('{}');
-  expect(screen.getByRole('combobox', { name: 'Order by' }).textContent).toContain('Updated');
-  expect(screen.getByRole('combobox', { name: 'Direction' }).textContent).toContain('Newest first');
 });

@@ -262,7 +262,7 @@ test('resource navigation opens unselected collections with their own toolbar an
         resource: 'Research notes notion · note',
         preview: 'Record preview',
         creation: undefined,
-        filters: 'Filter and sort records',
+        filters: 'Filter records',
       },
     ]) {
       await user.click(
@@ -500,8 +500,8 @@ for (const { path, filter, reset, key } of [
   },
   {
     path: '/records?provider=notion&resource=page&resourceId=launch',
-    filter: 'Filter and sort records',
-    reset: 'Reset filters and order',
+    filter: 'Filter records',
+    reset: 'Reset filters',
     key: 'provider',
   },
 ] as const) {

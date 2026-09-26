@@ -1,9 +1,5 @@
 import { t } from 'elysia';
-import {
-  RECORD_SORT_FIELDS,
-  type RecordResource,
-  type RecordSummary,
-} from '#backend/models/records/model.ts';
+import type { RecordResource, RecordSummary } from '#backend/models/records/model.ts';
 import { PaginationQuerySchema, ReadableIdSchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageSummarySchema,
@@ -52,8 +48,6 @@ export const RecordListQuerySchema = t.Object({
   createdTo: t.Optional(t.Date()),
   updatedFrom: t.Optional(t.Date()),
   updatedTo: t.Optional(t.Date()),
-  sortBy: t.Optional(t.Union(RECORD_SORT_FIELDS.map((field) => t.Literal(field)))),
-  sortDirection: t.Optional(t.Union([t.Literal('asc'), t.Literal('desc')])),
 });
 export const RecordParamsSchema = t.Object({ recordReadableId: ReadableIdSchema });
 

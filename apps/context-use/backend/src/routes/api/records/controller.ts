@@ -52,8 +52,6 @@ export function createRecordsController({
           createdTo: query.createdTo?.toISOString(),
           updatedFrom: query.updatedFrom?.toISOString(),
           updatedTo: query.updatedTo?.toISOString(),
-          sortBy: query.sortBy,
-          sortDirection: query.sortDirection,
         });
         return status(StatusMap.OK, {
           ...page,

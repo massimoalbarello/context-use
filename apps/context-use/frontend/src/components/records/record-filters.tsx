@@ -1,32 +1,20 @@
 import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
-import {
-  DEFAULT_RECORD_SORT_FIELD,
-  type RecordFilterOptions,
-  type RecordSortField,
-} from '#backend/models/records/model.ts';
+import type { RecordFilterOptions } from '#backend/models/records/model.ts';
 import { type RecordSearch, recordsAreFiltered } from '../../lib/record-filters';
 import { calendarDateRangeFromSearch } from '../../lib/temporal-coverage';
 import { DateRangeFilter } from '../knowledge/date-range-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-const sortLabels: Record<RecordSortField, string> = {
-  updatedAt: 'Updated',
-  sourceUpdatedAt: 'Source updated',
-  sourceCreatedAt: 'Source created',
-};
-
 function FilterSelect({
   label,
   value,
-  selectedLabel,
   children,
   onChange,
 }: {
   label: string;
   value: string | null;
-  selectedLabel?: string;
   children: ReactNode;
   onChange: (value: string | null) => void;
 }) {
@@ -35,9 +23,7 @@ function FilterSelect({
       <span className="font-medium text-xs">{label}</span>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="w-full min-w-0" aria-label={label}>
-          <SelectValue placeholder={`All ${label === 'Provider' ? 'providers' : 'kinds'}`}>
-            {selectedLabel}
-          </SelectValue>
+          <SelectValue placeholder={`All ${label === 'Provider' ? 'providers' : 'kinds'}`} />
         </SelectTrigger>
         <SelectContent>{children}</SelectContent>
       </Select>
@@ -56,10 +42,9 @@ export function RecordFilters({
 }) {
   const created = calendarDateRangeFromSearch({ from: search.createdFrom, to: search.createdTo });
   const updated = calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo });
-  const sortBy = search.sortBy ?? DEFAULT_RECORD_SORT_FIELD;
   return (
     <KnowledgeFilterPopover
-      title="Filter and sort records"
+      title="Filter records"
       filtered={recordsAreFiltered({ ...search, q: undefined })}
     >
       <FilterSelect
@@ -88,41 +73,7 @@ export function RecordFilters({
           </SelectItem>
         ))}
       </FilterSelect>
-      {search.q ? (
-        <p className="text-muted-foreground text-xs">Ordered by relevance.</p>
-      ) : (
-        <div className="grid gap-3">
-          <FilterSelect
-            label="Order by"
-            value={sortBy}
-            selectedLabel={sortLabels[sortBy]}
-            onChange={(value) => {
-              if (value) {
-                onChange({ ...search, sortBy: value as RecordSortField });
-              }
-            }}
-          >
-            {Object.entries(sortLabels).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </FilterSelect>
-          <FilterSelect
-            label="Direction"
-            value={search.sortDirection ?? 'desc'}
-            selectedLabel={search.sortDirection === 'asc' ? 'Oldest first' : 'Newest first'}
-            onChange={(value) => {
-              if (value === 'asc' || value === 'desc') {
-                onChange({ ...search, sortDirection: value });
-              }
-            }}
-          >
-            <SelectItem value="desc">Newest first</SelectItem>
-            <SelectItem value="asc">Oldest first</SelectItem>
-          </FilterSelect>
-        </div>
-      )}
+      {search.q && <p className="text-muted-foreground text-xs">Ordered by relevance.</p>}
       <DateRangeFilter
         title="Source created"
         value={created}
@@ -136,7 +87,7 @@ export function RecordFilters({
         onApply={(range) => onChange({ ...search, updatedFrom: range?.from, updatedTo: range?.to })}
       />
       <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ q: search.q })}>
-        Reset filters and order
+        Reset filters
       </Button>
     </KnowledgeFilterPopover>
   );

@@ -4,7 +4,6 @@ import { type ChangeContext, changedText } from '#backend/models/history/model.t
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import { InvalidRecordAssetError, type RecordAssetUsage } from '#backend/models/records/assets.ts';
 import {
-  DEFAULT_RECORD_SORT_FIELD,
   type NativeRecord,
   type RecordDeletion,
   type RecordFilterOptions,
@@ -340,8 +339,6 @@ export class RecordsRepository implements RecordsRepositoryContract {
     updatedFrom,
     updatedTo,
     visibility = 'all',
-    sortBy = DEFAULT_RECORD_SORT_FIELD,
-    sortDirection = 'desc',
   }: ListRecordsInput): Promise<RecordPage> {
     return await this.serialize(async () => {
       const rows = await this.sql.ListRecordResources`
@@ -361,16 +358,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
           and (${createdTo ?? null} is null or julianday(record."source_created_at") < julianday(${createdTo ?? null}))
           and (${updatedFrom ?? null} is null or julianday(record."source_updated_at") >= julianday(${updatedFrom ?? null}))
           and (${updatedTo ?? null} is null or julianday(record."source_updated_at") < julianday(${updatedTo ?? null}))
-        order by
-          case ${sortBy} when 'sourceCreatedAt' then julianday(record."source_created_at") is null
-            when 'sourceUpdatedAt' then julianday(record."source_updated_at") is null else 0 end,
-          case when ${sortDirection} = 'asc' and ${sortBy} = 'updatedAt' then record."updated_at" end asc,
-          case when ${sortDirection} = 'desc' and ${sortBy} = 'updatedAt' then record."updated_at" end desc,
-          case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end asc,
-          case when ${sortDirection} = 'asc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end asc,
-          case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceCreatedAt' then julianday(record."source_created_at") end desc,
-          case when ${sortDirection} = 'desc' and ${sortBy} = 'sourceUpdatedAt' then julianday(record."source_updated_at") end desc,
-        record."readable_id"
+        order by julianday(record."source_updated_at") desc, record."readable_id"
         limit ${limit + 1} offset ${offset}
       `;
       const items = rows.slice(0, limit).map(recordSummaryFrom);

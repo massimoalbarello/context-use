@@ -99,66 +99,47 @@ async function withRecords(
   });
 }
 
-test('defaults to resource updates before pagination, including records without source dates', async () => {
+test('orders by newest source update before pagination, with missing dates last', async () => {
   await withRecords(async ({ repository, database }) => {
-    for (const [id, updatedAt] of [
-      ['a', '2026-09-01T00:00:00.000Z'],
-      ['b', '2026-09-02T00:00:00.000Z'],
-      ['c', '2026-09-03T00:00:00.000Z'],
-      ['missing', '2026-09-04T00:00:00.000Z'],
-    ] as const) {
-      await database`update "record" set "updated_at" = ${updatedAt}
-        where "owner_id" = ${OWNER_ID} and "source_id" = ${id}`;
-    }
-    const cases: [RecordListFilters, string[]][] = [
-      [{}, ['missing', 'c', 'b', 'a']],
-      [{ sortBy: 'updatedAt', sortDirection: 'asc' }, ['a', 'b', 'c', 'missing']],
-      [{ sortBy: 'updatedAt', sortDirection: 'desc' }, ['missing', 'c', 'b', 'a']],
-    ];
-    for (const [filters, ids] of cases) {
-      const first = await repository.listResources({
-        ownerId: OWNER_ID,
-        limit: 2,
-        offset: 0,
-        ...filters,
-      });
-      expect(first.nextOffset).toBe(2);
-      const second = await repository.listResources({
-        ownerId: OWNER_ID,
-        limit: 2,
-        offset: first.nextOffset!,
-        ...filters,
-      });
-      expect([...first.items, ...second.items].map((item) => item.source.id)).toEqual(ids);
-      expect(second.nextOffset).toBeNull();
-    }
+    // Local receipt time must not promote an older or undated source record.
+    await database`update "record" set "updated_at" = '2026-09-09T00:00:00.000Z'
+      where "owner_id" = ${OWNER_ID} and "source_id" in ('c', 'missing')`;
+    const first = await repository.listResources({ ownerId: OWNER_ID, limit: 2, offset: 0 });
+    expect(first.items.map((item) => item.source.id)).toEqual(['a', 'b']);
+    expect(first.nextOffset).toBe(2);
+    const second = await repository.listResources({
+      ownerId: OWNER_ID,
+      limit: 2,
+      offset: first.nextOffset!,
+    });
+    expect(second.items.map((item) => item.source.id)).toEqual(['c', 'missing']);
+    expect(second.nextOffset).toBeNull();
   });
 });
 
-test('orders source dates before pagination, with missing dates last in either direction', async () => {
-  await withRecords(async ({ repository }) => {
-    const cases: [RecordListFilters, string[]][] = [
-      [{ sortBy: 'sourceCreatedAt', sortDirection: 'asc' }, ['b', 'a', 'c', 'missing']],
-      [{ sortBy: 'sourceCreatedAt', sortDirection: 'desc' }, ['c', 'a', 'b', 'missing']],
-      [{ sortBy: 'sourceUpdatedAt', sortDirection: 'asc' }, ['c', 'b', 'a', 'missing']],
-      [{ sortBy: 'sourceUpdatedAt', sortDirection: 'desc' }, ['a', 'b', 'c', 'missing']],
-    ];
-    for (const [filters, ids] of cases) {
-      const first = await repository.listResources({
-        ownerId: OWNER_ID,
-        limit: 2,
-        offset: 0,
-        ...filters,
-      });
-      const second = await repository.listResources({
-        ownerId: OWNER_ID,
-        limit: 2,
-        offset: first.nextOffset!,
-        ...filters,
-      });
-      expect([...first.items, ...second.items].map((item) => item.source.id)).toEqual(ids);
-      expect(second.nextOffset).toBeNull();
-    }
+test('source update ties remain stable across page boundaries', async () => {
+  await withRecords(async ({ repository, service }) => {
+    await service.upsert({
+      change: { clientName: null, message: 'Update source date' },
+      ownerId: OWNER_ID,
+      record: record({
+        id: 'c',
+        provider: 'github',
+        kind: 'pull-request',
+        updated: '2026-01-02T19:00:00-05:00',
+      }),
+    });
+    const list = (offset: number) =>
+      repository.listResources({ ownerId: OWNER_ID, limit: 1, offset });
+    const first = await list(0);
+    expect(first.nextOffset).toBe(1);
+    const second = await list(first.nextOffset!);
+    expect([...first.items, ...second.items].map((item) => item.source.id).sort()).toEqual([
+      'a',
+      'c',
+    ]);
+    expect(await list(0)).toEqual(first);
+    expect(await list(1)).toEqual(second);
   });
 });
 
