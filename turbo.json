@@ -25,6 +25,7 @@
       "outputs": ["dist/demo/public/**"]
     },
     "build:faces": {
+      "cache": false,
       "outputLogs": "new-only",
       "inputs": [
         "backend/native/faces/**",

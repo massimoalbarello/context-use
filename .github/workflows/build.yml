@@ -16,6 +16,19 @@ jobs:
 
       - uses: ./.github/actions/prepare
 
+      - name: Identify native engine build
+        id: face-engine
+        shell: bash
+        run: |
+          bun apps/context-use/backend/scripts/build-faces.ts --cache-info \
+            | jq -r '"key=\(.key)\npath=\(.directory)"' >> "$GITHUB_OUTPUT"
+
+      - name: Cache native engine
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.face-engine.outputs.path }}
+          key: ${{ steps.face-engine.outputs.key }}
+
       - name: Build
         run: bun run build:instance
 
