@@ -15,9 +15,15 @@ async function fixture() {
   const bin = join(root, 'bin');
   await mkdir(join(app, 'scripts/shared'), { recursive: true });
   await mkdir(bin);
-  for (const path of ['build-faces.ts', 'shared/build-target.ts', 'shared/build-assets.ts']) {
+  for (const path of [
+    'build-faces.ts',
+    'shared/build-target.ts',
+    'shared/build-assets.ts',
+    'shared/face-build-cache.ts',
+  ]) {
     await cp(join(backend, 'scripts', path), join(app, 'scripts', path));
   }
+  await cp(join(backend, 'native/faces'), join(app, 'native/faces'), { recursive: true });
   // Only the slow external compiler is substituted; the actual build script run in Bun.
   await Bun.write(
     join(bin, 'cmake'),
@@ -44,6 +50,8 @@ if (process.argv.includes('--build')) {
   await Bun.write(
     join(bin, 'docker'),
     `#!${process.execPath}
+import { chmod } from 'node:fs/promises';
+import { join } from 'node:path';
 if (process.argv[2] === 'info') {
   if (process.env.TEST_DOCKER_UNAVAILABLE) {
     console.error('Cannot connect to the Docker daemon at fixture.sock');
@@ -51,6 +59,10 @@ if (process.argv[2] === 'info') {
   }
 } else {
   await Bun.write(${JSON.stringify(join(root, 'docker-build-started'))}, 'started');
+  const output = process.argv.find(value => value.startsWith('type=local,dest='));
+  const binary = join(output.slice('type=local,dest='.length), 'face-analyzer');
+  await Bun.write(binary, 'compiled engine');
+  await chmod(binary, ${EXECUTABLE_MODE});
 }
 `,
   );
