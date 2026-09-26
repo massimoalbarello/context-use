@@ -160,7 +160,11 @@ if (import.meta.main) {
     if (!host && !BACKEND_BUILD_TARGET!.startsWith('bun-linux-x64')) {
       throw new Error('The bundled face analyzer supports Linux x64 or BUILD_TARGET=host.');
     }
-    await buildFaceAnalyzer({ host });
+    if (!host && process.env.FACE_ENGINE_CACHE_HIT === 'true') {
+      console.log('Reusing cached Linux face recognition engine.');
+    } else {
+      await buildFaceAnalyzer({ host });
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);
