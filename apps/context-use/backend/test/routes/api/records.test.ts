@@ -158,12 +158,7 @@ test('record browsing exposes native metadata, applies filters, and hides anothe
         providers: ['github'],
         kinds: ['pull-request'],
       });
-      for (const query of [
-        'sortBy=body',
-        'sortDirection=sideways',
-        'updatedFrom=invalid',
-        'createdFrom=2026-02-01&createdTo=2026-01-01',
-      ]) {
+      for (const query of ['updatedFrom=invalid', 'createdFrom=2026-02-01&createdTo=2026-01-01']) {
         const response = await get(`?${query}`);
         expect(response.status).toBeGreaterThanOrEqual(StatusMap['Bad Request']);
         expect(response.status).toBeLessThan(StatusMap['Internal Server Error']);

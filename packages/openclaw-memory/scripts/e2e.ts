@@ -8,7 +8,7 @@ import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
 import { LearningStore } from '../src/learning-store';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
-import { availablePort, startApp } from './e2e-app';
+import { reservePort, startApp } from './e2e-app';
 import { startModel } from './e2e-model';
 
 const USER_TIMEOUT_MS = 45_000;
@@ -43,7 +43,8 @@ const env = {
 };
 const sdkConfig = import.meta.resolve('openclaw/plugin-sdk/config-mutation');
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
-const gatewayPort = availablePort();
+using gatewayReservation = reservePort();
+const gatewayPort = gatewayReservation.port!;
 
 async function command(input: string[] | { args: string[]; stdin: string }): Promise<string> {
   const { args, stdin } = Array.isArray(input) ? { args: input, stdin: undefined } : input;
@@ -313,7 +314,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert.equal(removed.plugins.entries['active-memory'].config.timeoutMs, USER_TIMEOUT_MS);
   assert.notEqual(removed.plugins.slots?.memory, PLUGIN_ID);
   assert(!(await Bun.file(connectionFile).exists()), 'Credentials survived disconnect');
-  await owner.page.goto(`${app.origin}/map`);
+  await owner.page.goto(`${app.origin}/app/map`);
   const remote = await owner.page.request.get(`${app.origin}/api/pages`);
   assert(remote.ok(), 'Could not verify memories survived disconnect');
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
@@ -372,6 +373,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   assert(reinstalledRecall.includes('architecture'));
+  await gatewayReservation.stop(true);
   gateway = Bun.spawn(['openclaw', 'gateway', 'run'], {
     cwd: directory,
     // This test owns restart and shutdown, even under CI's service manager.
@@ -512,7 +514,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       assert(content.ok());
       assert.deepEqual(await content.body(), fixture.bytes, 'Captured asset bytes changed');
     }
-    await owner.page.goto(`${app.origin}/map?resource=page&resourceId=exhibition-visit`);
+    await owner.page.goto(`${app.origin}/app/map?resource=page&resourceId=exhibition-visit`);
     await owner.page
       .getByRole('heading', { name: 'Exhibition visit', exact: true })
       .first()

@@ -1,5 +1,4 @@
 import { MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH } from '#backend/models/hypermedia-retrieval/model.ts';
-import { RECORD_SORT_FIELDS, type RecordSortField } from '#backend/models/records/model.ts';
 import type { RecordCollectionFilters } from '../queries/records';
 import {
   type CalendarDateRange,
@@ -15,8 +14,6 @@ export type RecordSearch = {
   createdTo?: string;
   updatedFrom?: string;
   updatedTo?: string;
-  sortBy?: RecordSortField;
-  sortDirection?: 'asc' | 'desc';
 };
 
 export function recordSearch(search: Record<string, unknown>): RecordSearch {
@@ -28,12 +25,6 @@ export function recordSearch(search: Record<string, unknown>): RecordSearch {
     if (typeof search[field] === 'string' && search[field].trim()) {
       result[field] = search[field].trim();
     }
-  }
-  if (RECORD_SORT_FIELDS.some((field) => field === search.sortBy)) {
-    result.sortBy = search.sortBy as RecordSortField;
-  }
-  if (search.sortDirection === 'asc' || search.sortDirection === 'desc') {
-    result.sortDirection = search.sortDirection;
   }
   const created = calendarDateRangeFromSearch({ from: search.createdFrom, to: search.createdTo });
   const updated = calendarDateRangeFromSearch({ from: search.updatedFrom, to: search.updatedTo });
@@ -75,8 +66,6 @@ export function recordListFilters(search: RecordSearch): RecordCollectionFilters
     createdTo: created.to,
     updatedFrom: updated.from,
     updatedTo: updated.to,
-    sortBy: search.sortBy ?? 'sourceUpdatedAt',
-    sortDirection: search.sortDirection ?? 'desc',
   };
 }
 
