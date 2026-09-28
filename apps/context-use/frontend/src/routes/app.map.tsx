@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useContext, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
@@ -71,10 +71,14 @@ function MapContent() {
     }),
     enabled: Boolean(profile),
   });
+  const pageBatches = pageQuery.data?.pages;
+  const loadedPages = useMemo(
+    () => (pageBatches ? mergeMapPages(pageBatches) : EMPTY_MAP_PAGES),
+    [pageBatches],
+  );
   if (!profile) {
     return null;
   }
-  const loadedPages = pageQuery.data ? mergeMapPages(pageQuery.data.pages) : EMPTY_MAP_PAGES;
   const pageReferencesTruncated =
     pageQuery.data?.pages.some(({ entityReferencesTruncated }) => entityReferencesTruncated) ??
     false;
