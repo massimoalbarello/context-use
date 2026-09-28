@@ -63,7 +63,11 @@ export function publicEntityMarkdown(entity: PublicEntity): string {
             },
           ]
         : []),
-      { type: 'heading', depth: 2, children: [{ type: 'text', value: 'Public pages' }] },
+      {
+        type: 'heading',
+        depth: 2,
+        children: [{ type: 'text', value: `Public pages mentioning ${entity.name}` }],
+      },
       entity.pages.length
         ? markdownLinks(
             entity.pages.map((page) => ({
@@ -73,7 +77,7 @@ export function publicEntityMarkdown(entity: PublicEntity): string {
           )
         : {
             type: 'paragraph',
-            children: [{ type: 'text', value: 'No public pages mention this entity yet.' }],
+            children: [{ type: 'text', value: `No public pages mention ${entity.name} yet.` }],
           },
     ],
   });

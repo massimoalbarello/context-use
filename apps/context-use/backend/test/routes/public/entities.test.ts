@@ -104,7 +104,7 @@ test('live public identity uses only the approved current image and safely escap
     expect(body).toContain('href="https://github.com/massimoalbarello/context-use"');
     expect(body).toMatch(/24 Sept? 2026/);
     expect(body).toContain('Person');
-    expect(body).toContain('No public pages mention this entity yet.');
+    expect(body).toContain('No public pages mention Ada Lovelace yet.');
     expect(body).toContain(`src="/public/assets/${imageId}"`);
     const portrait = await fixture.app.handle(
       new Request(`http://localhost/public/assets/${imageId}`),
@@ -274,7 +274,7 @@ test('the mention index follows exact public revisions and public titles through
       });
     }
     expect(await (await request({ fixture, id })).text()).toContain(
-      'No public pages mention this entity yet.',
+      'No public pages mention Ada Lovelace yet.',
     );
     expect(await transition(withdraw)).toBe(id);
     expect((await request({ fixture, id })).status).toBe(StatusMap['Not Found']);
