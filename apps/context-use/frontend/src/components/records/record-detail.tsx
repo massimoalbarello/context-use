@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from '@repo/ui/button';
+import { Button } from '@repo/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import { useRecord } from '../../lib/hooks/use-records';
@@ -9,6 +9,7 @@ import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceList } from '../knowledge/resource-list';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
@@ -83,17 +84,14 @@ function RecordDetailContent({
             publication.isSuccess && (
               <>
                 {isPublic && publication.data.publicId && (
-                  <a
-                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                  <ViewPublicLink
+                    size="sm"
                     href={`/public/records/${encodeURIComponent(publication.data.publicId)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    View public
-                  </a>
+                  />
                 )}
                 <Button
-                  variant="outline"
+                  variant={isPublic ? 'outline' : 'ghost'}
+                  className={isPublic ? undefined : publicActionClassName}
                   size="sm"
                   disabled={!!approval.request}
                   onClick={() =>

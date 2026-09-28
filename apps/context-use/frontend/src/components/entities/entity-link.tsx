@@ -7,6 +7,7 @@ import type { EntitySearch } from '../../lib/entity-filters';
 import type { EntitySummary } from '../../queries/entities';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
+import { PublicBadge } from '../publications/publication-appearance';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 
@@ -16,9 +17,10 @@ type EntityName = Pick<EntitySummary, 'readableId' | 'name'> & {
 type EntityIdentity = Pick<
   EntitySummary,
   'readableId' | 'name' | 'description' | 'entityType' | 'isSelf'
-> & {
-  image?: EntitySummary['image'];
-};
+> &
+  Partial<Pick<EntitySummary, 'publishedAt'>> & {
+    image?: EntitySummary['image'];
+  };
 
 type EntityLinkProps =
   | {
@@ -79,6 +81,7 @@ export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
           {entity.description}
         </small>
       </span>
+      {entity.publishedAt != null && <PublicBadge />}
     </>
   );
 }

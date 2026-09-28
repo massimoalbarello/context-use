@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from '@repo/ui/button';
+import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import {
   useInfiniteQuery,
@@ -9,6 +9,7 @@ import {
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
+import { ViewPublicLink } from '../components/publications/publication-appearance';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -42,9 +43,9 @@ function PublicSiteSettingsRoute() {
     <div className="mx-auto grid w-full max-w-4xl gap-10 px-5 py-10 md:px-10 md:py-12">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-semibold text-3xl tracking-tight">Public site</h1>
-        <a href="/public" className={buttonVariants({ variant: 'outline' })}>
+        <ViewPublicLink href="/public" size="default">
           View public site
-        </a>
+        </ViewPublicLink>
       </header>
       <HomepageSettings
         settings={data}

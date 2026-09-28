@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from '@repo/ui/button';
+import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { type UseQueryResult, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -20,6 +20,7 @@ import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceName } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
+import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { Badge } from '../ui/badge';
@@ -202,16 +203,15 @@ function EntityPublicationActions({
   return (
     <>
       {publicId && (
-        <a
-          className={buttonVariants({ variant: 'outline', size: 'lg' })}
-          href={`/public/entities/${encodeURIComponent(publicId)}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          View public
-        </a>
+        <ViewPublicLink size="lg" href={`/public/entities/${encodeURIComponent(publicId)}`} />
       )}
-      <Button variant="outline" size="lg" disabled={unavailable} onClick={onReview}>
+      <Button
+        variant={isPublic ? 'outline' : 'ghost'}
+        className={isPublic ? undefined : publicActionClassName}
+        size="lg"
+        disabled={unavailable}
+        onClick={onReview}
+      >
         {isPublic ? 'Unpublish' : 'Publish'}
       </Button>
     </>
@@ -233,7 +233,7 @@ function EntityEditing({
   return (
     <div className="grid gap-5">
       <EntityIdentityEditor
-        context={<PublicationStatus query={publication} />}
+        context={<PublicationStatus query={publication} showPublic />}
         name={entity.name}
         description={entity.description}
         entityType={entity.entityType}

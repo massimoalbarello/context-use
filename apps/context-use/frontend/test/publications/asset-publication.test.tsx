@@ -38,6 +38,7 @@ async function renderAsset({ statusError = false }: { statusError?: boolean } = 
   const device = authenticator(cleanups);
   const timestamp = new Date('2026-01-01');
   const asset: Asset = {
+    publishedAt: null,
     readableId: 'chart',
     name: 'Launch chart',
     mediaType: 'application/octet-stream',
@@ -189,7 +190,8 @@ test('asset is reviewed, published, and withdrawn with a retained handle and fre
   expect(within(dialog).getByText(/original file/)).toBeTruthy();
   await confirmReview(user);
   await screen.findByRole('button', { name: 'Unpublish' });
-  expect(screen.getByText('Public')).toBeTruthy();
+  expect(screen.queryByText('Public')).toBeNull();
+  expect(screen.getByRole('link', { name: 'View public' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
     '/public/assets/asset_public-handle',
   );
@@ -332,7 +334,8 @@ test('lost completion response refreshes actual public status without retrying t
   await screen.findByRole('button', { name: 'Review again' });
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
   await screen.findByRole('button', { name: 'Unpublish' });
-  expect(screen.getByText('Public')).toBeTruthy();
+  expect(screen.queryByText('Public')).toBeNull();
+  expect(screen.getByRole('link', { name: 'View public' })).toBeTruthy();
   expect(state.statusReads).toBe(2);
   expect(state.completes).toHaveLength(1);
 });

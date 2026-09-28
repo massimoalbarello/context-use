@@ -14,6 +14,7 @@ test('Map previews entities without filtering pages and recovers from page failu
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const profile: KnowledgeProfile = {
     selfEntity: {
+      publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
       description: 'The owner.',
@@ -51,6 +52,7 @@ test('Map previews entities without filtering pages and recovers from page failu
   const response: MapPages = {
     pages: [
       {
+        publishedAt: null,
         readableId: 'planning',
         title: 'Planning',
         excerpt: 'A planning page.',

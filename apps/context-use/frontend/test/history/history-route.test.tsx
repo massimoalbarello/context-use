@@ -62,6 +62,7 @@ async function withHistory({
   };
   const profile: KnowledgeProfile = {
     selfEntity: {
+      publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
       description: 'Workspace owner',

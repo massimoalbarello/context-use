@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from '@repo/ui/button';
+import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useState } from 'react';
@@ -21,6 +21,7 @@ import { ResourceList } from '../knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
+import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
@@ -144,16 +145,15 @@ function AssetPublicationActions({
   return (
     <>
       {publicId && (
-        <a
-          className={buttonVariants({ variant: 'outline', size: 'lg' })}
-          href={`/public/assets/${encodeURIComponent(publicId)}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          View public
-        </a>
+        <ViewPublicLink size="lg" href={`/public/assets/${encodeURIComponent(publicId)}`} />
       )}
-      <Button variant="outline" size="lg" disabled={unavailable} onClick={onReview}>
+      <Button
+        variant={isPublic ? 'outline' : 'ghost'}
+        className={isPublic ? undefined : publicActionClassName}
+        size="lg"
+        disabled={unavailable}
+        onClick={onReview}
+      >
         {isPublic ? 'Unpublish' : 'Publish'}
       </Button>
     </>
@@ -214,7 +214,7 @@ function AssetDetailContent({ asset, onArchived }: { asset: Asset; onArchived: (
     <DetailShell>
       <DetailHeader>
         <ResourceDetailHeading
-          context={<PublicationStatus query={publication} />}
+          context={<PublicationStatus query={publication} showPublic={editing} />}
           actions={
             editing ? (
               <ResourceDetailActions

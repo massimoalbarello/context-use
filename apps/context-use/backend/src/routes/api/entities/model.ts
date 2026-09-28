@@ -17,7 +17,10 @@ import {
   PaginationQuerySchema,
   ReadableIdSchema,
 } from '#backend/routes/api/model.ts';
-import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
+import {
+  PublicationSchema,
+  PublicationVisibilitySchema,
+} from '#backend/routes/api/publications/model.ts';
 
 export const EntityTypeSchema = t.UnionEnum(ENTITY_TYPES, {
   description: ENTITY_TYPE_DESCRIPTION,
@@ -26,6 +29,7 @@ export const EntityTypeSchema = t.UnionEnum(ENTITY_TYPES, {
 export const EntityTypeFilterSchema = t.UnionEnum(ENTITY_TYPE_FILTERS, { default: undefined });
 
 export const EntitySchema = t.Object({
+  publishedAt: PublicationSchema.properties.publishedAt,
   readableId: ReadableIdSchema,
   name: t.String(),
   description: t.String(),
@@ -96,6 +100,7 @@ export const EntityListSchema = t.Object({
 
 export function entityResponse(entity: Entity) {
   return {
+    publishedAt: entity.publishedAt,
     readableId: entity.readableId,
     name: entity.name,
     description: entity.description,

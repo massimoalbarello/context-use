@@ -94,7 +94,7 @@ export const CompletePublicationBodySchema = t.Object(
   { additionalProperties: false },
 );
 
-const PublicationSchema = t.Object({
+export const PublicationSchema = t.Object({
   publicId: t.Nullable(t.String()),
   publishedAt: t.Nullable(t.String()),
 });

@@ -31,6 +31,7 @@ function expectSelectedMonth(month?: CalendarMonth) {
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
 const portrait = {
+  publishedAt: null,
   readableId: 'grace-portrait',
   name: 'Grace portrait',
   mediaType: 'image/png',
@@ -43,6 +44,7 @@ const entities: MapLayoutEntity[] = [
   {
     key: 'entity:grace-hopper',
     entity: {
+      publishedAt: null,
       readableId: 'grace-hopper',
       name: 'Grace Hopper',
       description: 'Computer scientist.',
@@ -57,6 +59,7 @@ const entities: MapLayoutEntity[] = [
   {
     key: 'entity:ada-lovelace',
     entity: {
+      publishedAt: null,
       readableId: 'ada-lovelace',
       name: 'Ada Lovelace',
       description: 'Mathematician.',
@@ -131,6 +134,7 @@ function MapFixture({
 test('Page hover temporarily emphasizes its members and preserves selection over entities', async () => {
   const user = userEvent.setup();
   const pages: MapPage[] = entities.map(({ entity }) => ({
+    publishedAt: null,
     readableId: `${entity.readableId}-biography`,
     title: `${entity.name} biography`,
     excerpt: entity.description,
@@ -187,6 +191,7 @@ test('Page hover temporarily emphasizes its members and preserves selection over
 test('Keyboard page focus emphasizes shared members and restores an unloaded selection', async () => {
   const user = userEvent.setup();
   const page: MapPage = {
+    publishedAt: null,
     readableId: 'pioneers',
     title: 'Computing pioneers',
     excerpt: 'Shared history.',

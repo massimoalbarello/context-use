@@ -35,6 +35,7 @@ afterEach(() => {
 async function renderEntity({ isPublic = false, statusError = false } = {}) {
   const timestamp = new Date('2026-01-01');
   const asset = (readableId: string): AssetSummary => ({
+    publishedAt: null,
     readableId,
     name: readableId,
     mediaType: 'image/png',
@@ -44,6 +45,7 @@ async function renderEntity({ isPublic = false, statusError = false } = {}) {
     updatedAt: timestamp,
   });
   const entity: Entity = {
+    publishedAt: null,
     readableId: 'studio',
     name: 'Cached studio',
     description: 'Cached description',

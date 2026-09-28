@@ -2,3 +2,18 @@
 @import "@repo/ui/theme.css";
 @source "./";
 @source "../../../../packages/ui/src";
+
+@theme inline {
+  --color-public: var(--public);
+  --color-public-foreground: var(--public-foreground);
+}
+
+:root {
+  --public: #f0fdf4;
+  --public-foreground: #15803d;
+}
+
+.dark {
+  --public: #052e16;
+  --public-foreground: #86efac;
+}

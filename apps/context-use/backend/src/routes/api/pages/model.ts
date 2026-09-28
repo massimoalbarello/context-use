@@ -21,9 +21,13 @@ import {
   PaginationQuerySchema,
   ReadableIdSchema,
 } from '#backend/routes/api/model.ts';
-import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
+import {
+  PublicationSchema,
+  PublicationVisibilitySchema,
+} from '#backend/routes/api/publications/model.ts';
 
 export const KnowledgePageSummarySchema = t.Object({
+  publishedAt: PublicationSchema.properties.publishedAt,
   readableId: ReadableIdSchema,
   title: t.String(),
   excerpt: t.String({ maxLength: MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH }),
@@ -112,6 +116,7 @@ export const KnowledgePageListQuerySchema = t.Object({
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {
+    publishedAt: page.publishedAt,
     readableId: page.readableId,
     title: page.title,
     excerpt: page.excerpt,

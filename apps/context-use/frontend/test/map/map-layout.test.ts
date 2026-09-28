@@ -19,6 +19,7 @@ const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
 function entity(readableId: string, isSelf = false): MapEntity {
   return {
+    publishedAt: null,
     readableId,
     name: readableId,
     description: `${readableId} description`,
@@ -39,6 +40,7 @@ function neighborhood(anchor: MapEntity, neighbors: MapEntity[]): MapLayoutNeigh
 
 function page(readableId: string): MapPage {
   return {
+    publishedAt: null,
     readableId,
     title: readableId,
     excerpt: `${readableId} excerpt`,

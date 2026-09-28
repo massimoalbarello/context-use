@@ -1,11 +1,14 @@
 import { Button } from '@repo/ui/button';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Badge } from '../ui/badge';
+import { PublicBadge } from './publication-appearance';
 
 export function PublicationStatus({
   query,
+  showPublic = false,
 }: {
   query: UseQueryResult<{ publishedAt: string | null }>;
+  showPublic?: boolean;
 }) {
   if (query.isError) {
     return (
@@ -21,8 +24,8 @@ export function PublicationStatus({
       </span>
     );
   }
-  const isPublic = query.data.publishedAt !== null;
-  return (
-    <Badge variant={isPublic ? 'default' : 'secondary'}>{isPublic ? 'Public' : 'Private'}</Badge>
-  );
+  if (query.data.publishedAt !== null) {
+    return showPublic ? <PublicBadge /> : null;
+  }
+  return <Badge variant="secondary">Private</Badge>;
 }

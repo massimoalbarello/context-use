@@ -33,6 +33,7 @@ test('settings select only published pages, confirm changes, and remove the home
     },
   };
   const page: KnowledgePageSummary = {
+    publishedAt: null,
     readableId: 'welcome',
     title: 'Welcome',
     excerpt: 'Start here',
@@ -76,6 +77,7 @@ test('settings select only published pages, confirm changes, and remove the home
   client.setQueryData(sessionQueryOptions.queryKey, session);
   const profile: KnowledgeProfile = {
     selfEntity: {
+      publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
       description: 'Owner',

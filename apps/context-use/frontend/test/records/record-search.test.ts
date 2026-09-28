@@ -17,6 +17,7 @@ test('records use the shared retrieval pipeline, preserve relevance order, and k
       address: `context-use://record/${id}`,
       matchExcerpt: 'A matching body passage.',
       record: {
+        publishedAt: null,
         readableId: id,
         title: `Notes ${id}`,
         sourceCreatedAt: null,

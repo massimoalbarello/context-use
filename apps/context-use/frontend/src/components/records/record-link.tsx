@@ -4,10 +4,12 @@ import type { ReactNode } from 'react';
 import type { ContextRecordSummary } from '../../queries/records';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
+import { PublicBadge } from '../publications/publication-appearance';
 
-type RecordIdentity = Pick<ContextRecordSummary, 'readableId' | 'title'> & {
-  source: Pick<ContextRecordSummary['source'], 'provider' | 'kind'>;
-};
+type RecordIdentity = Pick<ContextRecordSummary, 'readableId' | 'title'> &
+  Partial<Pick<ContextRecordSummary, 'publishedAt'>> & {
+    source: Pick<ContextRecordSummary['source'], 'provider' | 'kind'>;
+  };
 
 export function RecordCardContent({ record }: { record: RecordIdentity }) {
   return (
@@ -29,6 +31,7 @@ export function RecordCardContent({ record }: { record: RecordIdentity }) {
           {record.source.provider} · {record.source.kind}
         </small>
       </span>
+      {record.publishedAt != null && <PublicBadge />}
     </>
   );
 }
