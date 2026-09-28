@@ -238,63 +238,105 @@ test('local and managed fragments resolve to safe headings without exposing remo
   });
 });
 
-test('anonymous readers can follow inline and reference links between published revisions after private edits', async () => {
-  await withPublicResources(async ({ create, update, publish, app }) => {
-    const source = await create({ markdown: '# Public introduction\n\nApproved introduction.' });
-    const sourceId = await publish({ readableId: source.readableId });
-    const target = await create({
-      markdown: `# Public project\n\n## Project details\n\nApproved project details.\n\n[Back to introduction](context-use://page/${source.readableId})`,
-    });
-    const targetId = await publish({ readableId: target.readableId });
-    const linkedSource = await update({
-      readableId: source.readableId,
-      markdown: `# Public introduction\n\n[Explore the project][project]\n\n[project]: context-use://page/${target.readableId}#project-details`,
-    });
-    await publish({ readableId: source.readableId, revisionNumber: linkedSource.revisionNumber });
-    for (const page of [source, target]) {
-      await update({
-        readableId: page.readableId,
-        markdown:
-          '# Unpublished replacement\n\nPrivate details without the public links or headings.',
+test('cyclic and self references publish independently and follow live visibility in both public formats', async () => {
+  await withPublicResources(
+    async ({ create, update, publish, request, publications, transition }) => {
+      const source = await create({ markdown: '# Public introduction\n\nApproved introduction.' });
+      const target = await create({
+        markdown: `# Confidential target title\n\n## Project details\n\nConfidential target body.\n\n[Back to introduction](context-use://page/${source.readableId})`,
       });
-    }
+      const linkedSource = await update({
+        readableId: source.readableId,
+        markdown: `# Public introduction\n\n[Explore the project][project] and [another reference](context-use://page/${target.readableId} "Hidden link title").\n\n[This introduction](context-use://page/${source.readableId})\n\n[project]: context-use://page/${target.readableId}#project-details "Hidden reference title"`,
+      });
+      const sourceId = await publish({
+        readableId: source.readableId,
+        revisionNumber: linkedSource.revisionNumber,
+      });
+      expect(
+        await publications.pageStatus({ ownerId: 'owner-a', readableId: target.readableId }),
+      ).toEqual({
+        publicId: null,
+        publishedAt: null,
+        publishedRevisionNumber: null,
+      });
 
-    async function read(url: URL) {
-      const requestUrl = new URL(url);
-      // Browsers resolve the fragment locally and omit it from the HTTP request.
-      requestUrl.hash = '';
-      const response = await app.handle(new Request(requestUrl));
-      expect(response.status).toBe(StatusMap.OK);
-      const links: string[] = [];
-      const headingIds: string[] = [];
-      const html = await new HTMLRewriter()
-        .on('article a[href]', {
-          element(element) {
-            links.push(element.getAttribute('href')!);
-          },
-        })
-        .on('article h2[id]', {
-          element(element) {
-            headingIds.push(element.getAttribute('id')!);
-          },
-        })
-        .transform(response)
-        .text();
-      expect(html).not.toContain('Unpublished replacement');
-      expect(html).not.toContain('Private details');
-      return { html, links, headingIds };
-    }
+      async function readSource(targetId: string | null) {
+        const bodies = [];
+        for (const markdown of [false, true]) {
+          const response = await request({ id: sourceId, markdown });
+          expect(response.status).toBe(StatusMap.OK);
+          const body = await response.text();
+          expect(body).toContain('Explore the project');
+          expect(body).toContain('another reference');
+          expect(body).toContain(`/public/pages/${sourceId}`);
+          for (const hidden of [
+            target.id,
+            target.readableId,
+            'Confidential target title',
+            'Confidential target body',
+            'context-use://',
+          ]) {
+            expect(body).not.toContain(hidden);
+          }
+          if (targetId) {
+            expect(body).toContain(`/public/pages/${targetId}#project-details`);
+          } else {
+            expect(body).not.toContain('Hidden link title');
+            expect(body).not.toContain('Hidden reference title');
+            expect(body).toContain('Explore the project and another reference.');
+          }
+          bodies.push(body);
+        }
+        return bodies;
+      }
 
-    const sourceUrl = new URL(`http://localhost/public/pages/${sourceId}`);
-    const introduction = await read(sourceUrl);
-    expect(introduction.links).toEqual([`/public/pages/${targetId}#project-details`]);
-    const targetUrl = new URL(introduction.links[0]!, sourceUrl);
-    const project = await read(targetUrl);
-    expect(project.html).toContain('Approved project details.');
-    expect(project.headingIds).toContain(targetUrl.hash.slice(1));
-    expect(project.links).toEqual([sourceUrl.pathname]);
-    expect((await read(new URL(project.links[0]!, targetUrl))).html).toBe(introduction.html);
-  });
+      const privateTargetBodies = await readSource(null);
+      const targetId = await publish({ readableId: target.readableId });
+      await readSource(targetId);
+      for (const markdown of [false, true]) {
+        const response = await request({ id: targetId, markdown });
+        expect(response.status).toBe(StatusMap.OK);
+        expect(await response.text()).toContain(`/public/pages/${sourceId}`);
+      }
+      await update({
+        readableId: target.readableId,
+        markdown: '# Unpublished replacement\n\nPrivate replacement body.',
+      });
+      for (const markdown of [false, true]) {
+        const body = await (await request({ id: targetId, markdown })).text();
+        expect(body).toContain('Confidential target body');
+        expect(body).not.toContain('Private replacement body');
+      }
+      await transition({
+        ownerId: 'owner-a',
+        resourceType: 'page',
+        action: 'unpublish',
+        readableId: target.readableId,
+      });
+      expect(await readSource(null)).toEqual(privateTargetBodies);
+      for (const markdown of [false, true]) {
+        const response = await request({ id: targetId, markdown });
+        expect(response.status).toBe(StatusMap['Not Found']);
+        expect(await response.json()).toEqual({ error: 'Not Found' });
+      }
+      expect(await publish({ readableId: target.readableId })).toBe(targetId);
+      await readSource(targetId);
+      await transition({
+        ownerId: 'owner-a',
+        resourceType: 'page',
+        action: 'unpublish',
+        readableId: source.readableId,
+      });
+      for (const markdown of [false, true]) {
+        const response = await request({ id: targetId, markdown });
+        expect(response.status).toBe(StatusMap.OK);
+        const body = await response.text();
+        expect(body).toContain('Back to introduction');
+        expect(body).not.toContain(sourceId);
+      }
+    },
+  );
 });
 
 test('private, foreign, unknown, withdrawn and archived page identifiers are indistinguishable and there is no history route', async () => {
@@ -334,7 +376,49 @@ test('private, foreign, unknown, withdrawn and archived page identifiers are ind
   });
 });
 
-test('unavailable retained dependencies and missing relationship rows fail closed without publishing anything', async () => {
+test('archived, foreign and unindexed page targets reveal no destination or metadata', async () => {
+  await withPublicResources(async ({ create, publish, request, database }) => {
+    const target = await create({ markdown: '# Hidden identity\n\nHidden body.' });
+    const targetId = await publish({ readableId: target.readableId });
+    const source = await create({
+      markdown: `# Independent source\n\n[Authored label](context-use://page/${target.readableId}#private-fragment "Hidden tooltip")`,
+    });
+    await database`update "knowledge_page" set "archived_at" = ${NOW} where "id" = ${target.id}`;
+    const sourceId = await publish({ readableId: source.readableId });
+    async function expectPlainText() {
+      for (const markdown of [false, true]) {
+        const response = await request({ id: sourceId, markdown });
+        expect(response.status).toBe(StatusMap.OK);
+        const body = await response.text();
+        expect(body).toContain('Authored label');
+        for (const hidden of [
+          targetId,
+          target.id,
+          target.readableId,
+          'Hidden identity',
+          'Hidden body',
+          'Hidden tooltip',
+          'private-fragment',
+          'context-use://',
+        ]) {
+          expect(body).not.toContain(hidden);
+        }
+      }
+    }
+    await expectPlainText();
+    await database`update "knowledge_page" set "archived_at" = null where "id" = ${target.id}`;
+    // Corrupt the relationship boundary to prove public resolution retains owner scoping.
+    await database.unsafe('pragma foreign_keys = off');
+    await database`update "knowledge_page" set "owner_id" = 'owner-b' where "id" = ${target.id}`;
+    await expectPlainText();
+    await database`update "knowledge_page" set "owner_id" = 'owner-a' where "id" = ${target.id}`;
+    await database.unsafe('pragma foreign_keys = on');
+    await database`delete from "knowledge_page_reference" where "target_page_id" = ${target.id}`;
+    await expectPlainText();
+  });
+});
+
+test('unavailable non-page dependencies and missing relationship rows fail closed', async () => {
   await withPublicResources(async ({ targets, create, publish, request, database }) => {
     const target = await targets();
     const page = await create({
@@ -342,26 +426,20 @@ test('unavailable retained dependencies and missing relationship rows fail close
     });
     const id = await publish({ readableId: page.readableId });
     for (const [table, publicId] of [
-      ['knowledge_page', target.pageId],
       ['entity', target.entityId],
       ['asset', target.assetId],
     ]) {
       // Simulate unavailable target data outside the guarded normal transitions.
-      await database.unsafe(
-        `update "${table}" set "published_at" = null${table === 'knowledge_page' ? ', "published_revision_id" = null' : ''} where "public_id" = $1`,
-        [publicId!],
-      );
+      await database.unsafe(`update "${table}" set "published_at" = null where "public_id" = $1`, [
+        publicId!,
+      ]);
       for (const markdown of [false, true]) {
         expect((await request({ id: id, ...{ markdown } })).status).toBe(StatusMap['Not Found']);
       }
-      if (table === 'knowledge_page') {
-        await publish({ readableId: target.page.readableId });
-      } else {
-        await database.unsafe(`update "${table}" set "published_at" = $1 where "public_id" = $2`, [
-          NOW,
-          publicId!,
-        ]);
-      }
+      await database.unsafe(`update "${table}" set "published_at" = $1 where "public_id" = $2`, [
+        NOW,
+        publicId!,
+      ]);
       expect((await request({ id: id })).status).toBe(StatusMap.OK);
     }
     await database`delete from "knowledge_page_entity_mention" where "target_entity_id" = ${target.entity.id}`;
@@ -416,13 +494,12 @@ test('missing, replaced and truncated published revision bytes never fall back t
   });
 });
 
-test('unexpected managed targets and record references in verified revision content fail closed', async () => {
+test('unavailable non-page targets and malformed page references in verified revision content fail closed', async () => {
   await withPublicResources(async ({ create, publish, request, resources, storage, database }) => {
     const page = await create({ markdown: '# Approved\n\nContent.' });
     const id = await publish({ readableId: page.readableId });
     const stored = (await resources.findPage({ publicId: id }))!;
     for (const address of [
-      'context-use://page/missing',
       'context-use://entity/missing',
       'context-use://asset/missing',
       'context-use://record/private-record',

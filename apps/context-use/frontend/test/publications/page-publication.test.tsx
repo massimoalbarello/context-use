@@ -293,6 +293,11 @@ test('first publication reviews full selected content before allowing confirmati
       'Anyone with the link can read this page. Future edits stay private until you publish them.',
     ),
   ).toBeTruthy();
+  expect(
+    within(dialog).getByText(
+      'References to private pages appear as plain text. Referenced pages stay private until you publish them.',
+    ),
+  ).toBeTruthy();
   await screen.findByText('Loading changes…');
   const button = screen.getByRole('button', { name: 'Confirm with passkey' });
   expect(button.hasAttribute('disabled')).toBe(true);
@@ -474,17 +479,13 @@ test('private resources stay collapsed and OK returns to the page before publish
       reason: 'reference_not_public',
       resource: { resourceType: 'asset', readableId: 'chart', name: 'Private chart' },
     },
-    {
-      reason: 'reference_not_public',
-      resource: { resourceType: 'page', readableId: 'related', name: 'Related page' },
-    },
   ];
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   let dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
-  const toggle = await dialog.findByRole('button', { name: '4 private resources' });
+  const toggle = await dialog.findByRole('button', { name: '3 private resources' });
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
   expect(dialog.getByRole('alert').textContent).toBe(
-    'Publish all resources referenced in this page before publishing it.',
+    'Publish referenced assets, entities, and records before publishing this page.',
   );
   expect(dialog.queryByRole('link')).toBeNull();
   expect(dialog.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
@@ -496,9 +497,6 @@ test('private resources stay collapsed and OK returns to the page before publish
   await user.keyboard('{Enter}');
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
   expect(dialog.getAllByRole('link')).toHaveLength(state.blockers.length);
-  expect(dialog.getByRole('link', { name: 'Related page' }).getAttribute('href')).toStartWith(
-    '/app/pages/related',
-  );
   expect(dialog.getByRole('link', { name: 'Private source' }).getAttribute('href')).toStartWith(
     '/app/records/source',
   );
@@ -524,13 +522,9 @@ test('private resources stay collapsed and OK returns to the page before publish
   );
 });
 
-test('unavailable references and self-references retain specific guidance in a compact disclosure', async () => {
+test('unavailable records retain specific guidance in a compact disclosure', async () => {
   const { state, user, device } = await renderPage();
   state.blockers = [
-    {
-      reason: 'reference_not_public',
-      resource: { resourceType: 'page', readableId: 'notes', name: 'This page' },
-    },
     {
       reason: 'reference_unavailable',
       resource: { resourceType: 'record', readableId: 'removed', name: 'Removed source' },
@@ -539,33 +533,13 @@ test('unavailable references and self-references retain specific guidance in a c
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   await screen.findByRole('button', { name: 'OK' });
   expect(screen.queryByRole('link', { name: 'Removed source' })).toBeNull();
-  await user.click(screen.getByRole('button', { name: '2 references to fix' }));
+  await user.click(screen.getByRole('button', { name: '1 reference to fix' }));
   expect(screen.getByRole('link', { name: 'Removed source' }).getAttribute('href')).toStartWith(
     '/app/records/removed',
   );
-  expect(screen.getByText(/Publish a revision without this self-reference/)).toBeTruthy();
   expect(screen.getByText(/Remove or replace this unavailable reference/)).toBeTruthy();
   expect(device.calls).toHaveLength(0);
   expect(state.comparisons).toHaveLength(0);
-});
-
-test('inbound public references explain both withdrawal and publishing a replacement revision', async () => {
-  const { state, user } = await renderPage({ published: 1 });
-  state.blockers = [
-    {
-      reason: 'public_page_reference',
-      resource: { resourceType: 'page', readableId: 'referring', name: 'Referring page' },
-    },
-  ];
-  await user.click(screen.getByRole('button', { name: 'Unpublish' }));
-  expect(
-    await screen.findByText(
-      /Unpublish this referring page or publish a revision of it without this reference/,
-    ),
-  ).toBeTruthy();
-  expect(screen.getByRole('link', { name: 'Referring page' }).getAttribute('href')).toStartWith(
-    '/app/pages/referring',
-  );
 });
 
 test('saving a public page creates a private revision and exposes revision navigation after saving', async () => {

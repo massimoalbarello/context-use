@@ -61,11 +61,7 @@ function groupBlockers({
     if (
       request?.action === 'publish' &&
       request.resourceType === 'page' &&
-      blocker.reason === 'reference_not_public' &&
-      !(
-        blocker.resource.resourceType === 'page' &&
-        blocker.resource.readableId === request.readableId
-      )
+      blocker.reason === 'reference_not_public'
     ) {
       privateResources.push(blocker.resource);
     } else {
@@ -105,7 +101,9 @@ export function PublicationReviewDialog({
         {error && privateResources.length === 0 && <FieldError>{error.message}</FieldError>}
         {privateResources.length > 0 && (
           <div className="grid min-w-0 gap-3 text-sm">
-            <p role="alert">Publish all resources referenced in this page before publishing it.</p>
+            <p role="alert">
+              Publish referenced assets, entities, and records before publishing this page.
+            </p>
             <BlockerDisclosure
               label={`${privateResources.length} private ${privateResources.length === 1 ? 'resource' : 'resources'}`}
             >
@@ -166,14 +164,7 @@ function OtherBlockers({
           key={`${blocker.reason}:${blocker.resource.resourceType}:${blocker.resource.readableId}`}
         >
           <BlockerLink resource={blocker.resource} />
-          <p className="mt-1 text-muted-foreground">
-            {blocker.reason === 'reference_not_public' &&
-            request?.resourceType === 'page' &&
-            blocker.resource.resourceType === 'page' &&
-            blocker.resource.readableId === request.readableId
-              ? 'Publish a revision without this self-reference first.'
-              : blockerExplanations[blocker.reason]}
-          </p>
+          <p className="mt-1 text-muted-foreground">{blockerExplanations[blocker.reason]}</p>
         </li>
       ))}
     </ul>

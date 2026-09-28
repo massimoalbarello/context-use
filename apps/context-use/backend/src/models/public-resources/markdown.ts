@@ -37,7 +37,7 @@ function linkDestination({
   }
   const target = targets.get(`${reference.kind}:${reference.readableId}`);
   if (!target) {
-    return undefined;
+    return reference.kind === 'page' ? null : undefined;
   }
   if (link.embedded && !isEmbeddableAssetMedia(target.mediaType ?? '')) {
     return null;
@@ -92,7 +92,7 @@ function projectPublicMarkdown({
   const replacements = new Map<Nodes, RootContent[]>();
   for (const link of markdownLinks(tree)) {
     const url = destination(link);
-    // An unavailable managed destination invalidates the whole public projection.
+    // Required non-page destinations must remain available for public projection.
     if (url === undefined) {
       return null;
     }
