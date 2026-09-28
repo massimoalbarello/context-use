@@ -8,6 +8,7 @@ import {
   pageRevisionQueryOptions,
 } from '../../queries/pages';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
+import { Card, CardContent } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { KnowledgePageMarkdown } from './knowledge-page-markdown';
 import { RevisionDiff } from './revision-diff';
@@ -99,12 +100,17 @@ function PagePublicationContent({
 }) {
   const [view, setView] = useState<'preview' | 'changes'>('preview');
   const preview = (
-    <section aria-label="Page preview" className="max-h-[50vh] min-w-0 overflow-y-auto pr-2">
-      {revision.temporalCoverage && (
-        <TemporalCoverageLabel expression={revision.temporalCoverage} />
-      )}
-      <KnowledgePageMarkdown markdown={revision.markdown} />
-    </section>
+    <Card role="region" aria-label="Page preview" className="min-w-0 gap-0 py-0">
+      <div className="border-border border-b bg-muted px-4 py-3 sm:px-6">
+        <p className="font-medium text-muted-foreground text-xs">Page preview</p>
+      </div>
+      <CardContent className="max-h-[50vh] overflow-y-auto p-4 sm:p-6">
+        {revision.temporalCoverage && (
+          <TemporalCoverageLabel expression={revision.temporalCoverage} />
+        )}
+        <KnowledgePageMarkdown markdown={revision.markdown} />
+      </CardContent>
+    </Card>
   );
   if (publishedRevisionNumber === null) {
     return preview;
