@@ -110,7 +110,7 @@ test('signed-in owners can find allowed passkey origins and configuration guidan
 test('passkey settings retain the settings authentication boundary', async () => {
   const world = await passkeyWorld({ signedIn: false, path: '/app/settings/passkeys' });
   try {
-    await screen.findByRole('heading', { name: 'Create the owner account' });
+    await screen.findByRole('heading', { name: 'Create your account' });
     expect(world.router.state.location.pathname).toBe('/app/login');
     expect(world.router.state.location.search).toEqual({ redirect: '/app/settings/passkeys' });
   } finally {

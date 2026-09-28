@@ -20,7 +20,7 @@ export async function enableVirtualPasskey(page: Page): Promise<void> {
 
 export async function registerOwner(input: { page: Page; origin: string }): Promise<void> {
   await input.page.goto(new URL('/app', input.origin).href, { waitUntil: 'domcontentloaded' });
-  await input.page.getByRole('button', { name: 'Create account with a passkey' }).click();
+  await input.page.getByRole('button', { name: 'Create account', exact: true }).click();
   await input.page.waitForURL(/\/app\/setup\?/);
 }
 

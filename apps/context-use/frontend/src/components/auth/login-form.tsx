@@ -24,12 +24,6 @@ export function LoginForm({
         submit();
       }}
     >
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        {isSigningUp
-          ? 'The first passkey created here becomes the owner of this Context Use instance.'
-          : 'Use a passkey saved on this device, another device, or a security key.'}
-      </p>
-
       {(!passkeysSupported || error) && (
         <FieldGroup>
           {!passkeysSupported && (
@@ -45,7 +39,7 @@ export function LoginForm({
       )}
 
       <Button type="submit" disabled={pending || !passkeysSupported} size="lg" className="w-full">
-        {isSigningUp ? 'Create account with a passkey' : 'Sign in with a passkey'}
+        {isSigningUp ? 'Create account' : 'Sign in'}
       </Button>
     </form>
   );
