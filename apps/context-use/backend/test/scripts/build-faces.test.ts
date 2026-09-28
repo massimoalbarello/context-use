@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { chmod, cp, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { chmod, cp, mkdir, mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -10,7 +10,7 @@ const SLOW_BUILD_TIMEOUT_MS = 30_000;
 const PREVIOUS_LOG_LINES = 4096;
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'context-use-dev-build-test-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'context-use-dev-build-test-')));
   const app = join(root, 'apps/context-use/backend');
   const bin = join(root, 'bin');
   await mkdir(join(app, 'scripts/shared'), { recursive: true });
@@ -46,6 +46,7 @@ if (process.argv.includes('--build')) {
     `#!${process.execPath}
 if (process.argv[2] === 'info') {
   if (process.env.TEST_DOCKER_UNAVAILABLE) {
+    console.error('Docker client plugin inventory');
     console.error('Cannot connect to the Docker daemon at fixture.sock');
     process.exit(1);
   }
@@ -105,11 +106,18 @@ test('an unavailable Docker daemon reports recovery steps before compiling for L
       dockerUnavailable: true,
     });
     expect(result.code).toBe(1);
-    expect(result.stderr).toContain('Cannot connect to the Docker daemon at fixture.sock');
-    expect(result.stderr).toContain('Docker is unavailable.');
+    expect(result.stderr).toContain('Docker is not running or cannot be reached.');
     expect(result.stderr).toContain('open Docker Desktop');
     expect(result.stderr).toContain('wait until `docker info` succeeds');
     expect(result.stderr).toContain('retry the same command');
+    expect(result.stderr).not.toContain('Docker client plugin inventory');
+    expect(result.stderr).not.toContain('Cannot connect to the Docker daemon at fixture.sock');
+    expect(result.stderr).not.toContain('BuildPrerequisiteError');
+    const logPath = join(context.root, '.cache/face-build-linux/build.log');
+    expect(result.stderr).toContain(`Full build output: ${logPath}`);
+    const log = await Bun.file(logPath).text();
+    expect(log).toContain('Docker client plugin inventory');
+    expect(log).toContain('Cannot connect to the Docker daemon at fixture.sock');
     expect(result.stdout).not.toContain('Face recognition ready');
     expect(await Bun.file(join(context.root, 'docker-build-started')).exists()).toBe(false);
     expect(await Bun.file(engine).text()).toBe('previous Linux engine');

@@ -76,6 +76,7 @@ async function deploymentFixture(task = 'build:instance') {
   await Bun.write(
     join(app, 'build.ts'),
     `
+    console.log('fixture build progress');
     if (process.env.TEST_BUILD_FAIL) {
       console.error('fixture build prerequisite is unavailable');
       process.exit(${BUILD_FAILURE_CODE});
@@ -163,6 +164,7 @@ test.each(['build:instance', 'build:demo', 'build'])(
     );
     const result = await fixture.run({ args: ['--app', 'context-use'] });
     expect(result.code, result.output).toBe(0);
+    expect(result.output).not.toContain('fixture build progress');
     expect(await Bun.file(join(fixture.app, 'dist/app')).text()).toBe('bun-linux-x64');
     expect(await Bun.file(fixture.invocation).json()).toEqual([
       'run',
