@@ -14,6 +14,19 @@ const SECONDS_PER_MINUTE = 60;
 const FAILURE_LOG_BYTES = 8192;
 const FAILURE_LOG_LINES = 12;
 
+class BuildPrerequisiteError extends Error {}
+
+async function printFailureDiagnostics({ error, logPath }: { error: unknown; logPath: string }) {
+  if (error instanceof BuildPrerequisiteError) {
+    return;
+  }
+  const file = Bun.file(logPath);
+  const tail = await file.slice(Math.max(0, file.size - FAILURE_LOG_BYTES)).text();
+  if (tail.trim()) {
+    console.error(tail.trim().split(/\r?\n/).slice(-FAILURE_LOG_LINES).join('\n'));
+  }
+}
+
 async function buildFaceAnalyzer({ host }: { host: boolean }) {
   const destination = faceEngineDirectory({ host });
   const build = join(root, '.cache', host ? 'face-build-host' : 'face-build-linux');
@@ -35,7 +48,7 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
   async function run({ command, label }: { command: string[]; label: string }) {
     log.write(`\n> ${command.join(' ')}\n`);
     if (!Bun.which(command[0]!)) {
-      throw new Error(
+      throw new BuildPrerequisiteError(
         `${command[0]} is required to build face recognition. ${host ? 'Install CMake 3.24+ and a C++ toolchain (on macOS: brew install cmake and xcode-select --install).' : 'Install and start Docker.'}`,
       );
     }
@@ -116,9 +129,12 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
     } else {
       try {
         await run({ label: 'Checking Docker', command: ['docker', 'info'] });
-      } catch {
-        throw new Error(
-          'Docker is unavailable. Building the Linux face-recognition engine requires Docker running on your computer. Install and start Docker (on macOS, open Docker Desktop), wait until `docker info` succeeds, then retry the same command.',
+      } catch (error) {
+        if (error instanceof BuildPrerequisiteError) {
+          throw error;
+        }
+        throw new BuildPrerequisiteError(
+          'Docker is not running or cannot be reached. Start Docker (on macOS, open Docker Desktop), wait until `docker info` succeeds, then retry the same command.',
         );
       }
       await run({
@@ -142,11 +158,7 @@ async function buildFaceAnalyzer({ host }: { host: boolean }) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await log.flush();
-    const file = Bun.file(logPath);
-    const tail = await file.slice(Math.max(0, file.size - FAILURE_LOG_BYTES)).text();
-    if (tail.trim()) {
-      console.error(tail.trim().split(/\r?\n/).slice(-FAILURE_LOG_LINES).join('\n'));
-    }
+    await printFailureDiagnostics({ error, logPath });
     log.write(`\n${message}\n`);
     throw new Error(`${message}\nFull build output: ${logPath}`);
   } finally {
