@@ -107,18 +107,7 @@ function PagePublicationContent({
         <iframe
           title="Public page preview"
           className="h-[50vh] w-full border-0"
-          sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          onLoad={({ currentTarget }) => {
-            for (const link of currentTarget.contentDocument?.links ?? []) {
-              const href = link.getAttribute('href');
-              if (href?.startsWith('#')) {
-                link.href = `about:srcdoc${href}`;
-              } else {
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-              }
-            }
-          }}
+          sandbox="allow-popups allow-popups-to-escape-sandbox"
           srcDoc={revision.html}
         />
       </CardContent>

@@ -475,3 +475,29 @@ test('publication previews render only the authenticated owner’s selected revi
     await context.dispose();
   }
 });
+
+test('preview HTML declares external navigation and local section jumps without client rewriting', async () => {
+  const context = await setup();
+  try {
+    await context.service.update({
+      ...context.input,
+      readableId: 'notes',
+      message: 'Add preview navigation',
+      expectedRevisionNumber: LAST_REVISION,
+      markdown:
+        '# Notes\n\n[Section](context-use://page/notes#section) [Local](#section) [Website](https://example.com "Website title")\n\n## Section\n\nBody.',
+    });
+    const preview = await (
+      await context.previewRequest({ revisionNumber: String(LAST_REVISION + 1) })
+    ).json();
+    expect(preview.html).toContain('<base target="_blank"/>');
+    expect(preview.html).toContain('<a href="about:srcdoc#section" target="_self">Section</a>');
+    expect(preview.html).toContain('<a href="about:srcdoc#section" target="_self">Local</a>');
+    expect(preview.html).toContain(
+      '<a href="https://example.com" title="Website title">Website</a>',
+    );
+    expect(preview.html).not.toContain('<script');
+  } finally {
+    await context.dispose();
+  }
+});
