@@ -2,7 +2,6 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { type CalendarMonth, mapMonthAfterScroll } from '../../lib/calendar-month';
 
 const WHEEL_MONTH_DISTANCE = 160;
-const MAX_WHEEL_INTERVAL_DELTA = 120;
 const WHEEL_INTERVAL_SETTLE_MS = 120;
 const WHEEL_LINE_HEIGHT = 16;
 
@@ -12,24 +11,6 @@ function intervalDirection(progress: number): IntervalDirection {
   return progress > 0 ? 'older' : 'newer';
 }
 
-function advanceWholeMonths({
-  progress,
-  advance,
-}: {
-  progress: number;
-  advance: (direction: IntervalDirection) => boolean;
-}): number {
-  let remaining = progress;
-  while (Math.abs(remaining) >= 1) {
-    const step = remaining > 0 ? 1 : -1;
-    if (!advance(intervalDirection(step))) {
-      return 0;
-    }
-    remaining -= step;
-  }
-  return remaining;
-}
-
 function intervalWheelDelta({
   event,
   viewportHeight,
@@ -37,13 +18,11 @@ function intervalWheelDelta({
   event: globalThis.WheelEvent;
   viewportHeight: number;
 }): number {
-  const pixelDelta =
-    event.deltaMode === globalThis.WheelEvent.DOM_DELTA_LINE
-      ? event.deltaY * WHEEL_LINE_HEIGHT
-      : event.deltaMode === globalThis.WheelEvent.DOM_DELTA_PAGE
-        ? event.deltaY * viewportHeight
-        : event.deltaY;
-  return Math.max(-MAX_WHEEL_INTERVAL_DELTA, Math.min(MAX_WHEEL_INTERVAL_DELTA, pixelDelta));
+  return event.deltaMode === globalThis.WheelEvent.DOM_DELTA_LINE
+    ? event.deltaY * WHEEL_LINE_HEIGHT
+    : event.deltaMode === globalThis.WheelEvent.DOM_DELTA_PAGE
+      ? event.deltaY * viewportHeight
+      : event.deltaY;
 }
 
 export function useMapIntervalScroll({
@@ -56,7 +35,7 @@ export function useMapIntervalScroll({
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const progressRef = useRef(0);
+  const gestureDistanceRef = useRef(0);
   const committedMonthRef = useRef(month);
   const displayedMonthRef = useRef(month);
   const [displayedMonth, setDisplayedMonth] = useState(month);
@@ -77,7 +56,7 @@ export function useMapIntervalScroll({
       return;
     }
     displayedMonthRef.current = month;
-    progressRef.current = 0;
+    gestureDistanceRef.current = 0;
     setDisplayedMonth(month);
   }, [month]);
 
@@ -85,7 +64,7 @@ export function useMapIntervalScroll({
     if (wheelTimer.current) {
       clearTimeout(wheelTimer.current);
     }
-    progressRef.current = 0;
+    gestureDistanceRef.current = 0;
     displayedMonthRef.current = nextMonth;
     setDisplayedMonth(nextMonth);
     if (committedMonthRef.current !== nextMonth) {
@@ -112,29 +91,8 @@ export function useMapIntervalScroll({
     return true;
   }
 
-  function moveThroughMonths(nextProgress: number): number {
-    if (
-      displayedMonthRef.current !== undefined &&
-      nextProgress < 0 &&
-      adjacentMonth('newer') === undefined
-    ) {
-      updateDisplayedMonth('newer');
-      return Math.max(0, 1 + nextProgress);
-    }
-    const remaining = advanceWholeMonths({
-      progress: nextProgress,
-      advance: updateDisplayedMonth,
-    });
-    if (
-      remaining !== 0 &&
-      adjacentMonth(intervalDirection(remaining)) === displayedMonthRef.current
-    ) {
-      return 0;
-    }
-    return remaining;
-  }
-
   function settle() {
+    gestureDistanceRef.current = 0;
     if (committedMonthRef.current !== displayedMonthRef.current) {
       committedMonthRef.current = displayedMonthRef.current;
       onMonthChange(displayedMonthRef.current);
@@ -145,7 +103,7 @@ export function useMapIntervalScroll({
   const handleWheel = useEffectEvent(
     ({ event, viewportHeight }: { event: globalThis.WheelEvent; viewportHeight: number }) => {
       const deltaY = intervalWheelDelta({ event, viewportHeight });
-      if (deltaY === 0) {
+      if (deltaY === 0 || !Number.isFinite(deltaY)) {
         return;
       }
       onIntervalScrollingChange(true);
@@ -153,8 +111,20 @@ export function useMapIntervalScroll({
         clearTimeout(wheelTimer.current);
       }
       wheelTimer.current = setTimeout(settle, WHEEL_INTERVAL_SETTLE_MS);
-      const nextProgress = moveThroughMonths(progressRef.current + deltaY / WHEEL_MONTH_DISTANCE);
-      progressRef.current = nextProgress;
+      const previousDistance =
+        Math.sign(gestureDistanceRef.current) === Math.sign(deltaY)
+          ? gestureDistanceRef.current
+          : 0;
+      const nextDistance = previousDistance + deltaY;
+      const steps =
+        Math.ceil(Math.abs(nextDistance) / WHEEL_MONTH_DISTANCE) -
+        Math.ceil(Math.abs(previousDistance) / WHEEL_MONTH_DISTANCE);
+      gestureDistanceRef.current = nextDistance;
+      for (let step = 0; step < steps; step += 1) {
+        if (!updateDisplayedMonth(intervalDirection(deltaY))) {
+          break;
+        }
+      }
     },
   );
 

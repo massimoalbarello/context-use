@@ -223,7 +223,7 @@ test('Keyboard page focus emphasizes shared members and restores an unloaded sel
   }
 });
 
-test('Map distinguishes entity identities and retains partial progress between months', async () => {
+test('Small map scrolls move immediately and trackpad tails stay in the same gesture', async () => {
   const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
   const onIntervalScrollingChange = mock(() => undefined);
   render(
@@ -232,49 +232,63 @@ test('Map distinguishes entity identities and retains partial progress between m
       onIntervalScrollingChange={onIntervalScrollingChange}
     />,
   );
-
   expectEntityIdentities();
   const canvas = screen.getByLabelText('Interactive map');
-
-  expectSelectedMonth();
   const present = currentCalendarMonth();
   const previousMonth = shiftCalendarMonth({ value: present, offset: -1 });
 
-  fireEvent.wheel(canvas, { deltaY: 40 });
+  fireEvent.wheel(canvas, { deltaY: 0 });
+  expectSelectedMonth();
+  expect(onIntervalScrollingChange).not.toHaveBeenCalled();
+  fireEvent.wheel(canvas, { deltaY: 1 });
+  expectSelectedMonth(present);
   expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(true);
-  expectSelectedMonth();
-  await settleIntervalScroll();
-  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
-  expect(onMonthChange).not.toHaveBeenCalled();
-
   fireEvent.wheel(canvas, { deltaY: 40 });
-  expectSelectedMonth();
-  fireEvent.wheel(canvas, { deltaY: 80 });
+  fireEvent.wheel(canvas, { deltaY: 20 });
   expectSelectedMonth(present);
   expect(onMonthChange).not.toHaveBeenCalled();
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(present);
+  expect(onIntervalScrollingChange).toHaveBeenLastCalledWith(false);
 
-  fireEvent.wheel(canvas, { deltaY: 120 });
-  fireEvent.wheel(canvas, { deltaY: 40 });
+  fireEvent.wheel(canvas, { deltaY: 1 });
   expectSelectedMonth(previousMonth);
   await settleIntervalScroll();
   expect(onMonthChange).toHaveBeenLastCalledWith(previousMonth);
 
-  fireEvent.wheel(canvas, { deltaY: -120 });
-  fireEvent.wheel(canvas, { deltaY: -40 });
+  fireEvent.wheel(canvas, { deltaY: -1 });
   expectSelectedMonth(present);
-  await settleIntervalScroll();
-
-  fireEvent.wheel(canvas, { deltaY: -40 });
+  fireEvent.wheel(canvas, { deltaY: 1 });
+  expectSelectedMonth(previousMonth);
+  fireEvent.wheel(canvas, { deltaY: -320 });
+  expectSelectedMonth();
+  fireEvent.wheel(canvas, { deltaY: -320 });
   expectSelectedMonth();
   await settleIntervalScroll();
-  expect(onMonthChange).toHaveBeenLastCalledWith(undefined);
+  expect(onMonthChange.mock.calls).toEqual([[present], [previousMonth], [undefined]]);
+});
 
-  fireEvent.wheel(canvas, { deltaY: -120 });
+test.each([
+  { deltaY: 480, deltaMode: WheelEvent.DOM_DELTA_PIXEL },
+  { deltaY: 30, deltaMode: WheelEvent.DOM_DELTA_LINE },
+  { deltaY: 1, deltaMode: WheelEvent.DOM_DELTA_PAGE },
+])('Large map scrolls move multiple months ($deltaMode)', async (input) => {
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+  render(<MapFixture onMonthChange={onMonthChange} month="2025-01" />);
+  const canvas = screen.getByLabelText('Interactive map');
+  Object.defineProperty(canvas, 'clientHeight', { value: 480 });
+  fireEvent.wheel(canvas, input);
+  expectSelectedMonth('2024-10');
   await settleIntervalScroll();
-  expectSelectedMonth();
-  expect(onMonthChange.mock.calls).toEqual([[present], [previousMonth], [present], [undefined]]);
+  expect(onMonthChange).toHaveBeenLastCalledWith('2024-10');
+
+  fireEvent.wheel(canvas, { deltaY: 80 });
+  fireEvent.wheel(canvas, { deltaY: 80 });
+  expectSelectedMonth('2024-09');
+  fireEvent.wheel(canvas, { deltaY: 80 });
+  expectSelectedMonth('2024-08');
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith('2024-08');
 });
 
 test('The month wheel navigates across year boundaries and resets pending canvas scrolling', async () => {
@@ -287,22 +301,25 @@ test('The month wheel navigates across year boundaries and resets pending canvas
   fireEvent.wheel(canvas, { deltaY: 120 });
   picker.focus();
   await user.keyboard('{ArrowDown}');
-  await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
-  expect(onMonthChange).toHaveBeenLastCalledWith('2024-12');
-  expect(onMonthChange).toHaveBeenCalledTimes(1);
+  await waitFor(() => expectSelectedMonth('2024-11'), { timeout: 3_000 });
+  expect(onMonthChange).toHaveBeenLastCalledWith('2024-11');
 
-  fireEvent.wheel(canvas, { deltaY: 40 });
   await settleIntervalScroll();
-  expectSelectedMonth('2024-12');
-  expect(onMonthChange).toHaveBeenCalledTimes(1);
+  expectSelectedMonth('2024-11');
+  onMonthChange.mockClear();
+
+  fireEvent.wheel(canvas, { deltaY: 1 });
+  expectSelectedMonth('2024-10');
+  await settleIntervalScroll();
+  expect(onMonthChange).toHaveBeenLastCalledWith('2024-10');
 
   fireEvent.wheel(picker, { deltaY: 80 });
-  await waitFor(() => expectSelectedMonth('2024-11'));
+  await waitFor(() => expectSelectedMonth('2024-09'));
   await settleIntervalScroll();
-  expect(onMonthChange.mock.calls).toEqual([['2024-12'], ['2024-11']]);
+  expect(onMonthChange.mock.calls).toEqual([['2024-10'], ['2024-09']]);
 
   await user.keyboard('{ArrowUp}');
-  await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
+  await waitFor(() => expectSelectedMonth('2024-10'), { timeout: 3_000 });
 });
 
 test('The month wheel stops at Undated and follows external month changes', async () => {
