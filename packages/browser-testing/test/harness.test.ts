@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { runBrowser } from '../src/harness';
 
 const EXECUTABLE_MODE = 0o700;
+const FIXTURE_START_TIMEOUT_MS = 1_000;
 
 test('a successful process exit cannot stand in for a completed browser journey', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'context-use-browser-test-'));
@@ -20,6 +21,37 @@ test('a successful process exit cannot stand in for a completed browser journey'
       runBrowser({ source: 'raise RuntimeError("Never executed")', env: { PATH: directory } }),
     ).rejects.toThrow('without completing the journey');
   } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('cancelling a session stops its running browser journey', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'context-use-browser-test-'));
+  const abort = new AbortController();
+  const started = join(directory, 'started');
+  try {
+    await writeFile(
+      join(directory, 'browser-harness'),
+      '#!/bin/sh\n/bin/cat >/dev/null\n/usr/bin/touch "$STARTED"\nexec /bin/sleep 60\n',
+      { mode: EXECUTABLE_MODE },
+    );
+    const journey = runBrowser({
+      source: 'print("pending")',
+      env: { PATH: directory, STARTED: started },
+      signal: abort.signal,
+    });
+    const failed = journey.catch((error: unknown) => error);
+    const startupDeadline = Date.now() + FIXTURE_START_TIMEOUT_MS;
+    while (!(await Bun.file(started).exists())) {
+      if (Date.now() > startupDeadline) {
+        throw new Error('Browser fixture did not start');
+      }
+      await Bun.sleep(1);
+    }
+    abort.abort();
+    expect(await failed).toBeInstanceOf(Error);
+  } finally {
+    abort.abort();
     await rm(directory, { recursive: true, force: true });
   }
 });

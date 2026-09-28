@@ -30,6 +30,7 @@
     "check:all": "bun run --parallel check:types check:codestyle check:frontend check:backend",
     "check:commit-message": "bun run --bun commitlint",
     "test": "bun run --bun turbo test",
+    "test:isolated": "bun run --cwd packages/browser-testing test:isolated",
     "fix:codestyle": "bun run --bun biome check --write"
   },
   "devDependencies": {
