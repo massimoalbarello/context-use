@@ -32,9 +32,14 @@ judgment. Do not restate their design, trust, testing, or change-scope guidance 
 1. Run the applicable automated tests and checks required by the repository instructions and the
    changed packages.
 2. Start `bun run dev:isolated:seeded` and exercise the affected behavior in the browser against
-   the disposable seeded application. Successful startup alone is not validation; test the changed
-   journey and its important failure or boundary states. Stop the isolated process when validation
-   is complete.
+   the disposable seeded application. Use the URL, `BU_NAME`, `BU_CDP_URL`, and `targetId` printed
+   in that run's `Isolated browser session` output to attach to its existing tab. Keep those
+   connection settings on every browser command so concurrent agents stay in their own sessions.
+   Successful startup alone is not validation; test the changed journey and its important failure
+   or boundary states. In a finally step, including after failed validation, send SIGTERM to the
+   printed session PID (or Ctrl-C to its terminal) and wait for exit and disposable-data cleanup.
+   This also closes the session's Chrome window. Do not leave the session running after finishing
+   testing unless the user explicitly asks to keep it open.
 3. For a user-visible frontend change, capture clear screenshots of the implemented result after
    browser validation. Include multiple states or viewports when they help the reviewer, and prefer
    a short recording when motion or a multi-step interaction is the behavior under review. Do not

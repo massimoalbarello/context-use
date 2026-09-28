@@ -14,7 +14,7 @@ const pdfjsDirectory = dirname(
   createRequire(require.resolve('react-pdf/package.json')).resolve('pdfjs-dist/package.json'),
 );
 
-const BACKEND_ORIGIN = `http://localhost:${DEFAULT_BACKEND_PORT}`;
+const BACKEND_ORIGIN = `http://localhost:${process.env.PORT || DEFAULT_BACKEND_PORT}`;
 const MCP_TRANSPORT_PROXY_CONTEXT = '^/mcp/?(?:\\?.*)?$';
 const MCP_ASSET_TRANSFERS_PROXY_CONTEXT = '^/mcp/asset-transfers(?:/|\\?|$)';
 const PUBLIC_RESOURCES_PROXY_CONTEXT = '^/public(?:/|\\?|$)';
@@ -26,7 +26,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: DEFAULT_FRONTEND_PORT,
+    port: Number(process.env.FRONTEND_PORT || DEFAULT_FRONTEND_PORT),
     strictPort: true,
     // Vite is the public origin in development. Better Auth's BASE_URL points here, so preserve
     // the browser's Origin header while proxying instead of pretending it came from the backend.

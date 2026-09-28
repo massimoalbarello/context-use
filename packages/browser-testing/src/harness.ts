@@ -5,6 +5,7 @@ const COMPLETED = '__CONTEXT_USE_BROWSER_COMPLETED__';
 export async function runBrowser(input: {
   source: string;
   env?: Record<string, string | undefined>;
+  signal?: AbortSignal;
 }): Promise<string> {
   const executable = Bun.which('browser-harness', { PATH: input.env?.PATH ?? process.env.PATH });
   if (!executable) {
@@ -18,6 +19,7 @@ export async function runBrowser(input: {
     stdout: 'pipe',
     stderr: 'pipe',
     timeout: BROWSER_TIMEOUT_MS,
+    signal: input.signal,
   });
   const [stdout, stderr, code] = await Promise.all([
     new Response(child.stdout).text(),

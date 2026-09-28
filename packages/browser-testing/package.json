@@ -10,7 +10,8 @@
   },
   "scripts": {
     "check:types": "bun run --bun tsc",
-    "test": "bun test test"
+    "test": "bun test test",
+    "test:isolated": "bun test integration"
   },
   "dependencies": {
     "playwright": "^1.63.0"
