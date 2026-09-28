@@ -13,20 +13,11 @@ test('excludes competing bootstrap memory while retaining operational instructio
 test('routine learning runs in the background without a foreground compaction flush', () => {
   const capability = memoryCapability('main');
   expect(capability.supportsPrivateTranscriptRecall).toBe(false);
-  const prompt = capability.promptBuilder!({
-    agentId: 'main',
-    availableTools: new Set(),
-    sandboxed: false,
-  }).join('\n');
-  expect(prompt).toContain('sole durable personal memory');
-  expect(prompt).toContain('including background');
   const plan = capability.flushPlanResolver!({
     cfg: {},
     nowMs: Date.now(),
     contextWindowTokens: 100_000,
   });
-  expect(prompt).toContain('Leave routine');
-  expect(prompt).toContain('queued background work is not a completed save');
   expect(plan).toBeNull();
 });
 

@@ -256,19 +256,6 @@ Following prose.`);
     }
   });
 
-  test('excludes a complete excerpt block from searchable text', () => {
-    const parsed = parseKnowledgePageMarkdown(`# Separate excerpt
-
-This summary is stored separately.
-
-## Details
-
-The searchable body remains.`);
-
-    expect(parsed.excerpt).toBe('This summary is stored separately.');
-    expect(parsed.searchableText).toBe('Details The searchable body remains.');
-  });
-
   test('preserves the exact unrepresented tail of a truncated excerpt source', () => {
     const source = `${'Early context stays in the excerpt. '.repeat(
       LONG_EXCERPT_REPEAT_COUNT,

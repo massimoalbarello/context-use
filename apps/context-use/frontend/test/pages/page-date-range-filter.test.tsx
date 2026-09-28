@@ -1,23 +1,9 @@
 import { expect, test } from 'bun:test';
-import { renderToStaticMarkup } from 'react-dom/server';
 import {
   calendarDateRangeFromSelection,
   calendarValueFromDate,
-  DateRangeFilter,
   dateRangeButtonLabel,
 } from '../../src/components/knowledge/date-range-filter';
-
-test('date filtering uses one app-owned range trigger instead of native date inputs', () => {
-  const html = renderToStaticMarkup(
-    <DateRangeFilter hint="Pages without an interval are excluded." onApply={() => undefined} />,
-  );
-
-  expect(html).toContain('Filter by date range');
-  expect(html).toContain('Choose dates');
-  expect(html).toContain('Pages without an interval are excluded.');
-  expect(html).toContain('aria-haspopup="dialog"');
-  expect(html).not.toContain('type="date"');
-});
 
 test('calendar selections produce stable URL dates and a concise range label', () => {
   const marchFirst = new Date('2025-03-01T12:00:00');

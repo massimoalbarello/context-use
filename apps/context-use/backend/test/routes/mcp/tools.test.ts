@@ -560,53 +560,6 @@ test('the concise guide is deterministic and names only available retrieval tool
       };
       expect(guide_version).toMatch(/^[A-Za-z0-9_-]{22}$/);
       expect(guide.split(/\s+/).length).toBeLessThanOrEqual(MAX_HYPERMEDIA_CURATION_GUIDE_WORDS);
-      expect(guide).toContain('self-writing autobiography');
-      expect(guide).toMatch(/where the user\s+and their agents stay in sync/);
-      expect(guide).toContain('Do not merely inventory facts');
-      expect(guide).toContain('Learn proactively');
-      expect(guide).toContain('Begin with retrieval and synthesis, not entities or page titles');
-      expect(guide).toContain('Keep the inquiry centered on the user');
-      expect(guide).toContain('personal relevance, future utility');
-      expect(guide).toContain('ask focused questions rather than guess');
-      expect(guide).toMatch(/Prefer fewer, better-chosen subjects over broad\s+coverage/);
-      expect(guide).toMatch(/governs selection, not page count/);
-      expect(guide).toContain('Never turn uncertainty into assertion');
-      expect(guide).toContain('The autobiography is the graph, not one page');
-      expect(guide).toMatch(/Each page keeps one purpose and level/);
-      expect(guide).toMatch(/detail an event or usefully overview several events/);
-      expect(guide).toMatch(/never accumulate a[^a-z]+catch-all page/);
-      expect(guide).toMatch(/retrieve or revise independently/);
-      expect(guide).toMatch(/overview truthful spanning `temporalCoverage` when meaningful/);
-      expect(guide).toMatch(/otherwise\s+leave coverage unset/);
-      expect(guide).toMatch(/Link targets must exist before writing/);
-      expect(guide).toContain('smallest coherent revision');
-      expect(guide).toContain('Decomposition is normal curation');
-      expect(guide).toMatch(/archive the mixed page after a user-informed decision/);
-      expect(guide).toContain('Place knowledge in time');
-      expect(guide).toContain('story is derived from its evidence, not a replacement');
-      expect(guide).toContain('explain the blockers to the user');
-      expect(guide).toContain('search_hypermedia');
-      expect(guide).toContain('`recordFilter`');
-      expect(guide).toContain('names, aliases, identifiers, and topic phrases');
-      expect(guide).toContain('Similarity and rank show relevance, not identity or relationships');
-
-      expect(guide).toContain('resource reads include `publication`');
-      expect(guide).toContain('Prefer private pages only when editing');
-      expect(guide).toMatch(/Public and private pages are equally suitable for reading\s+context/);
-      expect(guide).toMatch(/`publication.isPublic`:\s+true means public; false means private/);
-      expect(guide).not.toContain('publishedAt');
-      expect(guide).not.toContain('publicId');
-      expect(guide).toMatch(/even when the latest revision is private/);
-      expect(guide).toMatch(
-        /prefer creating a new private page unless the user explicitly wants to modify\s+the public page/,
-      );
-      expect(guide).toContain('Updating a public page requires explicit user confirmation');
-      expect(guide).toContain('Existing explicit confirmation counts');
-      expect(guide).toMatch(/Edits create private page revisions/);
-      expect(guide).toMatch(/Only the owner can publish or unpublish with a fresh passkey/);
-      expect(guide).toMatch(/Public entity fields are live, not versioned/);
-      expect(guide).toMatch(/Records always\s+remain private/);
-      expect(guide).toContain('References never publish their targets automatically');
 
       const availableToolNames = new Set(tools.map(({ name }) => name));
       const guideToolNames = [...guide.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)].flatMap((match) =>

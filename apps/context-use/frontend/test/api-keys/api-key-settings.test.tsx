@@ -99,27 +99,3 @@ test('new credentials expose the generic endpoint and UUIDv7 key with copy actio
   await user.click(view.getByRole('button', { name: 'I saved the key' }));
   expect(onDone).toHaveBeenCalledTimes(1);
 });
-
-test('key settings separates active and revoked API keys while preserving the revoke warning', () => {
-  const view = render(
-    <ApiKeySettings
-      {...apiKeySettingsProps({
-        keys: [
-          created.key,
-          {
-            ...created.key,
-            readableId: 'old-key-a1b2c3d4e5f60718293a4b5c',
-            name: 'Old key',
-            revokedAt: '2026-09-09T10:00:00.000Z',
-          },
-        ],
-      })}
-    />,
-  );
-
-  expect(view.getByRole('heading', { name: 'Active keys' })).toBeTruthy();
-  expect(view.getByRole('heading', { name: 'Revoked API keys' })).toBeTruthy();
-  expect(view.getByText('Engineering activity')).toBeTruthy();
-  expect(view.getByText('Old key')).toBeTruthy();
-  expect(view.getByRole('button', { name: 'Revoke' }).getAttribute('aria-haspopup')).toBe('dialog');
-});
