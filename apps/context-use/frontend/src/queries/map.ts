@@ -52,6 +52,8 @@ type MapPageQuery = {
 };
 
 const MAP_PAGE_LIMIT = 32;
+const MAP_PAGE_STALE_TIME = 120_000;
+const MAP_PAGE_GC_TIME = 900_000;
 
 export function mergeMapPages(batches: MapPages[]): MapPage[] {
   const pages = new Map<string, MapPage>();
@@ -75,6 +77,8 @@ export function mapPagesQueryOptions({ visibleEntities, month }: MapPageQuery) {
         month: month ?? null,
       },
     ] as const,
+    staleTime: MAP_PAGE_STALE_TIME,
+    gcTime: MAP_PAGE_GC_TIME,
     initialPageParam: 0,
     placeholderData: keepPreviousData,
     queryFn: async ({ pageParam, signal }) => {
