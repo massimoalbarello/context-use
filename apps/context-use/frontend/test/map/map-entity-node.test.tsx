@@ -17,6 +17,7 @@ afterEach(cleanup);
 
 const INTERVAL_SETTLE_WAIT_MS = 160;
 const MAX_RESPONSIVE_PINCH_WIDTH_RATIO = 0.72;
+const MAX_ZOOM_BUTTON_CLICKS = 30;
 
 async function settleIntervalScroll() {
   // biome-ignore lint/nursery/useAwaitThenable: React act intentionally returns a thenable.
@@ -372,6 +373,44 @@ test('The time filter explains itself on hover and focus without changing the se
   expect(onMonthChange).not.toHaveBeenCalled();
 });
 
+test('Desktop zoom buttons preserve the map centre and time filter, respect limits, and remain available during selection', async () => {
+  const user = userEvent.setup();
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+  const { rerender } = render(<MapFixture onMonthChange={onMonthChange} />);
+  const canvas = screen.getByLabelText('Interactive map');
+  const viewport = () => canvas.getAttribute('viewBox')!.split(' ').map(Number);
+  const [x, y, width, height] = viewport() as [number, number, number, number];
+  const zoomIn = screen.getByRole<HTMLButtonElement>('button', { name: 'Zoom in' });
+  const zoomOut = screen.getByRole<HTMLButtonElement>('button', { name: 'Zoom out' });
+
+  await user.click(zoomOut);
+  const [nextX, nextY, nextWidth, nextHeight] = viewport() as [number, number, number, number];
+  expect(nextWidth).toBeGreaterThan(width);
+  expect(nextX + nextWidth / 2).toBeCloseTo(x + width / 2);
+  expect(nextY + nextHeight / 2).toBeCloseTo(y + height / 2);
+  await user.click(zoomIn);
+  expect(viewport()[2]).toBeCloseTo(width);
+
+  for (let click = 0; click < MAX_ZOOM_BUTTON_CLICKS && !zoomIn.disabled; click += 1) {
+    await user.click(zoomIn);
+  }
+  expect(zoomIn.disabled).toBe(true);
+  expect(viewport()[2]).toBeLessThan(width);
+  for (let click = 0; click < MAX_ZOOM_BUTTON_CLICKS && !zoomOut.disabled; click += 1) {
+    await user.click(zoomOut);
+  }
+  expect(zoomOut.disabled).toBe(true);
+  const maximumWidth = viewport()[2]!;
+  expect(maximumWidth).toBeGreaterThan(width);
+  expectSelectedMonth();
+  expect(onMonthChange).not.toHaveBeenCalled();
+
+  rerender(<MapFixture onMonthChange={onMonthChange} selectedKey="entity:grace-hopper" />);
+  expect(screen.queryByRole('navigation', { name: 'Time navigation' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+  expect(viewport()[2]).toBeLessThan(maximumWidth);
+});
+
 test('On phones the month wheel opens from a compact control and stays synchronized with the map', async () => {
   const matchMedia = spyOn(window, 'matchMedia').mockImplementation((query) => ({
     matches: query === '(max-width: 767px)',
@@ -387,6 +426,8 @@ test('On phones the month wheel opens from a compact control and stays synchroni
     const user = userEvent.setup();
     const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
     const { rerender } = render(<MapFixture onMonthChange={onMonthChange} month="2025-01" />);
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Zoom out' })).toBeNull();
     expect(screen.queryByRole('spinbutton')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Change month: January 2025' }));
     const picker = await screen.findByRole('spinbutton', { name: 'Selected month' });

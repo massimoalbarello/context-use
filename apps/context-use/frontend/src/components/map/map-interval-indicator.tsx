@@ -86,10 +86,7 @@ export function MapIntervalIndicator({
   );
 
   return (
-    <nav
-      className="absolute top-1/2 right-4 z-10 -translate-y-1/2 select-none"
-      aria-label="Time navigation"
-    >
+    <nav className="select-none" aria-label="Time navigation">
       {narrow ? (
         <Popover>
           <PopoverTrigger
