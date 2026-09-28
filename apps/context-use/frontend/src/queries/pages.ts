@@ -26,6 +26,14 @@ export type KnowledgePagePreview = NonNullable<
 export type KnowledgePageRevision = NonNullable<
   Awaited<ReturnType<ReturnType<ReturnType<typeof api.api.pages>['revisions']>['get']>>['data']
 >;
+export type PagePublicationPreview = NonNullable<
+  Awaited<
+    ReturnType<
+      ReturnType<ReturnType<typeof api.api.pages>['revisions']>['publication-preview']['get']
+    >
+  >['data']
+>;
+
 export type KnowledgePageReference = KnowledgePage['references'][number];
 export type KnowledgePageDiff = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.pages>['diff']['get']>>['data']
@@ -52,6 +60,32 @@ export const pageDetailsQueryKey = [...pagesQueryKey, 'detail'] as const;
 export const pagePreviewsQueryKey = [...pagesQueryKey, 'preview'] as const;
 export const pageRevisionsQueryKey = [...pagesQueryKey, 'revision'] as const;
 export const pageDiffsQueryKey = [...pagesQueryKey, 'diff'] as const;
+
+export function pagePublicationPreviewQueryOptions({
+  readableId,
+  revisionNumber,
+  approvalId,
+}: {
+  readableId: string;
+  revisionNumber: number;
+  approvalId: string | undefined;
+}) {
+  return queryOptions({
+    queryKey: [...pagesQueryKey, 'publication-preview', readableId, revisionNumber, approvalId],
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await api.api
+        .pages({ pageReadableId: readableId })
+        .revisions({ revisionNumber })
+        ['publication-preview'].get();
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+  });
+}
 
 export function pageRevisionQueryOptions({
   readableId,

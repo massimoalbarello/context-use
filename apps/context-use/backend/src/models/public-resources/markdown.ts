@@ -104,16 +104,24 @@ function projectPublicMarkdown({
 export function publicPageMarkdown({
   markdown,
   targets,
+  localPageReadableId,
 }: {
   markdown: string;
   targets: PublicMarkdownTarget[];
+  localPageReadableId?: string;
 }): string | null {
   const byAddress = new Map(
     targets.map((target) => [`${target.kind}:${target.readableId}`, target]),
   );
   return projectPublicMarkdown({
     markdown,
-    destination: (link) => linkDestination({ link, targets: byAddress }),
+    destination: (link) => {
+      const reference = internalReferenceFromLink(link);
+      if (reference?.kind === 'page' && reference.readableId === localPageReadableId) {
+        return reference.fragment ? `#${reference.fragment}` : '#';
+      }
+      return linkDestination({ link, targets: byAddress });
+    },
   });
 }
 

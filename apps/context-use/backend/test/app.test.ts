@@ -105,6 +105,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     publicSiteService: unusedPublicSiteService,
     publicationApprovalService: unusedPublicationApprovalService,
     publicResourcesService: {
+      pagePreview: async () => null,
       homepageContent: () => Promise.resolve(null),
       index: async () => ({ entries: [], total: 0 }),
       assetContent: async () => null,

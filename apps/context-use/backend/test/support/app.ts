@@ -72,6 +72,7 @@ export const unusedPublicationApprovalService: PublicationApprovalServiceContrac
 };
 
 export const unusedPublicResourcesService: PublicResourcesServiceContract = {
+  pagePreview: unexpectedCall,
   homepageContent: unexpectedCall,
   index: unexpectedCall,
   assetContent: unexpectedCall,

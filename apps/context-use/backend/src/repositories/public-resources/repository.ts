@@ -42,7 +42,14 @@ export interface PublicResourceSummary {
   modifiedAt: string;
 }
 
+export interface PagePublicationPreviewInput {
+  ownerId: string;
+  readableId: string;
+  revisionNumber: number;
+}
+
 export interface PublicResourcesRepositoryContract {
+  findPagePreview(input: PagePublicationPreviewInput): Promise<StoredPublicPage | null>;
   findHomepage(input: { ownerId: string }): Promise<{ publicId: string } | null>;
   list(input: {
     offset: number;
@@ -173,20 +180,42 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
     };
   }
 
-  async findPage({ publicId }: { publicId: string }): Promise<StoredPublicPage | null> {
-    // One statement selects the approved revision and its retained relationships together.
+  findPage({ publicId }: { publicId: string }): Promise<StoredPublicPage | null> {
+    return this.pageSource({ publicId });
+  }
+
+  findPagePreview(input: PagePublicationPreviewInput): Promise<StoredPublicPage | null> {
+    return this.pageSource(input);
+  }
+
+  private async pageSource(
+    input: { publicId: string } | PagePublicationPreviewInput,
+  ): Promise<StoredPublicPage | null> {
+    const publicId = 'publicId' in input ? input.publicId : null;
+    const preview = 'ownerId' in input ? input : null;
+    // Select the source and its public destinations in the same database snapshot.
     const rows = await this.sql.FindPublicPage`
       /* @notNull title storageKey contentHash sizeBytes modifiedAt */
       /* @type publicId string | null */
       /* @type mediaType string | null */
-      with active_page as (
+      with selected_revision as (
+        select "published_revision_id" as "id", "id" as "page_id", "owner_id"
+        from "knowledge_page"
+        where "public_id" = ${publicId} and "published_at" is not null and "archived_at" is null
+        union all
+        select revision."id", revision."page_id", revision."owner_id"
+        from "knowledge_page" page
+        join "knowledge_page_revision" revision on revision."page_id" = page."id"
+          and revision."owner_id" = page."owner_id"
+        where page."owner_id" = ${preview?.ownerId ?? null}
+          and page."readable_id" = ${preview?.readableId ?? null} and page."archived_at" is null
+          and revision."revision_number" = ${preview?.revisionNumber ?? null}
+      ), active_page as (
         select revision."id", revision."owner_id", revision."title", revision."storage_key",
           revision."content_hash", revision."size_bytes", revision."created_at"
-        from "knowledge_page" page
-        join "knowledge_page_revision" revision on revision."id" = page."published_revision_id"
-          and revision."page_id" = page."id" and revision."owner_id" = page."owner_id"
-        where page."public_id" = ${publicId} and page."published_at" is not null
-          and page."archived_at" is null
+        from selected_revision source
+        join "knowledge_page_revision" revision on revision."id" = source."id"
+          and revision."page_id" = source."page_id" and revision."owner_id" = source."owner_id"
       ), link_targets as (
         select 'page' as "kind", target."readable_id", target."public_id", null as "media_type"
         from active_page source

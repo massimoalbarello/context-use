@@ -11,8 +11,8 @@ export function publicPageHtml({
   markdown,
   modifiedAt,
 }: {
-  publicId: string;
-  canonicalUrl: string;
+  publicId?: string;
+  canonicalUrl?: string;
   siteName?: string;
   title: string;
   markdown: string;
@@ -26,7 +26,7 @@ export function publicPageHtml({
       markdownText(fromMarkdown(markdown).children.find((node) => node.type === 'paragraph')) ||
       title,
     modifiedAt,
-    markdownUrl: `/public/pages/${encodeURIComponent(publicId)}/markdown`,
+    markdownUrl: publicId ? `/public/pages/${encodeURIComponent(publicId)}/markdown` : undefined,
     children: (
       <article>
         <PublicMarkdown markdown={markdown} />
