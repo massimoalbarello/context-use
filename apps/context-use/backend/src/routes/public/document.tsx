@@ -113,7 +113,7 @@ export function publicDocument({
               .
             </p>
             <a className="owner-login" href="/app">
-              Owner login
+              Owner dashboard
             </a>
           </div>
           {modifiedAt || markdownUrl ? (

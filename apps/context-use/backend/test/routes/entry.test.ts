@@ -176,7 +176,7 @@ test(
             expect(response.status).toBe(StatusMap.OK);
             expect(response.headers.get('location')).toBeNull();
             const html = await response.text();
-            expect(html).toContain('Owner login');
+            expect(html).toContain('Owner dashboard');
             expect(html).not.toContain('Private owner description');
           }
         }
