@@ -27,15 +27,18 @@ test(
       expect((await binary.request({ path: '/api/profile' })).status).toBe(UNAUTHORIZED);
       const publicHome = await binary.request({ path: '/', redirect: 'manual' });
       expect(publicHome.status).toBe(OK);
-      expect(await publicHome.text()).toContain('Nothing published yet');
+      const homeHtml = await publicHome.text();
+      expect(homeHtml).toContain('Nothing published yet');
+      expect(homeHtml).toContain('"@type":"WebSite"');
+      expect(homeHtml).toContain('"name":"Orchard Notes"');
+      expect(homeHtml).toContain('"url":"https://notes.example.org/"');
       const directoryHtml = await (await binary.request({ path: '/public/directory' })).text();
       expect(directoryHtml).toContain('<h1>Orchard Notes</h1>');
       expect(directoryHtml).toContain(
         'rel="canonical" href="https://notes.example.org/public/directory"',
       );
       expect(directoryHtml).toContain('property="og:site_name" content="Orchard Notes"');
-      expect(directoryHtml).toContain('"@type":"WebSite"');
-      expect(directoryHtml).toContain('"url":"https://notes.example.org/"');
+      expect(directoryHtml).not.toContain('application/ld+json');
       const llms = await (await binary.request({ path: '/llms.txt' })).text();
       expect(llms).toContain('# Orchard Notes');
       expect(llms).toContain('(https://notes.example.org/)');
@@ -45,17 +48,13 @@ test(
         '/app/settings/api-keys',
         '/app/mcp/authorize',
         '/app/settings/public-site',
+        '/app/settings/unknown',
       ]) {
         const response = await binary.request({ path });
         expect(response.status, path).toBe(OK);
         expect(await response.text()).toContain('<div id="app"></div>');
       }
-      for (const path of [
-        '/some-path-that-does-not-exist',
-        '/app/settings/unknown',
-        '/missing.js',
-        '/assets/missing.js',
-      ]) {
+      for (const path of ['/some-path-that-does-not-exist', '/missing.js', '/assets/missing.js']) {
         const response = await binary.request({ path, headers: { accept: 'text/markdown' } });
         expect(response.status, path).toBe(NOT_FOUND);
         expect(response.headers.get('content-type')).toBe('text/markdown; charset=utf-8');

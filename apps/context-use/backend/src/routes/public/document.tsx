@@ -76,28 +76,13 @@ export function publicDocument({
         {markdownUrl ? <link rel="alternate" type="text/markdown" href={markdownUrl} /> : null}
         <link rel="describedby" href="/llms.txt" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-        {canonicalUrl ? (
+        {canonicalUrl && new URL(canonicalUrl).pathname === '/' ? (
           <script type="application/ld+json">
             {JSON.stringify({
               '@context': 'https://schema.org',
-              '@graph': [
-                {
-                  '@type': 'WebPage',
-                  '@id': canonicalUrl,
-                  name: title,
-                  description: description.slice(0, DESCRIPTION_LENGTH),
-                  url: canonicalUrl,
-                  dateModified: modifiedAt,
-                  isAccessibleForFree: true,
-                  isPartOf: { '@id': new URL('/#website', canonicalUrl).href },
-                },
-                {
-                  '@type': 'WebSite',
-                  '@id': new URL('/#website', canonicalUrl).href,
-                  name: siteName,
-                  url: new URL('/', canonicalUrl).href,
-                },
-              ],
+              '@type': 'WebSite',
+              name: siteName,
+              url: canonicalUrl,
             }).replace(/</g, '\\u003c')}
           </script>
         ) : null}
@@ -140,7 +125,7 @@ export function publicDocument({
             <div className="footer-links">
               {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
               <a href="/app">Owner login</a>
-              <a href="/llms.txt">AI-readable site index</a>
+              <a href="/llms.txt">AI reading guide</a>
             </div>
           </div>
         </footer>

@@ -3,7 +3,6 @@ import { API_PATH } from '#backend/lib/api-path.ts';
 import { MCP_ROUTE_PATH } from '#backend/lib/auth/better-auth.ts';
 import { NotFoundError } from '#backend/lib/errors.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
-import { CLIENT_PATHS } from './client-paths.gen.ts';
 import { publicNotFound } from './public/response.tsx';
 
 // Every file the frontend build produced, one route each. Mounted ahead of the global
@@ -36,21 +35,6 @@ export function createFrontendFallbackController({
 }: {
   frontendAssetsService: FrontendAssetsServiceContract;
 }) {
-  // Match TanStack's generated client paths only after the server's routes and assets.
-  const clientRoutes = new Elysia().onError(({ code, request }) => {
-    if (code === 'NOT_FOUND') {
-      return publicNotFound({ request });
-    }
-  });
-  for (const path of CLIENT_PATHS) {
-    clientRoutes.get(
-      path,
-      ({ request }) =>
-        frontendAssetsService.fallback(new URL(request.url).pathname) ??
-        publicNotFound({ request }),
-    );
-  }
-
   return new Elysia().mount((request) => {
     const { pathname } = new URL(request.url);
     if (
@@ -61,6 +45,9 @@ export function createFrontendFallbackController({
     ) {
       throw new NotFoundError();
     }
-    return clientRoutes.handle(request);
+    if (pathname === '/app' || pathname.startsWith('/app/')) {
+      return frontendAssetsService.fallback(pathname) ?? publicNotFound({ request });
+    }
+    return publicNotFound({ request });
   });
 }

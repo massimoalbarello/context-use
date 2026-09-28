@@ -152,7 +152,7 @@ test('live public identity uses only the approved current image and safely escap
     );
     expect(edited).toContain('[link](javascript:alert(1))');
     expect(edited).toContain('Organization');
-    expect(edited).not.toContain('<script>');
+    expect(edited).not.toContain('<script');
     expect(edited).not.toContain('<img src="/api');
     expect(edited).not.toContain('Ada Lovelace');
     const replacement = await createPortrait({
@@ -375,7 +375,7 @@ test('the index excludes archived pages and inconsistent owner or selected revis
     const pageId = await fixture.publish({ readableId: page.readableId });
     expect((await fixture.resources.findEntity({ publicId: id }))?.pages).toHaveLength(1);
     const html = await (await request({ fixture, id })).text();
-    expect(html).not.toContain('<script>');
+    expect(html).not.toContain('<script');
     expect(html).toContain('Public title &amp; name');
     const { database } = fixture;
     await database`update "knowledge_page" set "archived_at" = ${NOW} where "id" = ${page.id}`;

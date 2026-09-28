@@ -56,7 +56,7 @@ export function publicNotFound({
   markdown?: boolean;
 }) {
   const content =
-    '# Public content not found\n\nThis address is unavailable.\n\n[Browse public content](/public/directory) or use the [AI-readable site index](/llms.txt).\n';
+    '# Public content not found\n\nThis address is unavailable.\n\n[Browse public content](/public/directory) or use the [AI reading guide](/llms.txt).\n';
   if (markdown) {
     return new Response(content, {
       status: 404,
@@ -76,7 +76,7 @@ export function publicNotFound({
             <p>This address is unavailable.</p>
             <p>
               <a href="/public/directory">Browse public content</a> or use the{' '}
-              <a href="/llms.txt">AI-readable site index</a>.
+              <a href="/llms.txt">AI reading guide</a>.
             </p>
           </article>
         ),

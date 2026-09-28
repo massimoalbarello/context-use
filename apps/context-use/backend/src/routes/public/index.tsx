@@ -24,24 +24,12 @@ export function publicIndexHtml({
     siteName,
     description: 'Explore the pages and people shared publicly from this knowledge base.',
     canonicalUrl: new URL(path, origin).href,
-    markdownUrl: `/llms.txt?page=${page}`,
     children: (
       <article>
         <h1>{siteName}</h1>
         <p>
-          Ideas, notes, and people shared from this knowledge base. Follow a page to explore what
-          connects them.
-        </p>
-        <p>
-          Use this directory to read published notes, learn about the people and organizations they
-          mention, and follow references between them. Everything listed here is available without
-          an account. Each page shows the revision its owner chose to publish; later private edits
-          stay private until the owner publishes them.
-        </p>
-        <p>
-          Each article includes a Markdown view for reading in other tools. The AI-readable site
-          index lists the same public content. To manage your own knowledge base, use Owner login
-          and sign in with your passkey.
+          Browse published pages and people. Each page shows the version its owner chose to share;
+          unpublished edits stay private. Open a page for its Markdown version.
         </p>
         {entries.length ? (
           (['page', 'entity'] as const).map((kind) => {

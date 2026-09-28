@@ -4,7 +4,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { visit } from 'unist-util-visit';
 import { CHANGE, NOW, withPublicResources } from './fixture.ts';
 
-test('the directory, AI index and sitemap expose approved public projections and remove withdrawn content', async () => {
+test('the directory and sitemap expose approved public projections and remove withdrawn content', async () => {
   await withPublicResources(async (fixture) => {
     const { app, targets, create, update, publish, transition } = fixture;
     const target = await targets();
@@ -32,7 +32,7 @@ test('the directory, AI index and sitemap expose approved public projections and
     });
     await update({ readableId: page.readableId, markdown: '# SECRET next draft\n\nPrivate body.' });
     const snapshots = new Map<string, string>();
-    for (const path of ['/public/directory', '/llms.txt', '/sitemap.xml?page=1']) {
+    for (const path of ['/public/directory', '/sitemap.xml?page=1']) {
       const response = await app.handle(new Request(`http://localhost${path}`));
       expect(response.status).toBe(StatusMap.OK);
       expect(response.headers.get('cache-control')).toBe('private, no-store');
@@ -65,19 +65,10 @@ test('the directory, AI index and sitemap expose approved public projections and
     );
     expect(snapshots.get('/public/directory')).not.toContain('<script>');
     const entityUrl = `http://localhost/public/entities/${target.entityId}`;
-    await assertHtmlDiscovery({
+    assertHtmlDiscovery({
       body: await (await app.handle(new Request(entityUrl))).text(),
       canonicalUrl: entityUrl,
     });
-    const urls: string[] = [];
-    visit(fromMarkdown(snapshots.get('/llms.txt')!), 'link', (node) => {
-      urls.push(node.url);
-    });
-    expect(urls).toContain(`http://localhost/public/pages/${id}/markdown`);
-    expect(urls).toContain(`http://localhost/public/entities/${target.entityId}/markdown`);
-    for (const url of urls) {
-      expect((await app.handle(new Request(url))).status).toBe(StatusMap.OK);
-    }
     expect(snapshots.get('/sitemap.xml?page=1')).toContain(`<lastmod>${page.updatedAt}</lastmod>`);
     await transition({
       ownerId: 'owner-a',
@@ -110,7 +101,6 @@ test('canonical public URLs honor Accept preferences, exclusions and discovery l
         `/public/entities/${target.entityId}/markdown`,
         `/public/entities/${target.entityId}`,
       ],
-      ['/public/directory', '/llms.txt', '/public/directory'],
     ] as const) {
       const markdown = await (
         await app.handle(new Request(`http://localhost${markdownUrl}`))
@@ -139,7 +129,7 @@ test('canonical public URLs honor Accept preferences, exclusions and discovery l
           expect(body).toBe(markdown);
         }
         if (type === 'text/html') {
-          await assertHtmlDiscovery({ body, canonicalUrl });
+          assertHtmlDiscovery({ body, canonicalUrl });
         }
       }
     }
@@ -148,6 +138,9 @@ test('canonical public URLs honor Accept preferences, exclusions and discovery l
 
 test('public discovery is bounded and all entries remain reachable through next-page links and sitemaps', async () => {
   await withPublicResources(async ({ app, create, publish }) => {
+    const guide = await app.handle(new Request('http://localhost/llms.txt'));
+    expect(guide.headers.get('content-type')).toBe('text/markdown; charset=utf-8');
+    const before = await guide.text();
     const ids = [];
     const indexSize = 50;
     for (let i = 0; i < indexSize + 1; i++) {
@@ -163,23 +156,32 @@ test('public discovery is bounded and all entries remain reachable through next-
     expect(first).toContain('href="/public/directory?page=2"');
     expect(second).toContain('href="/public/directory"');
     const llms = await (await app.handle(new Request('http://localhost/llms.txt'))).text();
-    expect(llms).toContain('http://localhost/llms.txt?page=2');
+    expect(llms).toBe(before);
+    expect(llms).toContain('Accept: text/markdown');
+    const urls: string[] = [];
+    visit(fromMarkdown(llms), 'link', (node) => {
+      urls.push(node.url);
+    });
+    expect(urls).toEqual([
+      'http://localhost/',
+      'http://localhost/public/directory',
+      'http://localhost/sitemap.xml',
+    ]);
+    for (const url of urls) {
+      expect((await app.handle(new Request(url))).status).toBe(StatusMap.OK);
+    }
     const sitemap = await (
       await app.handle(new Request('http://localhost/sitemap.xml?page=1'))
     ).text();
     for (const id of ids) {
       expect(sitemap).toContain(`/public/pages/${id}`);
     }
-    for (const path of ['/public/directory?page=3', '/llms.txt?page=3', '/sitemap.xml?page=2']) {
+    for (const path of ['/public/directory?page=3', '/sitemap.xml?page=2']) {
       expect((await app.handle(new Request(`http://localhost${path}`))).status).toBe(
         StatusMap['Not Found'],
       );
     }
-    for (const path of [
-      '/public/directory?page=-1',
-      '/llms.txt?page=1.5',
-      '/sitemap.xml?page=nope',
-    ]) {
+    for (const path of ['/public/directory?page=-1', '/sitemap.xml?page=nope']) {
       expect((await app.handle(new Request(`http://localhost${path}`))).status).toBe(
         StatusMap['Bad Request'],
       );
@@ -222,29 +224,9 @@ test('missing public resources have indistinguishable recoverable HTML and Markd
   });
 });
 
-async function assertHtmlDiscovery({ body, canonicalUrl }: { body: string; canonicalUrl: string }) {
+function assertHtmlDiscovery({ body, canonicalUrl }: { body: string; canonicalUrl: string }) {
   expect(body).toContain(`rel="canonical" href="${canonicalUrl}"`);
   expect(body).toContain('rel="alternate" type="text/markdown"');
-  expect(body).toContain('AI-readable site index');
-  const types: string[] = [];
-  let metadata = '';
-  await new HTMLRewriter()
-    .on('script', {
-      element(element) {
-        types.push(element.getAttribute('type') ?? '');
-      },
-      text(text) {
-        metadata += text.text;
-      },
-    })
-    .transform(new Response(body))
-    .text();
-  expect(types).toEqual(['application/ld+json']);
-  expect(JSON.parse(metadata)['@graph']).toContainEqual(
-    expect.objectContaining({
-      '@type': 'WebPage',
-      url: canonicalUrl,
-      isAccessibleForFree: true,
-    }),
-  );
+  expect(body).toContain('AI reading guide');
+  expect(body).not.toContain('<script');
 }

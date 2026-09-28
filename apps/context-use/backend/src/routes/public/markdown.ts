@@ -79,14 +79,10 @@ export function publicEntityMarkdown(entity: PublicEntity): string {
   });
 }
 
-export function publicIndexMarkdown({
-  entries,
-  nextUrl,
+export function publicSiteMarkdown({
   origin,
   siteName = DEFAULT_PUBLIC_SITE_NAME,
 }: {
-  entries: PublicResourceSummary[];
-  nextUrl: string | null;
   origin: string;
   siteName?: string;
 }) {
@@ -95,63 +91,18 @@ export function publicIndexMarkdown({
     children: [
       { type: 'heading', depth: 1, children: [{ type: 'text', value: siteName }] },
       {
-        type: 'blockquote',
-        children: [
-          {
-            type: 'paragraph',
-            children: [
-              {
-                type: 'text',
-                value: 'Pages and entities explicitly published on this Context Use instance.',
-              },
-            ],
-          },
-        ],
-      },
-      {
         type: 'paragraph',
         children: [
           {
             type: 'text',
             value:
-              'Use this index to find and read public content. No sign-in is needed. Request any linked page with Accept: text/markdown, or use its /markdown URL. Page content reflects the approved revision. Private drafts and records are not available here. Links to public images and downloads remain in the content.',
+              'Browse the public directory to find published pages and people. Follow its next-page links for more content. Read individual pages and entities with Accept: text/markdown or their /markdown URL. Pages show the approved revision; private drafts are not available. No sign-in is needed.',
           },
         ],
       },
-      { type: 'heading', depth: 2, children: [{ type: 'text', value: 'When to use this site' }] },
-      {
-        type: 'paragraph',
-        children: [
-          {
-            type: 'text',
-            value:
-              'Use this site to answer questions about the published notes, identify people and organizations they mention, and follow their references. Start with the links below, read the relevant pages, and cite their public URLs. This public reading surface cannot search private knowledge or change content; those tasks require authorization from the owner through the app.',
-          },
-        ],
-      },
-      ...(['page', 'entity'] as const).flatMap((kind): RootContent[] => {
-        const group = entries.filter((entry) => entry.kind === kind);
-        return group.length
-          ? [
-              {
-                type: 'heading',
-                depth: 2,
-                children: [{ type: 'text', value: kind === 'page' ? 'Pages' : 'Entities' }],
-              },
-              markdownLinks(
-                group.map((entry) => ({
-                  title: entry.title,
-                  url: new URL(`${publicResourcePath(entry)}/markdown`, origin).href,
-                })),
-              ),
-            ]
-          : [];
-      }),
-      { type: 'heading', depth: 2, children: [{ type: 'text', value: 'Navigation' }] },
       markdownLinks([
-        ...(nextUrl ? [{ title: 'Next index page', url: new URL(nextUrl, origin).href }] : []),
         { title: 'Homepage', url: new URL('/', origin).href },
-        { title: 'Browse public content', url: new URL('/public/directory', origin).href },
+        { title: 'Public directory', url: new URL('/public/directory', origin).href },
         { title: 'Sitemap', url: new URL('/sitemap.xml', origin).href },
       ]),
     ],

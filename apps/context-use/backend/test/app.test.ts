@@ -328,6 +328,7 @@ async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
     for (const path of [
       '/app',
       '/app/settings/public-site',
+      '/app/settings/unknown',
       '/app/login',
       '/app/map',
       '/app/pages',
@@ -366,7 +367,6 @@ async function expectUnknownRouteBoundary({
       '/some-path-that-does-not-exist',
       '/publicity',
       '/public-assets',
-      '/app/settings/unknown',
       '/pages',
       '/map',
       '/login',

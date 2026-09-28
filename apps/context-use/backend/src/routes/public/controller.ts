@@ -36,7 +36,7 @@ export function createPublicController({
           : emptyPublicHomepageHtml({ canonicalUrl, siteName }),
       markdown: () =>
         content?.markdown ??
-        '# Nothing published yet\n\nThis knowledge base doesn’t have a public homepage yet. [Browse public content](/public/directory) or use the [AI-readable site index](/llms.txt).\n',
+        '# Nothing published yet\n\nThis knowledge base doesn’t have a public homepage yet. [Browse public content](/public/directory) or use the [AI reading guide](/llms.txt).\n',
     });
   };
   return new Elysia()

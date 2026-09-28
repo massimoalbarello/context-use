@@ -196,7 +196,7 @@ test('both formats strip active and hidden destinations, omit external images, p
       } else {
         expect(body).toContain('id="cafe-bold-and-code"');
         expect(body).not.toContain(`<img src="/public/assets/${fileId}"`);
-        expect(body).not.toContain('<script>');
+        expect(body).not.toContain('<script');
       }
     }
   });

@@ -15,7 +15,6 @@
       "!**/*.lock",
       "!**/*.svg",
       "!apps/context-use/backend/src/queries.gen.ts",
-      "!apps/context-use/backend/src/routes/client-paths.gen.ts",
       "!apps/context-use/frontend/src/routeTree.gen.ts"
     ]
   },

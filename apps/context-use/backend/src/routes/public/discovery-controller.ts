@@ -2,8 +2,8 @@ import { Elysia, t } from 'elysia';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 import { PUBLIC_DOCUMENT_CSP } from './document.tsx';
 import { publicIndexHtml } from './index.tsx';
-import { publicIndexMarkdown, publicResourcePath } from './markdown.ts';
-import { publicNotFound, publicReadingResponse } from './response.tsx';
+import { publicResourcePath, publicSiteMarkdown } from './markdown.ts';
+import { publicNotFound } from './response.tsx';
 
 const INDEX_SIZE = 50;
 const SITEMAP_SIZE = 1_000;
@@ -36,19 +36,10 @@ export function createPublicDiscoveryController({
       return publicNotFound({ request });
     }
     const nextPage = page * INDEX_SIZE < index.total ? page + 1 : null;
-    return publicReadingResponse({
-      request,
-      canonicalUrl: url(page === 1 ? '/public/directory' : `/public/directory?page=${page}`),
-      markdownUrl: `/llms.txt?page=${page}`,
-      html: () => publicIndexHtml({ ...index, page, nextPage, origin: publicOrigin, siteName }),
-      markdown: () =>
-        publicIndexMarkdown({
-          ...index,
-          nextUrl: nextPage ? `/llms.txt?page=${nextPage}` : null,
-          origin: publicOrigin,
-          siteName,
-        }),
-    });
+    return new Response(
+      publicIndexHtml({ ...index, page, nextPage, origin: publicOrigin, siteName }),
+      { headers: { 'content-type': 'text/html; charset=utf-8' } },
+    );
   };
   return new Elysia()
     .onBeforeHandle(({ set }) => {
@@ -60,31 +51,11 @@ export function createPublicDiscoveryController({
     .get('/public/directory', readIndex, { query: indexQuery, detail: { hide: true } })
     .get(
       '/llms.txt',
-      async ({ query, request }) => {
-        const page = query.page ?? 1;
-        const index = await publicResourcesService.index({
-          offset: (page - 1) * INDEX_SIZE,
-          limit: INDEX_SIZE,
-        });
-        if (page > 1 && !index.entries.length) {
-          return publicNotFound({ request, markdown: true });
-        }
-        return new Response(
-          publicIndexMarkdown({
-            ...index,
-            nextUrl: page * INDEX_SIZE < index.total ? `/llms.txt?page=${page + 1}` : null,
-            origin: publicOrigin,
-            siteName,
-          }),
-          {
-            headers: {
-              'content-type': 'text/markdown; charset=utf-8',
-              link: '</public/directory>; rel="alternate"; type="text/html"',
-            },
-          },
-        );
-      },
-      { query: indexQuery, detail: { hide: true } },
+      () =>
+        new Response(publicSiteMarkdown({ origin: publicOrigin, siteName }), {
+          headers: { 'content-type': 'text/markdown; charset=utf-8' },
+        }),
+      { detail: { hide: true } },
     )
     .get(
       '/robots.txt',
