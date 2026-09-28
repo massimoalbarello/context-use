@@ -185,6 +185,8 @@ create unique index "entity_owner_image_asset_idx"
 create index "knowledge_page_owner_updated_idx" on "knowledge_page" ("owner_id", "updated_at" desc);
 create index "knowledge_page_mention_target_idx"
   on "knowledge_page_entity_mention" ("owner_id", "target_entity_id");
+create index "knowledge_page_mention_revision_idx"
+  on "knowledge_page_entity_mention" ("owner_id", "source_revision_id", "target_entity_id");
 create index "knowledge_page_reference_target_idx"
   on "knowledge_page_reference" ("owner_id", "target_page_id");
 create index "knowledge_page_record_reference_target_idx"
