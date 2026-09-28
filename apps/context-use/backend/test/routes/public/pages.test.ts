@@ -318,7 +318,7 @@ test('cyclic and self references publish independently and follow live visibilit
       for (const markdown of [false, true]) {
         const response = await request({ id: targetId, markdown });
         expect(response.status).toBe(StatusMap['Not Found']);
-        expect(await response.json()).toEqual({ error: 'Not Found' });
+        expect(await response.text()).toContain('Public content not found');
       }
       expect(await publish({ readableId: target.readableId })).toBe(targetId);
       await readSource(targetId);
