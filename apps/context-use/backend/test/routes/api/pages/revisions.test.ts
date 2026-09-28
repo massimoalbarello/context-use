@@ -13,8 +13,11 @@ import {
   MAX_REVISION_DIFF_EDIT_LENGTH,
 } from '#backend/models/knowledge-pages/diff.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
+import { PublicResourcesRepository } from '#backend/repositories/public-resources/repository.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
+import { createPagePublicationPreviewController } from '#backend/routes/api/pages/[pageReadableId]/revisions/publication-preview/controller.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
+import { PublicResourcesService } from '#backend/services/public-resources/service.ts';
 import { unusedMcpProtection } from '../../../support/mcp.ts';
 
 const OWNER_ID = 'diff-owner';
@@ -74,7 +77,16 @@ async function setup() {
     };
     const app = new Elysia({ prefix: '/api' })
       .onError(elysiaErrorHandler)
-      .use(createPageReadableIdController({ auth, pagesService: service }));
+      .use(createPageReadableIdController({ auth, pagesService: service }))
+      .use(
+        createPagePublicationPreviewController({
+          auth,
+          publicResourcesService: new PublicResourcesService({
+            resources: new PublicResourcesRepository(database),
+            storage,
+          }),
+        }),
+      );
     const request = ({
       query,
       readableId = 'notes',
@@ -137,7 +149,34 @@ async function setup() {
         })
       ).state,
     ).toBe('saved');
-    return { request, revisionRequest, service, repository, storage, database, dispose, input };
+    const previewRequest = ({
+      ownerId = OWNER_ID,
+      readableId = 'notes',
+      revisionNumber = '1',
+    }: {
+      ownerId?: string | null;
+      readableId?: string;
+      revisionNumber?: string;
+    } = {}) =>
+      app.handle(
+        new Request(
+          `http://localhost/api/pages/${readableId}/revisions/${revisionNumber}/publication-preview`,
+          {
+            headers: ownerId ? { 'x-test-owner': ownerId } : {},
+          },
+        ),
+      );
+    return {
+      previewRequest,
+      request,
+      revisionRequest,
+      service,
+      repository,
+      storage,
+      database,
+      dispose,
+      input,
+    };
   } catch (error) {
     await dispose();
     throw error;
@@ -385,6 +424,79 @@ test('historical blobs must pass integrity verification before comparison or pre
     expect((await context.request({ query: 'from=1&to=3' })).status).toBe(
       StatusMap['Internal Server Error'],
     );
+  } finally {
+    await context.dispose();
+  }
+});
+
+test('publication previews render only the authenticated owner’s selected revision and stay private', async () => {
+  const context = await setup();
+  try {
+    const response = await context.previewRequest();
+    expect(response.status).toBe(StatusMap.OK);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    const preview = await response.json();
+    expect(preview.revisionNumber).toBe(1);
+    expect(preview.html).toContain('<h1>Notes</h1>');
+    expect(preview.html).toContain('Alpha');
+    expect(preview.html).not.toContain('Gamma');
+    expect((await context.previewRequest({ ownerId: null })).status).toBe(StatusMap.Unauthorized);
+    const foreign = await context.previewRequest({ ownerId: OTHER_OWNER_ID });
+    const missing = await context.previewRequest({ readableId: 'missing' });
+    expect(foreign.status).toBe(StatusMap['Not Found']);
+    expect(await foreign.json()).toEqual(await missing.json());
+    await context.service.create({
+      message: 'Other owner',
+      ownerId: OTHER_OWNER_ID,
+      actor: { kind: 'owner' },
+      markdown: '# Notes\n\nOther owner content',
+    });
+    expect(
+      (await (await context.previewRequest({ ownerId: OTHER_OWNER_ID })).json()).html,
+    ).toContain('Other owner content');
+    expect(
+      (await context.previewRequest({ ownerId: OTHER_OWNER_ID, revisionNumber: '2' })).status,
+    ).toBe(StatusMap['Not Found']);
+    for (const revisionNumber of ['0', '-1', '1.5', 'no']) {
+      expect((await context.previewRequest({ revisionNumber })).status).toBe(
+        StatusMap['Bad Request'],
+      );
+    }
+    expect((await context.previewRequest({ revisionNumber: '99' })).status).toBe(
+      StatusMap['Not Found'],
+    );
+    await context.service.archive({
+      ownerId: OWNER_ID,
+      readableId: 'notes',
+      change: { clientName: null, message: 'Archive notes' },
+    });
+    expect((await context.previewRequest()).status).toBe(StatusMap['Not Found']);
+  } finally {
+    await context.dispose();
+  }
+});
+
+test('preview HTML declares external navigation and local section jumps without client rewriting', async () => {
+  const context = await setup();
+  try {
+    await context.service.update({
+      ...context.input,
+      readableId: 'notes',
+      message: 'Add preview navigation',
+      expectedRevisionNumber: LAST_REVISION,
+      markdown:
+        '# Notes\n\n[Section](context-use://page/notes#section) [Local](#section) [Website](https://example.com "Website title")\n\n## Section\n\nBody.',
+    });
+    const preview = await (
+      await context.previewRequest({ revisionNumber: String(LAST_REVISION + 1) })
+    ).json();
+    expect(preview.html).toContain('<base target="_blank"/>');
+    expect(preview.html).toContain('<a href="about:srcdoc#section" target="_self">Section</a>');
+    expect(preview.html).toContain('<a href="about:srcdoc#section" target="_self">Local</a>');
+    expect(preview.html).toContain(
+      '<a href="https://example.com" title="Website title">Website</a>',
+    );
+    expect(preview.html).not.toContain('<script');
   } finally {
     await context.dispose();
   }

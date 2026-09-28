@@ -3,16 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import {
-  type KnowledgePageRevision,
+  type PagePublicationPreview,
   pageDiffQueryOptions,
-  pageRevisionQueryOptions,
+  pagePublicationPreviewQueryOptions,
 } from '../../queries/pages';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { Card, CardContent } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { KnowledgePageMarkdown } from './knowledge-page-markdown';
 import { RevisionDiff } from './revision-diff';
-import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 export function PagePublicationReview({
   approval,
@@ -24,9 +22,10 @@ export function PagePublicationReview({
   const selected = preparation?.pageRevision?.revisionNumber;
   const published = preparation?.pageRevision?.publishedRevisionNumber;
   const preview = useQuery({
-    ...pageRevisionQueryOptions({
+    ...pagePublicationPreviewQueryOptions({
       readableId: preparation?.resource.readableId ?? '',
       revisionNumber: selected ?? 0,
+      approvalId: approval.ready?.approvalId,
     }),
     enabled: publishing && selected != null,
   });
@@ -95,7 +94,7 @@ function PagePublicationContent({
   publishedRevisionNumber,
 }: {
   readableId: string;
-  revision: KnowledgePageRevision;
+  revision: PagePublicationPreview;
   publishedRevisionNumber: number | null;
 }) {
   const [view, setView] = useState<'preview' | 'changes'>('preview');
@@ -104,11 +103,13 @@ function PagePublicationContent({
       <div className="border-border border-b bg-muted px-4 py-3 sm:px-6">
         <p className="font-medium text-muted-foreground text-xs">Page preview</p>
       </div>
-      <CardContent className="max-h-[50vh] overflow-y-auto p-4 sm:p-6">
-        {revision.temporalCoverage && (
-          <TemporalCoverageLabel expression={revision.temporalCoverage} />
-        )}
-        <KnowledgePageMarkdown markdown={revision.markdown} />
+      <CardContent className="overflow-hidden p-0">
+        <iframe
+          title="Public page preview"
+          className="h-[50vh] w-full border-0"
+          sandbox="allow-popups allow-popups-to-escape-sandbox"
+          srcDoc={revision.html}
+        />
       </CardContent>
     </Card>
   );

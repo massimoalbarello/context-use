@@ -516,3 +516,79 @@ test('unavailable non-page targets and malformed page references in verified rev
     }
   });
 });
+
+test('publication previews match the selected public content and resolve live public destinations', async () => {
+  await withPublicResources(
+    async ({ targets, create, update, publish, service, transition, database }) => {
+      const target = await targets();
+      const privatePage = await create({ markdown: '# Private destination\n\nSecret body' });
+      const page = await create({
+        markdown: `# Review me
+
+[Private **label**](context-use://page/${privatePage.readableId}#secret "Secret tooltip")
+
+[Public section](context-use://page/${target.page.readableId}#evidence)
+
+[Person](context-use://entity/${target.entity.readableId})
+
+![Chart](context-use://asset/${target.asset.readableId})
+
+[Website](https://example.com) <!-- hidden comment -->`,
+      });
+      const previewInput = { ownerId: 'owner-a', readableId: page.readableId, revisionNumber: 1 };
+      const preview = await service.pagePreview(previewInput);
+      expect(preview).not.toBeNull();
+      expect(preview!.markdown).toContain('Private **label**');
+      expect(preview!.markdown).not.toContain(privatePage.readableId);
+      expect(preview!.markdown).not.toContain('Secret tooltip');
+      expect(preview!.markdown).not.toContain('hidden comment');
+      expect(preview!.markdown).toContain(`/public/pages/${target.pageId}#evidence`);
+      expect(preview!.markdown).toContain(`/public/entities/${target.entityId}`);
+      expect(preview!.markdown).toContain(`/public/assets/${target.assetId}`);
+      expect(preview!.markdown).toContain('https://example.com');
+      const id = await publish({ readableId: page.readableId });
+      expect(await service.pageContent({ publicId: id })).toEqual(preview);
+      await update({
+        readableId: page.readableId,
+        markdown: '# Later draft\n\nUnreviewed content',
+      });
+      expect(await service.pagePreview(previewInput)).toEqual(preview);
+      await transition({
+        ownerId: 'owner-a',
+        resourceType: 'page',
+        readableId: target.page.readableId,
+        action: 'unpublish',
+      });
+      const withdrawn = await service.pagePreview(previewInput);
+      expect(withdrawn!.markdown).not.toContain(target.pageId);
+      expect(withdrawn!.markdown).toContain('Public section');
+      expect(await service.pageContent({ publicId: id })).toEqual(withdrawn);
+      await database`update "entity" set "published_at" = null where "public_id" = ${target.entityId}`;
+      expect(await service.pagePreview(previewInput)).toBeNull();
+    },
+  );
+});
+
+test('first-publication self references remain navigable inside the preview', async () => {
+  await withPublicResources(async ({ create, update, service, publications }) => {
+    const page = await create({ markdown: '# Self reference\n\nIntroduction.' });
+    await update({
+      readableId: page.readableId,
+      markdown: `# Self reference
+
+[Top](context-use://page/${page.readableId}) and [Section](context-use://page/${page.readableId}#section)
+
+## Section`,
+    });
+    const preview = await service.pagePreview({
+      ownerId: 'owner-a',
+      readableId: page.readableId,
+      revisionNumber: 2,
+    });
+    expect(preview!.markdown).toContain('[Top](#)');
+    expect(preview!.markdown).toContain('[Section](#section)');
+    expect(
+      await publications.pageStatus({ ownerId: 'owner-a', readableId: page.readableId }),
+    ).toEqual({ publicId: null, publishedAt: null, publishedRevisionNumber: null });
+  });
+});

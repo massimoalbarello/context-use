@@ -209,6 +209,8 @@ export function createApp({
         profilesService,
         publicationApprovalService,
         publicSiteService,
+        publicResourcesService,
+        publicSiteName,
         recordsService,
         apiKeysService,
         managedSyncsService,

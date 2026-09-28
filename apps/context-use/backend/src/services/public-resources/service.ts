@@ -5,7 +5,11 @@ import {
   publicPageMarkdown,
   publicRecordMarkdown,
 } from '#backend/models/public-resources/markdown.ts';
-import type { PublicResourcesRepositoryContract } from '#backend/repositories/public-resources/repository.ts';
+import type {
+  PagePublicationPreviewInput,
+  PublicResourcesRepositoryContract,
+  StoredPublicPage,
+} from '#backend/repositories/public-resources/repository.ts';
 
 export class PublicResourcesService {
   private readonly resources: PublicResourcesRepositoryContract;
@@ -32,7 +36,24 @@ export class PublicResourcesService {
   }
 
   async pageContent(input: { publicId: string }) {
-    const page = await this.resources.findPage(input);
+    return this.projectPage({ page: await this.resources.findPage(input) });
+  }
+
+  async pagePreview(input: PagePublicationPreviewInput) {
+    // A first publication has no public handle yet; self-references stay within the preview.
+    return this.projectPage({
+      page: await this.resources.findPagePreview(input),
+      localPageReadableId: input.readableId,
+    });
+  }
+
+  private async projectPage({
+    page,
+    localPageReadableId,
+  }: {
+    page: StoredPublicPage | null;
+    localPageReadableId?: string;
+  }) {
     if (!page) {
       return null;
     }
@@ -44,7 +65,11 @@ export class PublicResourcesService {
       label: 'Public page',
     });
     try {
-      const markdown = publicPageMarkdown({ markdown: source, targets: page.targets });
+      const markdown = publicPageMarkdown({
+        markdown: source,
+        targets: page.targets,
+        localPageReadableId,
+      });
       return markdown === null
         ? null
         : { title: page.title, markdown, modifiedAt: page.modifiedAt };
@@ -106,5 +131,11 @@ export class PublicResourcesService {
 
 export type PublicResourcesServiceContract = Pick<
   PublicResourcesService,
-  'homepageContent' | 'assetContent' | 'pageContent' | 'entityContent' | 'recordContent' | 'index'
+  | 'pagePreview'
+  | 'homepageContent'
+  | 'assetContent'
+  | 'pageContent'
+  | 'entityContent'
+  | 'recordContent'
+  | 'index'
 >;
