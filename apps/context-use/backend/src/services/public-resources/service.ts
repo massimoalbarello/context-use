@@ -56,6 +56,10 @@ export class PublicResourcesService {
     }
   }
 
+  index(input: { offset: number; limit: number }) {
+    return this.resources.list(input);
+  }
+
   async recordContent(input: { publicId: string }) {
     const record = await this.resources.findRecord(input);
     if (!record) {
@@ -102,5 +106,5 @@ export class PublicResourcesService {
 
 export type PublicResourcesServiceContract = Pick<
   PublicResourcesService,
-  'homepageContent' | 'assetContent' | 'pageContent' | 'entityContent' | 'recordContent'
+  'homepageContent' | 'assetContent' | 'pageContent' | 'entityContent' | 'recordContent' | 'index'
 >;

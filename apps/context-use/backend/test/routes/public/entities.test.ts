@@ -102,7 +102,7 @@ test('live public identity uses only the approved current image and safely escap
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(body).toContain('<h1>Ada Lovelace</h1>');
     expect(body).toContain('href="https://github.com/massimoalbarello/context-use"');
-    expect(body).toContain('24 September 2026');
+    expect(body).toMatch(/24 Sept? 2026/);
     expect(body).toContain('Person');
     expect(body).toContain('No public pages mention this entity yet.');
     expect(body).toContain(`src="/public/assets/${imageId}"`);
@@ -304,24 +304,17 @@ test('unknown, private, foreign private, withdrawn, archived and mismatched enti
       for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
         const response = await request({ fixture, id: candidate, cookie });
         expect(response.status).toBe(StatusMap['Not Found']);
-        expect(await response.json()).toEqual({ error: 'Not Found' });
+        expect(await response.text()).toContain('Public content not found');
       }
     }
     await fixture.transition({ ...operation, action: 'unpublish' });
     for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
       const response = await request({ fixture, id, cookie });
       expect(response.status).toBe(StatusMap['Not Found']);
-      expect(await response.json()).toEqual({ error: 'Not Found' });
+      expect(await response.text()).toContain('Public content not found');
     }
     await fixture.transition({ ...operation, action: 'publish' });
-    for (const path of [
-      '',
-      '?q=Ada',
-      `/${id}/history`,
-      `/${id}/revisions`,
-      `/${id}/markdown`,
-      `/${id}/json`,
-    ]) {
+    for (const path of ['', '?q=Ada', `/${id}/history`, `/${id}/revisions`, `/${id}/json`]) {
       expect(
         (await fixture.app.handle(new Request(`http://localhost/public/entities${path}`))).status,
       ).toBe(StatusMap['Not Found']);
@@ -382,7 +375,7 @@ test('the index excludes archived pages and inconsistent owner or selected revis
     const pageId = await fixture.publish({ readableId: page.readableId });
     expect((await fixture.resources.findEntity({ publicId: id }))?.pages).toHaveLength(1);
     const html = await (await request({ fixture, id })).text();
-    expect(html).not.toContain('<script>');
+    expect(html).not.toContain('<script');
     expect(html).toContain('Public title &amp; name');
     const { database } = fixture;
     await database`update "knowledge_page" set "archived_at" = ${NOW} where "id" = ${page.id}`;

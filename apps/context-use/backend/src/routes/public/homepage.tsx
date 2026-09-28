@@ -1,8 +1,16 @@
 import { publicDocument } from './document.tsx';
 
-export function emptyPublicHomepageHtml(): string {
+export function emptyPublicHomepageHtml({
+  canonicalUrl,
+  siteName,
+}: {
+  canonicalUrl: string;
+  siteName?: string;
+}): string {
   return publicDocument({
     title: 'Nothing published yet',
+    canonicalUrl,
+    siteName,
     children: (
       <article>
         <h1>Nothing published yet</h1>

@@ -32,6 +32,7 @@ export default defineConfig({
     // the browser's Origin header while proxying instead of pretending it came from the backend.
     proxy: {
       '^/(?:\\?.*)?$': { target: BACKEND_ORIGIN },
+      '^/(?:robots\\.txt|llms\\.txt|sitemap\\.xml)(?:\\?|$)': { target: BACKEND_ORIGIN },
       '/api': { target: BACKEND_ORIGIN },
       [PUBLIC_RESOURCES_PROXY_CONTEXT]: { target: BACKEND_ORIGIN },
       // Vite treats keys beginning with ^ as regular expressions. Keep the frontend-owned

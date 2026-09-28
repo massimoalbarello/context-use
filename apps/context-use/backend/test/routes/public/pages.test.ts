@@ -320,7 +320,7 @@ test('private, foreign, unknown, withdrawn and archived page identifiers are ind
       for (const markdown of [false, true]) {
         const response = await request({ id: candidate, ...{ markdown } });
         expect(response.status).toBe(StatusMap['Not Found']);
-        expect(await response.json()).toEqual({ error: 'Not Found' });
+        expect(await response.text()).toContain('Public content not found');
       }
     }
     await publish({ readableId: page.readableId });
@@ -434,7 +434,7 @@ test('unexpected managed targets and record references in verified revision cont
       for (const markdown of [false, true]) {
         const response = await request({ id: id, ...{ markdown } });
         expect(response.status).toBe(StatusMap['Not Found']);
-        expect(await response.json()).toEqual({ error: 'Not Found' });
+        expect(await response.text()).toContain('Public content not found');
       }
     }
   });

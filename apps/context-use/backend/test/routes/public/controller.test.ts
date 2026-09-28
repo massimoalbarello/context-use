@@ -61,6 +61,7 @@ async function publicAssetsFixture({
   const app = new Elysia().onError(elysiaErrorHandler).use(
     createPublicController({
       publicResourcesService: service,
+      publicOrigin: 'http://localhost',
       ownerId: 'owner-a',
     }),
   );

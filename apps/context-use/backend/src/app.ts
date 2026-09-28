@@ -1,5 +1,5 @@
 import { openapi } from '@elysiajs/openapi';
-import { Elysia, StatusMap } from 'elysia';
+import { Elysia } from 'elysia';
 import { type Auth, sessionSecuritySchemes } from '#backend/lib/auth/better-auth.ts';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import type { McpTransportContract } from '#backend/lib/mcp/transport.ts';
@@ -64,6 +64,7 @@ export function createApp({
   publicResourcesService,
   publicSiteService,
   publicOwnerId,
+  publicSiteName,
   recordsService,
   apiKeysService,
   managedSyncsService,
@@ -82,6 +83,7 @@ export function createApp({
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
+  publicSiteName?: string;
   mcpTransport: McpTransportContract;
   ownerRegistrationService: OwnerRegistrationServiceContract;
   pagesService: KnowledgePagesServiceContract;
@@ -163,8 +165,14 @@ export function createApp({
         },
       }),
     )
-    .get('/', ({ redirect }) => redirect('/public', StatusMap.Found), { detail: { hide: true } })
-    .use(createPublicController({ publicResourcesService, ownerId: publicOwnerId }))
+    .use(
+      createPublicController({
+        publicResourcesService,
+        publicOrigin: new URL(mcpServerUrl).origin,
+        siteName: publicSiteName,
+        ownerId: publicOwnerId,
+      }),
+    )
     .use(createSyncCallbacks({ auth, fetch: syncFetch, syncs: managedSyncsService }))
     .use(createAuthDiscoveryController({ auth }))
     .use(

@@ -232,6 +232,7 @@ try {
     publicResourcesService,
     publicSiteService: new PublicSiteService(new PublicSiteRepository(database)),
     publicOwnerId: OWNER_USER_ID,
+    publicSiteName: env.PUBLIC_SITE_NAME,
     recordsService,
     apiKeysService,
   }).onStop(async () => {
