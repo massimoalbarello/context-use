@@ -126,6 +126,13 @@ test(
       ),
     ).toEqual([]);
     expect(
+      graphs['demo/main.ts']!.filter((path) =>
+        /backend\/src\/(app\.ts|routes\/(api\/(controller\.ts|auth\/|api-keys\/|mcp\/|owner-registration\/|syncs\/|public-site\/)|auth-discovery\/|mcp\/|public\/|sync-callbacks\.ts))/.test(
+          path,
+        ),
+      ),
+    ).toEqual([]);
+    expect(
       graphs['../landing/src/server.ts']!.filter((path) =>
         /context-use\/(backend|frontend)\//.test(path),
       ),

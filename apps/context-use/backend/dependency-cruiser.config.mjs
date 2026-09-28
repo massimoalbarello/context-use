@@ -3,6 +3,14 @@ const backend = '^apps/context-use/backend/src/';
 export default {
   forbidden: [
     {
+      name: 'demo-overrides-stay-isolated',
+      severity: 'error',
+      comment:
+        'Only the demo may import its anonymous identity, read-only adapters, or UI overrides.',
+      from: { path: '^(apps/context-use/(backend|frontend)/|packages/)' },
+      to: { path: '^apps/context-use/demo/' },
+    },
+    {
       name: 'resolve-backend-imports',
       severity: 'error',
       comment: 'Fix the internal import so architecture checks can resolve its owner.',
