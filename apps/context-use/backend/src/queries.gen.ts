@@ -1041,7 +1041,7 @@ export interface IFindPublicationPortraitEntitiesResult {
 
 /** Result of query `FindPagePublicationDependencies`. */
 export interface IFindPagePublicationDependenciesResult {
-    resourceType: "page" | "entity" | "asset" | "record";
+    resourceType: "entity" | "asset" | "record";
     readableId: string;
     name: string;
     archivedAt: string | null;

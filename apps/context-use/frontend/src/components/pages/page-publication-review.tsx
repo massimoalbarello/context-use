@@ -37,6 +37,10 @@ export function PagePublicationReview({
             Anyone with the link can read this page. Future edits stay private until you publish
             them.
           </p>
+          <p className="text-sm">
+            References to private pages appear as plain text. Referenced pages stay private until
+            you publish them.
+          </p>
           <PagePublicationComparison
             error={comparison.error}
             diff={reviewed ? diff : undefined}

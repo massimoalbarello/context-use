@@ -192,7 +192,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
         from active_page source
         join "knowledge_page_reference" link on link."source_revision_id" = source."id"
           and link."owner_id" = source."owner_id"
-        left join "knowledge_page" target on target."id" = link."target_page_id"
+        join "knowledge_page" target on target."id" = link."target_page_id"
           and target."owner_id" = source."owner_id" and target."archived_at" is null
           and target."published_at" is not null
           and exists (

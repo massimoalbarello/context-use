@@ -220,7 +220,7 @@ test('page approval is bound to owner, action, saved revision, public metadata a
   });
 });
 
-test('every managed reference must already be public without recursively publishing targets', async () => {
+test('assets and entities must already be public without recursively publishing targets', async () => {
   await withDatabase(async ({ database: db }) => {
     const repository = new PublicationsRepository(db);
     await allReferences(db);
@@ -233,10 +233,6 @@ test('every managed reference must already be public without recursively publish
       {
         reason: 'reference_not_public',
         resource: { resourceType: 'entity', readableId: 'secondary', name: 'Entity' },
-      },
-      {
-        reason: 'reference_not_public',
-        resource: { resourceType: 'page', readableId: 'secondary', name: 'Page' },
       },
     ]);
     expect(await change({ repository, input: publish() })).toMatchObject({ state: 'blocked' });
@@ -299,7 +295,6 @@ test('publication rechecks dependency visibility and preserves the preceding pub
       expect(result.blockers.map(({ reason }) => reason)).toEqual([
         'reference_unavailable',
         'reference_unavailable',
-        'reference_unavailable',
       ]);
     }
     expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBe(2);
@@ -343,72 +338,6 @@ test('private and unavailable record references block publication', async () => 
     expect(await change({ repository, input: publish({ revisionNumber: 2 }) })).toMatchObject({
       state: 'changed',
     });
-  });
-});
-
-test('page withdrawal checks only incoming public revisions and keeps their published titles', async () => {
-  await withDatabase(async ({ database: db }) => {
-    const repository = new PublicationsRepository(db);
-    await change({ repository, input: publish() });
-    const approved = await execution({ repository, input: unpublish() });
-    await pageReference({
-      db,
-      sourceRevisionId: 'owner-a-page-secondary-revision',
-      targetPageId: 'owner-a-page-primary',
-    });
-    expect((await repository.prepare(unpublish()))?.blockers).toEqual([]);
-    await change({ repository, input: publish({ revisionNumber: 1, readableId: 'secondary' }) });
-    await addRevision({ db, revisionNumber: 2, readableId: 'secondary' });
-    expect(await repository.execute(approved)).toEqual({
-      state: 'blocked',
-      blockers: [
-        {
-          reason: 'public_page_reference',
-          resource: { resourceType: 'page', readableId: 'secondary', name: 'Page' },
-        },
-      ],
-    });
-    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBe(1);
-    await change({ repository, input: publish({ revisionNumber: 2, readableId: 'secondary' }) });
-    const privateRevision = await addRevision({
-      db,
-      revisionNumber: THIRD_REVISION_NUMBER,
-      readableId: 'secondary',
-    });
-    await pageReference({
-      db,
-      sourceRevisionId: privateRevision,
-      targetPageId: 'owner-a-page-primary',
-    });
-    await addRevision({ db });
-    expect((await repository.prepare(unpublish()))?.expectedState).toBe(approved.expectedState);
-    expect(await repository.execute(approved)).toMatchObject({ state: 'changed' });
-    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBeNull();
-  });
-});
-
-test('self references require an already public target but do not prevent withdrawal', async () => {
-  await withDatabase(async ({ database: db }) => {
-    const repository = new PublicationsRepository(db);
-    await pageReference({
-      db,
-      sourceRevisionId: FIRST_REVISION,
-      targetPageId: 'owner-a-page-primary',
-    });
-    expect(await change({ repository, input: publish() })).toMatchObject({
-      state: 'blocked',
-      blockers: [
-        {
-          reason: 'reference_not_public',
-          resource: { resourceType: 'page', readableId: 'primary' },
-        },
-      ],
-    });
-    await addRevision({ db });
-    await change({ repository, input: publish({ revisionNumber: 2 }) });
-    expect(await change({ repository, input: publish() })).toMatchObject({ state: 'changed' });
-    expect(await change({ repository, input: unpublish() })).toMatchObject({ state: 'changed' });
-    expect((await repository.pageStatus(publish()))?.publishedRevisionNumber).toBeNull();
   });
 });
 

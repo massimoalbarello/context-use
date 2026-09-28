@@ -11,6 +11,9 @@ export async function withdrawalBlockers({
   resourceType: 'asset' | 'entity' | 'page' | 'record';
   id: string;
 }): Promise<PublicationBlocker[]> {
+  if (input.resourceType === 'page') {
+    return [];
+  }
   const pages = await db.FindPublicationReferringPages`
     /* @notNull readableId name */
     with referring_revisions as (
@@ -21,10 +24,6 @@ export async function withdrawalBlockers({
       select "source_revision_id" from "knowledge_page_entity_mention"
       where "owner_id" = ${input.ownerId} and "target_entity_id" = ${input.id}
         and ${input.resourceType} = 'entity'
-      union
-      select "source_revision_id" from "knowledge_page_reference"
-      where "owner_id" = ${input.ownerId} and "target_page_id" = ${input.id}
-        and ${input.resourceType} = 'page'
       union
       select "source_revision_id" from "knowledge_page_record_reference"
       where "owner_id" = ${input.ownerId} and "target_record_readable_id" = ${input.id}
@@ -38,7 +37,6 @@ export async function withdrawalBlockers({
     join "knowledge_page_revision" revision
       on revision."id" = page."published_revision_id" and revision."owner_id" = page."owner_id"
       and revision."page_id" = page."id"
-    where ${input.resourceType} != 'page' or page."id" != ${input.id}
     order by page."readable_id"
   `;
   const blockers: PublicationBlocker[] = pages.map((page) => ({
@@ -94,19 +92,10 @@ export async function pagePublicationBlockers({
   const references = await db.FindPagePublicationDependencies`
     /* @notNull resourceType readableId name */
     /* @type name string */
-    /* @type resourceType 'page' | 'entity' | 'asset' | 'record' */
+    /* @type resourceType 'entity' | 'asset' | 'record' */
     with dependencies as (
-      select 'page' as "resourceType", page."readable_id" as "readableId",
-        revision."title" as "name", page."archived_at" as "archivedAt",
-        page."published_at" as "publishedAt", 0 as "unavailable"
-      from "knowledge_page_reference" reference
-      join "knowledge_page" page
-        on page."id" = reference."target_page_id" and page."owner_id" = reference."owner_id"
-      join "knowledge_page_revision" revision
-        on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
-      where reference."owner_id" = ${ownerId} and reference."source_revision_id" = ${revisionId}
-      union
-      select 'entity', entity."readable_id", entity."name", entity."archived_at", entity."published_at", 0
+      select 'entity' as "resourceType", entity."readable_id" as "readableId", entity."name",
+        entity."archived_at" as "archivedAt", entity."published_at" as "publishedAt", 0 as "unavailable"
       from "knowledge_page_entity_mention" mention
       join "entity" entity
         on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
