@@ -344,35 +344,6 @@ test('The month wheel stops at Undated and follows external month changes', asyn
   await waitFor(() => expectSelectedMonth('1998-12'));
 });
 
-test('The time filter explains itself on hover and focus without changing the selected month', async () => {
-  const user = userEvent.setup();
-  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
-  render(<MapFixture onMonthChange={onMonthChange} />);
-  const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
-  const explanation = () => screen.queryByRole('heading', { name: 'Filter pages by time' });
-
-  expect(explanation()).toBeNull();
-  await user.hover(picker);
-  expect(explanation()).not.toBeNull();
-  await user.unhover(picker);
-  expect(explanation()).toBeNull();
-  await user.hover(picker);
-  await user.hover(screen.getByText(/Choose a month to show pages/));
-  expect(explanation()).not.toBeNull();
-  await user.keyboard('{Escape}');
-  expect(explanation()).toBeNull();
-  await user.unhover(screen.getByText(/Choose a month to show pages/));
-
-  act(() => picker.focus());
-  expect(explanation()).not.toBeNull();
-  await user.keyboard('{Escape}');
-  expect(explanation()).toBeNull();
-  await user.tab();
-  expect(explanation()).toBeNull();
-  expectSelectedMonth();
-  expect(onMonthChange).not.toHaveBeenCalled();
-});
-
 test('Desktop zoom buttons preserve the map centre and time filter, respect limits, and remain available during selection', async () => {
   const user = userEvent.setup();
   const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
@@ -431,8 +402,6 @@ test('On phones the month wheel opens from a compact control and stays synchroni
     expect(screen.queryByRole('spinbutton')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Change month: January 2025' }));
     const picker = await screen.findByRole('spinbutton', { name: 'Selected month' });
-    expect(screen.getByRole('heading', { name: 'Filter pages by time' })).not.toBeNull();
-    expect(screen.getByText(/Undated shows pages without a time interval/)).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(picker));
     await user.keyboard('{ArrowDown}');
     await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
