@@ -89,6 +89,20 @@ async function setup() {
           headers: ownerId ? { 'x-test-owner': ownerId } : {},
         }),
       );
+    const revisionRequest = ({
+      revisionNumber = '1',
+      readableId = 'notes',
+      ownerId = OWNER_ID,
+    }: {
+      revisionNumber?: string;
+      readableId?: string;
+      ownerId?: string | null;
+    } = {}) =>
+      app.handle(
+        new Request(`http://localhost/api/pages/${readableId}/revisions/${revisionNumber}`, {
+          headers: ownerId ? { 'x-test-owner': ownerId } : {},
+        }),
+      );
     const input = { ownerId: OWNER_ID, actor: { kind: 'owner' } as const };
     expect(
       (
@@ -123,7 +137,7 @@ async function setup() {
         })
       ).state,
     ).toBe('saved');
-    return { request, service, repository, storage, database, dispose, input };
+    return { request, revisionRequest, service, repository, storage, database, dispose, input };
   } catch (error) {
     await dispose();
     throw error;
@@ -277,14 +291,86 @@ test('comparison enforces authentication, page ownership, revision bounds and ar
   }
 });
 
-test('historical blobs must exist and pass integrity verification before comparison', async () => {
+test('revision reads return exact saved content and coverage without exposing persistence metadata', async () => {
   const context = await setup();
   try {
-    const [revision] = await context.repository.revisionsForComparison({
+    const first = await context.revisionRequest();
+    expect(first.status).toBe(StatusMap.OK);
+    expect(await first.json()).toEqual({
+      revisionNumber: 1,
+      markdown: INITIAL,
+      temporalCoverage: null,
+    });
+    const second = await context.revisionRequest({ revisionNumber: '2' });
+    expect(await second.json()).toEqual({
+      revisionNumber: 2,
+      markdown: '# Notes\n\nBeta\nUnchanged\n',
+      temporalCoverage: '2025',
+    });
+    await context.service.update({
+      message: 'Add a newer draft',
+      ...context.input,
+      readableId: 'notes',
+      expectedRevisionNumber: LAST_REVISION,
+      markdown: '# New draft\n\nNot the selected content.',
+    });
+    expect(await (await context.revisionRequest()).json()).toEqual({
+      revisionNumber: 1,
+      markdown: INITIAL,
+      temporalCoverage: null,
+    });
+  } finally {
+    await context.dispose();
+  }
+});
+
+test('revision reads enforce authentication, ownership, valid numbers and archival', async () => {
+  const context = await setup();
+  try {
+    expect((await context.revisionRequest({ ownerId: null })).status).toBe(StatusMap.Unauthorized);
+    const missing = await context.revisionRequest({ readableId: 'missing' });
+    const foreign = await context.revisionRequest({ ownerId: OTHER_OWNER_ID });
+    expect(missing.status).toBe(StatusMap['Not Found']);
+    expect(foreign.status).toBe(StatusMap['Not Found']);
+    expect(await foreign.json()).toEqual(await missing.json());
+    await context.service.create({
+      message: 'Other owner notes',
+      ownerId: OTHER_OWNER_ID,
+      actor: { kind: 'owner' },
+      markdown: '# Notes\n\nOther owner content.',
+    });
+    expect(await (await context.revisionRequest({ ownerId: OTHER_OWNER_ID })).json()).toMatchObject(
+      { markdown: '# Notes\n\nOther owner content.' },
+    );
+    expect(
+      (await context.revisionRequest({ ownerId: OTHER_OWNER_ID, revisionNumber: '2' })).status,
+    ).toBe(StatusMap['Not Found']);
+    expect((await context.revisionRequest({ revisionNumber: '99' })).status).toBe(
+      StatusMap['Not Found'],
+    );
+    for (const revisionNumber of ['0', '-1', '1.5', 'no', '9007199254740992']) {
+      expect((await context.revisionRequest({ revisionNumber })).status).toBe(
+        StatusMap['Bad Request'],
+      );
+    }
+    await context.service.archive({
       ownerId: OWNER_ID,
       readableId: 'notes',
-      from: 1,
-      to: 1,
+      change: { clientName: null, message: 'Archive notes' },
+    });
+    expect((await context.revisionRequest()).status).toBe(StatusMap['Not Found']);
+  } finally {
+    await context.dispose();
+  }
+});
+
+test('historical blobs must pass integrity verification before comparison or preview', async () => {
+  const context = await setup();
+  try {
+    const [revision] = await context.repository.revisionsByNumber({
+      ownerId: OWNER_ID,
+      readableId: 'notes',
+      revisionNumbers: [1],
     });
     await context.storage.write(
       revision!.storageKey,
@@ -293,7 +379,9 @@ test('historical blobs must exist and pass integrity verification before compari
     expect((await context.request({ query: 'from=1&to=3' })).status).toBe(
       StatusMap['Internal Server Error'],
     );
+    expect((await context.revisionRequest()).status).toBe(StatusMap['Internal Server Error']);
     await context.storage.delete(revision!.storageKey);
+    expect((await context.revisionRequest()).status).toBe(StatusMap['Internal Server Error']);
     expect((await context.request({ query: 'from=1&to=3' })).status).toBe(
       StatusMap['Internal Server Error'],
     );

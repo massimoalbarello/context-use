@@ -176,6 +176,26 @@ export class KnowledgePagesService {
     };
   }
 
+  async revision(input: { ownerId: string; readableId: string; revisionNumber: number }) {
+    const [revision] = await this.pages.revisionsByNumber({
+      ownerId: input.ownerId,
+      readableId: input.readableId,
+      revisionNumbers: [input.revisionNumber],
+    });
+    if (!revision) {
+      return null;
+    }
+    return {
+      revisionNumber: revision.revisionNumber,
+      temporalCoverage: revision.temporalCoverage,
+      markdown: await readVerifiedText({
+        storage: this.storage,
+        ...revision,
+        label: `Knowledge page revision ${revision.revisionNumber}`,
+      }),
+    };
+  }
+
   async diff(input: {
     ownerId: string;
     readableId: string;
@@ -184,7 +204,11 @@ export class KnowledgePagesService {
   }): Promise<
     { state: 'compared'; diff: KnowledgePageDiff } | { state: 'not_found' } | { state: 'too_large' }
   > {
-    const revisions = await this.pages.revisionsForComparison(input);
+    const revisions = await this.pages.revisionsByNumber({
+      ownerId: input.ownerId,
+      readableId: input.readableId,
+      revisionNumbers: [input.from, input.to],
+    });
     const before = revisions.find((revision) => revision.revisionNumber === input.from);
     const after = revisions.find((revision) => revision.revisionNumber === input.to);
     if ((!before && input.from !== 0) || !after) {
@@ -378,5 +402,5 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'diff'
+  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'diff' | 'revision'
 >;

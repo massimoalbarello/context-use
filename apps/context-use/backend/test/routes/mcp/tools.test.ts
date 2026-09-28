@@ -128,6 +128,7 @@ const unusedEntitiesService: EntitiesServiceContract = {
 };
 
 const unusedPagesService: KnowledgePagesServiceContract = {
+  revision: unexpectedCall,
   diff: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
