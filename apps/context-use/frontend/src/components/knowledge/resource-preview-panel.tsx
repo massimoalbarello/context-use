@@ -155,10 +155,7 @@ function EntityMentioningPages({ readableId }: { readableId: string }) {
   const pages = query.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section className="grid gap-2" aria-label="Mentioned in">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="font-semibold">Mentioned in</h3>
-        <span className="text-muted-foreground text-xs">Recently updated</span>
-      </div>
+      <h3 className="font-semibold">Mentioned in</h3>
       {query.isPending ? (
         <PreviewStatus>Loading pages…</PreviewStatus>
       ) : query.isError && !query.data ? (
