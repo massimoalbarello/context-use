@@ -87,6 +87,37 @@ async function fingerprint(folder: string) {
   return hashes;
 }
 
+async function assertPublicationStatuses(fetchDemo: (request: Request) => Promise<Response>) {
+  const read = (path: string) => fetchDemo(new Request(`http://demo.test${path}`));
+  const records = (await (await read('/api/records')).json()) as Static<typeof RecordListSchema>;
+  for (const [resourceType, readableId] of [
+    ['page', 'pictures-of-me-and-our-pocket-devices'],
+    ['entity', 'steve-jobs'],
+    ['asset', 'steve-presenting-iphone'],
+    ['record', records.items[0]!.readableId],
+  ]) {
+    const path = `/api/publications/${resourceType}/${readableId}`;
+    const response = await read(path);
+    expect(response.status, path).toBe(StatusMap.OK);
+    expect(await response.json()).toEqual({
+      resourceType,
+      publicId: null,
+      publishedAt: null,
+      ...(resourceType === 'page' ? { publishedRevisionNumber: null } : {}),
+    });
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    const head = await fetchDemo(new Request(`http://demo.test${path}`, { method: 'HEAD' }));
+    expect(head.status).toBe(StatusMap.OK);
+    expect(await head.text()).toBe('');
+    expect((await read(`/api/publications/${resourceType}/missing-resource`)).status).toBe(
+      StatusMap['Not Found'],
+    );
+  }
+  expect((await read('/api/publications/unknown/steve-jobs')).status).toBe(
+    StatusMap['Bad Request'],
+  );
+}
+
 test('the story is connected and each checkpoint cites only sources already available then', async () => {
   const fixtures = resolve(import.meta.dir, '../fixtures');
   const records: { source: { id: string }; sourceUpdatedAt: string }[] = await Bun.file(
@@ -221,6 +252,7 @@ test(
           expect(response.headers.has('set-cookie')).toBe(false);
           await response.arrayBuffer();
         }
+        await assertPublicationStatuses(fetchDemo);
         await assertPreviewFormats(read);
         // Prove the shared seed produces distinct, discoverable pages each month through
         // the public demo API, with no month-specific pages leaking into adjacent months.
@@ -395,6 +427,9 @@ test(
         expect(await head.text()).toBe('');
         // Try every mutation registered by the reused controllers, plus unmounted surfaces.
         const deniedPaths = [
+          '/api/publications/page/pictures-of-me-and-our-pocket-devices',
+          '/api/publications/approvals',
+          '/api/publications/approvals/test-approval/complete',
           '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',

@@ -11,6 +11,7 @@ import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-grap
 import { HypermediaRetrievalRepository } from '#backend/repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
+import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { AssetFacesService } from '#backend/services/assets/faces.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
@@ -23,6 +24,7 @@ import { KnowledgePagesService } from '#backend/services/knowledge-pages/service
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
 import { createDemoFaces } from './faces';
+import { createDemoPublications } from './publications';
 
 /** Demo composition only. Seeding is sequential; serving uses a read-only connection. */
 export function createDemoResources({
@@ -53,6 +55,7 @@ export function createDemoResources({
   const faces = createDemoFaces(facesService);
   return {
     facesService,
+    publicationApprovalService: createDemoPublications(new PublicationsRepository(database)),
     assetsService: new AssetsService({
       assets,
       storage,

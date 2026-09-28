@@ -14,6 +14,7 @@ import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#backend/routes/api/profile/controller.ts';
+import { createPublicationsController } from '#backend/routes/api/publications/controller.ts';
 import { createRecordReadableIdController } from '#backend/routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#backend/routes/api/records/controller.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
@@ -26,6 +27,7 @@ const READ_API_ROUTES = new Set([
   '/api/health',
   '/api/history',
   '/api/profile',
+  '/api/publications/:resourceType/:readableId',
   '/api/entities',
   '/api/entities/:entityReadableId',
   '/api/entities/:entityReadableId/preview',
@@ -112,6 +114,7 @@ export function createDemoApp({
     .use(createRecordsController(dependencies))
     .use(createRecordReadableIdController(dependencies))
     .use(createKnowledgeProfileController(dependencies))
+    .use(createPublicationsController(dependencies))
     .use(createHealthController(dependencies))
     .compile();
   // A newly added static GET could otherwise shadow an approved :readableId route.

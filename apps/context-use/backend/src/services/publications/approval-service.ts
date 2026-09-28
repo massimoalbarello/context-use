@@ -18,6 +18,7 @@ import type {
   PublicationRequest,
   PublicationsRepositoryContract,
 } from '#backend/repositories/publications/repository.ts';
+import { readPublicationStatus } from './status.ts';
 
 export type PublicationApprovalBeginResult =
   | {
@@ -57,22 +58,12 @@ export class PublicationApprovalService {
     this.now = now;
   }
 
-  async status(input: {
+  status(input: {
     ownerId: string;
     readableId: string;
     resourceType: PublicationResource['resourceType'];
   }) {
-    if (input.resourceType === 'page') {
-      const publication = await this.publications.pageStatus(input);
-      return publication ? { resourceType: 'page' as const, ...publication } : null;
-    }
-    const publication =
-      input.resourceType === 'entity'
-        ? await this.publications.entityStatus(input)
-        : input.resourceType === 'record'
-          ? await this.publications.recordStatus(input)
-          : await this.publications.assetStatus(input);
-    return publication ? { resourceType: input.resourceType, ...publication } : null;
+    return readPublicationStatus({ publications: this.publications, ...input });
   }
 
   async begin({
