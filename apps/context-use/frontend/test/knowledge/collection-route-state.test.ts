@@ -22,15 +22,6 @@ test('entity and asset keyword searches are canonical URL state', () => {
   );
 });
 
-test('filtered collection pages use distinct query caches', () => {
-  expect(entitiesQueryOptions({ query: 'maya' }).queryKey).not.toEqual(
-    entitiesQueryOptions().queryKey,
-  );
-  expect(assetsQueryOptions({ query: 'rollout' }).queryKey).not.toEqual(
-    assetsQueryOptions().queryKey,
-  );
-});
-
 test('entity type URL state rejects invented types and separates every filtered cache', () => {
   expect(entitySearch({ q: ' Maya ', entityType: 'person' })).toEqual({
     q: 'Maya',

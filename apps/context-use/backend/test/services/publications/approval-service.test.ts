@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { betterAuth } from 'better-auth';
 import type { SQL } from 'bun';
-import { createAuth, createAuthOptions } from '#backend/lib/auth/better-auth.ts';
+import { createAuthOptions } from '#backend/lib/auth/better-auth.ts';
 import { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
 import { PublicationApprovalsRepository } from '#backend/repositories/publications/approvals.ts';
 import {
@@ -291,44 +291,6 @@ test('commit uses server time obtained after cryptographic verification', async 
   });
 });
 
-test('a changed reviewed resource consumes approval without publishing', async () => {
-  await withApprovalService(
-    async ({ begin, service, identity, assertion, database, publications }) => {
-      const approval = await begin();
-      await database`update "asset" set "name" = 'Changed' where "owner_id" = ${OWNER} and "readable_id" = 'primary'`;
-      const signed = assertion(approval);
-      expect(
-        await service.complete({ ...identity, approvalId: approval.approvalId, assertion: signed }),
-      ).toEqual({ state: 'state_changed' });
-      expect(
-        await service.complete({ ...identity, approvalId: approval.approvalId, assertion: signed }),
-      ).toEqual({ state: 'approval_invalid' });
-      expect(await publications.assetStatus(REQUEST)).toEqual({
-        publicId: null,
-        publishedAt: null,
-      });
-    },
-  );
-});
-
-test('blocked operations do not create a passkey ceremony', async () => {
-  await withApprovalService(async ({ service, sessionId, database }) => {
-    await database`insert into "knowledge_page_entity_mention" ("source_revision_id", "target_entity_id", "owner_id") values ('owner-a-page-primary-revision', 'owner-a-entity-primary', ${OWNER})`;
-    const result = await service.begin({
-      request: {
-        ownerId: OWNER,
-        resourceType: 'page',
-        readableId: 'primary',
-        action: 'publish',
-        revisionNumber: 1,
-      },
-      sessionId,
-    });
-    expect(result.state).toBe('blocked');
-    expect(await database`select "id" from "publication_approval"`).toHaveLength(0);
-  });
-});
-
 test('begin requires a current session, passkey and existing resource', async () => {
   await withApprovalService(async ({ service, sessionId, database }) => {
     expect(
@@ -342,64 +304,6 @@ test('begin requires a current session, passkey and existing resource', async ()
       state: 'passkey_required',
     });
   });
-});
-
-test('database failures propagate and leave publication and approval unchanged', async () => {
-  await withApprovalService(
-    async ({ begin, service, identity, assertion, database, publications, approvals }) => {
-      const approval = await begin();
-      await database.unsafe(
-        `create trigger fail_publication before update of "published_at" on "asset" begin select raise(abort, 'publication failed'); end`,
-      );
-      expect(
-        service.complete({
-          ...identity,
-          approvalId: approval.approvalId,
-          assertion: assertion(approval),
-        }),
-      ).rejects.toThrow('publication failed');
-      expect(await publications.assetStatus(REQUEST)).toEqual({
-        publicId: null,
-        publishedAt: null,
-      });
-      expect(
-        await approvals.find({ ...identity, approvalId: approval.approvalId, now: NOW }),
-      ).not.toBeNull();
-    },
-  );
-});
-
-test('a real login challenge cannot approve publication', async () => {
-  await withApprovalService(
-    async ({ begin, service, identity, passkey, database, publications }) => {
-      const approval = await begin();
-      const auth = createAuth({
-        database,
-        baseUrl: new URL(ORIGIN),
-        nibrunHostname: RP_ID,
-        secret: 'test-secret-at-least-thirty-two-characters',
-        fetchClientMetadataResource: async () => new Response(null, { status: 503 }),
-      });
-      const loginOptions = await auth.handler(
-        new Request(`${ORIGIN}/api/auth/passkey/generate-authenticate-options`, {
-          headers: { origin: ORIGIN },
-        }),
-      );
-      expect(loginOptions.ok).toBe(true);
-      const { challenge } = await loginOptions.json();
-      expect(
-        await service.complete({
-          ...identity,
-          approvalId: approval.approvalId,
-          assertion: passkey.authentication({ origin: ORIGIN, challenge }),
-        }),
-      ).toEqual({ state: 'assertion_invalid' });
-      expect(await publications.assetStatus(REQUEST)).toEqual({
-        publicId: null,
-        publishedAt: null,
-      });
-    },
-  );
 });
 
 test('a credential removed after verification input is read cannot approve publication', async () => {

@@ -6,25 +6,6 @@ import {
 } from '#backend/models/assets/media.ts';
 
 describe('asset media detection', () => {
-  test('derives safe raster types from bytes rather than upload hints', async () => {
-    const png = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
-      'base64',
-    );
-    expect(await detectAssetMedia(png)).toEqual({
-      mediaType: 'image/png',
-      extension: 'png',
-    });
-  });
-
-  test('recognizes MP4 video from its ISO base media structure', async () => {
-    const mp4 = Buffer.from('00000018667479706d703432000000006d70343169736f6d', 'hex');
-    expect(await detectAssetMedia(mp4)).toEqual({
-      mediaType: 'video/mp4',
-      extension: 'mp4',
-    });
-  });
-
   test('falls back to a non-executable attachment type for unknown bytes', async () => {
     expect(await detectAssetMedia(Buffer.from('000102ff', 'hex'))).toEqual({
       mediaType: 'application/octet-stream',

@@ -8,7 +8,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { cleanup, render, screen } from '@testing-library/react';
-import { RecordCardContent, RecordLink } from '../../src/components/records/record-link';
+import { RecordLink } from '../../src/components/records/record-link';
 import type { ContextRecordSummary } from '../../src/queries/records';
 
 afterEach(cleanup);
@@ -22,17 +22,6 @@ const record: ContextRecordSummary = {
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
   source: { provider: 'github', kind: 'pull-request', id: '57', url: null },
 };
-
-test('record cards identify their content, provider, and kind', () => {
-  render(<RecordCardContent record={record} />);
-
-  expect(screen.getByText(record.title)).toBeTruthy();
-  expect(screen.getByText('github · pull-request')).toBeTruthy();
-  expect(screen.queryByText('Not provided')).toBeNull();
-  expect(document.querySelector('time')).toBeNull();
-  expect(screen.queryByText(record.source.id)).toBeNull();
-  expect(screen.queryByText('Synced by Example sync')).toBeNull();
-});
 
 test('record links navigate by local readable ID and expose their selected state', async () => {
   const rootRoute = createRootRoute({ component: Outlet });

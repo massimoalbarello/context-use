@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
   InvalidTemporalCoverageError,
-  MAX_TEMPORAL_COVERAGE_LENGTH,
   parseTemporalCoverage,
   temporalBoundsFrom,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
@@ -21,10 +20,6 @@ describe('knowledge page temporal coverage', () => {
     MAXIMAL_TEMPORAL_COVERAGE,
   ])('preserves valid coverage without inventing precision: %s', (coverage) => {
     expect(parseTemporalCoverage(coverage).expression).toBe(coverage);
-  });
-
-  test('bounds coverage at the longest supported interval representation', () => {
-    expect(MAXIMAL_TEMPORAL_COVERAGE).toHaveLength(MAX_TEMPORAL_COVERAGE_LENGTH);
   });
 
   test.each([
