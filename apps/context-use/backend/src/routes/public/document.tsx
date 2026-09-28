@@ -25,6 +25,8 @@ code { font-size: .875em; background: #eeeae2; padding: .15em .3em; border-radiu
 pre { overflow-x: auto; padding: 1.25rem; background: #eeeae2; border-radius: .5rem; line-height: 1.6; }
 pre code { padding: 0; background: none; }
 footer { max-width: 45rem; width: calc(100% - 3rem); margin: 3.5rem auto 4rem; padding-top: 1.5rem; border-top: 1px solid #d7d1c6; line-height: 1.6; }
+.footer-credit { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.owner-login { flex-shrink: 0; font-size: .875rem; }
 footer p { margin: 0; font-size: 1rem; }
 footer [role="img"] { margin-inline: .15em; }
 footer .repository { color: #315e4e; font-weight: 700; text-decoration-style: dotted; }
@@ -58,7 +60,7 @@ export function publicDocument({
   markdownUrl?: string;
   children: ReactNode;
 }): string {
-  const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/';
+  const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/public';
   return `<!doctype html>${renderToStaticMarkup(
     <html lang="en">
       <head>
@@ -92,23 +94,28 @@ export function publicDocument({
         <main>
           {!isHomepage ? (
             <nav aria-label="Public navigation">
-              <a href="/">Home</a>
+              <a href="/public">Home</a>
             </nav>
           ) : null}
           {children}
         </main>
         <footer>
-          <p>
-            self-hosted with{' '}
-            <span role="img" aria-label="love">
-              ❤️
-            </span>{' '}
-            using{' '}
-            <a className="repository" href="https://github.com/massimoalbarello/context-use">
-              context-use<span aria-hidden="true">↗</span>
+          <div className="footer-credit">
+            <p>
+              self-hosted with{' '}
+              <span role="img" aria-label="love">
+                ❤️
+              </span>{' '}
+              using{' '}
+              <a className="repository" href="https://github.com/massimoalbarello/context-use">
+                context-use<span aria-hidden="true">↗</span>
+              </a>
+              .
+            </p>
+            <a className="owner-login" href="/app">
+              Owner login
             </a>
-            .
-          </p>
+          </div>
           {modifiedAt || markdownUrl ? (
             <div className="footer-details">
               {modifiedAt ? (

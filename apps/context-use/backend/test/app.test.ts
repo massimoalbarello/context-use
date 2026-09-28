@@ -40,12 +40,13 @@ function unexpectedCall(): never {
 test('createApp uses supplied dependencies without production bootstrap', async () => {
   let healthChecks = 0;
   let sessionChecks = 0;
+  let session: Awaited<ReturnType<Auth['getSession']>> = null;
   const auth: Auth = {
     passkeyOrigins: [],
     handler: async () => new Response(null, { status: 404 }),
     getSession: () => {
       sessionChecks += 1;
-      return Promise.resolve(null);
+      return Promise.resolve(session);
     },
     protectMcpRequest: unusedMcpProtection,
   };
@@ -87,7 +88,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     find: unexpectedCall,
   };
   const ownerRegistrationService: OwnerRegistrationServiceContract = {
-    status: unexpectedCall,
+    status: async () => ({ ownerRegistered: true }),
   };
   const healthService: HealthServiceContract = {
     check() {
@@ -158,7 +159,7 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   expect(healthChecks).toBe(1);
 
   await expectPublicRouteBoundary(app);
-  expect(sessionChecks).toBe(0);
+  expect(sessionChecks).toBe(1);
 
   const graphResponse = await app.handle(
     new Request(
@@ -168,6 +169,48 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     ),
   );
   expect(graphResponse.status).toBe(StatusMap.Unauthorized);
+
+  const now = new Date();
+  session = {
+    user: {
+      id: 'foreign-user',
+      name: 'Foreign',
+      email: 'foreign@example.invalid',
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+    session: {
+      id: 'foreign-session',
+      userId: 'foreign-user',
+      token: 'foreign-token',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+      createdAt: now,
+      updatedAt: now,
+    },
+  };
+  for (const path of [
+    '/api/profile',
+    '/api/pages',
+    '/api/pages/private-page',
+    '/api/assets',
+    '/api/assets/private-asset/content',
+    '/api/assets/private-asset/preview',
+    '/api/entities',
+    '/api/entities/private-entity',
+    '/api/records',
+    '/api/records/private-record',
+    '/api/history',
+    '/api/api-keys',
+    '/api/mcp/clients',
+    '/api/public-site',
+    '/api/syncs/managed',
+    '/api/face-recognition/settings',
+  ]) {
+    const response = await app.handle(new Request(`http://localhost${path}`));
+    expect(response.status).toBe(StatusMap.Unauthorized);
+    expect(await response.json()).toEqual({ error: 'Unauthorized' });
+  }
 
   const receiverResponse = await app.handle(
     new Request('http://localhost/api/records', {
@@ -291,9 +334,8 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
 
 async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
   const root = await app.handle(new Request('http://localhost/'));
-  expect(root.status).toBe(StatusMap.OK);
-  expect(root.headers.get('location')).toBeNull();
-  expect(await root.text()).toContain('<h1>Nothing published yet</h1>');
+  expect(root.status).toBe(StatusMap.Found);
+  expect(root.headers.get('location')).toBe('/public');
   for (const cookie of [undefined, 'better-auth.session_token=owner-session']) {
     for (const path of [
       '/public/unknown',

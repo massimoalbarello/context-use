@@ -86,7 +86,7 @@ export function createPublicDiscoveryController({
           return publicNotFound({ request });
         }
         return xml(
-          `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${loc('/')}</loc></url><url><loc>${loc('/public/directory')}</loc></url>${index.entries.map((entry) => `<url><loc>${loc(publicResourcePath(entry))}</loc><lastmod>${Bun.escapeHTML(entry.modifiedAt)}</lastmod></url>`).join('')}</urlset>`,
+          `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${loc('/public')}</loc></url><url><loc>${loc('/public/directory')}</loc></url>${index.entries.map((entry) => `<url><loc>${loc(publicResourcePath(entry))}</loc><lastmod>${Bun.escapeHTML(entry.modifiedAt)}</lastmod></url>`).join('')}</urlset>`,
         );
       },
       {

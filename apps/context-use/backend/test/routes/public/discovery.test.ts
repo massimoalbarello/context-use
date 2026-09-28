@@ -163,7 +163,7 @@ test('public discovery is bounded and all entries remain reachable through next-
       urls.push(node.url);
     });
     expect(urls).toEqual([
-      'http://localhost/',
+      'http://localhost/public',
       'http://localhost/public/directory',
       'http://localhost/sitemap.xml',
     ]);
@@ -173,6 +173,8 @@ test('public discovery is bounded and all entries remain reachable through next-
     const sitemap = await (
       await app.handle(new Request('http://localhost/sitemap.xml?page=1'))
     ).text();
+    expect(sitemap).toContain('<loc>http://localhost/public</loc>');
+    expect(sitemap).not.toContain('<loc>http://localhost/</loc>');
     for (const id of ids) {
       expect(sitemap).toContain(`/public/pages/${id}`);
     }
@@ -225,6 +227,7 @@ test('missing public resources have indistinguishable recoverable HTML and Markd
 });
 
 function assertHtmlDiscovery({ body, canonicalUrl }: { body: string; canonicalUrl: string }) {
+  expect(body).toContain('href="/public">Home</a>');
   expect(body).toContain(`rel="canonical" href="${canonicalUrl}"`);
   expect(body).toContain('rel="alternate" type="text/markdown"');
   expect(body).toContain('rel="describedby" href="/llms.txt"');

@@ -25,7 +25,7 @@ export function createPublicController({
 }) {
   const readHomepage = async ({ request }: { request: Request }) => {
     const content = await publicResourcesService.homepageContent({ ownerId });
-    const canonicalUrl = new URL('/', publicOrigin).href;
+    const canonicalUrl = new URL('/public', publicOrigin).href;
     return publicReadingResponse({
       request,
       canonicalUrl,
@@ -47,7 +47,6 @@ export function createPublicController({
       set.headers['content-security-policy'] = PUBLIC_DOCUMENT_CSP;
       set.headers['referrer-policy'] = 'no-referrer';
     })
-    .get('/', readHomepage, { detail: { hide: true } })
     .get('/public', readHomepage, {
       detail: { tags: ['Public site'], summary: 'Read the public homepage', security: [] },
     })

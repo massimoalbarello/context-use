@@ -26,7 +26,7 @@ test('homepage is empty by default and serves only the selected owner’s approv
 
     await update({ readableId: page.readableId, markdown: '# Secret draft\n\nPrivate edit.' });
     expect(await (await read('better-auth.session_token=some-owner-session')).text()).toBe(html);
-    for (const path of ['/', '/public']) {
+    for (const path of ['/public', '/public/']) {
       const homepage = await app.handle(new Request(`http://localhost${path}`));
       expect(homepage.status).toBe(StatusMap.OK);
       expect(homepage.headers.get('location')).toBeNull();
@@ -41,7 +41,7 @@ test('homepage is empty by default and serves only the selected owner’s approv
       const body = await markdown.text();
       expect(body).toContain('Public introduction.');
       expect(body).not.toContain('Secret draft');
-      expect(markdown.headers.get('link')).toContain('<http://localhost/>; rel="canonical"');
+      expect(markdown.headers.get('link')).toContain('<http://localhost/public>; rel="canonical"');
     }
     const directory = await app.handle(new Request('http://localhost/public/directory'));
     expect(directory.status).toBe(StatusMap.OK);
