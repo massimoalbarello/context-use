@@ -16,6 +16,7 @@ import { routeTree } from '../../src/routeTree.gen';
 test('entity filters survive navigation, self stays a person, and other types can be cleared', async () => {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const people: EntitySummary[] = ['alice', 'zoe'].map((name) => ({
+    publishedAt: null,
     readableId: name,
     name,
     description: 'Research colleague',

@@ -17,6 +17,7 @@ function renderCanvas() {
             key: 'entity:owner',
             point: { x: 0, y: 0 },
             entity: {
+              publishedAt: null,
               readableId: 'owner',
               name: 'Owner',
               description: 'The owner.',

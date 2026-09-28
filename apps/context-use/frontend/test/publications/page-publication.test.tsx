@@ -77,6 +77,7 @@ async function renderPage({
 } = {}) {
   const timestamp = new Date('2026-01-01');
   const page: KnowledgePage = {
+    publishedAt: null,
     readableId: 'notes',
     title: 'Cached title',
     excerpt: 'Notes',
@@ -339,7 +340,9 @@ test('first publication reviews full selected content before allowing confirmati
   ).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Unpublished revisions' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Publish changes' })).toBeNull();
-  expect(screen.queryByRole('link', { name: 'View public' })).toBeNull();
+  expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
+    '/public/pages/page_handle',
+  );
   expect(screen.queryByText('Public')).toBeNull();
   expect(screen.queryByText('Public revision 7')).toBeNull();
   expect(client.getQueryState(pagesListQueryKey)?.isInvalidated).toBe(true);
@@ -363,7 +366,9 @@ test('skipped private revisions compare active public to selected and a later re
   const { state, user, page, client, router } = await renderPage({ published: 1 });
   expect(screen.queryByText('Public')).toBeNull();
   expect(screen.queryByText('Public revision 1')).toBeNull();
-  expect(screen.queryByRole('link', { name: 'View public' })).toBeNull();
+  expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
+    '/public/pages/page_handle',
+  );
   expect(screen.queryByRole('button', { name: 'Publish changes' })).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Unpublished revisions' }));
   expect(router.state.location.search).toEqual({ view: 'revisions' });

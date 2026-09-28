@@ -30,6 +30,7 @@ async function passkeyWorld({ signedIn, path }: { signedIn: boolean; path: strin
   };
   const profile: KnowledgeProfile = {
     selfEntity: {
+      publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
       description: '',

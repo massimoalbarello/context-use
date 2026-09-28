@@ -6,6 +6,7 @@ import { assetContentUrl, assetTypeLabel, isEmbeddableAsset } from '../../lib/as
 import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
+import { PublicBadge } from '../publications/publication-appearance';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
@@ -15,7 +16,8 @@ type AssetName = Pick<AssetSummary, 'readableId' | 'name'>;
 type AssetIdentity = Pick<
   AssetSummary,
   'readableId' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
->;
+> &
+  Partial<Pick<AssetSummary, 'publishedAt'>>;
 
 type AssetLinkProps =
   | { asset: AssetName; presentation: 'inline'; active?: never; children?: ReactNode }
@@ -48,6 +50,7 @@ export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
           {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
         </small>
       </span>
+      {asset.publishedAt != null && <PublicBadge />}
     </>
   );
 }

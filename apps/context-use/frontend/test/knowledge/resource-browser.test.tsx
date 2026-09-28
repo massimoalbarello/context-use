@@ -28,6 +28,7 @@ async function renderResourceBrowser({
 } = {}) {
   const timestamp = new Date('2026-01-01T00:00:00Z');
   const entity: EntityDetail = {
+    publishedAt: null,
     readableId: 'owner',
     name: 'Owner',
     description: 'Workspace owner',
@@ -39,6 +40,7 @@ async function renderResourceBrowser({
     pages: [],
   };
   const asset: Asset = {
+    publishedAt: null,
     readableId: 'chart',
     name: 'Launch chart',
     mediaType: 'image/png',
@@ -50,6 +52,7 @@ async function renderResourceBrowser({
     depicts: [],
   };
   const record: ContextRecord = {
+    publishedAt: null,
     readableId: 'research',
     title: 'Research notes',
     sourceCreatedAt: null,
@@ -61,6 +64,7 @@ async function renderResourceBrowser({
     source: { provider: 'notion', kind: 'note', id: 'source-record', url: null },
   };
   const page: KnowledgePage = {
+    publishedAt: null,
     readableId: 'launch',
     title: 'Launch plan',
     excerpt: 'Launch overview',
@@ -87,6 +91,7 @@ async function renderResourceBrowser({
   };
   entity.pages = [
     {
+      publishedAt: null,
       readableId: page.readableId,
       title: page.title,
       excerpt: page.excerpt,

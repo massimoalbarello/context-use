@@ -6,6 +6,7 @@ import { type MapPages, mapPagesQueryOptions, mergeMapPages } from '../../src/qu
 test('overlapping page batches render each canonical page once without restoring an older revision', () => {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const page = {
+    publishedAt: null,
     readableId: 'planning',
     revisionNumber: 1,
     title: 'Planning',

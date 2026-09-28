@@ -14,6 +14,7 @@ import type { ContextRecordSummary } from '../../src/queries/records';
 afterEach(cleanup);
 
 const record: ContextRecordSummary = {
+  publishedAt: null,
   readableId: 'context-use-pr-57-a1b2c3',
   title: 'context-use #57: Describe records clearly',
   sourceCreatedAt: '2026-09-01T10:00:00Z',

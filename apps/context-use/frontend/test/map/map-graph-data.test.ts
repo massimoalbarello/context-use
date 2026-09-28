@@ -10,6 +10,7 @@ import type { MapEntity, MapNeighborhoods } from '../../src/queries/map';
 function entity(readableId: string): MapEntity {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   return {
+    publishedAt: null,
     readableId,
     name: readableId,
     description: readableId,

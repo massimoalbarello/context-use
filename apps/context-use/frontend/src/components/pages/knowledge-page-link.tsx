@@ -5,11 +5,13 @@ import type { ReactNode } from 'react';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
+import { PublicBadge } from '../publications/publication-appearance';
 import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 type KnowledgePageName = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
 type KnowledgePageIdentity = KnowledgePageName &
-  Pick<KnowledgePageSummary, 'excerpt' | 'temporalCoverage'>;
+  Pick<KnowledgePageSummary, 'excerpt' | 'temporalCoverage'> &
+  Partial<Pick<KnowledgePageSummary, 'publishedAt'>>;
 
 type KnowledgePageLinkProps =
   | {
@@ -63,6 +65,7 @@ export function KnowledgePageCardContent({
           </small>
         )}
       </span>
+      {page.publishedAt != null && <PublicBadge />}
     </>
   );
 }

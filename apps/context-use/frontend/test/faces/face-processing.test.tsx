@@ -73,6 +73,7 @@ function authenticatedClient() {
   client.setQueryData(sessionQueryOptions.queryKey, session);
   const profile: KnowledgeProfile = {
     selfEntity: {
+      publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
       description: 'The owner.',
@@ -92,6 +93,7 @@ test('settings restores the queue filter, retries a failed image, and changes qu
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   const failed: FaceProcessing['items'][number] = {
     asset: {
+      publishedAt: null,
       readableId: 'group-photo',
       name: 'Group photo',
       mediaType: 'image/jpeg',
@@ -177,6 +179,7 @@ function queueImage(readableId: string): FaceProcessing['items'][number] {
   const timestamp = new Date('2026-01-01T00:00:00.000Z');
   return {
     asset: {
+      publishedAt: null,
       readableId,
       name: readableId,
       mediaType: 'image/jpeg',

@@ -28,6 +28,7 @@ async function renderInteractivePreview(onClose: () => void) {
     [nextSelection, 'Delivery brief'],
   ] as const) {
     queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
+      publishedAt: null,
       readableId: selection.readableId,
       title,
       excerpt: title,

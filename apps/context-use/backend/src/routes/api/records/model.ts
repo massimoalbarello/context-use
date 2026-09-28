@@ -5,9 +5,13 @@ import {
   KnowledgePageSummarySchema,
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
-import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
+import {
+  PublicationSchema,
+  PublicationVisibilitySchema,
+} from '#backend/routes/api/publications/model.ts';
 
 export const RecordSummarySchema = t.Object({
+  publishedAt: PublicationSchema.properties.publishedAt,
   readableId: ReadableIdSchema,
   title: t.String({ minLength: 1 }),
   source: t.Object({
@@ -57,6 +61,7 @@ export function invalidRecordDateRange({ from, to }: { from?: Date; to?: Date })
 
 export function recordSummaryResponse(record: RecordSummary) {
   return {
+    publishedAt: record.publishedAt,
     readableId: record.readableId,
     title: record.title,
     source: record.source,

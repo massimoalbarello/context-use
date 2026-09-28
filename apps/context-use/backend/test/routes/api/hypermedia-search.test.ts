@@ -47,108 +47,113 @@ function searchApp(retrievalService: Pick<HypermediaRetrievalServiceContract, 's
     .use(createHypermediaSearchController({ auth, retrievalService }));
 }
 
-test('HTTP search maps pipeline results to compact typed previews without internal identifiers', async () => {
-  const dates = { createdAt: timestamp, updatedAt: timestamp };
-  const result: HypermediaRetrievalResults = {
-    results: [
-      {
-        resourceType: 'entity',
-        matchExcerpt: 'Researches retrieval.',
-        entity: {
-          publicId: null,
-          publishedAt: null,
-          id: 'private-entity-id',
-          readableId: 'luca',
-          name: 'Luca',
-          description: 'Researches retrieval.',
-          entityType: 'person',
-          isSelf: false,
-          image: null,
-          ...dates,
+test.each([null, timestamp])(
+  'HTTP search maps publication state %s to resource previews without internal identifiers',
+  async (publishedAt) => {
+    const dates = { createdAt: timestamp, updatedAt: timestamp };
+    const result: HypermediaRetrievalResults = {
+      results: [
+        {
+          resourceType: 'entity',
+          matchExcerpt: 'Researches retrieval.',
+          entity: {
+            publicId: 'stable-public-handle',
+            publishedAt,
+            id: 'private-entity-id',
+            readableId: 'luca',
+            name: 'Luca',
+            description: 'Researches retrieval.',
+            entityType: 'person',
+            isSelf: false,
+            image: null,
+            ...dates,
+          },
         },
-      },
-      {
-        resourceType: 'knowledge_page',
-        matchExcerpt: 'A sentence deep in the page.',
-        knowledgePage: {
-          publicId: null,
-          publishedAt: null,
-          publishedRevisionNumber: null,
-          id: 'private-page-id',
-          readableId: 'research',
-          title: 'Research',
-          excerpt: 'An overview.',
-          temporalCoverage: '2026',
-          revisionNumber: 1,
-          ...dates,
+        {
+          resourceType: 'knowledge_page',
+          matchExcerpt: 'A sentence deep in the page.',
+          knowledgePage: {
+            publicId: 'stable-public-handle',
+            publishedAt,
+            publishedRevisionNumber: null,
+            id: 'private-page-id',
+            readableId: 'research',
+            title: 'Research',
+            excerpt: 'An overview.',
+            temporalCoverage: '2026',
+            revisionNumber: 1,
+            ...dates,
+          },
         },
-      },
-      {
-        resourceType: 'asset',
-        matchExcerpt: null,
-        asset: {
-          publicId: null,
-          publishedAt: null,
-          id: 'private-asset-id',
-          readableId: 'chart',
-          name: 'Chart',
-          mediaType: 'image/png',
-          extension: 'png',
-          sizeBytes: 42,
-          ...dates,
+        {
+          resourceType: 'asset',
+          matchExcerpt: null,
+          asset: {
+            publicId: 'stable-public-handle',
+            publishedAt,
+            id: 'private-asset-id',
+            readableId: 'chart',
+            name: 'Chart',
+            mediaType: 'image/png',
+            extension: 'png',
+            sizeBytes: 42,
+            ...dates,
+          },
         },
-      },
-      {
-        resourceType: 'record',
-        matchExcerpt: 'The meeting discusses retrieval.',
-        record: {
-          publicId: null,
-          publishedAt: null,
-          readableId: 'meeting',
-          title: 'Meeting',
-          sourceCreatedAt: timestamp,
-          sourceUpdatedAt: null,
-          ...dates,
-          source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
+        {
+          resourceType: 'record',
+          matchExcerpt: 'The meeting discusses retrieval.',
+          record: {
+            publicId: 'stable-public-handle',
+            publishedAt,
+            readableId: 'meeting',
+            title: 'Meeting',
+            sourceCreatedAt: timestamp,
+            sourceUpdatedAt: null,
+            ...dates,
+            source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
+          },
         },
-      },
-    ],
-    totalMatches: 8,
-    truncated: true,
-  };
-  const app = searchApp({ search: async () => result });
-  const response = await app.handle(
-    new Request('http://localhost/hypermedia/search?query=research', {
-      headers: { 'test-owner': 'owner-a' },
-    }),
-  );
-  expect(response.status).toBe(StatusMap.OK);
-  const body = await response.json();
-  expect(body).toMatchObject({
-    totalMatches: 8,
-    truncated: true,
-    results: [
-      {
-        resourceType: 'entity',
-        address: 'context-use://entity/luca',
-        entity: { readableId: 'luca', entityType: 'person' },
-      },
-      {
-        resourceType: 'knowledge_page',
-        address: 'context-use://page/research',
-        matchExcerpt: 'A sentence deep in the page.',
-      },
-      { resourceType: 'asset', address: 'context-use://asset/chart' },
-      {
-        resourceType: 'record',
-        address: 'context-use://record/meeting',
-        record: { source: { provider: 'granola', kind: 'meeting' } },
-      },
-    ],
-  });
-  expectNoInternalResourceIds(body);
-  expect(JSON.stringify(body)).not.toContain('private-');
-});
+      ],
+      totalMatches: 8,
+      truncated: true,
+    };
+    const app = searchApp({ search: async () => result });
+    const response = await app.handle(
+      new Request('http://localhost/hypermedia/search?query=research', {
+        headers: { 'test-owner': 'owner-a' },
+      }),
+    );
+    expect(response.status).toBe(StatusMap.OK);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      totalMatches: 8,
+      truncated: true,
+      results: [
+        {
+          resourceType: 'entity',
+          address: 'context-use://entity/luca',
+          entity: { readableId: 'luca', entityType: 'person', publishedAt },
+        },
+        {
+          resourceType: 'knowledge_page',
+          address: 'context-use://page/research',
+          matchExcerpt: 'A sentence deep in the page.',
+          knowledgePage: { publishedAt },
+        },
+        { resourceType: 'asset', address: 'context-use://asset/chart', asset: { publishedAt } },
+        {
+          resourceType: 'record',
+          address: 'context-use://record/meeting',
+          record: { source: { provider: 'granola', kind: 'meeting' }, publishedAt },
+        },
+      ],
+    });
+    expectNoInternalResourceIds(body);
+    expect(JSON.stringify(body)).not.toContain('private-');
+    expect(JSON.stringify(body)).not.toContain('stable-public-handle');
+  },
+);
 
 test('HTTP search passes the authenticated owner and typed narrowing filters to the shared pipeline', async () => {
   const app = searchApp({

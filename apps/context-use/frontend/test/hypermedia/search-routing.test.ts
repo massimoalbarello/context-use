@@ -90,6 +90,7 @@ test('typed search callers preserve pipeline order and nonliteral matches withou
       resourceType: 'entity',
       address: `context-use://entity/${name}`,
       entity: {
+        publishedAt: null,
         readableId: name,
         name,
         description: 'A colleague.',

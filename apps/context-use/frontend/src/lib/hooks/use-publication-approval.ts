@@ -1,10 +1,11 @@
 import { startAuthentication, WebAuthnAbortService } from '@simplewebauthn/browser';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { assetSuggestionsQueryKey, assetsListQueryKey } from '../../queries/assets';
-import { entitiesListQueryKey } from '../../queries/entities';
+import { assetsQueryKey } from '../../queries/assets';
+import { entitiesQueryKey } from '../../queries/entities';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
-import { pagesListQueryKey } from '../../queries/pages';
+import { mapQueryKey } from '../../queries/map';
+import { pageDetailsQueryKey, pagePreviewsQueryKey, pagesListQueryKey } from '../../queries/pages';
 import { publicSiteQueryKey } from '../../queries/public-site';
 import {
   beginPublication,
@@ -13,7 +14,7 @@ import {
   type PublicationRequest,
   publicationsQueryKey,
 } from '../../queries/publications';
-import { recordsListQueryKey } from '../../queries/records';
+import { recordsQueryKey } from '../../queries/records';
 import { passkeyErrorMessage } from '../passkey-error';
 
 export function usePublicationApproval() {
@@ -30,19 +31,20 @@ export function usePublicationApproval() {
     mutationFn: (variables: CompletePublicationVariables & { request: PublicationRequest }) =>
       completePublication(variables),
     retry: false,
-    onSettled: async (...[_data, _error, { request }]) => {
-      const listKeys =
-        request.resourceType === 'page'
-          ? [pagesListQueryKey, publicSiteQueryKey]
-          : request.resourceType === 'entity'
-            ? [entitiesListQueryKey, assetsListQueryKey, assetSuggestionsQueryKey]
-            : request.resourceType === 'record'
-              ? [recordsListQueryKey]
-              : [assetsListQueryKey, assetSuggestionsQueryKey];
+    onSettled: async () => {
       await Promise.all(
-        [publicationsQueryKey, ...listKeys, knowledgeSuggestionsQueryKey].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
+        [
+          publicationsQueryKey,
+          entitiesQueryKey,
+          pagesListQueryKey,
+          pageDetailsQueryKey,
+          pagePreviewsQueryKey,
+          assetsQueryKey,
+          recordsQueryKey,
+          mapQueryKey,
+          publicSiteQueryKey,
+          knowledgeSuggestionsQueryKey,
+        ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
     },
   });

@@ -3,7 +3,10 @@ import type { AssetSummary } from '#backend/models/assets/model.ts';
 import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import { ReadableIdSchema } from '#backend/routes/api/model.ts';
 
+import { PublicationSchema } from '#backend/routes/api/publications/model.ts';
+
 export const AssetSummarySchema = t.Object({
+  publishedAt: PublicationSchema.properties.publishedAt,
   readableId: ReadableIdSchema,
   name: t.String({ minLength: 1, maxLength: MAX_ASSET_NAME_LENGTH }),
   mediaType: t.String(),
@@ -15,6 +18,7 @@ export const AssetSummarySchema = t.Object({
 
 export function assetSummaryResponse(asset: AssetSummary) {
   return {
+    publishedAt: asset.publishedAt,
     readableId: asset.readableId,
     name: asset.name,
     mediaType: asset.mediaType,

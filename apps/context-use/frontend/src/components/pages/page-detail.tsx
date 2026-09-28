@@ -21,6 +21,7 @@ import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { KnowledgePageRevisions } from '../pages/knowledge-page-revisions';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
+import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
@@ -217,12 +218,6 @@ function KnowledgePageDetailContent({
     setArchiveConflict(null);
     approval.review({ resourceType: 'page', readableId: page.readableId, ...request });
   }
-  const publicationAction = isPublic
-    ? { label: 'Unpublish', onClick: () => review({ action: 'unpublish' }) }
-    : {
-        label: 'Publish',
-        onClick: () => review({ action: 'publish', revisionNumber: page.revisionNumber }),
-      };
   const revisions = (
     <KnowledgePageRevisions
       page={page}
@@ -260,14 +255,18 @@ function KnowledgePageDetailContent({
       }}
       publicationActions={
         publication.isSuccess && (
-          <Button
-            variant="outline"
-            size="lg"
-            disabled={!!approval.request}
-            onClick={publicationAction.onClick}
-          >
-            {publicationAction.label}
-          </Button>
+          <PagePublicationActions
+            publicId={publication.data.publicId}
+            isPublic={isPublic}
+            unavailable={!!approval.request}
+            onReview={() =>
+              review(
+                isPublic
+                  ? { action: 'unpublish' }
+                  : { action: 'publish', revisionNumber: page.revisionNumber },
+              )
+            }
+          />
         )
       }
     >
@@ -443,4 +442,33 @@ function PagePublicationContext({
       Unpublished revisions
     </Button>
   ) : null;
+}
+
+function PagePublicationActions({
+  publicId,
+  isPublic,
+  unavailable,
+  onReview,
+}: {
+  publicId: string | null;
+  isPublic: boolean;
+  unavailable: boolean;
+  onReview: () => void;
+}) {
+  return (
+    <>
+      {isPublic && publicId && (
+        <ViewPublicLink href={`/public/pages/${encodeURIComponent(publicId)}`} />
+      )}
+      <Button
+        variant={isPublic ? 'outline' : 'ghost'}
+        className={isPublic ? undefined : publicActionClassName}
+        size="lg"
+        disabled={unavailable}
+        onClick={onReview}
+      >
+        {isPublic ? 'Unpublish' : 'Publish'}
+      </Button>
+    </>
+  );
 }
