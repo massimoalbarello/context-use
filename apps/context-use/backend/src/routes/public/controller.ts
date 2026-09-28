@@ -76,7 +76,7 @@ export function createPublicController({
         detail: { tags: ['Entities'], summary: 'Read an active public entity', security: [] },
         response: {
           [StatusMap.OK]: t.String(),
-          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
+          [StatusMap['Not Found']]: t.String(),
           [StatusMap['Not Acceptable']]: t.String(),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
@@ -107,7 +107,7 @@ export function createPublicController({
         detail: { tags: ['Pages'], summary: 'Read an active public page', security: [] },
         response: {
           [StatusMap.OK]: t.String(),
-          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
+          [StatusMap['Not Found']]: t.String(),
           [StatusMap['Not Acceptable']]: t.String(),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
@@ -136,7 +136,7 @@ export function createPublicController({
         },
         response: {
           [StatusMap.OK]: t.String(),
-          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
+          [StatusMap['Not Found']]: t.String(),
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
@@ -224,7 +224,7 @@ export function createPublicController({
         detail: { tags: ['Assets'], summary: 'Read an active public asset', security: [] },
         response: {
           [StatusMap.OK]: t.File(),
-          [StatusMap['Not Found']]: t.Union([t.String(), ErrorResponseSchema]),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
       },
