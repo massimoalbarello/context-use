@@ -195,6 +195,7 @@ test(
           '/api/entities/steve-jobs/images',
           '/api/pages/my-work-from-ipod-to-iphone',
           '/api/pages/my-work-from-ipod-to-iphone/diff?from=0&to=1',
+          '/api/pages/my-work-from-ipod-to-iphone/revisions/1',
           '/api/pages/my-work-from-ipod-to-iphone/preview',
           '/api/assets/steve-presenting-iphone',
           '/api/assets/steve-presenting-iphone/preview',

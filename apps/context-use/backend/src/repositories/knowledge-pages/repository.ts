@@ -27,11 +27,10 @@ import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
 
 export interface KnowledgePagesRepositoryContract {
-  revisionsForComparison(input: {
+  revisionsByNumber(input: {
     ownerId: string;
     readableId: string;
-    from: number;
-    to: number;
+    revisionNumbers: number[];
   }): Promise<StoredKnowledgePageRevision[]>;
   create(input: {
     pageId: string;
@@ -759,18 +758,16 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows.map(summaryFrom);
   }
 
-  async revisionsForComparison({
+  async revisionsByNumber({
     ownerId,
     readableId,
-    from,
-    to,
+    revisionNumbers,
   }: {
     ownerId: string;
     readableId: string;
-    from: number;
-    to: number;
+    revisionNumbers: number[];
   }): Promise<StoredKnowledgePageRevision[]> {
-    const rows = await this.sql.FindKnowledgePageComparisonRevisions`
+    const rows = await this.sql.FindKnowledgePageRevisionsByNumber`
       /* @notNull revisionNumber storageKey contentHash sizeBytes */
       select revision."revision_number" as "revisionNumber",
         revision."temporal_coverage" as "temporalCoverage",
@@ -781,7 +778,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         on revision."page_id" = page."id" and revision."owner_id" = page."owner_id"
       where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
         and page."archived_at" is null
-        and revision."revision_number" in (${from}, ${to})
+        and revision."revision_number" in (select value from json_each(${JSON.stringify(revisionNumbers)}))
     `;
     return rows.map((row) => ({
       ...row,

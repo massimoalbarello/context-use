@@ -21,6 +21,10 @@ import {
   KnowledgePageDiffSchema,
   knowledgePageDiffResponse,
 } from './diff/model.ts';
+import {
+  KnowledgePageRevisionParamsSchema,
+  KnowledgePageRevisionSchema,
+} from './revisions/model.ts';
 
 export function createPageReadableIdController({
   auth,
@@ -62,6 +66,31 @@ export function createPageReadableIdController({
           [StatusMap.OK]: KnowledgePageDiffSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
           [StatusMap['Unprocessable Content']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .get(
+      '/pages/:pageReadableId/revisions/:revisionNumber',
+      async ({ params, user, status }) => {
+        const revision = await pagesService.revision({
+          ownerId: user.id,
+          readableId: params.pageReadableId,
+          revisionNumber: params.revisionNumber,
+        });
+        return revision
+          ? status(StatusMap.OK, {
+              revisionNumber: revision.revisionNumber,
+              markdown: revision.markdown,
+              temporalCoverage: revision.temporalCoverage,
+            })
+          : status(StatusMap['Not Found'], { error: 'Knowledge page revision not found' });
+      },
+      {
+        detail: { tags: ['Pages'], summary: 'Read a saved knowledge page revision' },
+        params: KnowledgePageRevisionParamsSchema,
+        response: {
+          [StatusMap.OK]: KnowledgePageRevisionSchema,
+          [StatusMap['Not Found']]: ErrorResponseSchema,
         },
       },
     )

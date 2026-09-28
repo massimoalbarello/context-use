@@ -65,6 +65,7 @@ const assetsService: AssetsServiceContract = {
 };
 
 const pagesService: KnowledgePagesServiceContract = {
+  revision: unexpectedCall,
   diff: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,

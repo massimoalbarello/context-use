@@ -649,8 +649,8 @@ export interface IListKnowledgePagesByEntityResult {
     updatedAt: string;
 }
 
-/** Result of query `FindKnowledgePageComparisonRevisions`. */
-export interface IFindKnowledgePageComparisonRevisionsResult {
+/** Result of query `FindKnowledgePageRevisionsByNumber`. */
+export interface IFindKnowledgePageRevisionsByNumberResult {
     revisionNumber: number;
     temporalCoverage: string | null;
     storageKey: string;
@@ -1320,7 +1320,7 @@ export interface Queries {
     ListKnowledgePages: IListKnowledgePagesResult;
     CountKnowledgePages: ICountKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
-    FindKnowledgePageComparisonRevisions: IFindKnowledgePageComparisonRevisionsResult;
+    FindKnowledgePageRevisionsByNumber: IFindKnowledgePageRevisionsByNumberResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;
     RemoveKnowledgePageSearchDocument: IRemoveKnowledgePageSearchDocumentResult;
