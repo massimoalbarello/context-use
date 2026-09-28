@@ -1,4 +1,5 @@
 import { Button } from '@repo/ui/button';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Expand, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { assetTypeLabel } from '../../lib/asset-presentation';
@@ -7,6 +8,7 @@ import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
 import { useRecord } from '../../lib/hooks/use-records';
 import type { ResourceSelection } from '../../lib/resource-selection';
+import { entityPagesQueryOptions } from '../../queries/pages';
 import { AssetFileActions } from '../assets/asset-file-actions';
 import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
@@ -15,6 +17,7 @@ import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { ContextRecordMarkdown } from '../records/record-markdown';
+import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { ResourceList } from './resource-list';
 import { ResourceScrollArea } from './resource-scroll-area';
 
@@ -138,11 +141,52 @@ function EntityPreview({ readableId, onClose, onExpand }: PreviewProps) {
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
+          <EntityMentioningPages readableId={readableId} />
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>
       )}
     </PreviewPanelShell>
+  );
+}
+
+function EntityMentioningPages({ readableId }: { readableId: string }) {
+  const query = useInfiniteQuery(entityPagesQueryOptions(readableId));
+  const pages = query.data?.pages.flatMap((page) => page.items) ?? [];
+  return (
+    <section className="grid gap-2" aria-label="Mentioned in">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-semibold">Mentioned in</h3>
+        <span className="text-muted-foreground text-xs">Recently updated</span>
+      </div>
+      {query.isPending ? (
+        <PreviewStatus>Loading pages…</PreviewStatus>
+      ) : query.isError && !query.data ? (
+        <PreviewError error={query.error} retry={query.refetch} />
+      ) : (
+        <>
+          {pages.length === 0 ? (
+            <PreviewStatus>No pages mention this entity yet.</PreviewStatus>
+          ) : (
+            <ResourceList>
+              {pages.map((page) => (
+                <li key={page.readableId}>
+                  <KnowledgePageLink page={page} presentation="card" />
+                </li>
+              ))}
+            </ResourceList>
+          )}
+          <InfiniteScrollTrigger
+            hasNextPage={query.hasNextPage}
+            isFetchingNextPage={query.isFetchingNextPage}
+            error={query.error}
+            loadMore={
+              query.isError && !query.isFetchNextPageError ? query.refetch : query.fetchNextPage
+            }
+          />
+        </>
+      )}
+    </section>
   );
 }
 

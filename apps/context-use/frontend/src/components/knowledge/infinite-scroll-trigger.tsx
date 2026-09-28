@@ -29,7 +29,7 @@ export function InfiniteScrollTrigger({
         }
       },
       {
-        root: marker.closest('[data-collection-scroll]'),
+        root: marker.closest('[data-collection-scroll], [data-resource-scroll]'),
         rootMargin: '160px 0px',
       },
     );

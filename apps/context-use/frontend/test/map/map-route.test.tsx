@@ -100,6 +100,10 @@ test('Map previews entities without filtering pages and recovers from page failu
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = new URL(input instanceof Request ? input.url : input);
+        if (url.pathname === '/api/pages') {
+          expect(['owner', 'colleague']).toContain(url.searchParams.get('entityReadableId'));
+          return Promise.resolve(Response.json({ items: [], total: 0, nextOffset: null }));
+        }
         requests.push(url);
         expect(url.searchParams.has('query')).toBe(false);
         expect(url.searchParams.has('entities')).toBe(false);

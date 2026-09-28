@@ -133,6 +133,7 @@ export class KnowledgePagesService {
     visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
+    entityReadableId?: string;
   }) {
     return this.pages.list(input);
   }

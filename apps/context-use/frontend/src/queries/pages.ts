@@ -133,6 +133,23 @@ export function pagesQueryOptions({
   });
 }
 
+export function entityPagesQueryOptions(entityReadableId: string) {
+  return infiniteQueryOptions({
+    queryKey: [...pagesListQueryKey, { entityReadableId }],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await api.api.pages.get({
+        query: { entityReadableId, offset: pageParam },
+      });
+      if (error) {
+        throw new Error(apiErrorMessage(error));
+      }
+      return data;
+    },
+    getNextPageParam: (page) => page.nextOffset ?? undefined,
+  });
+}
+
 export function pageQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...pageDetailsQueryKey, readableId],

@@ -19,7 +19,13 @@ function collectionResponse({ url, item }: { url: URL; item: unknown }) {
   return { items, total: items.length, nextOffset: null };
 }
 
-async function renderResourceBrowser(path = '/app/pages') {
+async function renderResourceBrowser({
+  path = '/app/pages',
+  entityPagesResponse,
+}: {
+  path?: string;
+  entityPagesResponse?: (input: { url: URL; page: KnowledgePage }) => Response;
+} = {}) {
   const timestamp = new Date('2026-01-01T00:00:00Z');
   const entity: EntityDetail = {
     readableId: 'owner',
@@ -123,6 +129,12 @@ async function renderResourceBrowser(path = '/app/pages') {
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = new URL(input instanceof Request ? input.url : input);
         requests.push(url);
+        if (url.pathname === '/api/pages' && url.searchParams.has('entityReadableId')) {
+          return Promise.resolve(
+            entityPagesResponse?.({ url, page }) ??
+              Response.json(collectionResponse({ url, item: page })),
+          );
+        }
         if (
           url.pathname === '/api/pages/milestones' ||
           url.pathname === '/api/pages/milestones/preview'
@@ -298,7 +310,7 @@ test('resource navigation opens unselected collections with their own toolbar an
 });
 
 test('side previews preserve the collection and filters while navigating related resources', async () => {
-  const app = await renderResourceBrowser('/app/pages?interval=without');
+  const app = await renderResourceBrowser({ path: '/app/pages?interval=without' });
   const user = userEvent.setup();
   try {
     const listLink = await screen.findByRole('link', { name: 'Launch plan Launch overview' });
@@ -378,7 +390,7 @@ test('preview failures can be retried without leaving the collection', async () 
 });
 
 test('direct detail URLs keep related resources expanded and support browser Back', async () => {
-  const app = await renderResourceBrowser('/app/pages/launch');
+  const app = await renderResourceBrowser({ path: '/app/pages/launch' });
   try {
     const user = userEvent.setup();
     expect(await screen.findByRole('heading', { name: 'Launch plan' })).toBeTruthy();
@@ -398,7 +410,7 @@ test('direct detail URLs keep related resources expanded and support browser Bac
 });
 
 test('preview links retain canonical URLs and modifier clicks without leaving the collection', async () => {
-  const app = await renderResourceBrowser('/app/pages?resource=page&resourceId=launch');
+  const app = await renderResourceBrowser({ path: '/app/pages?resource=page&resourceId=launch' });
   const user = userEvent.setup();
   try {
     const preview = await screen.findByRole('complementary', { name: 'Knowledge page preview' });
@@ -443,10 +455,10 @@ for (const { kind, id, name, edit, relationships } of [
     relationships: 'Mentioned by',
   },
 ]) {
-  test(`${kind} previews omit relationships and Expand loads full detail`, async () => {
-    const app = await renderResourceBrowser(
-      `/app/${kind === 'asset' ? 'assets' : 'entities'}?resource=${kind}&resourceId=${id}`,
-    );
+  test(`${kind} previews load identity independently and Expand loads full detail`, async () => {
+    const app = await renderResourceBrowser({
+      path: `/app/${kind === 'asset' ? 'assets' : 'entities'}?resource=${kind}&resourceId=${id}`,
+    });
     try {
       const user = userEvent.setup();
       await screen.findByRole('heading', { name });
@@ -476,7 +488,7 @@ for (const { kind, id, name, edit, relationships } of [
 }
 
 test('searching and clearing an asset query preserves its preview', async () => {
-  const app = await renderResourceBrowser('/app/assets?resource=asset&resourceId=chart');
+  const app = await renderResourceBrowser({ path: '/app/assets?resource=asset&resourceId=chart' });
   try {
     const user = userEvent.setup();
     const input = await screen.findByRole('searchbox', { name: 'Search assets' });
@@ -506,7 +518,7 @@ for (const { path, filter, reset, key } of [
   },
 ] as const) {
   test(`${filter} resets only collection criteria and keeps the selected preview`, async () => {
-    const app = await renderResourceBrowser(path);
+    const app = await renderResourceBrowser({ path: path });
     try {
       const user = userEvent.setup();
       await screen.findByRole('heading', { name: 'Launch plan' });
@@ -524,9 +536,9 @@ for (const { path, filter, reset, key } of [
 }
 
 test('page interval and date filters keep the selected resource', async () => {
-  const app = await renderResourceBrowser(
-    '/app/pages?from=2026-01-01&to=2026-01-31&resource=page&resourceId=launch',
-  );
+  const app = await renderResourceBrowser({
+    path: '/app/pages?from=2026-01-01&to=2026-01-31&resource=page&resourceId=launch',
+  });
   try {
     const user = userEvent.setup();
     await screen.findByRole('heading', { name: 'Launch plan' });
@@ -552,9 +564,9 @@ for (const { link, kind, id } of [
   { link: 'timeline', kind: 'page', id: 'launch' },
 ]) {
   test(`expanded ${kind} links retain focus and return to the original collection`, async () => {
-    const app = await renderResourceBrowser(
-      '/app/pages?interval=without&resource=page&resourceId=launch&expanded=true',
-    );
+    const app = await renderResourceBrowser({
+      path: '/app/pages?interval=without&resource=page&resourceId=launch&expanded=true',
+    });
     try {
       const user = userEvent.setup();
       await user.click(await screen.findByRole('link', { name: link }));
@@ -589,9 +601,9 @@ for (const { link, kind, id } of [
 }
 
 test('expanded navigation from Map returns to Map with its original month', async () => {
-  const app = await renderResourceBrowser(
-    '/app/map?month=2007-08&resource=page&resourceId=launch&expanded=true',
-  );
+  const app = await renderResourceBrowser({
+    path: '/app/map?month=2007-08&resource=page&resourceId=launch&expanded=true',
+  });
   try {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('link', { name: 'Owner' }));
@@ -611,9 +623,9 @@ test('expanded navigation from Map returns to Map with its original month', asyn
 
 for (const expanded of [false, true]) {
   test(`section links reveal asynchronously loaded content in ${expanded ? 'expanded detail' : 'preview'}`, async () => {
-    const app = await renderResourceBrowser(
-      `/app/pages?resource=page&resourceId=launch${expanded ? '&expanded=true' : ''}`,
-    );
+    const app = await renderResourceBrowser({
+      path: `/app/pages?resource=page&resourceId=launch${expanded ? '&expanded=true' : ''}`,
+    });
     const revealed: HTMLElement[] = [];
     const scroll = spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(function (
       this: HTMLElement,
@@ -638,9 +650,9 @@ for (const expanded of [false, true]) {
 
 for (const collection of ['pages', 'entities', 'assets'] as const) {
   test(`${collection} visibility changes preserve selection, search, and browsing history`, async () => {
-    const app = await renderResourceBrowser(
-      `/app/${collection}?visibility=private&resource=page&resourceId=launch`,
-    );
+    const app = await renderResourceBrowser({
+      path: `/app/${collection}?visibility=private&resource=page&resourceId=launch`,
+    });
     try {
       const user = userEvent.setup();
       await screen.findByRole('heading', { name: 'Launch plan' });
@@ -708,3 +720,85 @@ for (const collection of ['pages', 'entities', 'assets'] as const) {
     }
   });
 }
+
+test('entity preview paginates mentioning pages, retries without losing rows, and keeps collection navigation', async () => {
+  let failNextPage = true;
+  const app = await renderResourceBrowser({
+    path: '/app/entities?resource=entity&resourceId=owner',
+    entityPagesResponse: ({ url, page }) => {
+      const isNextPage = url.searchParams.get('offset') === '1';
+      if (isNextPage && failNextPage) {
+        failNextPage = false;
+        return Response.json({ error: 'Next page unavailable' }, { status: 503 });
+      }
+      return Response.json({
+        items: [isNextPage ? { ...page, readableId: 'milestones', title: 'Milestones' } : page],
+        total: 2,
+        nextOffset: isNextPage ? null : 1,
+      });
+    },
+  });
+  const user = userEvent.setup();
+  try {
+    const preview = await screen.findByRole('complementary', { name: 'Entity preview' });
+    const mentions = within(preview).getByRole('region', { name: 'Mentioned in' });
+    await within(mentions).findByRole('link', { name: 'Launch plan Launch overview' });
+    expect(app.requests.some((url) => url.searchParams.get('entityReadableId') === 'owner')).toBe(
+      true,
+    );
+    await user.click(within(mentions).getByRole('button', { name: 'Load more' }));
+    await within(mentions).findByText('Couldn’t load more.');
+    expect(within(mentions).getAllByRole('link')).toHaveLength(1);
+    await user.click(within(mentions).getByRole('button', { name: 'Retry' }));
+    const nextPage = await within(mentions).findByRole('link', {
+      name: 'Milestones Launch overview',
+    });
+    expect(within(mentions).getAllByRole('link')).toHaveLength(2);
+    expect(within(mentions).queryByRole('button', { name: 'Load more' })).toBeNull();
+    await user.click(nextPage);
+    await screen.findByRole('complementary', { name: 'Knowledge page preview' });
+    expect(app.router.state.location.pathname).toBe('/app/entities');
+    expect(app.router.state.location.search).toMatchObject({
+      resource: 'page',
+      resourceId: 'milestones',
+    });
+  } finally {
+    app.dispose();
+  }
+});
+
+test('entity preview keeps its identity visible when mentioning pages fail and can recover', async () => {
+  let unavailable = true;
+  const app = await renderResourceBrowser({
+    path: '/app/entities?resource=entity&resourceId=owner',
+    entityPagesResponse: ({ url, page }) =>
+      unavailable
+        ? Response.json({ error: 'Pages temporarily unavailable' }, { status: 503 })
+        : Response.json(collectionResponse({ url, item: page })),
+  });
+  const user = userEvent.setup();
+  try {
+    const preview = await screen.findByRole('complementary', { name: 'Entity preview' });
+    await within(preview).findByText('Pages temporarily unavailable');
+    expect(within(preview).getByRole('heading', { name: 'Owner' })).toBeTruthy();
+    unavailable = false;
+    await user.click(within(preview).getByRole('button', { name: 'Try again' }));
+    await within(preview).findByRole('link', { name: 'Launch plan Launch overview' });
+  } finally {
+    app.dispose();
+  }
+});
+
+test('entity preview explains when no pages mention it', async () => {
+  const app = await renderResourceBrowser({
+    path: '/app/entities?resource=entity&resourceId=owner',
+    entityPagesResponse: () => Response.json({ items: [], total: 0, nextOffset: null }),
+  });
+  try {
+    const preview = await screen.findByRole('complementary', { name: 'Entity preview' });
+    await within(preview).findByText('No pages mention this entity yet.');
+    expect(within(preview).queryByRole('button', { name: 'Load more' })).toBeNull();
+  } finally {
+    app.dispose();
+  }
+});
