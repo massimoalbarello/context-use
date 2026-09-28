@@ -227,6 +227,6 @@ test('missing public resources have indistinguishable recoverable HTML and Markd
 function assertHtmlDiscovery({ body, canonicalUrl }: { body: string; canonicalUrl: string }) {
   expect(body).toContain(`rel="canonical" href="${canonicalUrl}"`);
   expect(body).toContain('rel="alternate" type="text/markdown"');
-  expect(body).toContain('AI reading guide');
+  expect(body).toContain('rel="describedby" href="/llms.txt"');
   expect(body).not.toContain('<script');
 }

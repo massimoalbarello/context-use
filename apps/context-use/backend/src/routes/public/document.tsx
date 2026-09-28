@@ -29,8 +29,7 @@ footer p { margin: 0; font-size: 1rem; }
 footer [role="img"] { margin-inline: .15em; }
 footer .repository { color: #315e4e; font-weight: 700; text-decoration-style: dotted; }
 .footer-details { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-top: .75rem; font-size: .875rem; color: #69655d; }
-.footer-links { margin-left: auto; display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
-.footer-links a { font-weight: 600; }
+.footer-details a { margin-left: auto; font-weight: 600; }
 hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
 .entity-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
 .entity-identity h1 { margin: 0; }
@@ -59,6 +58,7 @@ export function publicDocument({
   markdownUrl?: string;
   children: ReactNode;
 }): string {
+  const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/';
   return `<!doctype html>${renderToStaticMarkup(
     <html lang="en">
       <head>
@@ -76,7 +76,7 @@ export function publicDocument({
         {markdownUrl ? <link rel="alternate" type="text/markdown" href={markdownUrl} /> : null}
         <link rel="describedby" href="/llms.txt" />
         <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
-        {canonicalUrl && new URL(canonicalUrl).pathname === '/' ? (
+        {isHomepage ? (
           <script type="application/ld+json">
             {JSON.stringify({
               '@context': 'https://schema.org',
@@ -90,10 +90,11 @@ export function publicDocument({
       </head>
       <body>
         <main>
-          <nav aria-label="Public resource">
-            <a href="/public">{siteName}</a>
-            <a href="/public/directory">Public directory</a>
-          </nav>
+          {!isHomepage ? (
+            <nav aria-label="Public navigation">
+              <a href="/">Home</a>
+            </nav>
+          ) : null}
           {children}
         </main>
         <footer>
@@ -108,26 +109,24 @@ export function publicDocument({
             </a>
             .
           </p>
-          <div className="footer-details">
-            {modifiedAt ? (
-              <span>
-                Last edited{' '}
-                <time dateTime={modifiedAt}>
-                  {new Intl.DateTimeFormat('en-GB', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    timeZone: 'UTC',
-                  }).format(new Date(modifiedAt))}
-                </time>
-              </span>
-            ) : null}
-            <div className="footer-links">
+          {modifiedAt || markdownUrl ? (
+            <div className="footer-details">
+              {modifiedAt ? (
+                <span>
+                  Last updated{' '}
+                  <time dateTime={modifiedAt}>
+                    {new Intl.DateTimeFormat('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      timeZone: 'UTC',
+                    }).format(new Date(modifiedAt))}
+                  </time>
+                </span>
+              ) : null}
               {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
-              <a href="/app">Owner login</a>
-              <a href="/llms.txt">AI reading guide</a>
             </div>
-          </div>
+          ) : null}
         </footer>
       </body>
     </html>,

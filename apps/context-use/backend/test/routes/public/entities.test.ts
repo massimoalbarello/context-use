@@ -102,7 +102,7 @@ test('live public identity uses only the approved current image and safely escap
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
     expect(body).toContain('<h1>Ada Lovelace</h1>');
     expect(body).toContain('href="https://github.com/massimoalbarello/context-use"');
-    expect(body).toContain('24 September 2026');
+    expect(body).toMatch(/24 Sept? 2026/);
     expect(body).toContain('Person');
     expect(body).toContain('No public pages mention this entity yet.');
     expect(body).toContain(`src="/public/assets/${imageId}"`);
