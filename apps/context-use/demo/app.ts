@@ -33,6 +33,7 @@ const READ_API_ROUTES = new Set([
   '/api/pages',
   '/api/pages/:pageReadableId',
   '/api/pages/:pageReadableId/diff',
+  '/api/pages/:pageReadableId/revisions/:revisionNumber',
   '/api/pages/:pageReadableId/preview',
   '/api/assets',
   '/api/assets/:assetReadableId',
