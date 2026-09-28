@@ -28,7 +28,7 @@ describe('backend environment', () => {
 
     expect(env.DATA_FOLDER).toBe(NIBRUN_DATA_FOLDER);
     expect(env.BASE_URL.href).toBe('https://context-use-abc.nibrun.app/');
-    expect(env.PUBLIC_SITE_NAME).toBe('Public knowledge');
+    expect(env.PUBLIC_SITE_NAME).toBe('Personal Knowledge');
   });
 
   test('allows a nibrun data subdirectory on the persistent volume', () => {

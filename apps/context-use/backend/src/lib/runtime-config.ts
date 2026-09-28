@@ -1,7 +1,7 @@
 export const DEFAULT_BACKEND_PORT = 3000;
 export const DEFAULT_FRONTEND_PORT = 5173;
 export const DEFAULT_DATA_FOLDER = './data';
-export const DEFAULT_PUBLIC_SITE_NAME = 'Public knowledge';
+export const DEFAULT_PUBLIC_SITE_NAME = 'Personal Knowledge';
 export const NIBRUN_DATA_FOLDER = '/app/data';
 
 export const BACKEND_ENVIRONMENT = {
