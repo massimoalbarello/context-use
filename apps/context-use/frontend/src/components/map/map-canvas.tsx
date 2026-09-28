@@ -3,7 +3,7 @@
 
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { Move } from 'lucide-react';
+import { Move, ZoomIn, ZoomOut } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -15,6 +15,7 @@ import {
   useState,
 } from 'react';
 import type { CalendarMonth } from '../../lib/calendar-month';
+import { useNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import { type MapPage, mapEntityKey, mapEntityReference } from '../../queries/map';
 import { MapIntervalIndicator } from './map-interval-indicator';
 import {
@@ -50,6 +51,8 @@ type ViewBox = CanvasBounds;
 const MAX_WHEEL_ZOOM_DELTA = 80;
 const WHEEL_ZOOM_RATE = 0.0046;
 const VIEWPORT_SETTLE_MS = 280;
+const MINIMUM_MAP_WIDTH = 260;
+const BUTTON_ZOOM_FACTOR = 1.25;
 
 function EntityDot({
   entity,
@@ -227,6 +230,7 @@ export function MapCanvas({
   onMonthChange: (month?: CalendarMonth) => void;
   onIntervalScrollingChange: (scrolling: boolean) => void;
 }) {
+  const narrow = useNarrowWorkspace();
   const [viewBox, setViewBox] = useState<ViewBox>(() => initialMapViewBox(entities));
   const [preview, setPreview] = useState<MapPreview | null>(null);
   const activeKey = preview ? mapPreviewKey(preview) : selectedKey;
@@ -244,6 +248,7 @@ export function MapCanvas({
     setPreview((current) => (current && mapPreviewKey(current) === key ? null : current));
   }, []);
   const layout = useMemo(() => buildMapLayout(entities, pages), [pages, entities]);
+  const maximumWidth = Math.max(2400, layout.entityBounds.width * 2.5);
   const viewBoxRef = useRef(viewBox);
   const canvasRef = useRef<SVGSVGElement | null>(null);
   const surfaceRef = useRef<HTMLElement | null>(null);
@@ -322,13 +327,11 @@ export function MapCanvas({
   function zoom(factor: number, anchor = { x: 0.5, y: 0.5 }) {
     setShowExplorationHint(false);
     const current = viewBoxRef.current;
-    const minimumWidth = 260;
-    const maximumWidth = Math.max(2400, layout.entityBounds.width * 2.5);
     const nextViewBox = zoomedMapViewBox({
       current,
       factor,
       anchor,
-      minimumWidth,
+      minimumWidth: MINIMUM_MAP_WIDTH,
       maximumWidth,
     });
     if (nextViewBox === current) {
@@ -596,12 +599,43 @@ export function MapCanvas({
         />
       </svg>
 
-      {!selectedKey && (
-        <MapIntervalIndicator
-          month={intervalScroll.displayedMonth}
-          onMonthChange={intervalScroll.selectMonth}
-        />
-      )}
+      <div className="absolute top-1/2 right-4 z-10 -translate-y-1/2">
+        {!selectedKey && (
+          <MapIntervalIndicator
+            month={intervalScroll.displayedMonth}
+            onMonthChange={intervalScroll.selectMonth}
+          />
+        )}
+        {!narrow && (
+          <nav
+            aria-label="Map zoom"
+            className="absolute top-full right-0 mt-6 flex w-25 justify-center gap-2"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Zoom in"
+              title="Zoom in"
+              disabled={viewBox.width <= MINIMUM_MAP_WIDTH}
+              onClick={() => zoom(1 / BUTTON_ZOOM_FACTOR)}
+            >
+              <ZoomIn className="size-4.5" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Zoom out"
+              title="Zoom out"
+              disabled={viewBox.width >= maximumWidth}
+              onClick={() => zoom(BUTTON_ZOOM_FACTOR)}
+            >
+              <ZoomOut className="size-4.5" aria-hidden="true" />
+            </Button>
+          </nav>
+        )}
+      </div>
 
       {!isInitialLoading && (neighborhoodError || (canExplore && showExplorationHint)) && (
         <MapExplorationCue error={neighborhoodError} onRetry={onRetryNeighborhood} />
