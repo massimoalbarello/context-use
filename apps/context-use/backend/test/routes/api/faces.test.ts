@@ -7,6 +7,7 @@ import { createApp } from '#backend/app.ts';
 import { createSqliteDatabase, createSynchronousSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
+import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import type {
   AnalyzedFace,
   FaceAnalysis,
@@ -53,7 +54,7 @@ import {
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
-const OWNER = 'face-owner';
+const OWNER = OWNER_USER_ID;
 const OTHER_OWNER = 'other-face-owner';
 const PHOTO_PATH = resolve(import.meta.dir, '../../../../demo/fixtures/assets/steve-jobs-2010.jpg');
 const FACE_LEFT = 0.1;
@@ -699,7 +700,7 @@ test('face reads, crops and corrections enforce asset and person ownership', asy
     `/entities/${person.readableId}/images`,
   ]) {
     expect((await context.request({ path: path, owner: OTHER_OWNER })).status).toBe(
-      StatusMap['Not Found'],
+      StatusMap.Unauthorized,
     );
     expect((await context.request({ path: path, owner: null })).status).toBe(
       StatusMap.Unauthorized,
@@ -714,7 +715,7 @@ test('face reads, crops and corrections enforce asset and person ownership', asy
         body: { decision: 'person', entityReadableId: person.readableId },
       })
     ).status,
-  ).toBe(StatusMap['Not Found']);
+  ).toBe(StatusMap.Unauthorized);
   expect(
     (
       await context.request({
@@ -1272,7 +1273,7 @@ test('busy uploads and repeated analysis requests drain without keeping the brow
           owner: OTHER_OWNER,
         })
       ).status,
-    ).toBe(StatusMap['Not Found']);
+    ).toBe(StatusMap.Unauthorized);
   } finally {
     release.resolve();
   }
@@ -1342,12 +1343,8 @@ test('failed images are visible, owner-scoped, and retried explicitly; zero face
     error: expect.any(String),
   });
   expect(
-    (
-      await (
-        await context.request({ path: '/face-recognition/processing', owner: OTHER_OWNER })
-      ).json()
-    ).items,
-  ).toEqual([]);
+    (await context.request({ path: '/face-recognition/processing', owner: OTHER_OWNER })).status,
+  ).toBe(StatusMap.Unauthorized);
   for (const path of [
     '/face-recognition/processing',
     '/face-recognition/model/check',
@@ -1483,7 +1480,7 @@ test.each(['no faces', 'failed analysis'] as const)(
       path: `/entities/${person.readableId}/images`,
       owner: OTHER_OWNER,
     });
-    expect(foreign.status).toBe(StatusMap['Not Found']);
+    expect(foreign.status).toBe(StatusMap.Unauthorized);
   },
 );
 

@@ -1,9 +1,33 @@
-import { Elysia } from 'elysia';
+import { Elysia, StatusMap } from 'elysia';
 import { API_PATH } from '#backend/lib/api-path.ts';
-import { MCP_ROUTE_PATH } from '#backend/lib/auth/better-auth.ts';
+import { type Auth, MCP_ROUTE_PATH } from '#backend/lib/auth/better-auth.ts';
+import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { NotFoundError } from '#backend/lib/errors.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
+import type { OwnerRegistrationServiceContract } from '#backend/services/owner-registration/service.ts';
 import { publicNotFound } from './public/response.tsx';
+
+export function createEntryController({
+  auth,
+  ownerRegistrationService,
+}: {
+  auth: Auth;
+  ownerRegistrationService: OwnerRegistrationServiceContract;
+}) {
+  return new Elysia().get(
+    '/',
+    async ({ request, redirect, set }) => {
+      set.headers['cache-control'] = 'private, no-store';
+      const { ownerRegistered } = await ownerRegistrationService.status();
+      if (!ownerRegistered) {
+        return redirect('/app/login', StatusMap.Found);
+      }
+      const session = await auth.getSession({ headers: request.headers });
+      return redirect(session?.user.id === OWNER_USER_ID ? '/app' : '/public', StatusMap.Found);
+    },
+    { detail: { hide: true } },
+  );
+}
 
 // Every file the frontend build produced, one route each. Mounted ahead of the global
 // lifecycle hooks on purpose: a route whose handler *is* a ready-made Response stays on

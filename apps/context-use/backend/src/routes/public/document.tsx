@@ -29,7 +29,8 @@ footer p { margin: 0; font-size: 1rem; }
 footer [role="img"] { margin-inline: .15em; }
 footer .repository { color: #315e4e; font-weight: 700; text-decoration-style: dotted; }
 .footer-details { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-top: .75rem; font-size: .875rem; color: #69655d; }
-.footer-details a { margin-left: auto; font-weight: 600; }
+.footer-links { margin-left: auto; display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+.footer-links a { font-weight: 600; }
 hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
 .entity-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
 .entity-identity h1 { margin: 0; }
@@ -58,7 +59,7 @@ export function publicDocument({
   markdownUrl?: string;
   children: ReactNode;
 }): string {
-  const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/';
+  const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/public';
   return `<!doctype html>${renderToStaticMarkup(
     <html lang="en">
       <head>
@@ -92,7 +93,7 @@ export function publicDocument({
         <main>
           {!isHomepage ? (
             <nav aria-label="Public navigation">
-              <a href="/">Home</a>
+              <a href="/public">Home</a>
             </nav>
           ) : null}
           {children}
@@ -109,24 +110,25 @@ export function publicDocument({
             </a>
             .
           </p>
-          {modifiedAt || markdownUrl ? (
-            <div className="footer-details">
-              {modifiedAt ? (
-                <span>
-                  Last updated{' '}
-                  <time dateTime={modifiedAt}>
-                    {new Intl.DateTimeFormat('en-GB', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      timeZone: 'UTC',
-                    }).format(new Date(modifiedAt))}
-                  </time>
-                </span>
-              ) : null}
+          <div className="footer-details">
+            {modifiedAt ? (
+              <span>
+                Last updated{' '}
+                <time dateTime={modifiedAt}>
+                  {new Intl.DateTimeFormat('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    timeZone: 'UTC',
+                  }).format(new Date(modifiedAt))}
+                </time>
+              </span>
+            ) : null}
+            <div className="footer-links">
               {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
+              <a href="/app">Owner login</a>
             </div>
-          ) : null}
+          </div>
         </footer>
       </body>
     </html>,

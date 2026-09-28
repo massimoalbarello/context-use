@@ -6,6 +6,7 @@ import { startBinary } from '@repo/build-tools/binary-check';
 
 const TEST_TIMEOUT_MS = 40_000;
 const OK = 200;
+const FOUND = 302;
 const UNAUTHORIZED = 401;
 const NOT_FOUND = 404;
 
@@ -25,13 +26,16 @@ test(
       });
       expect((await binary.request({ path: '/api/health' })).status).toBe(OK);
       expect((await binary.request({ path: '/api/profile' })).status).toBe(UNAUTHORIZED);
-      const publicHome = await binary.request({ path: '/', redirect: 'manual' });
+      const entry = await binary.request({ path: '/', redirect: 'manual' });
+      expect(entry.status).toBe(FOUND);
+      expect(entry.headers.get('location')).toBe('/app/login');
+      const publicHome = await binary.request({ path: '/public', redirect: 'manual' });
       expect(publicHome.status).toBe(OK);
       const homeHtml = await publicHome.text();
       expect(homeHtml).toContain('Nothing published yet');
       expect(homeHtml).toContain('"@type":"WebSite"');
       expect(homeHtml).toContain('"name":"Orchard Notes"');
-      expect(homeHtml).toContain('"url":"https://notes.example.org/"');
+      expect(homeHtml).toContain('"url":"https://notes.example.org/public"');
       const directoryHtml = await (await binary.request({ path: '/public/directory' })).text();
       expect(directoryHtml).toContain('<h1>Orchard Notes</h1>');
       expect(directoryHtml).toContain(
@@ -41,7 +45,7 @@ test(
       expect(directoryHtml).not.toContain('application/ld+json');
       const llms = await (await binary.request({ path: '/llms.txt' })).text();
       expect(llms).toContain('# Orchard Notes');
-      expect(llms).toContain('(https://notes.example.org/)');
+      expect(llms).toContain('(https://notes.example.org/public)');
       for (const path of [
         '/app/map',
         '/app/pages/example',

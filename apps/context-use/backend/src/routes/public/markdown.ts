@@ -101,7 +101,7 @@ export function publicSiteMarkdown({
         ],
       },
       markdownLinks([
-        { title: 'Homepage', url: new URL('/', origin).href },
+        { title: 'Homepage', url: new URL('/public', origin).href },
         { title: 'Public directory', url: new URL('/public/directory', origin).href },
         { title: 'Sitemap', url: new URL('/sitemap.xml', origin).href },
       ]),

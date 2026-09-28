@@ -1,6 +1,7 @@
 import { openapi } from '@elysiajs/openapi';
 import { Elysia } from 'elysia';
 import { type Auth, sessionSecuritySchemes } from '#backend/lib/auth/better-auth.ts';
+import { createOwnerAuth } from '#backend/lib/auth/owner-auth.ts';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import type { McpTransportContract } from '#backend/lib/mcp/transport.ts';
 import { createRequestResponsePlugin } from '#backend/lib/request-response.ts';
@@ -8,6 +9,7 @@ import { apiKeySecuritySchemes } from '#backend/routes/api/api-keys/model.ts';
 import { createApiController } from '#backend/routes/api/controller.ts';
 import { createAuthDiscoveryController } from '#backend/routes/auth-discovery/controller.ts';
 import {
+  createEntryController,
   createFrontendAssetsController,
   createFrontendFallbackController,
 } from '#backend/routes/controller.ts';
@@ -45,7 +47,7 @@ import type { ManagedSyncsServiceContract } from '#backend/services/syncs/manage
 const OPENAPI_PATH = '/openapi';
 
 export function createApp({
-  auth,
+  auth: authentication,
   assetsService,
   assetTransferCapabilities,
   frontendAssetsService,
@@ -95,6 +97,7 @@ export function createApp({
   recordsService: RecordsIngestionContract & RecordResourcesServiceContract;
   apiKeysService: ApiKeyAuthenticationContract & ApiKeysServiceContract;
 }) {
+  const auth = createOwnerAuth(authentication);
   // The frontend's files go on first, ahead of every global hook — see the comment on the
   // controller itself for why the order matters.
   return new Elysia()
@@ -165,6 +168,7 @@ export function createApp({
         },
       }),
     )
+    .use(createEntryController({ auth, ownerRegistrationService }))
     .use(
       createPublicController({
         publicResourcesService,
@@ -173,6 +177,7 @@ export function createApp({
         ownerId: publicOwnerId,
       }),
     )
+
     .use(createSyncCallbacks({ auth, fetch: syncFetch, syncs: managedSyncsService }))
     .use(createAuthDiscoveryController({ auth }))
     .use(
