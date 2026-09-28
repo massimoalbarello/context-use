@@ -87,10 +87,10 @@ export function MapIntervalIndicator({
         </Popover>
       ) : (
         <div className="group relative w-25">
-          <h2 className="pointer-events-none invisible absolute inset-x-0 bottom-full pb-2 text-center text-muted-foreground text-xs group-hover:visible">
-            Time filter
-          </h2>
-          {picker}
+          <div className="invisible absolute -inset-x-3 -top-10 -bottom-3 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg group-hover:visible">
+            <h2 className="text-center font-medium text-xs">Time filter</h2>
+          </div>
+          <div className="relative">{picker}</div>
         </div>
       )}
     </nav>
