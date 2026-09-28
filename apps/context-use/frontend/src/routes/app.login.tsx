@@ -2,7 +2,6 @@ import { AnimatedContextUseLogo } from '@repo/ui/animated-context-use-logo';
 import { ContextUseBrand } from '@repo/ui/context-use-brand';
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { LoginForm } from '../components/auth/login-form';
-import { Eyebrow } from '../components/layout/eyebrow';
 import { internalAppPath } from '../lib/internal-app-path';
 import { MAIN_KNOWLEDGE_PATH } from '../lib/knowledge-navigation';
 import { ownerRegistrationQueryOptions } from '../queries/owner-registration';
@@ -36,14 +35,11 @@ function RouteComponent() {
       </div>
       <section className="flex min-w-0 items-center justify-center bg-background px-6 py-12 sm:px-10 lg:px-16">
         <div className="w-full max-w-sm">
-          <Eyebrow>{ownerRegistered ? 'Welcome back' : 'First-time setup'}</Eyebrow>
-          <h1 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">
-            {ownerRegistered ? 'Sign in' : 'Create the owner account'}
+          <h1 className="font-semibold text-3xl tracking-tight sm:text-4xl">
+            {ownerRegistered ? 'Sign in' : 'Create your account'}
           </h1>
           <p className="mt-4 text-base text-muted-foreground leading-relaxed">
-            {ownerRegistered
-              ? 'Use a registered passkey to open your private knowledge base.'
-              : 'Register the first passkey to claim this Context Use instance.'}
+            {ownerRegistered ? 'Use your passkey to continue.' : 'Use a passkey to get started.'}
           </p>
           <div className="mt-8">
             <LoginForm
