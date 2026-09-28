@@ -6,6 +6,7 @@ import { createSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { MAX_HYPERMEDIA_EXTRA_RELATIONSHIPS } from '#backend/models/hypermedia-graph/model.ts';
+import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
@@ -88,6 +89,74 @@ function mention(readableId: string): string {
 function anchor(readableId: string) {
   return { anchor: { readableId } };
 }
+
+test('page focus matches only current owner-scoped mentions before pagination', async () => {
+  const fixture = await graphFixture();
+  try {
+    for (const readableId of ['topic', 'second-topic', 'unrelated']) {
+      await fixture.entity({ readableId });
+    }
+    await fixture.entity({ readableId: 'topic', ownerId: OTHER_OWNER });
+    await fixture.page({
+      title: 'Private',
+      ownerId: OTHER_OWNER,
+      body: mention('topic'),
+      time: '2007-01',
+    });
+    for (const title of ['Matching', 'Historical', 'Archived']) {
+      await fixture.page({
+        title,
+        body: `${mention('topic')} ${mention('second-topic')}`,
+        time: '2007-01',
+      });
+    }
+    await fixture.page({ title: 'No mentions', time: '2007-01' });
+    await fixture.page({ title: 'Other month', body: mention('topic'), time: '2007-02' });
+    expect(
+      await fixture.pages.update({
+        message: 'Remove focused entity mentions',
+        ownerId: OWNER,
+        actor: { kind: 'owner' },
+        readableId: 'historical',
+        expectedRevisionNumber: 1,
+        markdown: `# Historical\n\n${mention('unrelated')}`,
+      }),
+    ).toMatchObject({ state: 'saved' });
+    expect(
+      await fixture.pages.archive({
+        change: { clientName: null, message: 'Archive page' },
+        ownerId: OWNER,
+        readableId: 'archived',
+      }),
+    ).toMatchObject({ state: 'archived' });
+
+    const input = {
+      ownerId: OWNER,
+      visibleEntities: [{ readableId: 'topic' }, { readableId: 'second-topic' }],
+      temporalBounds: temporalBoundsFrom('2007-01'),
+      limit: 1,
+      offset: 0,
+    };
+    const focused = await fixture.graph.pages(input);
+    expect(focused.pages.map(({ readableId }) => readableId)).toEqual(['matching']);
+    expect(focused.pages[0]?.entities).toEqual([
+      { readableId: 'second-topic' },
+      { readableId: 'topic' },
+    ]);
+    expect(focused.nextOffset).toBeNull();
+    expect((await fixture.graph.pages({ ...input, offset: 1 })).pages).toEqual([]);
+    expect(
+      (await fixture.graph.pages({ ...input, visibleEntities: [{ readableId: 'missing' }] })).pages,
+    ).toEqual([]);
+    const unfocused = await fixture.graph.pages({ ...input, visibleEntities: [], limit: 10 });
+    expect(unfocused.pages.map(({ readableId }) => readableId).sort()).toEqual([
+      'historical',
+      'matching',
+    ]);
+  } finally {
+    await fixture.dispose();
+  }
+});
 
 test('multi-anchor neighborhoods have independent ranks and cursors, deduplicated entities and induced edges', async () => {
   const fixture = await graphFixture();

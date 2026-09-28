@@ -241,19 +241,6 @@ export class HypermediaGraphRepository implements HypermediaGraphRepositoryContr
       /* @type ongoingSort number */
       with visible_key as (
         select value as "key" from json_each(${visibleEntityKeys})
-      ), active_entity_reference as (
-        select mention."source_revision_id" as "revisionId",
-          entity."readable_id" as "key"
-        from "knowledge_page_entity_mention" mention
-        join "entity" entity
-          on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
-        where mention."owner_id" = ${ownerId} and entity."archived_at" is null
-      ), entity_matched_revision as (
-        select reference."revisionId"
-        from active_entity_reference reference
-        left join visible_key visible on visible."key" = reference."key"
-        group by reference."revisionId"
-        having ${visibleEntityCount} = 0 or count(distinct visible."key") > 0
       ), filtered_page as (
         select page."id", page."readable_id" as "readableId",
           revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
@@ -276,7 +263,6 @@ export class HypermediaGraphRepository implements HypermediaGraphRepositoryContr
         join "knowledge_page_revision" revision
           on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
         where page."owner_id" = ${ownerId} and page."archived_at" is null
-          and page."current_revision_id" in (select "revisionId" from entity_matched_revision)
           and (
             (${filterStart} is null and revision."temporal_coverage" is null)
             or (
@@ -285,6 +271,16 @@ export class HypermediaGraphRepository implements HypermediaGraphRepositoryContr
               and (revision."temporal_end_exclusive_ms" is null
                 or revision."temporal_end_exclusive_ms" > ${filterStart})
             )
+          )
+          and exists (
+            select 1 from "knowledge_page_entity_mention" mention
+            join "entity" entity
+              on entity."owner_id" = mention."owner_id" and entity."id" = mention."target_entity_id"
+            where mention."owner_id" = revision."owner_id"
+              and mention."source_revision_id" = revision."id"
+              and entity."archived_at" is null
+              and (${visibleEntityCount} = 0
+                or entity."readable_id" in (select "key" from visible_key))
           )
       )
       select * from filtered_page
