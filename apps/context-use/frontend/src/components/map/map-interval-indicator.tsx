@@ -1,7 +1,8 @@
 import { Button } from '@repo/ui/button';
+import { cn } from '@repo/ui/class-names';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/ui/popover';
 import { ChevronsUpDown } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   type CalendarMonth,
   calendarMonthLabel,
@@ -14,6 +15,18 @@ import { WheelPicker } from '../ui/wheel-picker';
 
 const UNDATED = 'undated';
 const BUFFER_MONTH_COUNT = 24;
+
+function TimeFilterExplanation() {
+  return (
+    <div className="space-y-1">
+      <h2 className="font-medium text-sm">Filter pages by time</h2>
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        Choose a month to show pages whose time interval overlaps it. Undated shows pages without a
+        time interval.
+      </p>
+    </div>
+  );
+}
 
 function monthOptions(month?: CalendarMonth) {
   const now = calendarNow();
@@ -45,6 +58,22 @@ export function MapIntervalIndicator({
 }) {
   const options = useMemo(() => monthOptions(month), [month]);
   const narrow = useNarrowWorkspace();
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const expanded = (hovered || focused) && !dismissed;
+  useEffect(() => {
+    if (!expanded) {
+      return;
+    }
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDismissed(true);
+      }
+    };
+    document.addEventListener('keydown', dismiss);
+    return () => document.removeEventListener('keydown', dismiss);
+  }, [expanded]);
   const picker = (
     <WheelPicker
       label="Selected month"
@@ -82,14 +111,42 @@ export function MapIntervalIndicator({
             align="center"
             sideOffset={({ anchor, positioner }) => -(anchor.height + positioner.height) / 2}
             collisionAvoidance={{ side: 'shift', align: 'shift' }}
-            className="w-28 p-2"
-            aria-label="Choose month"
+            className="w-64 max-w-[calc(100vw-2rem)] p-4"
+            aria-label="Filter pages by time"
           >
-            {picker}
+            <TimeFilterExplanation />
+            <div className="mx-auto mt-3 w-25">{picker}</div>
           </PopoverContent>
         </Popover>
       ) : (
-        <div className="w-25">{picker}</div>
+        <fieldset
+          aria-label="Filter pages by time"
+          className={cn(
+            '-m-3 flex items-center gap-4 rounded-xl border border-transparent p-3',
+            expanded && 'border-border bg-popover text-popover-foreground shadow-lg',
+          )}
+          onPointerEnter={(event) => {
+            if (event.pointerType !== 'touch') {
+              setHovered(true);
+              setDismissed(false);
+            }
+          }}
+          onPointerLeave={() => setHovered(false)}
+          onFocus={() => {
+            setFocused(true);
+            setDismissed(false);
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setFocused(false);
+            }
+          }}
+        >
+          <div hidden={!expanded} className="w-44">
+            <TimeFilterExplanation />
+          </div>
+          <div className="w-25 shrink-0">{picker}</div>
+        </fieldset>
       )}
     </nav>
   );

@@ -299,7 +299,7 @@ test('The month wheel navigates across year boundaries and resets pending canvas
   const canvas = screen.getByLabelText('Interactive map');
   const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
   fireEvent.wheel(canvas, { deltaY: 120 });
-  picker.focus();
+  act(() => picker.focus());
   await user.keyboard('{ArrowDown}');
   await waitFor(() => expectSelectedMonth('2024-11'), { timeout: 3_000 });
   expect(onMonthChange).toHaveBeenLastCalledWith('2024-11');
@@ -327,7 +327,7 @@ test('The month wheel stops at Undated and follows external month changes', asyn
   const user = userEvent.setup();
   const { rerender } = render(<MapFixture onMonthChange={onMonthChange} />);
   const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
-  picker.focus();
+  act(() => picker.focus());
   await user.keyboard('{ArrowUp}');
   expectSelectedMonth();
   expect(onMonthChange).not.toHaveBeenCalled();
@@ -341,6 +341,35 @@ test('The month wheel stops at Undated and follows external month changes', asyn
   expectSelectedMonth('1999-01');
   await user.keyboard('{ArrowDown}');
   await waitFor(() => expectSelectedMonth('1998-12'));
+});
+
+test('The time filter explains itself on hover and focus without changing the selected month', async () => {
+  const user = userEvent.setup();
+  const onMonthChange = mock<(month?: CalendarMonth) => void>(() => undefined);
+  render(<MapFixture onMonthChange={onMonthChange} />);
+  const picker = screen.getByRole('spinbutton', { name: 'Selected month' });
+  const explanation = () => screen.queryByRole('heading', { name: 'Filter pages by time' });
+
+  expect(explanation()).toBeNull();
+  await user.hover(picker);
+  expect(explanation()).not.toBeNull();
+  await user.unhover(picker);
+  expect(explanation()).toBeNull();
+  await user.hover(picker);
+  await user.hover(screen.getByText(/Choose a month to show pages/));
+  expect(explanation()).not.toBeNull();
+  await user.keyboard('{Escape}');
+  expect(explanation()).toBeNull();
+  await user.unhover(screen.getByText(/Choose a month to show pages/));
+
+  act(() => picker.focus());
+  expect(explanation()).not.toBeNull();
+  await user.keyboard('{Escape}');
+  expect(explanation()).toBeNull();
+  await user.tab();
+  expect(explanation()).toBeNull();
+  expectSelectedMonth();
+  expect(onMonthChange).not.toHaveBeenCalled();
 });
 
 test('On phones the month wheel opens from a compact control and stays synchronized with the map', async () => {
@@ -361,6 +390,8 @@ test('On phones the month wheel opens from a compact control and stays synchroni
     expect(screen.queryByRole('spinbutton')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Change month: January 2025' }));
     const picker = await screen.findByRole('spinbutton', { name: 'Selected month' });
+    expect(screen.getByRole('heading', { name: 'Filter pages by time' })).not.toBeNull();
+    expect(screen.getByText(/Undated shows pages without a time interval/)).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(picker));
     await user.keyboard('{ArrowDown}');
     await waitFor(() => expectSelectedMonth('2024-12'), { timeout: 3_000 });
