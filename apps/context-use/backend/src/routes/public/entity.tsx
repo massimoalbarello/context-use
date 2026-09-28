@@ -48,7 +48,7 @@ export function publicEntityHtml({
         </header>
         <p className="entity-description">{description}</p>
         <section aria-labelledby="public-pages">
-          <h2 id="public-pages">Public pages</h2>
+          <h2 id="public-pages">Public pages mentioning {name}</h2>
           {pages.length ? (
             <ul>
               {pages.map((page) => (
@@ -58,7 +58,7 @@ export function publicEntityHtml({
               ))}
             </ul>
           ) : (
-            <p>No public pages mention this entity yet.</p>
+            <p>No public pages mention {name} yet.</p>
           )}
         </section>
       </article>
