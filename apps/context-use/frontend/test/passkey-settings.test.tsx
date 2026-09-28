@@ -90,15 +90,15 @@ async function passkeyWorld({ signedIn, path }: { signedIn: boolean; path: strin
   }
 }
 
-test('signed-in owners can find passkey settings for custom domains', async () => {
+test('signed-in owners can find allowed passkey origins and configuration guidance', async () => {
   const world = await passkeyWorld({ signedIn: true, path: '/app/settings/passkeys' });
   try {
     await screen.findByRole('heading', { name: 'Passkeys' });
     expect(screen.getByRole('link', { name: 'Passkeys' }).getAttribute('href')).toBe(
       '/app/settings/passkeys',
     );
-    expect(screen.getByText('BASE_URL=https://context.example.com')).toBeTruthy();
-    expect(screen.getByText(/only if you set a custom domain/)).toBeTruthy();
+    expect(screen.getByText('BASE_URL')).toBeTruthy();
+    expect(screen.getByText(/These are the domains where passkey sign-in is allowed/)).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Known origins' })).toBeTruthy();
     expect(screen.getByText('https://original.example.com')).toBeTruthy();
     expect(screen.getByText('https://custom.example.org')).toBeTruthy();
