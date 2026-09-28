@@ -3,7 +3,7 @@
 
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { Move, Search } from 'lucide-react';
+import { Move, ZoomIn, ZoomOut } from 'lucide-react';
 import {
   memo,
   type PointerEvent as ReactPointerEvent,
@@ -620,7 +620,7 @@ export function MapCanvas({
               disabled={viewBox.width <= MINIMUM_MAP_WIDTH}
               onClick={() => zoom(1 / BUTTON_ZOOM_FACTOR)}
             >
-              <Search className="size-5" aria-hidden="true" />
+              <ZoomIn className="size-4.5" aria-hidden="true" />
             </Button>
             <Button
               type="button"
@@ -631,7 +631,7 @@ export function MapCanvas({
               disabled={viewBox.width >= maximumWidth}
               onClick={() => zoom(BUTTON_ZOOM_FACTOR)}
             >
-              <Search className="size-3" aria-hidden="true" />
+              <ZoomOut className="size-4.5" aria-hidden="true" />
             </Button>
           </nav>
         )}
