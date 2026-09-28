@@ -9,9 +9,6 @@ const READING_STYLES = `
 * { box-sizing: border-box; }
 body { margin: 0; }
 main { max-width: 48rem; margin: auto; padding: 3rem 1.5rem 0; }
-.public-header { margin-bottom: 3rem; }
-.public-header nav { margin-bottom: 0; }
-.owner-login { margin-left: auto; }
 nav { display: flex; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 3rem; font-size: .875rem; color: #69655d; }
 article { overflow-wrap: anywhere; line-height: 1.8; font-size: 1.0625rem; }
 h1, h2, h3, h4, h5, h6 { line-height: 1.25; letter-spacing: -.025em; scroll-margin-top: 1.5rem; }
@@ -28,11 +25,13 @@ code { font-size: .875em; background: #eeeae2; padding: .15em .3em; border-radiu
 pre { overflow-x: auto; padding: 1.25rem; background: #eeeae2; border-radius: .5rem; line-height: 1.6; }
 pre code { padding: 0; background: none; }
 footer { max-width: 45rem; width: calc(100% - 3rem); margin: 3.5rem auto 4rem; padding-top: 1.5rem; border-top: 1px solid #d7d1c6; line-height: 1.6; }
+.footer-credit { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.owner-login { flex-shrink: 0; font-size: .875rem; }
 footer p { margin: 0; font-size: 1rem; }
 footer [role="img"] { margin-inline: .15em; }
 footer .repository { color: #315e4e; font-weight: 700; text-decoration-style: dotted; }
-.header-details { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-top: .75rem; font-size: .875rem; color: #69655d; }
-.header-details a { margin-left: auto; font-weight: 600; }
+.footer-details { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-top: .75rem; font-size: .875rem; color: #69655d; }
+.footer-details a { margin-left: auto; font-weight: 600; }
 hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
 .entity-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
 .entity-identity h1 { margin: 0; }
@@ -40,8 +39,8 @@ hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
 img.entity-portrait { width: 10rem; height: 10rem; object-fit: cover; margin: 0; }
 .entity-type { margin: 0 0 .5rem; font-size: .875rem; }
 .entity-description { white-space: pre-wrap; }
-@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } nav { margin-bottom: 2rem; } .public-header { margin-bottom: 2rem; } }
-@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } nav, blockquote, .header-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
+@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } nav { margin-bottom: 2rem; } }
+@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } nav, blockquote, .footer-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
 `;
 
 export function publicDocument({
@@ -93,46 +92,48 @@ export function publicDocument({
       </head>
       <body>
         <main>
-          <header className="public-header">
+          {!isHomepage ? (
             <nav aria-label="Public navigation">
-              {!isHomepage ? <a href="/public">Home</a> : null}
-              <a className="owner-login" href="/app">
-                Owner login
-              </a>
+              <a href="/public">Home</a>
             </nav>
-            {modifiedAt || markdownUrl ? (
-              <div className="header-details">
-                {modifiedAt ? (
-                  <span>
-                    Last updated{' '}
-                    <time dateTime={modifiedAt}>
-                      {new Intl.DateTimeFormat('en-GB', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                        timeZone: 'UTC',
-                      }).format(new Date(modifiedAt))}
-                    </time>
-                  </span>
-                ) : null}
-                {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
-              </div>
-            ) : null}
-          </header>
+          ) : null}
           {children}
         </main>
         <footer>
-          <p>
-            self-hosted with{' '}
-            <span role="img" aria-label="love">
-              ❤️
-            </span>{' '}
-            using{' '}
-            <a className="repository" href="https://github.com/massimoalbarello/context-use">
-              context-use<span aria-hidden="true">↗</span>
+          <div className="footer-credit">
+            <p>
+              self-hosted with{' '}
+              <span role="img" aria-label="love">
+                ❤️
+              </span>{' '}
+              using{' '}
+              <a className="repository" href="https://github.com/massimoalbarello/context-use">
+                context-use<span aria-hidden="true">↗</span>
+              </a>
+              .
+            </p>
+            <a className="owner-login" href="/app">
+              Owner login
             </a>
-            .
-          </p>
+          </div>
+          {modifiedAt || markdownUrl ? (
+            <div className="footer-details">
+              {modifiedAt ? (
+                <span>
+                  Last updated{' '}
+                  <time dateTime={modifiedAt}>
+                    {new Intl.DateTimeFormat('en-GB', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      timeZone: 'UTC',
+                    }).format(new Date(modifiedAt))}
+                  </time>
+                </span>
+              ) : null}
+              {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
+            </div>
+          ) : null}
         </footer>
       </body>
     </html>,
