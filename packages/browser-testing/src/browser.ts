@@ -16,6 +16,7 @@ export async function virtualPasskeyBrowser(input: { headless: boolean }) {
   const context = await chromium.launchPersistentContext('', {
     channel: 'chrome',
     headless: input.headless,
+    viewport: input.headless ? undefined : null,
     // The caller owns process shutdown and must finish deleting disposable app
     // state; Playwright's SIGINT handler would exit before its finally block.
     handleSIGINT: false,
