@@ -82,6 +82,7 @@ export interface KnowledgePagesRepositoryContract {
     visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
+    entityReadableId?: string;
   }): Promise<Page<KnowledgePageSummary>>;
   listByEntity(input: {
     ownerId: string;
@@ -630,6 +631,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     visibility = 'all',
     interval,
     temporalBounds,
+    entityReadableId,
   }: {
     ownerId: string;
     limit: number;
@@ -637,6 +639,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
+    entityReadableId?: string;
   }) {
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
@@ -655,6 +658,18 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
         and page."archived_at" is null
+        and (
+          ${entityReadableId} is null or exists (
+            select 1 from "knowledge_page_entity_mention" mention
+            join "entity" entity
+              on entity."id" = mention."target_entity_id"
+             and entity."owner_id" = mention."owner_id"
+            where mention."owner_id" = page."owner_id"
+              and mention."source_revision_id" = page."current_revision_id"
+              and entity."readable_id" = ${entityReadableId}
+              and entity."archived_at" is null
+          )
+        )
         and (${visibility} = 'all' or (${visibility} = 'public') = (page."published_at" is not null))
         and (
           ${interval} is null
@@ -683,6 +698,18 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
         and page."archived_at" is null
+        and (
+          ${entityReadableId} is null or exists (
+            select 1 from "knowledge_page_entity_mention" mention
+            join "entity" entity
+              on entity."id" = mention."target_entity_id"
+             and entity."owner_id" = mention."owner_id"
+            where mention."owner_id" = page."owner_id"
+              and mention."source_revision_id" = page."current_revision_id"
+              and entity."readable_id" = ${entityReadableId}
+              and entity."archived_at" is null
+          )
+        )
         and (${visibility} = 'all' or (${visibility} = 'public') = (page."published_at" is not null))
         and (
           ${interval} is null

@@ -885,6 +885,19 @@ Every observation changes the next action.`,
       'operating-rhythm',
       'alpha-principles',
     ]);
+    const mentioningPagesResponse = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?entityReadableId=temporal-subject&limit=1' }),
+    );
+    expect(mentioningPagesResponse.status).toBe(StatusMap.OK);
+    expect(await mentioningPagesResponse.json()).toMatchObject({
+      items: [expect.objectContaining({ readableId: 'alpha-principles' })],
+      total: 3,
+      nextOffset: 1,
+    });
+    const missingEntityPages = await app.handle(
+      jsonRequest({ method: 'GET', path: '/pages?entityReadableId=missing-entity' }),
+    );
+    expect(await missingEntityPages.json()).toEqual({ items: [], total: 0, nextOffset: null });
     const temporalEntityPreviewResponse = await app.handle(
       jsonRequest({
         method: 'GET',

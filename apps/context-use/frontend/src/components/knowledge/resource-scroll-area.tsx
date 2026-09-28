@@ -39,7 +39,11 @@ export function ResourceScrollArea({
   }, [location]);
 
   return (
-    <div ref={area} className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain', className)}>
+    <div
+      data-resource-scroll
+      ref={area}
+      className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain', className)}
+    >
       {children}
     </div>
   );

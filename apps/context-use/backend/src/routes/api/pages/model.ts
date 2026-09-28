@@ -98,6 +98,7 @@ export const KnowledgePageListSchema = t.Object({
   ...PaginationMetadataSchema.properties,
 });
 export const KnowledgePageListQuerySchema = t.Object({
+  entityReadableId: t.Optional(ReadableIdSchema),
   visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
   interval: t.Optional(
