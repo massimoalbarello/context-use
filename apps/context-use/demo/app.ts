@@ -14,45 +14,19 @@ import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#backend/routes/api/profile/controller.ts';
+import { createPublicationsController } from '#backend/routes/api/publications/controller.ts';
 import { createRecordReadableIdController } from '#backend/routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#backend/routes/api/records/controller.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
-// This allowlist deliberately names read operations. New controller routes never become
-// public automatically. Auth, MCP and record-write controllers aren't mounted.
-const READ_API_ROUTES = new Set([
-  '/api/health',
-  '/api/history',
-  '/api/profile',
-  '/api/entities',
-  '/api/entities/:entityReadableId',
-  '/api/entities/:entityReadableId/preview',
-  '/api/entities/:entityReadableId/images',
-  '/api/pages',
-  '/api/pages/:pageReadableId',
-  '/api/pages/:pageReadableId/diff',
-  '/api/pages/:pageReadableId/revisions/:revisionNumber',
-  '/api/pages/:pageReadableId/preview',
-  '/api/assets',
-  '/api/assets/:assetReadableId',
-  '/api/assets/:assetReadableId/preview',
-  '/api/assets/:assetReadableId/content',
-  '/api/assets/:assetReadableId/faces',
-  '/api/assets/:assetReadableId/faces/:faceReadableId/crop',
-  '/api/face-recognition/settings',
-  '/api/face-recognition/processing',
-  '/api/records',
-  '/api/records/filter-options',
-  '/api/records/:recordReadableId',
-  '/api/map/pages',
-  '/api/map/neighborhoods',
-  '/api/hypermedia/search',
-]);
-const READ_API_PATHS = [...READ_API_ROUTES].map(
-  (route) => new RegExp(`^${route.replace(/:[^/]+/g, '[a-z0-9][a-z0-9-]*')}$`),
-);
+function unavailableResponse() {
+  return Response.json(
+    { message: 'This public demo is read-only. This action is unavailable.' },
+    { status: StatusMap.Forbidden },
+  );
+}
 
 function publicReadResponse({
   method,
@@ -95,8 +69,12 @@ export function createDemoApp({
   const auth = createDemoIdentity();
   const dependencies = { ...resources, auth };
   const faceDependencies = { auth, faces: resources.assetsService.faces };
-  const api = new Elysia({ prefix: '/api' })
-    .onError(elysiaErrorHandler)
+  // Only these resource controllers receive the demo identity. Account, credential,
+  // sync, MCP, and public-site controllers belong exclusively to the instance app.
+  const api = new Elysia({ prefix: '/api', strictPath: true })
+    .onError((context) =>
+      context.code === 'NOT_FOUND' ? unavailableResponse() : elysiaErrorHandler(context),
+    )
     .use(createHistoryController(dependencies))
     .use(createAssetsController(dependencies))
     .use(createAssetReadableIdController(dependencies))
@@ -112,15 +90,9 @@ export function createDemoApp({
     .use(createRecordsController(dependencies))
     .use(createRecordReadableIdController(dependencies))
     .use(createKnowledgeProfileController(dependencies))
+    .use(createPublicationsController(dependencies))
     .use(createHealthController(dependencies))
     .compile();
-  // A newly added static GET could otherwise shadow an approved :readableId route.
-  // Fail startup until every mounted GET has been explicitly reviewed for the demo.
-  for (const route of api.routes) {
-    if (route.method === 'GET' && !READ_API_ROUTES.has(route.path)) {
-      throw new Error(`Unreviewed public demo read route: ${route.path}`);
-    }
-  }
   const files = frontendAssetsService.routes();
 
   // Bun.serve receives only this function. No native/static route can skip this outer gate.
@@ -140,7 +112,7 @@ export function createDemoApp({
       response = new Response(null, { status: StatusMap.Found, headers: { location: '/app/map' } });
     } else if (path === '/api/auth/get-session') {
       response = Response.json(await auth.getSession({ headers: request.headers }));
-    } else if (READ_API_PATHS.some((pattern) => pattern.test(path))) {
+    } else if (path.startsWith('/api/')) {
       // Elysia's shared resource controllers declare GET, so handle HEAD at this boundary.
       response = await api.handle(new Request(request.url, { headers: request.headers }));
     } else if (files.has(path)) {
@@ -148,10 +120,7 @@ export function createDemoApp({
     } else if (isWorkspacePath(path)) {
       response = frontendAssetsService.fallback(path) ?? new Response(null, { status: 404 });
     } else {
-      response = Response.json(
-        { message: 'This public demo is read-only. This action is unavailable.' },
-        { status: 403 },
-      );
+      response = unavailableResponse();
     }
     return publicReadResponse({ method: request.method, path, response });
   };

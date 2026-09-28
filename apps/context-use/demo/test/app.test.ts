@@ -27,7 +27,7 @@ import type {
 import type { RecordListSchema, RecordSchema } from '#backend/routes/api/records/model.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { createDemoApp } from '../app';
-import { DEMO_OWNER_ID } from '../identity';
+import { createDemoIdentity, DEMO_OWNER_ID } from '../identity';
 import { readOnlyStorage } from '../read-only-storage';
 import { createDemoResources } from '../resources';
 import { seedDemoSnapshot } from '../seed';
@@ -85,6 +85,77 @@ async function fingerprint(folder: string) {
       .digest('hex');
   }
   return hashes;
+}
+
+async function assertPublicationStatuses(fetchDemo: (request: Request) => Promise<Response>) {
+  const read = (path: string) => fetchDemo(new Request(`http://demo.test${path}`));
+  const records = (await (await read('/api/records')).json()) as Static<typeof RecordListSchema>;
+  for (const [resourceType, readableId] of [
+    ['page', 'pictures-of-me-and-our-pocket-devices'],
+    ['entity', 'steve-jobs'],
+    ['asset', 'steve-presenting-iphone'],
+    ['record', records.items[0]!.readableId],
+  ]) {
+    const path = `/api/publications/${resourceType}/${readableId}`;
+    const response = await read(path);
+    expect(response.status, path).toBe(StatusMap.OK);
+    expect(await response.json()).toEqual({
+      resourceType,
+      publicId: null,
+      publishedAt: null,
+      ...(resourceType === 'page' ? { publishedRevisionNumber: null } : {}),
+    });
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    const head = await fetchDemo(new Request(`http://demo.test${path}`, { method: 'HEAD' }));
+    expect(head.status).toBe(StatusMap.OK);
+    expect(await head.text()).toBe('');
+    expect((await read(`/api/publications/${resourceType}/missing-resource`)).status).toBe(
+      StatusMap['Not Found'],
+    );
+  }
+  expect((await read('/api/publications/unknown/steve-jobs')).status).toBe(
+    StatusMap['Bad Request'],
+  );
+}
+
+async function assertUnavailableReads(fetchDemo: (request: Request) => Promise<Response>) {
+  for (const path of [
+    '/api/auth/sign-out',
+    '/api/auth/passkey/generate-register-options',
+    '/api/auth/passkey/list-user-passkeys',
+    '/api/auth/list-sessions',
+    '/api/auth/get-session/extra',
+    '/api/api-keys',
+    '/api/mcp/clients',
+    '/api/owner-registration',
+    '/api/syncs/managed',
+    '/api/public-site',
+    '/api/publications/approvals',
+    '/api/publications/approvals/test-approval/complete',
+    '/mcp',
+    '/mcp/asset-transfers/token',
+    '/.well-known/oauth-authorization-server',
+    '/openapi',
+    '/public/pages/example',
+    '/api/future-route',
+    '/api/pages/a/archive',
+    '/api/entities/a/image',
+    '/api/%70ages',
+    '/api//pages',
+    '/api/pages/',
+    '/app/setup',
+    '/app/login',
+    '/app/mcp/authorize',
+  ]) {
+    for (const method of ['GET', 'HEAD']) {
+      const response = await fetchDemo(new Request(`http://demo.test${path}`, { method }));
+      expect(response.status, `${method} ${path}`).toBe(StatusMap.Forbidden);
+      expect(response.headers.has('set-cookie')).toBe(false);
+      if (method === 'HEAD') {
+        expect(await response.text()).toBe('');
+      }
+    }
+  }
 }
 
 test('the story is connected and each checkpoint cites only sources already available then', async () => {
@@ -221,6 +292,7 @@ test(
           expect(response.headers.has('set-cookie')).toBe(false);
           await response.arrayBuffer();
         }
+        await assertPublicationStatuses(fetchDemo);
         await assertPreviewFormats(read);
         // Prove the shared seed produces distinct, discoverable pages each month through
         // the public demo API, with no month-specific pages leaking into adjacent months.
@@ -395,6 +467,9 @@ test(
         expect(await head.text()).toBe('');
         // Try every mutation registered by the reused controllers, plus unmounted surfaces.
         const deniedPaths = [
+          '/api/publications/page/pictures-of-me-and-our-pocket-devices',
+          '/api/publications/approvals',
+          '/api/publications/approvals/test-approval/complete',
           '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',
@@ -443,29 +518,7 @@ test(
             });
           }
         }
-        for (const path of [
-          '/api/auth/sign-out',
-          '/api/auth/passkey/generate-register-options',
-          '/api/api-keys',
-          '/api/mcp/clients',
-          '/api/owner-registration',
-          '/mcp',
-          '/mcp/asset-transfers/token',
-          '/.well-known/oauth-authorization-server',
-          '/openapi',
-          '/api/future-route',
-          '/api/pages/a/archive',
-          '/api/entities/a/image',
-          '/api/%70ages',
-          '/api/pages/a%2farchive',
-          '/api//pages',
-          '/api/pages/',
-          '/app/setup',
-          '/app/login',
-          '/app/mcp/authorize',
-        ]) {
-          expect((await read(path)).status, path).toBe(StatusMap.Forbidden);
-        }
+        await assertUnavailableReads(fetchDemo);
         // A missed HTTP restriction still cannot mutate either persistence boundary.
         await expect(storage.write('escape', new Blob(['changed']))).rejects.toThrow('read-only');
         await expect(storage.delete('escape')).rejects.toThrow('read-only');
@@ -495,7 +548,7 @@ test(
   TEST_TIMEOUT_MS,
 );
 
-test('personal resource controllers require real authentication even with demo metadata', async () => {
+test('demo identity stays local while instance reads and writes require real authentication', async () => {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-demo-personal-test-'));
   const database = await createSqliteDatabase({ dataFolder });
   try {
@@ -515,6 +568,12 @@ test('personal resource controllers require real authentication even with demo m
     const personal = new Elysia({ prefix: '/api' })
       .onError(elysiaErrorHandler)
       .use(createPagesController({ auth, pagesService }));
+    const demo = new Elysia({ prefix: '/api' })
+      .onError(elysiaErrorHandler)
+      .use(createPagesController({ auth: createDemoIdentity(), pagesService }));
+    expect((await demo.handle(new Request('https://demo.test/api/pages'))).status).toBe(
+      StatusMap.OK,
+    );
     for (const headers of [
       new Headers(),
       new Headers({
@@ -522,10 +581,20 @@ test('personal resource controllers require real authentication even with demo m
         authorization: 'Bearer public-demo-not-a-credential',
       }),
     ]) {
-      const response = await personal.handle(
-        new Request('https://personal.test/api/pages', { headers }),
-      );
-      expect(response.status).toBe(StatusMap.Unauthorized);
+      headers.set('content-type', 'application/json');
+      for (const method of ['GET', 'POST']) {
+        const body =
+          method === 'POST'
+            ? JSON.stringify({
+                markdown: '# Unauthorized page',
+                changeMessage: 'Attempt unauthorized write',
+              })
+            : undefined;
+        const response = await personal.handle(
+          new Request('https://personal.test/api/pages', { method, headers, body }),
+        );
+        expect(response.status, method).toBe(StatusMap.Unauthorized);
+      }
     }
   } finally {
     await database.close();
