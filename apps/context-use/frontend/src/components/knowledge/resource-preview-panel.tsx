@@ -37,7 +37,7 @@ function PreviewPanelShell({
 }) {
   return (
     <aside
-      className="absolute top-3 right-3 bottom-3 z-30 flex w-[28rem] max-w-[calc(100%-1.5rem)] flex-col overflow-clip rounded-2xl border bg-card shadow-xl"
+      className="absolute top-3 right-3 bottom-3 z-30 flex w-[clamp(28rem,40%,56rem)] max-w-[calc(100%-1.5rem)] flex-col overflow-clip rounded-2xl border bg-card shadow-xl"
       aria-label={`${label} preview`}
       tabIndex={-1}
       ref={focusPreviewPanel}
