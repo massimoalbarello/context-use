@@ -39,7 +39,7 @@ function PdfPreview({
   );
   return (
     <section
-      className={`min-w-0 overflow-auto overscroll-contain bg-muted p-2 ${className}`}
+      className={`min-w-0 overflow-auto overscroll-contain rounded-[0.75rem] bg-muted p-3 ${className}`}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll the PDF.
       tabIndex={0}
       aria-label={`${name} preview`}
