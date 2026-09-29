@@ -111,4 +111,6 @@ export function publicDocument({
 
 const STYLE_HASH = new Bun.CryptoHasher('sha256').update(publicStyles).digest('base64');
 
-export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox`;
+// Native lazy loading requires a scripting-enabled document. CSP still blocks every script;
+// the sandbox's allow-scripts token only lets the browser defer media requests.
+export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; script-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox allow-scripts`;

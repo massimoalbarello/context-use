@@ -23,5 +23,7 @@ test('public documents embed compiled component styles authorized by CSP without
   expect(styles).toContain('prefers-color-scheme:dark');
   expect(html).toContain('src="/public/assets/portrait"');
   expect(html).not.toContain('<script');
+  expect(PUBLIC_DOCUMENT_CSP).toContain("script-src 'none'");
+  expect(PUBLIC_DOCUMENT_CSP).toContain('allow-scripts');
   expect(html).not.toContain('rel="stylesheet"');
 });
