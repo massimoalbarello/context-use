@@ -1,3 +1,5 @@
+import { InlineEntity } from '@repo/ui/inline-entity';
+import { ReadingLink } from '@repo/ui/reading-link';
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
@@ -27,10 +29,16 @@ export function PublicMarkdown({
   markdown,
   components,
   assetMedia = {},
+  mentions = {},
+  origin,
+  fragmentBase,
 }: {
   markdown: string;
   components?: Components;
   assetMedia?: Record<string, string>;
+  mentions?: Record<string, { name: string; imageUrl: string | null }>;
+  origin?: string;
+  fragmentBase?: 'about:srcdoc';
 }) {
   return (
     <ReactMarkdown
@@ -38,6 +46,24 @@ export function PublicMarkdown({
       remarkPlugins={[remarkAssetLayout]}
       components={{
         ...headings,
+        a: ({ href, title, children }) => {
+          const entity = href ? mentions[href] : undefined;
+          const localFragment = fragmentBase && href?.startsWith('#');
+          return entity ? (
+            <a href={href} title={title} className="reading-entity-link">
+              <InlineEntity {...entity}>{children}</InlineEntity>
+            </a>
+          ) : (
+            <ReadingLink
+              href={localFragment ? `${fragmentBase}${href}` : href}
+              target={localFragment ? '_self' : undefined}
+              title={title}
+              origin={origin}
+            >
+              {children}
+            </ReadingLink>
+          );
+        },
         img: ({ src, alt, className }) => (
           <span className={className}>
             {src && isVideoAssetMedia(assetMedia[src] ?? '') ? (

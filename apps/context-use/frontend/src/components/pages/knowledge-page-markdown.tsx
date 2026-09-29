@@ -1,4 +1,5 @@
 import { cn } from '@repo/ui/class-names';
+import { ReadingLink } from '@repo/ui/reading-link';
 import { createContext, isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, {
   type Components,
@@ -107,12 +108,13 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
     return <AssetMarkdownLink readableId={target.readableId}>{children}</AssetMarkdownLink>;
   }
   return (
-    <a
+    <ReadingLink
+      origin={globalThis.location?.origin}
       className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4 hover:decoration-foreground"
       href={href}
     >
       {children}
-    </a>
+    </ReadingLink>
   );
 }
 

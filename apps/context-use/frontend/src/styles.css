@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @import "@repo/ui/theme.css";
+@import "@repo/ui/reading.css";
 @source "./";
 @source "../../../../packages/ui/src";
 

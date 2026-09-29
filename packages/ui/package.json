@@ -11,7 +11,10 @@
     "./popover": "./src/components/ui/popover.tsx",
     "./class-names": "./src/lib/class-names.ts",
     "./theme.css": "./src/styles/minimal-neutral.css",
-    "./logo.svg": "./src/assets/context-use.svg"
+    "./logo.svg": "./src/assets/context-use.svg",
+    "./reading-link": "./src/components/reading/reading-link.tsx",
+    "./inline-entity": "./src/components/reading/inline-entity.tsx",
+    "./reading.css": "./src/styles/reading.css"
   },
   "scripts": {
     "check:types": "bun run --bun tsc",

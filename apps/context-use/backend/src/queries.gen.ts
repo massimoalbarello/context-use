@@ -937,6 +937,10 @@ export interface IFindPublicPageResult {
     readableId: string | null;
     publicId: string | null;
     mediaType: string | null;
+    entityName: string | null;
+    hasEntityImage: number;
+    imagePublicId: string | null;
+    imageMediaType: string | null;
 }
 
 /** Result of query `FindPublicRecord`. */

@@ -1,10 +1,13 @@
+import readingStyles from '@repo/ui/reading.css' with { type: 'text' };
+import { ReadingLink } from '@repo/ui/reading-link';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_PUBLIC_SITE_NAME } from '#backend/lib/runtime-config.ts';
 
 const DESCRIPTION_LENGTH = 280;
 
-const READING_STYLES = `
+const READING_STYLES = `${readingStyles}
+
 .markdown-media-row { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.75rem 0; }
 .markdown-asset { display: block; width: 100%; min-width: 0; margin: 1.75rem 0; }
 .markdown-media-row > .markdown-asset { margin-block: 0; }
@@ -71,7 +74,7 @@ export function publicDocument({
   canonicalUrl?: string;
   modifiedAt?: string;
   markdownUrl?: string;
-  linkTarget?: '_blank';
+  linkTarget?: '_top';
   children: ReactNode;
 }): string {
   const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/public';
@@ -122,9 +125,12 @@ export function publicDocument({
                 ❤️
               </span>{' '}
               using{' '}
-              <a className="repository" href="https://github.com/massimoalbarello/context-use">
-                context-use<span aria-hidden="true">↗</span>
-              </a>
+              <ReadingLink
+                className="repository"
+                href="https://github.com/massimoalbarello/context-use"
+              >
+                context-use
+              </ReadingLink>
               .
             </p>
             <a className="owner-login" href="/app">
@@ -157,4 +163,4 @@ export function publicDocument({
 
 const STYLE_HASH = new Bun.CryptoHasher('sha256').update(READING_STYLES).digest('base64');
 
-export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads`;
+export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox`;

@@ -107,7 +107,7 @@ function PagePublicationContent({
         <iframe
           title="Public page preview"
           className="h-[50vh] w-full border-0"
-          sandbox="allow-popups allow-popups-to-escape-sandbox"
+          sandbox="allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
           srcDoc={revision.html}
         />
       </CardContent>

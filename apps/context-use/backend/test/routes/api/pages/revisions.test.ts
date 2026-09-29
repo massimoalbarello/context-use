@@ -490,12 +490,14 @@ test('preview HTML declares external navigation and local section jumps without 
     const preview = await (
       await context.previewRequest({ revisionNumber: String(LAST_REVISION + 1) })
     ).json();
-    expect(preview.html).toContain('<base target="_blank"/>');
+    expect(preview.html).toContain('<base target="_top"/>');
     expect(preview.html).toContain('<a href="about:srcdoc#section" target="_self">Section</a>');
     expect(preview.html).toContain('<a href="about:srcdoc#section" target="_self">Local</a>');
     expect(preview.html).toContain(
-      '<a href="https://example.com" title="Website title">Website</a>',
+      'href="https://example.com" target="_blank" rel="noopener noreferrer"',
     );
+    expect(preview.html).toContain('Website<span class="reading-external-icon"');
+    expect(preview.html).toContain('(opens in a new tab)');
     expect(preview.html).not.toContain('<script');
   } finally {
     await context.dispose();

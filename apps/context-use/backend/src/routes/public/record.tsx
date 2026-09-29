@@ -6,11 +6,13 @@ export function publicRecordHtml({
   title,
   markdown,
   assetMedia,
+  origin,
 }: {
   publicId: string;
   title: string;
   markdown: string;
   assetMedia?: Record<string, string>;
+  origin: string;
 }): string {
   return publicDocument({
     title,
@@ -19,6 +21,7 @@ export function publicRecordHtml({
       <article>
         <h1>{title}</h1>
         <PublicMarkdown
+          origin={origin}
           markdown={markdown}
           assetMedia={assetMedia}
           components={{

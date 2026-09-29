@@ -3,7 +3,7 @@ import type { SQL } from 'bun';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { ENTITY_TYPES, type EntityType } from '#backend/models/entities/model.ts';
 import type { PublicMarkdownTarget } from '#backend/models/public-resources/markdown.ts';
-import type { Queries } from '#backend/queries.gen.ts';
+import type { IFindPublicPageResult, Queries } from '#backend/queries.gen.ts';
 
 export interface StoredPublicAsset {
   name: string;
@@ -23,6 +23,7 @@ export interface StoredPublicMarkdown {
 }
 
 export interface StoredPublicPage extends StoredPublicMarkdown {
+  mentions: { publicId: string; name: string; imagePublicId: string | null }[];
   modifiedAt: string;
 }
 
@@ -198,6 +199,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       /* @notNull title storageKey contentHash sizeBytes modifiedAt */
       /* @type publicId string | null */
       /* @type mediaType string | null */
+      /* @type hasEntityImage number */
       with selected_revision as (
         select "published_revision_id" as "id", "id" as "page_id", "owner_id"
         from "knowledge_page"
@@ -257,14 +259,26 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       select source."title", source."created_at" as "modifiedAt", source."storage_key" as "storageKey",
         source."content_hash" as "contentHash", source."size_bytes" as "sizeBytes",
         target."kind", target."readable_id" as "readableId", target."public_id" as "publicId",
-        target."media_type" as "mediaType"
+        target."media_type" as "mediaType", entity."name" as "entityName",
+        entity."image_asset_id" is not null as "hasEntityImage",
+        image."public_id" as "imagePublicId", image."media_type" as "imageMediaType"
       from active_page source left join link_targets target on true
+      left join "entity" entity on target."kind" = 'entity'
+        and entity."public_id" = target."public_id" and entity."owner_id" = source."owner_id"
+        and entity."published_at" is not null and entity."archived_at" is null
+      left join "asset" image on image."id" = entity."image_asset_id"
+        and image."owner_id" = source."owner_id" and image."published_at" is not null
+        and image."archived_at" is null
     `;
     const page = rows[0];
     if (!page) {
       return null;
     }
     const targets: PublicMarkdownTarget[] = [];
+    const mentions = rows.filter((row) => row.kind === 'entity').map(publicMention);
+    if (!mentions.every((mention) => mention !== null)) {
+      return null;
+    }
     for (const target of rows) {
       if (target.kind === null) {
         continue;
@@ -289,6 +303,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
     return {
       title: page.title,
       modifiedAt: page.modifiedAt,
+      mentions,
       storageKey: page.storageKey,
       contentHash: page.contentHash,
       sizeBytes: Number(page.sizeBytes),
@@ -365,4 +380,16 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
         }
       : null;
   }
+}
+
+function publicMention(row: IFindPublicPageResult): StoredPublicPage['mentions'][number] | null {
+  if (
+    !row.entityName ||
+    !row.publicId ||
+    (row.hasEntityImage &&
+      (!row.imagePublicId || !isEmbeddableAssetMedia(row.imageMediaType ?? '')))
+  ) {
+    return null;
+  }
+  return { publicId: row.publicId, name: row.entityName, imagePublicId: row.imagePublicId };
 }

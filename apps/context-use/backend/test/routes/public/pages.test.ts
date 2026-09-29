@@ -83,6 +83,7 @@ test('HTML and Markdown expose only the exact approved revision and retained lin
       expect(before[0]).toContain('View as Markdown');
       expect(Object.keys((await resources.findPage({ publicId: id }))!).sort()).toEqual([
         'contentHash',
+        'mentions',
         'modifiedAt',
         'sizeBytes',
         'storageKey',
@@ -92,6 +93,7 @@ test('HTML and Markdown expose only the exact approved revision and retained lin
       expect(Object.keys((await service.pageContent({ publicId: id }))!).sort()).toEqual([
         'assetMedia',
         'markdown',
+        'mentions',
         'modifiedAt',
         'title',
       ]);
@@ -112,7 +114,9 @@ test('HTML and Markdown expose only the exact approved revision and retained lin
         readableId: page.readableId,
         markdown: `# PRIVATE latest title\n\nPrivate latest body [private target](context-use://page/${privateTarget.readableId}).`,
       });
-      expect(await (await request({ id: id })).text()).toBe(before[0]!);
+      expect(await (await request({ id: id })).text()).toBe(
+        before[0]!.replace('>E</span>', '>C</span>'),
+      );
       expect(await (await request({ id: id, ...{ markdown: true } })).text()).toBe(before[1]!);
       const replacement = await update({
         readableId: page.readableId,
@@ -641,4 +645,71 @@ test('published media keeps layout hints out of HTML and plays video through pub
       expect(markdown).toContain(`![Film](/public/assets/${videoId})`);
     },
   );
+});
+
+test('public mentions preserve authored labels and use only available published portraits', async () => {
+  await withPublicResources(
+    async ({ targets, create, publish, request, entities, database, service }) => {
+      const target = await targets();
+      const page = await create({
+        markdown: `# People\n\n[My friend](context-use://entity/${target.entity.readableId})`,
+      });
+      const id = await publish({ readableId: page.readableId });
+      const fallback = await (await request({ id })).text();
+      expect(fallback).toContain('aria-hidden="true">E</span><span>My friend</span>');
+      await entities.setImage({
+        ownerId: 'owner-a',
+        readableId: target.entity.readableId,
+        assetId: target.asset.id,
+        updatedAt: NOW,
+        change: CHANGE,
+      });
+      const html = await (await request({ id })).text();
+      expect(html).toContain(
+        `href="/public/entities/${target.entityId}" class="reading-entity-link"`,
+      );
+      expect(html).toContain(`<img src="/public/assets/${target.assetId}" alt=""/>`);
+      expect(html).toContain('<span>My friend</span>');
+      expect(html).not.toContain(target.asset.readableId);
+      expect(html).not.toContain(target.asset.name);
+      const preview = { ownerId: 'owner-a', readableId: page.readableId, revisionNumber: 1 };
+      expect(await service.pagePreview(preview)).toEqual(
+        await service.pageContent({ publicId: id }),
+      );
+      // Corrupt publication state must fail closed, even if the page remains published.
+      for (const mutation of [
+        () => database`update "asset" set "published_at" = null where "id" = ${target.asset.id}`,
+        () =>
+          database`update "asset" set "published_at" = ${NOW}, "archived_at" = ${NOW} where "id" = ${target.asset.id}`,
+        () =>
+          database`update "asset" set "archived_at" = null, "media_type" = 'application/pdf' where "id" = ${target.asset.id}`,
+      ]) {
+        await mutation();
+        expect((await request({ id })).status).toBe(StatusMap['Not Found']);
+        expect(await service.pagePreview(preview)).toBeNull();
+      }
+    },
+  );
+});
+
+test('public reading distinguishes off-site links from managed pages, same-site URLs, and fragments', async () => {
+  await withPublicResources(async ({ targets, create, publish, request }) => {
+    const target = await targets();
+    const page = await create({
+      markdown: `# Navigation\n\n[Other page](context-use://page/${target.page.readableId}) [Same site](http://localhost/public) [Section](#section) [Website](https://example.com)\n\n## Section\n\nContent.`,
+    });
+    const id = await publish({ readableId: page.readableId });
+    const response = await request({ id });
+    const html = await response.text();
+    expect(html).toContain(`href="/public/pages/${target.pageId}">Other page</a>`);
+    expect(html).toContain('href="http://localhost/public">Same site</a>');
+    expect(html).toContain('href="#section">Section</a>');
+    expect(html).toContain('href="https://example.com" target="_blank" rel="noopener noreferrer"');
+    expect(html).toContain(
+      'Website<span class="reading-external-icon" aria-hidden="true">↗</span><span class="reading-sr-only"> (opens in a new tab)</span>',
+    );
+    expect(response.headers.get('content-security-policy')).toContain(
+      'allow-popups allow-popups-to-escape-sandbox',
+    );
+  });
 });
