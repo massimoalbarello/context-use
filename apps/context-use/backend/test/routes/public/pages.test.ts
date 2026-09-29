@@ -197,7 +197,7 @@ test('both formats strip active and hidden destinations, omit external images, p
       expect(body).toContain('mailto:person@example.com');
       expect(body).toContain('Approved prose stays.');
       if (markdown) {
-        expect(body).not.toContain('![Document]');
+        expect(body).toContain(`![Document](/public/assets/${fileId})`);
       } else {
         expect(body).toContain('id="cafe-bold-and-code"');
         expect(body).not.toContain(`<img src="/public/assets/${fileId}"`);
@@ -709,4 +709,66 @@ test('public reading distinguishes off-site links from managed pages, same-site 
       'allow-popups allow-popups-to-escape-sandbox',
     );
   });
+});
+
+test('published PDFs retain their embeds and prose while bytes stay behind public authorization', async () => {
+  await withPublicResources(
+    async ({ assets, transition, create, publish, request, app, service, database }) => {
+      const result = await assets.create({
+        ownerId: 'owner-a',
+        name: 'Private document name',
+        file: new Blob(['%PDF-1.7\npreview']),
+        change: CHANGE,
+      });
+      if (result.state !== 'created') {
+        throw new Error('Missing PDF');
+      }
+      const assetId = await transition({
+        ownerId: 'owner-a',
+        resourceType: 'asset',
+        action: 'publish',
+        readableId: result.asset.readableId,
+      });
+      const page = await create({
+        markdown: `# Document\n\nBefore. ![Rehearsal notes](context-use://asset/${result.asset.readableId}){size=large} After **the PDF**.`,
+      });
+      const id = await publish({ readableId: page.readableId });
+      const response = await request({ id });
+      const html = await response.text();
+      expect(html).toContain(`src="/pdf-preview/${assetId}"`);
+      expect(html).toContain('title="Rehearsal notes"');
+      expect(html).not.toContain(`href="/public/assets/${assetId}"`);
+      expect(html).toContain('<p>Before. </p>');
+      expect(html).toContain('<p> After <strong>the PDF</strong>.</p>');
+      expect(html).not.toContain(result.asset.readableId);
+      expect(html).not.toContain('{size=large}');
+      expect(response.headers.get('content-security-policy')).toContain("script-src 'none'");
+      expect(response.headers.get('content-security-policy')).toContain("frame-src 'self'");
+      expect(html).toContain('http-equiv="Content-Security-Policy"');
+      expect(await (await request({ id, markdown: true })).text()).toContain(
+        `![Rehearsal notes](/public/assets/${assetId})`,
+      );
+      expect(
+        (
+          await service.pagePreview({
+            ownerId: 'owner-a',
+            readableId: page.readableId,
+            revisionNumber: 1,
+          })
+        )?.markdown,
+      ).toContain(`/public/assets/${assetId}`);
+      const bytes = await app.handle(new Request(`http://localhost/public/assets/${assetId}`));
+      expect(bytes.status).toBe(StatusMap.OK);
+      expect(bytes.headers.get('content-disposition')).toStartWith('attachment;');
+      expect(
+        (await app.handle(new Request(`http://localhost/public/assets/${result.asset.readableId}`)))
+          .status,
+      ).toBe(StatusMap['Not Found']);
+      await database`update "asset" set "published_at" = null where "id" = ${result.asset.id}`;
+      expect(
+        (await app.handle(new Request(`http://localhost/public/assets/${assetId}`))).status,
+      ).toBe(StatusMap['Not Found']);
+      expect((await request({ id })).status).toBe(StatusMap['Not Found']);
+    },
+  );
 });

@@ -49,3 +49,23 @@ Ordinary prose {size=large align=center}
     expect(text).toContain('![Example](context-use://asset/example){size=large align=center}');
   },
 );
+
+test('keeps prose in paragraphs before and after embedded media, including linked references', () => {
+  const tree =
+    fromMarkdown(`Before **the preview**. ![Document](context-use://asset/document){size=large} After *the preview*.
+
+[![Linked][asset]](https://example.com) After the link.
+
+[asset]: context-use://asset/image`);
+  remarkAssetLayout()(tree);
+  const paragraphs = tree.children.filter((node) => node.type === 'paragraph');
+  expect(paragraphs.map((node) => node.data?.hName ?? 'p')).toEqual(['p', 'div', 'p', 'div', 'p']);
+  expect(paragraphs.map((node) => markdownText(node).trim())).toEqual([
+    'Before the preview.',
+    'Document',
+    'After the preview.',
+    'Linked',
+    'After the link.',
+  ]);
+  expect(paragraphs[2]?.children.some((node) => node.type === 'emphasis')).toBe(true);
+});

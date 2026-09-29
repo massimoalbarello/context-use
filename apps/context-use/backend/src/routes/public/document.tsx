@@ -32,6 +32,7 @@ export function publicDocument({
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="referrer" content="no-referrer" />
+        <meta httpEquiv="Content-Security-Policy" content={PUBLIC_DOCUMENT_CONTENT_CSP} />
         {linkTarget ? <base target={linkTarget} /> : null}
         <title>{title}</title>
         <meta name="description" content={description.slice(0, DESCRIPTION_LENGTH)} />
@@ -111,6 +112,7 @@ export function publicDocument({
 
 const STYLE_HASH = new Bun.CryptoHasher('sha256').update(publicStyles).digest('base64');
 
-// Native lazy loading requires a scripting-enabled document. CSP still blocks every script;
-// the sandbox's allow-scripts token only lets the browser defer media requests.
-export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; script-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox allow-scripts`;
+// Keep authored content script-free, including srcdoc publication reviews. The sandbox
+// permits scripts only so the separate PDF viewer can run and native media can load lazily.
+const PUBLIC_DOCUMENT_CONTENT_CSP = `default-src 'none'; script-src 'none'; img-src 'self'; media-src 'self'; frame-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'`;
+export const PUBLIC_DOCUMENT_CSP = `${PUBLIC_DOCUMENT_CONTENT_CSP}; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox allow-scripts`;

@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import Papa from 'papaparse';
 import { lazy, type ReactNode, Suspense, useState } from 'react';
 import { assetContentUrl, isEmbeddableAsset, isVideoAsset } from '../../lib/asset-presentation';
-import { assetDocumentQueryOptions, MAX_DOCUMENT_PREVIEW_BYTES } from '../../queries/assets';
+import { MAX_DOCUMENT_PREVIEW_BYTES } from '../../lib/document-preview';
+import { assetDocumentQueryOptions } from '../../queries/assets';
 import { AssetPreviewFallback } from './asset-preview-fallback';
 
 const MAX_TEXT_CHARACTERS = 50_000;

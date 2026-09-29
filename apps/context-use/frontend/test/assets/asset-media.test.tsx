@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { AssetFileActions } from '../../src/components/assets/asset-file-actions';
 import { AssetMedia } from '../../src/components/assets/asset-media';
-import { assetDocumentQueryOptions, MAX_DOCUMENT_PREVIEW_BYTES } from '../../src/queries/assets';
+import { MAX_DOCUMENT_PREVIEW_BYTES } from '../../src/lib/document-preview';
+import { assetDocumentQueryOptions } from '../../src/queries/assets';
 
 const asset = { readableId: 'sample-file', name: 'Sample file', mediaType: 'text/plain' };
 

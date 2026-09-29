@@ -15,7 +15,7 @@ export function createPdfPreview() {
 }
 
 function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
-  const file = useMemo(() => ({ data: bytes }), [bytes]);
+  const file = useMemo(() => ({ data: bytes.slice() }), [bytes]);
   const container = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(0);
   const [failed, setFailed] = useState(false);

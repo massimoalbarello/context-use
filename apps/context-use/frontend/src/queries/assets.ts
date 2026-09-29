@@ -1,9 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { getStreamAsArrayBuffer, MaxBufferError } from 'get-stream';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { assetContentUrl } from '../lib/asset-presentation';
+import { documentPreviewBytes } from '../lib/document-preview';
+
 import { searchHypermedia } from './hypermedia-search';
 
 export type AssetPage = NonNullable<Awaited<ReturnType<typeof api.api.assets.get>>['data']>;
@@ -184,32 +185,13 @@ export async function archiveAsset({
   return { state: 'archived' };
 }
 
-export const MAX_DOCUMENT_PREVIEW_BYTES = 20_971_520;
-
 export function assetDocumentQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...assetsQueryKey, 'content', readableId],
     queryFn: async ({ signal }) => {
       // Fetch bytes explicitly: Eden's content-type decoding is unsuitable for document parsers.
       const response = await fetch(assetContentUrl(readableId), { signal });
-      if (!response.ok) {
-        throw new Error('Could not load this file.');
-      }
-      if (!response.body) {
-        throw new Error('This file is empty.');
-      }
-      try {
-        const buffer = await getStreamAsArrayBuffer(response.body, {
-          maxBuffer: MAX_DOCUMENT_PREVIEW_BYTES,
-        });
-        // Browser document decoders require fixed-size buffers, while get-stream may return a resizable one.
-        return new Uint8Array(buffer).slice();
-      } catch (error) {
-        if (error instanceof MaxBufferError) {
-          throw new Error('This file is too large to preview.');
-        }
-        throw error;
-      }
+      return documentPreviewBytes(response);
     },
     staleTime: Infinity,
     retry: false,

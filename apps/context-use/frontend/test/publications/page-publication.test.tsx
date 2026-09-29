@@ -337,7 +337,7 @@ test('first publication reviews full selected content before allowing confirmati
     '<strong>Selected text 7</strong>',
   );
   expect(screen.getByTitle('Public page preview').getAttribute('sandbox')).toBe(
-    'allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation',
+    'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation',
   );
   expect(within(dialog).queryByRole('tab', { name: 'Changes' })).toBeNull();
   expect(state.previews).toEqual([FIRST_PUBLIC_REVISION]);

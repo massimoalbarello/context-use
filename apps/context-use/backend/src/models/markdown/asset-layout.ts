@@ -1,5 +1,5 @@
 import type { Nodes, Paragraph, Root } from 'mdast';
-import { visit } from 'unist-util-visit';
+import { SKIP, visit } from 'unist-util-visit';
 import { markdownLinks } from './links.ts';
 
 const LAYOUT_CLASSES: Record<string, string> = {
@@ -79,17 +79,41 @@ export function remarkAssetLayout() {
         )
         .map(({ node }) => node),
     );
-    visit(tree, 'paragraph', (paragraph) => {
-      if (layoutEmbeds({ paragraph, embeds })) {
-        const mediaOnly = paragraph.children.every((node) =>
-          node.type === 'text' ? !node.value.trim() : embeds.has(node),
-        );
-        paragraph.data = {
-          ...paragraph.data,
-          hName: 'div',
-          hProperties: { className: mediaOnly ? ['markdown-media-row'] : [] },
-        };
+    // biome-ignore lint/complexity/useMaxParams: mdast visitors receive the node, index, and parent.
+    visit(tree, 'paragraph', (paragraph, index, parent) => {
+      if (!layoutEmbeds({ paragraph, embeds }) || !parent || index === undefined) {
+        return;
       }
+      const blocks: Paragraph[] = [];
+      let children: Paragraph['children'] = [];
+      let media = false;
+      const flush = () => {
+        if (children.some((node) => node.type !== 'text' || node.value.trim())) {
+          blocks.push({
+            ...paragraph,
+            children,
+            ...(media
+              ? { data: { hName: 'div', hProperties: { className: ['markdown-media-row'] } } }
+              : {}),
+          });
+        }
+        children = [];
+      };
+      for (const node of paragraph.children) {
+        let containsEmbed = false;
+        visit(node, (child) => {
+          containsEmbed ||= embeds.has(child);
+        });
+        const whitespace = node.type === 'text' && !node.value.trim();
+        if (!whitespace && containsEmbed !== media) {
+          flush();
+          media = containsEmbed;
+        }
+        children.push(node);
+      }
+      flush();
+      parent.children.splice(index, 1, ...blocks);
+      return [SKIP, index + blocks.length];
     });
   };
 }
