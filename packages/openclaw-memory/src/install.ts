@@ -9,6 +9,10 @@ export async function uninstall(): Promise<void> {
   }
   // OpenClaw retains an enabled:false entry on uninstall. Remove our entry too.
   await mutateConfigFile({
+    afterWrite: {
+      mode: 'none',
+      reason: 'Context Use setup requests gateway refresh after cleanup',
+    },
     writeOptions: { allowConfigSizeDrop: true },
     mutate: (config) => {
       if (config.plugins?.entries) {

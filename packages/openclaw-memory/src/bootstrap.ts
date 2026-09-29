@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { satisfies } from 'semver';
 import metadata from '../package.json';
 import { serverUrl } from './contract';
 import { ConnectionError } from './error';
 import { refreshGateway } from './gateway';
 import { checkHost, runSetupCommand } from './host-command';
-import { installedPlugin, installPackage } from './package-installation';
+import { hostSdkAnchor } from './package-installation';
 import { SETUP_USAGE } from './usage';
 
-// npm exec does not have access to the host SDK. Install through OpenClaw first,
-// then delegate to the installed package, whose SDK dependencies the host owns.
+// Resolve the host SDK explicitly so the current npm helper can repair old or removed installs.
 async function main(args: string[]): Promise<void> {
   if (!args[0] || args[0] === '--help') {
     console.log(SETUP_USAGE);
@@ -32,15 +32,11 @@ async function main(args: string[]): Promise<void> {
     await refreshGateway();
     return;
   }
-  if (args[0] === 'connect') {
-    await installPackage();
-  }
-  const installed = await installedPlugin();
-  if (!installed) {
-    throw new ConnectionError('Context Use is not installed. Run connect first.');
-  }
+  const directory = dirname(fileURLToPath(import.meta.url));
+  process.env.CONTEXT_USE_OPENCLAW_SDK = await hostSdkAnchor();
   process.exitCode = await runSetupCommand({
-    script: join(installed.rootDir, 'dist/setup.js'),
+    script: join(directory, 'setup.js'),
+    runtime: join(directory, 'setup-runtime.js'),
     args,
   });
 }

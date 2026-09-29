@@ -41,7 +41,7 @@ export default definePluginEntry({
           .allowUnknownOption()
           .action(async (args: string[]) => {
             process.exitCode = await runSetupCommand({
-              script: join(dirname(api.source), 'setup.js'),
+              script: join(dirname(api.source), 'bootstrap.js'),
               args,
             });
           });

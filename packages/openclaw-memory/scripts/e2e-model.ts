@@ -44,6 +44,9 @@ export function startModel() {
   type ModelInput = z.infer<typeof RequestSchema>;
   type Reply = { call?: { name: string; arguments: Record<string, unknown> }; answer: string };
   function setupReply(input: ModelInput): Reply {
+    if (!input.tools.some((tool) => tool.function.name === 'exec')) {
+      return { answer: 'NONE' };
+    }
     observations.setupCalls += 1;
     if (!setupStarted) {
       setupStarted = true;
@@ -58,7 +61,11 @@ export function startModel() {
     const output = JSON.stringify(
       input.messages.filter((message) => message.role === 'tool').at(-1)?.content,
     );
-    setupConfirmed ||= output.includes('Open this URL') || output.includes('Context Use connected');
+    setupConfirmed ||=
+      output.includes('Open this URL') ||
+      output.includes('Context Use connected') ||
+      output.includes('Context Use authorized') ||
+      output.includes('Removal is running separately');
     setupSession ??= output.match(/Command still running \(session ([^,]+),/)?.[1];
     if (setupSession && !output.includes('Process exited with code 0')) {
       assert(

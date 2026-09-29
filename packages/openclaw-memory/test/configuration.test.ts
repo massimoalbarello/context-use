@@ -20,6 +20,92 @@ function connection(): ConnectionState {
 }
 
 describe('exclusive memory configuration', () => {
+  const editedTimeoutMs = 45_000;
+  test('changing servers retains the original restoration values', () => {
+    const original: OpenClawConfig = { plugins: { slots: { memory: 'memory-core' } } };
+    const config = structuredClone(original);
+    const state = connection();
+    prepareConfiguration({ config, state });
+    state.config = { ...state.config, serverUrl: 'https://another.example/mcp' };
+    prepareConfiguration({ config, state });
+    expect(config.plugins?.entries?.['context-use']?.config?.serverUrl).toBe(
+      'https://another.example/mcp',
+    );
+    expect(restoreConfiguration({ config, state })).toEqual([]);
+    expect(config).toEqual(original);
+  });
+  test('reauthorization preserves later edits without claiming ownership of their grants', () => {
+    const config: OpenClawConfig = {
+      plugins: { allow: ['memory-core'] },
+      agents: { entries: { main: { tools: { alsoAllow: ['exec'] } } } },
+    };
+    const state = connection();
+    prepareConfiguration({ config, state });
+    const journal = structuredClone(state.changes);
+    config.plugins!.entries!['active-memory']!.config!.timeoutMs = editedTimeoutMs;
+    config.agents!.entries!.main!.tools!.alsoAllow!.push('web_search');
+    config.plugins!.allow!.push('another-plugin');
+    const edited = structuredClone(config);
+    prepareConfiguration({ config, state });
+    expect(config).toEqual(edited);
+    expect(state.changes).toEqual(journal);
+    restoreConfiguration({ config, state });
+    expect(config.plugins!.entries!['active-memory']!.config!.timeoutMs).toBe(editedTimeoutMs);
+    expect(config.agents!.entries!.main!.tools!.alsoAllow).toEqual(['exec', 'web_search']);
+    expect(config.plugins!.allow).toEqual(['memory-core', 'another-plugin']);
+  });
+
+  test('switching servers updates owned tools while preserving edits and restoring replaced tools', () => {
+    const config: OpenClawConfig = {
+      plugins: { entries: { 'active-memory': { config: { toolsAllow: ['original_tool'] } } } },
+    };
+    const state = connection();
+    prepareConfiguration({ config, state });
+    const active = config.plugins!.entries!['active-memory']!.config!;
+    active.timeoutMs = editedTimeoutMs;
+    (active.toolsAllow as string[]).push('user_tool');
+    state.config = { ...state.config, serverUrl: 'https://another.example/mcp' };
+    state.tools = [
+      {
+        name: 'read_knowledge_page',
+        inputSchema: { type: 'object' },
+        annotations: { readOnlyHint: true },
+      },
+    ];
+    prepareConfiguration({ config, state });
+    expect(active.toolsAllow).toEqual(['user_tool', 'context_use_read_knowledge_page']);
+    expect(active.timeoutMs).toBe(editedTimeoutMs);
+    restoreConfiguration({ config, state });
+    expect(active.toolsAllow).toEqual(['user_tool', 'original_tool']);
+    expect(active.timeoutMs).toBe(editedTimeoutMs);
+  });
+
+  test('reauthorization preserves settings the user restored to their original values', () => {
+    const config: OpenClawConfig = {
+      plugins: { entries: { 'active-memory': { config: { timeoutMs: editedTimeoutMs } } } },
+    };
+    const state = connection();
+    prepareConfiguration({ config, state });
+    config.plugins!.entries!['active-memory']!.config!.timeoutMs = editedTimeoutMs;
+    const edited = structuredClone(config);
+    prepareConfiguration({ config, state });
+    expect(config).toEqual(edited);
+    restoreConfiguration({ config, state });
+    expect(config.plugins!.entries!['active-memory']!.config!.timeoutMs).toBe(editedTimeoutMs);
+  });
+
+  test('retries a journal written before its configuration commit', () => {
+    const original: OpenClawConfig = { plugins: { slots: { memory: 'memory-core' } } };
+    const state = connection();
+    const attempted = structuredClone(original);
+    prepareConfiguration({ config: attempted, state });
+    const retry = structuredClone(original);
+    prepareConfiguration({ config: retry, state });
+    expect(retry).toEqual(attempted);
+    restoreConfiguration({ config: retry, state });
+    expect(retry).toEqual(original);
+  });
+
   test('connect preserves separate conversations and disconnect restores the original values', () => {
     const original: OpenClawConfig = {
       session: { dmScope: 'per-channel-peer' },
@@ -45,7 +131,7 @@ describe('exclusive memory configuration', () => {
   test('removal preserves subsequent edits and does not touch remote data', () => {
     const config: OpenClawConfig = {};
     const state = connection();
-    const userTimeout = 45_000;
+    const userTimeout = editedTimeoutMs;
     prepareConfiguration({ config, state });
     config.plugins!.entries!['active-memory']!.config!.timeoutMs = userTimeout;
     config.agents!.defaults = { workspace: '/custom/work' };
@@ -94,8 +180,14 @@ describe('exclusive memory configuration', () => {
     prepareConfiguration({ config, state });
     config.agents!.entries!.main!.tools!.alsoAllow!.push('web_search');
     config.plugins!.allow!.push('another-plugin');
+    (config.plugins!.entries!['active-memory']!.config!.toolsAllow as string[]).push(
+      'another_tool',
+    );
     restoreConfiguration({ config, state });
     expect(config.plugins?.allow).toEqual(['memory-core', 'another-plugin']);
+    expect(config.plugins?.entries?.['active-memory']?.config?.toolsAllow).toEqual([
+      'another_tool',
+    ]);
     expect(config.agents?.entries?.main?.tools?.alsoAllow).toEqual(['exec', 'web_search']);
   });
 });

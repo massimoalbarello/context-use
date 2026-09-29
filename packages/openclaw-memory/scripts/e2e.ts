@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +43,12 @@ const env = {
   npm_config_cache: join(directory, 'npm-cache'),
   npm_config_registry: 'https://registry.npmjs.org',
 };
-const sdkConfig = import.meta.resolve('openclaw/plugin-sdk/config-mutation');
+const hostRoot =
+  process.env.OPENCLAW_TEST_HOST_ROOT ??
+  dirname(fileURLToPath(import.meta.resolve('openclaw/package.json')));
+const sdkConfig = createRequire(join(hostRoot, 'package.json')).resolve(
+  'openclaw/plugin-sdk/config-mutation',
+);
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
 using gatewayReservation = reservePort();
 const gatewayPort = gatewayReservation.port!;
@@ -90,7 +97,7 @@ async function configuration() {
 await mkdir(join(directory, 'bin'), { recursive: true });
 await writeFile(
   join(directory, 'bin/openclaw'),
-  `#!/bin/sh\nexec '${node.replaceAll("'", "'\\''")}' '${join(dirname(fileURLToPath(import.meta.resolve('openclaw/package.json'))), 'openclaw.mjs').replaceAll("'", "'\\''")}' "$@"\n`,
+  `#!/bin/sh\nexec '${node.replaceAll("'", "'\\''")}' '${join(hostRoot, 'openclaw.mjs').replaceAll("'", "'\\''")}' "$@"\n`,
 );
 await chmod(join(directory, 'bin/openclaw'), EXECUTABLE_MODE);
 console.log(`Testing ${packageSpec} in disposable workspace ${directory}`);
@@ -169,8 +176,22 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     PLUGIN_ID,
     'Installation activated memory before authorization',
   );
-  await command(['npx', '--yes', packageSpec, 'remove']);
+  await command(['openclaw', 'plugins', 'uninstall', PLUGIN_ID, '--force']);
+  assert(
+    await Bun.file(connectionFile).exists(),
+    'Fixture must reproduce orphaned connection state',
+  );
+  // A stale operation record must not mistake this live, unrelated process for its worker.
+  await writeFile(`${dirname(connectionFile)}.removal.json`, JSON.stringify({ pid: process.pid }));
+  await Promise.all([
+    command(['npx', '--yes', packageSpec, 'remove', '--wait']),
+    command(['npx', '--yes', packageSpec, 'remove', '--wait']),
+  ]);
   assert(!(await Bun.file(connectionFile).exists()), 'Cancelled setup retained credentials');
+  assert(!existsSync(dirname(connectionFile)), 'Removal retained its private directory');
+  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
+  assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
+  assert(!existsSync(dirname(connectionFile)), 'Status recreated removed state');
   assert(!(await configuration()).plugins.entries?.[PLUGIN_ID]);
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
   const pending = await Bun.file(connectionFile).json();
@@ -214,6 +235,81 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
   assert((await Bun.file(connectionFile).json()).oauth.tokens);
   console.log('Reconnect retained the current connection without another authorization.');
+  const originalJournal = (await Bun.file(connectionFile).json()).changes;
+  const revoked = await Bun.file(connectionFile).json();
+  revoked.oauth.tokens.access_token = 'expired-access-token';
+  revoked.oauth.tokens.refresh_token = 'expired-refresh-token';
+  await writeFile(connectionFile, JSON.stringify(revoked), { mode: PRIVATE_MODE });
+  assert(
+    (await command(['npx', '--yes', packageSpec, 'status'])).includes('"authenticated": false'),
+  );
+  await configure(
+    "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow.push('web_search');",
+  );
+  await command(['npx', '--yes', packageSpec, 'reconnect']);
+  const reauthorization = await Bun.file(connectionFile).json();
+  assert(!reauthorization.oauth.tokens, 'Reconnect retained old credentials');
+  assert.notEqual(reauthorization.oauth.client.client_id, pending.oauth.client.client_id);
+  await authorize(
+    await owner.authorize({
+      authorizationUrl: reauthorization.oauth.pending.url,
+      callbackUrl: CALLBACK_URL,
+      clientName: 'OpenClaw reauthorization',
+    }),
+  );
+  assert.deepEqual(
+    (await Bun.file(connectionFile).json()).changes,
+    originalJournal,
+    'Reauthorization lost the original restoration journal',
+  );
+  console.log(
+    'Explicit reconnect registered and authorized a fresh client while retaining restoration history.',
+  );
+  await mkdir(join(directory, 'moved'));
+  const movedApp = await startApp({ repo, directory: join(directory, 'moved'), node });
+  let movedOwner: Awaited<ReturnType<typeof ownerBrowser>> | undefined;
+  try {
+    movedOwner = await ownerBrowser(movedApp.origin);
+    const previousIdentity = (await Bun.file(connectionFile).json()).learningId;
+    await command(['npx', '--yes', packageSpec, 'connect', movedApp.origin]);
+    const moving = await Bun.file(connectionFile).json();
+    assert.equal(moving.config.serverUrl, `${movedApp.origin}/mcp`);
+    assert(
+      !moving.oauth.tokens && !moving.learningId,
+      'Server change retained old authorization or learning identity',
+    );
+    await authorize(
+      await movedOwner.authorize({
+        authorizationUrl: moving.oauth.pending.url,
+        callbackUrl: CALLBACK_URL,
+        clientName: 'OpenClaw moved server',
+      }),
+    );
+    assert.notEqual((await Bun.file(connectionFile).json()).learningId, previousIdentity);
+    assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"connected": true'));
+  } finally {
+    await movedOwner?.close();
+    await movedApp.stop();
+  }
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  const returning = await Bun.file(connectionFile).json();
+  await authorize(
+    await owner.authorize({
+      authorizationUrl: returning.oauth.pending.url,
+      callbackUrl: CALLBACK_URL,
+      clientName: 'OpenClaw returned server',
+    }),
+  );
+  assert.deepEqual((await Bun.file(connectionFile).json()).changes, originalJournal);
+  const reauthorizedConfig = await configuration();
+  assert.equal(
+    reauthorizedConfig.plugins.entries['active-memory'].config.timeoutMs,
+    USER_TIMEOUT_MS,
+  );
+  assert(reauthorizedConfig.agents.entries.main.tools.alsoAllow.includes('web_search'));
+  console.log(
+    'Changed MCP servers in both directions with fresh credentials and preserved restoration history.',
+  );
 
   assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), initialAgents);
   assert.equal(await Bun.file(join(workspace, 'USER.md')).text(), initialUser);
@@ -318,10 +414,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const remote = await owner.page.request.get(`${app.origin}/api/pages`);
   assert(remote.ok(), 'Could not verify memories survived disconnect');
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
-  await command(['npx', '--yes', packageSpec, 'remove']);
+  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
   const afterRemoval = await configuration();
   assert(!afterRemoval.plugins.entries?.[PLUGIN_ID], 'Native uninstall tombstone survived');
-  assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['read']);
+  assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['web_search', 'read']);
   assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), editedAgents);
   assert.equal(
     await Bun.file(join(workspace, 'USER.md')).text(),
@@ -357,6 +453,13 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     clientName: 'OpenClaw reinstallation',
   });
   await authorize(newRedirect);
+  // This was the original timeout before reinstallation, so it must not look like a failed commit.
+  await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  assert.equal(
+    (await configuration()).plugins.entries['active-memory'].config.timeoutMs,
+    USER_TIMEOUT_MS,
+  );
   model.recall();
   const reinstalledRecall = await command([
     'openclaw',
@@ -530,8 +633,30 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
   console.log('Removing the installed plugin.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
-  console.log(await command(['openclaw', 'context-use', 'remove']));
-  assert(!(await Bun.file(connectionFile).exists()));
+  model.setup('openclaw context-use remove');
+  const queuedRemoval = await command([
+    'openclaw',
+    'agent',
+    '--agent',
+    'main',
+    '--session-key',
+    `${personalGroup}:topic:7`,
+    '--message',
+    'Remove Context Use and finish this turn once removal is queued.',
+    '--json',
+  ]);
+  assert(queuedRemoval.includes('Plugin setup completed'));
+  const removalDeadline = Date.now() + COMMAND_TIMEOUT_MS;
+  while (existsSync(`${dirname(connectionFile)}.removal.json`) && Date.now() < removalDeadline) {
+    const operation = await Bun.file(`${dirname(connectionFile)}.removal.json`)
+      .json()
+      .catch(() => undefined);
+    assert(!operation?.error, operation?.error);
+    await Bun.sleep(pollIntervalMs);
+  }
+  assert(!existsSync(`${dirname(connectionFile)}.removal.json`), 'Removal worker did not finish');
+  assert(!existsSync(dirname(connectionFile)), 'Removal retained private data');
+  console.log('Removal requested by the active Gateway agent finished after its own turn ended.');
   // OpenClaw may reload itself as configuration changes. Verify the next chat's
   // provider below, regardless of whether removal needed to request another refresh.
   await waitGateway();
@@ -558,7 +683,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await waitGateway();
   const inventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
   assert(!inventory.plugins.some((plugin: { id: string }) => plugin.id === PLUGIN_ID));
-  assert(!(await Bun.file(connectionFile).exists()));
+  assert(!existsSync(dirname(connectionFile)), 'A fresh chat recreated removed private state');
+  assert(
+    !existsSync(`${dirname(connectionFile)}.removal.json.lock`),
+    'Removal lease survived cleanup',
+  );
   console.log('The npm helper refreshed the gateway after uninstall.');
 } finally {
   try {
