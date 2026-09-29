@@ -12,7 +12,6 @@ import {
 import { discoverTools, withClient } from './client';
 import {
   assertPersonalConfiguration,
-  configMatches,
   prepareConfiguration,
   restoreConfiguration,
 } from './configuration';
@@ -20,6 +19,7 @@ import { AUTHORIZATION_SCOPE, PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from '.
 import { ConnectionError } from './error';
 import { attachmentDirectory, LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
+import { assertNotRemoving } from './removal';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
 
@@ -27,9 +27,16 @@ const authorizationFetch: NonNullable<Parameters<typeof auth>[1]['fetchFn']> = (
   fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
 
 async function activate(input: { directory: string; state: ConnectionState }): Promise<void> {
-  input.state.tools = await withClient({ ...input, run: discoverTools });
+  try {
+    input.state.tools = await withClient({ ...input, run: discoverTools });
+  } catch {
+    throw new ConnectionError(
+      'Authorization was saved, but the MCP server did not verify memory access. Check the server URL and client access in Context Use Settings, then run reconnect to authorize a fresh connection. The previous memory settings have not been replaced.',
+    );
+  }
   input.state.learningId ??= randomUUID();
   await mutateConfigFile({
+    afterWrite: { mode: 'none', reason: 'Context Use setup requests gateway refresh after commit' },
     mutate: async (config) => {
       prepareConfiguration({ config, state: input.state });
       // Write the restoration journal before committing host configuration. A crash can
@@ -47,7 +54,7 @@ async function removeLearningData(input: {
     recursive: true,
     force: true,
   });
-  for (const suffix of ['', '-journal']) {
+  for (const suffix of ['', '-journal', '-wal', '-shm']) {
     await rm(join(input.directory, `${learningDatabase(input.connectionId)}${suffix}`), {
       force: true,
     });
@@ -58,16 +65,16 @@ export async function connect(input: {
   directory: string;
   instance: string;
   agentId: string;
+  reauthorize?: boolean;
 }): Promise<{ authorizationUrl?: string }> {
   const config = { serverUrl: serverUrl(input.instance), agentId: input.agentId };
   return await withConnection({
     directory: input.directory,
     run: async () => {
+      await assertNotRemoving(input.directory);
       const existing = await readState(input.directory);
-      if (existing && !configMatches({ actual: existing.config, expected: config })) {
-        throw new ConnectionError(
-          'Disconnect the existing account before changing instance or agent.',
-        );
+      if (existing && existing.config.agentId !== config.agentId) {
+        throw new ConnectionError('Disconnect the existing account before changing agent.');
       }
       const state: ConnectionState = existing ?? { config, changes: [], tools: [], oauth: {} };
       const { snapshot } = await readConfigFileSnapshotForWrite();
@@ -75,6 +82,20 @@ export async function connect(input: {
         throw new ConnectionError('OpenClaw configuration is invalid. Run openclaw doctor first.');
       }
       assertPersonalConfiguration({ config: snapshot.config, state });
+      if (input.reauthorize || state.config.serverUrl !== config.serverUrl) {
+        const previousLearningId = state.learningId;
+        state.config = config;
+        state.oauth = {};
+        state.tools = [];
+        delete state.learningId;
+        await writeState({ directory: input.directory, state });
+        if (previousLearningId) {
+          await removeLearningData({
+            directory: input.directory,
+            connectionId: previousLearningId,
+          });
+        }
+      }
       await writeState({ directory: input.directory, state });
       const result = await auth(
         oauthProvider({ directory: input.directory, state, interactive: true }),
@@ -100,6 +121,7 @@ export async function finishAuthorization(input: {
   await withConnection({
     directory: input.directory,
     run: async () => {
+      await assertNotRemoving(input.directory);
       const state = await readState(input.directory);
       if (!state) {
         throw new ConnectionError('Start connect before completing authorization.');
@@ -149,6 +171,10 @@ export async function disconnect(directory: string): Promise<{ preserved: string
       }
       let preserved: string[] = [];
       await mutateConfigFile({
+        afterWrite: {
+          mode: 'none',
+          reason: 'Context Use setup requests gateway refresh after cleanup',
+        },
         // Removing only journal-owned settings can legitimately shrink a fresh config by over half.
         writeOptions: { allowConfigSizeDrop: true },
         mutate: (config) => {
@@ -157,10 +183,7 @@ export async function disconnect(directory: string): Promise<{ preserved: string
           }
         },
       });
-      await rm(join(directory, 'connection.json'), { force: true });
-      if (state?.learningId) {
-        await removeLearningData({ directory, connectionId: state.learningId });
-      }
+      await rm(directory, { recursive: true, force: true });
       return { preserved };
     },
   });
@@ -181,7 +204,18 @@ export async function status(directory: string): Promise<Record<string, unknown>
           ...state.config,
         };
       }
-      const tools = await withClient({ directory, state, run: discoverTools });
+      let tools: ConnectionState['tools'];
+      try {
+        tools = await withClient({ directory, state, run: discoverTools });
+      } catch {
+        return {
+          connected: false,
+          authenticated: false,
+          ...state.config,
+          error:
+            'MCP access could not be verified. Check the server and run reconnect to authorize a fresh connection.',
+        };
+      }
       const { snapshot } = await readConfigFileSnapshotForWrite();
       const selected =
         snapshot.config.plugins?.slots?.memory === PLUGIN_ID &&

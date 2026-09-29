@@ -24,6 +24,8 @@ const result = await Bun.build({
     join(root, 'src/bootstrap.ts'),
     join(root, 'src/index.ts'),
     join(root, 'src/setup.ts'),
+    join(root, 'src/setup-runtime.ts'),
+    join(root, 'src/remove-worker.ts'),
     join(root, 'src/setup-prompt.ts'),
   ],
   outdir: dist,

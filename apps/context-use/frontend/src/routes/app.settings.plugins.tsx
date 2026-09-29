@@ -1,6 +1,7 @@
 import {
   OPENCLAW_NPM_URL,
   OPENCLAW_REMOVAL_PROMPT,
+  openclawReconnectPrompt,
   openclawSetupPrompt,
 } from '@context-use/openclaw-memory/setup-prompt';
 import { useSuspenseQuery } from '@tanstack/react-query';
@@ -59,6 +60,23 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
               copiedLabel="Setup prompt copied"
               rows={7}
               value={openclawSetupPrompt(serverUrl)}
+            />
+          </div>
+        </details>
+
+        <details className="grid gap-3">
+          <summary className="cursor-pointer text-sm">Reauthorize the plugin</summary>
+          <div className="mt-3 grid gap-3">
+            <p className="text-muted-foreground text-sm">
+              Use this when authorization expires or you move to a different Context Use server.
+              OpenClaw will ask you to authorize a new MCP client for this server.
+            </p>
+            <CopyablePrompt
+              ariaLabel="OpenClaw reauthorization prompt"
+              copyLabel="Copy reauthorization prompt"
+              copiedLabel="Reauthorization prompt copied"
+              rows={5}
+              value={openclawReconnectPrompt(serverUrl)}
             />
           </div>
         </details>

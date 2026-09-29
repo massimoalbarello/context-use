@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type {
   OAuthDiscoveryState,
   StoredOAuthClientInformation,
@@ -80,6 +80,7 @@ export async function writeState(input: {
   directory: string;
   state: ConnectionState;
 }): Promise<void> {
+  await mkdir(input.directory, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
   await writePrivateFile({
     path: join(input.directory, 'connection.json'),
     data: JSON.stringify(input.state),
@@ -92,8 +93,9 @@ export async function withConnection<T>(input: {
   directory: string;
   run: () => Promise<T>;
 }): Promise<T> {
-  await mkdir(input.directory, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
+  await mkdir(dirname(input.directory), { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
   const release = await lock(input.directory, {
+    realpath: false,
     stale: LOCK_STALE_MS,
     retries: { retries: LOCK_RETRIES, minTimeout: LOCK_RETRY_MS, maxTimeout: LOCK_RETRY_MS },
   });

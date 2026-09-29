@@ -7,8 +7,16 @@ import { ConnectionError } from './error';
 const execute = promisify(execFile);
 const HOST_TIMEOUT_MS = 120_000;
 
-export async function runSetupCommand(input: { script: string; args: string[] }): Promise<number> {
-  const child = spawn(process.execPath, [input.script, ...input.args], { stdio: 'inherit' });
+export async function runSetupCommand(input: {
+  script: string;
+  args: string[];
+  runtime?: string;
+}): Promise<number> {
+  const child = spawn(
+    process.execPath,
+    [...(input.runtime ? ['--import', input.runtime] : []), input.script, ...input.args],
+    { stdio: 'inherit' },
+  );
   return await new Promise<number>((resolve, reject) => {
     child.once('error', reject);
     child.once('exit', (code) => resolve(code ?? 1));

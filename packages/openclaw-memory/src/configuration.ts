@@ -163,7 +163,7 @@ export function restoreConfiguration(input: {
       Array.isArray(current) &&
       Array.isArray(change.applied) &&
       (change.before === undefined || Array.isArray(change.before)) &&
-      ['allow', 'alsoAllow'].includes(change.path.at(-1) ?? '')
+      ['allow', 'alsoAllow', 'toolsAllow'].includes(change.path.at(-1) ?? '')
     ) {
       const added = change.applied.filter(
         (value) => !(change.before as unknown[] | undefined)?.includes(value),

@@ -27,6 +27,12 @@ test('copies setup for this instance and exposes script-owned removal', async ()
   await user.click(selfInstallation);
   expect(selfInstallation.closest('details')?.open).toBe(false);
 
+  await user.click(screen.getByText('Reauthorize the plugin', { selector: 'summary' }));
+  await user.click(screen.getByRole('button', { name: 'Copy reauthorization prompt' }));
+  expect(await navigator.clipboard.readText()).toContain(
+    `${OPENCLAW_PACKAGE} reconnect '${serverUrl}'`,
+  );
+
   await user.click(screen.getByText('Remove the plugin', { selector: 'summary' }));
   await user.click(screen.getByRole('button', { name: 'Copy removal prompt' }));
   expect(await navigator.clipboard.readText()).toBe(OPENCLAW_REMOVAL_PROMPT);

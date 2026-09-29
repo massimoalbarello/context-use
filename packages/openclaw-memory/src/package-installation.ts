@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,18 +14,41 @@ import { openclaw } from './host-command';
 const execute = promisify(execFile);
 const INSTALL_TIMEOUT_MS = 120_000;
 
-export async function installedPlugin() {
+async function pluginInventory() {
   const inventory = z
     .object({
       plugins: z.array(
         z.object({
           id: z.string(),
           rootDir: z.string(),
+          origin: z.string().optional(),
         }),
       ),
     })
-    .parse(JSON.parse(await openclaw(['plugins', 'list', '--json'])));
-  return inventory.plugins.find((plugin) => plugin.id === PLUGIN_ID);
+    .parse(JSON.parse(await openclaw(['--log-level', 'silent', 'plugins', 'list', '--json'])));
+  return inventory.plugins;
+}
+
+export async function installedPlugin() {
+  return (await pluginInventory()).find((plugin) => plugin.id === PLUGIN_ID);
+}
+
+export async function hostSdkAnchor(): Promise<string> {
+  const plugins = await pluginInventory();
+  // External plugins may have a newer npm peer copy. Only the host's bundled roots
+  // identify its SDK; loading another version can irreversibly migrate host state.
+  for (const plugin of plugins.filter((entry) => entry.origin === 'bundled')) {
+    try {
+      return createRequire(join(plugin.rootDir, 'package.json')).resolve(
+        'openclaw/plugin-sdk/config-mutation',
+      );
+    } catch {
+      // Some bundled entries may have no resolvable SDK; inspect the next host entry.
+    }
+  }
+  throw new ConnectionError(
+    'Could not locate the OpenClaw SDK. Run openclaw plugins doctor and retry.',
+  );
 }
 
 export async function installPackage(): Promise<void> {

@@ -1,8 +1,41 @@
 import { expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readState, readStateSync, withConnection, writeState } from '../src/state';
+
+test('a stale reader cannot recreate removed state and a new connection can reuse its lock', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'context-use-state-test-'));
+  const directory = join(root, 'connection');
+  try {
+    await withConnection({
+      directory,
+      run: async () => {
+        await writeState({
+          directory,
+          state: {
+            config: { serverUrl: 'https://memory.example/mcp', agentId: 'main' },
+            changes: [],
+            tools: [],
+            oauth: {},
+          },
+        });
+        await rm(directory, { recursive: true });
+      },
+    });
+    await withConnection({
+      directory,
+      run: async () => {
+        expect(await readState(directory)).toBeUndefined();
+      },
+    });
+    expect(existsSync(directory)).toBe(false);
+    expect(existsSync(`${directory}.lock`)).toBe(false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('rejects incomplete saved state instead of filling in missing fields', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'context-use-state-test-'));

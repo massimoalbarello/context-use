@@ -20,6 +20,19 @@ function connection(): ConnectionState {
 }
 
 describe('exclusive memory configuration', () => {
+  test('changing servers retains the original restoration values', () => {
+    const original: OpenClawConfig = { plugins: { slots: { memory: 'memory-core' } } };
+    const config = structuredClone(original);
+    const state = connection();
+    prepareConfiguration({ config, state });
+    state.config = { ...state.config, serverUrl: 'https://another.example/mcp' };
+    prepareConfiguration({ config, state });
+    expect(config.plugins?.entries?.['context-use']?.config?.serverUrl).toBe(
+      'https://another.example/mcp',
+    );
+    expect(restoreConfiguration({ config, state })).toEqual([]);
+    expect(config).toEqual(original);
+  });
   test('connect preserves separate conversations and disconnect restores the original values', () => {
     const original: OpenClawConfig = {
       session: { dmScope: 'per-channel-peer' },
@@ -94,8 +107,14 @@ describe('exclusive memory configuration', () => {
     prepareConfiguration({ config, state });
     config.agents!.entries!.main!.tools!.alsoAllow!.push('web_search');
     config.plugins!.allow!.push('another-plugin');
+    (config.plugins!.entries!['active-memory']!.config!.toolsAllow as string[]).push(
+      'another_tool',
+    );
     restoreConfiguration({ config, state });
     expect(config.plugins?.allow).toEqual(['memory-core', 'another-plugin']);
+    expect(config.plugins?.entries?.['active-memory']?.config?.toolsAllow).toEqual([
+      'another_tool',
+    ]);
     expect(config.agents?.entries?.main?.tools?.alsoAllow).toEqual(['exec', 'web_search']);
   });
 });
