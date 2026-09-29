@@ -17,6 +17,8 @@ import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 
+const MAX_CONDITIONAL_HEADER_LENGTH = 8192;
+
 export function createAssetReadableIdController({
   auth,
   assetsService,
@@ -67,7 +69,7 @@ export function createAssetReadableIdController({
     )
     .get(
       '/assets/:assetReadableId/content',
-      async ({ params, query, user }) => {
+      async ({ params, query, request, user }) => {
         const content = await assetsService.content({
           ownerId: user.id,
           readableId: params.assetReadableId,
@@ -82,12 +84,17 @@ export function createAssetReadableIdController({
           asset: content.asset,
           blob: content.blob,
           inline: query.download !== 'true',
+          request,
         });
       },
       {
-        detail: { tags: ['Assets'], summary: 'Read verified asset bytes' },
+        detail: { tags: ['Assets'], summary: 'Stream asset bytes' },
         params: AssetParamsSchema,
         query: AssetContentQuerySchema,
+        headers: t.Object({
+          range: t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
+          'if-range': t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
+        }),
       },
     )
     .put(
