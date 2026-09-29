@@ -200,7 +200,9 @@ test('both formats strip active and hidden destinations, omit external images, p
         expect(body).not.toContain('![Document]');
       } else {
         expect(body).toContain('id="cafe-bold-and-code"');
-        expect(body).not.toContain(`<img src="/public/assets/${fileId}"`);
+        expect(body.match(/<img\b[^>]*>/g)?.join('') ?? '').not.toContain(
+          `src="/public/assets/${fileId}"`,
+        );
         expect(body).not.toContain('<script');
       }
     }
@@ -625,7 +627,7 @@ test('published media keeps layout hints out of HTML and plays video through pub
       const html = await response.text();
       expect(response.status).toBe(StatusMap.OK);
       expect(response.headers.get('content-security-policy')).toContain("media-src 'self'");
-      expect(html).toContain(`<video src="/public/assets/${videoId}"`);
+      expect(html.match(/<video\b[^>]*>/g)?.join('')).toContain(`src="/public/assets/${videoId}"`);
       expect(html).toContain('controls=""');
       expect(html).toContain('asset-half');
       expect(html).toContain('asset-large asset-center');

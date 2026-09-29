@@ -1,4 +1,5 @@
 import Negotiator from 'negotiator';
+import { PublicArticle } from './article.tsx';
 import { PUBLIC_DOCUMENT_CSP, publicDocument } from './document.tsx';
 
 export function publicReadingResponse({
@@ -71,14 +72,14 @@ export function publicNotFound({
       publicDocument({
         title: 'Public content not found',
         children: (
-          <article>
+          <PublicArticle>
             <h1>Public content not found</h1>
             <p>This address is unavailable.</p>
             <p>
               <a href="/public/directory">Browse public content</a> or use the{' '}
               <a href="/llms.txt">AI reading guide</a>.
             </p>
-          </article>
+          </PublicArticle>
         ),
       }),
   });

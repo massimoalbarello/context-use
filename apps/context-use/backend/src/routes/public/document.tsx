@@ -27,7 +27,10 @@ export function publicDocument({
 }): string {
   const isHomepage = canonicalUrl !== undefined && new URL(canonicalUrl).pathname === '/public';
   return `<!doctype html>${renderToStaticMarkup(
-    <html lang="en">
+    <html
+      lang="en"
+      className="scheme-light-dark bg-[#faf9f6] text-[#292723] [font-family:ui-sans-serif,system-ui,sans-serif] dark:bg-[#201f1c] dark:text-[#e9e5dc]"
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -56,37 +59,40 @@ export function publicDocument({
         ) : null}
         <style>{publicStyles}</style>
       </head>
-      <body>
-        <main>
+      <body className="m-0 bg-inherit text-inherit [&_*]:box-border [:where(&_a)]:text-inherit [:where(&_a)]:decoration-[#8a8479] [:where(&_a)]:underline-offset-[0.2em] [:where(&_a:focus-visible)]:outline-2 [:where(&_a:focus-visible)]:outline-current [:where(&_a:focus-visible)]:outline-offset-4 [:where(&_a:hover)]:decoration-[0.15em]">
+        <main className="mx-auto max-w-3xl px-6 pt-12 max-sm:px-5 max-sm:pt-6">
           {!isHomepage ? (
-            <nav aria-label="Public navigation">
+            <nav
+              aria-label="Public navigation"
+              className="mb-12 flex items-center justify-between gap-4 text-[#69655d] text-[0.875rem] max-sm:mb-8 dark:text-[#bbb5a9]"
+            >
               <a href="/public">Home</a>
             </nav>
           ) : null}
           {children}
         </main>
-        <footer>
-          <div className="footer-credit">
-            <p>
+        <footer className="mx-auto mt-14 mb-16 w-[calc(100%-3rem)] max-w-[45rem] border-[#d7d1c6] border-t border-solid pt-6 leading-[1.6] max-sm:mt-10 max-sm:w-[calc(100%-2.5rem)] dark:border-[#514d46]">
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="m-0 text-[1rem]">
               self-hosted with{' '}
-              <span role="img" aria-label="love">
+              <span role="img" aria-label="love" className="mx-[0.15em]">
                 ❤️
               </span>{' '}
               using{' '}
               <ReadingLink
-                className="repository"
+                className="font-bold text-[#315e4e] decoration-dotted dark:text-[#a1cbb9]"
                 href="https://github.com/massimoalbarello/context-use"
               >
                 context-use
               </ReadingLink>
               .
             </p>
-            <a className="owner-login" href="/app">
+            <a className="shrink-0 text-[0.875rem]" href="/app">
               Owner dashboard
             </a>
           </div>
           {modifiedAt || markdownUrl ? (
-            <div className="footer-details">
+            <div className="mt-3 flex flex-wrap items-baseline justify-between gap-4 text-[#69655d] text-[0.875rem] dark:text-[#bbb5a9]">
               {modifiedAt ? (
                 <span>
                   Last updated{' '}
@@ -100,7 +106,11 @@ export function publicDocument({
                   </time>
                 </span>
               ) : null}
-              {markdownUrl ? <a href={markdownUrl}>View as Markdown</a> : null}
+              {markdownUrl ? (
+                <a className="ml-auto font-semibold" href={markdownUrl}>
+                  View as Markdown
+                </a>
+              ) : null}
             </div>
           ) : null}
         </footer>

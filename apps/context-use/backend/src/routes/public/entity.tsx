@@ -1,4 +1,5 @@
 import { ENTITY_TYPE_LABELS, type EntityType } from '#backend/models/entities/model.ts';
+import { PublicArticle } from './article.tsx';
 import { publicDocument } from './document.tsx';
 
 export function publicEntityHtml({
@@ -30,23 +31,25 @@ export function publicEntityHtml({
     markdownUrl: `/public/entities/${encodeURIComponent(publicId)}/markdown`,
     modifiedAt,
     children: (
-      <article>
-        <header className="entity-identity">
+      <PublicArticle>
+        <header className="flex flex-wrap items-center gap-6">
           {imagePublicId ? (
             <img
-              className="entity-portrait"
+              className="m-0 size-40 object-cover"
               src={`/public/assets/${encodeURIComponent(imagePublicId)}`}
               alt={name}
               width="160"
               height="160"
             />
           ) : null}
-          <div>
-            {entityType ? <p className="entity-type">{ENTITY_TYPE_LABELS[entityType]}</p> : null}
-            <h1>{name}</h1>
+          <div className="min-w-[min(15rem,100%)] flex-1">
+            {entityType ? (
+              <p className="mt-0 mb-2 text-[0.875rem]">{ENTITY_TYPE_LABELS[entityType]}</p>
+            ) : null}
+            <h1 className="m-0">{name}</h1>
           </div>
         </header>
-        <p className="entity-description">{description}</p>
+        <p className="whitespace-pre-wrap">{description}</p>
         <section aria-labelledby="public-pages">
           <h2 id="public-pages">Public pages mentioning {name}</h2>
           {pages.length ? (
@@ -61,7 +64,7 @@ export function publicEntityHtml({
             <p>No public pages mention {name} yet.</p>
           )}
         </section>
-      </article>
+      </PublicArticle>
     ),
   });
 }

@@ -1,6 +1,7 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toString as markdownText } from 'mdast-util-to-string';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
+import { PublicArticle } from './article.tsx';
 import { publicDocument } from './document.tsx';
 import { PublicMarkdown } from './markdown.tsx';
 
@@ -40,7 +41,7 @@ export function publicPageHtml({
     linkTarget,
     markdownUrl: publicId ? `/public/pages/${encodeURIComponent(publicId)}/markdown` : undefined,
     children: (
-      <article>
+      <PublicArticle>
         <PublicMarkdown
           markdown={markdown}
           assetMedia={assetMedia}
@@ -48,7 +49,7 @@ export function publicPageHtml({
           origin={origin ?? (canonicalUrl ? new URL(canonicalUrl).origin : undefined)}
           fragmentBase={fragmentBase}
         />
-      </article>
+      </PublicArticle>
     ),
   });
 }
