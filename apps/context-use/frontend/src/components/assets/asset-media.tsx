@@ -5,6 +5,7 @@ import { assetContentUrl, isEmbeddableAsset, isVideoAsset } from '../../lib/asse
 import { MAX_DOCUMENT_PREVIEW_BYTES } from '../../lib/document-preview';
 import { assetDocumentQueryOptions } from '../../queries/assets';
 import { AssetPreviewFallback } from './asset-preview-fallback';
+import { PdfPreviewLoading } from './pdf-preview-loading';
 
 const MAX_TEXT_CHARACTERS = 50_000;
 const MAX_TABLE_ROWS = 100;
@@ -103,11 +104,15 @@ function DocumentPreview({ asset }: { asset: PreviewableAsset }) {
     return <AssetPreviewFallback message={content.error.message} />;
   }
   if (!content.data) {
-    return <p role="status">Loading preview…</p>;
+    return asset.mediaType === 'application/pdf' ? (
+      <PdfPreviewLoading />
+    ) : (
+      <p role="status">Loading preview…</p>
+    );
   }
   if (asset.mediaType === 'application/pdf') {
     return (
-      <Suspense fallback={<p role="status">Loading PDF…</p>}>
+      <Suspense fallback={<PdfPreviewLoading />}>
         <PdfPreview bytes={content.data} name={asset.name} />
       </Suspense>
     );
