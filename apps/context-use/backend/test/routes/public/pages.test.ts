@@ -735,7 +735,7 @@ test('published PDFs retain their embeds and prose while bytes stay behind publi
       const id = await publish({ readableId: page.readableId });
       const response = await request({ id });
       const html = await response.text();
-      expect(html).toContain(`src="/pdf-preview/${assetId}"`);
+      expect(html).toContain(`src="/public/assets/${assetId}/preview"`);
       expect(html).toContain('title="Rehearsal notes"');
       expect(html).not.toContain(`href="/public/assets/${assetId}"`);
       expect(html).toContain('<p>Before. </p>');

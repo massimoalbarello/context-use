@@ -58,7 +58,34 @@ test(
         expect(response.status, path).toBe(OK);
         expect(await response.text()).toContain('<div id="app"></div>');
       }
-      for (const path of ['/some-path-that-does-not-exist', '/missing.js', '/assets/missing.js']) {
+      const viewerPath = '/public/assets/74075bf0-08db-4c1a-878a-97a1e2bbc405/preview';
+      const viewer = await binary.request({ path: viewerPath, redirect: 'manual' });
+      expect(viewer.status).toBe(OK);
+      expect(viewer.headers.get('content-type')).toContain('text/html');
+      const viewerPolicy = viewer.headers.get('content-security-policy') ?? '';
+      expect(viewerPolicy).not.toContain("frame-ancestors 'none'");
+      expect(viewerPolicy).not.toContain("script-src 'none'");
+      expect(viewer.headers.get('x-frame-options')?.toUpperCase()).not.toBe('DENY');
+      expect(await viewer.text()).toContain('<div id="app"></div>');
+      const viewerHead = await binary.request({ path: viewerPath, method: 'HEAD' });
+      expect(viewerHead.status).toBe(OK);
+      expect(await viewerHead.text()).toBe('');
+      expect((await binary.request({ path: viewerPath, method: 'POST' })).status).toBe(NOT_FOUND);
+      expect((await binary.request({ path: '/public/assets/private-or-unknown' })).status).toBe(
+        NOT_FOUND,
+      );
+      for (const path of [
+        '/some-path-that-does-not-exist',
+        '/missing.js',
+        '/assets/missing.js',
+        '/pdf-preview',
+        '/pdf-preview/',
+        '/pdf-preview/example',
+        '/pdf-preview/example/extra',
+        '/pdf-preview/missing.js',
+        '/public/assets/example/preview/extra',
+        '/public/assets/example/preview.js',
+      ]) {
         const response = await binary.request({ path, headers: { accept: 'text/markdown' } });
         expect(response.status, path).toBe(NOT_FOUND);
         expect(response.headers.get('content-type')).toBe('text/markdown; charset=utf-8');

@@ -68,7 +68,7 @@ export function PublicMarkdown({
           <span className={className}>
             {src && assetMedia[src] === 'application/pdf' ? (
               <iframe
-                src={`/pdf-preview/${encodeURIComponent(src.split('/').at(-1)!)}`}
+                src={`${src}/preview`}
                 title={alt || 'PDF preview'}
                 loading="lazy"
                 sandbox="allow-scripts allow-same-origin"

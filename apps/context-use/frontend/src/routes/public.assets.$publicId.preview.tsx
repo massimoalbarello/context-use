@@ -5,8 +5,8 @@ import { AssetPreviewFallback } from '../components/assets/asset-preview-fallbac
 import { PdfPreviewLoading } from '../components/assets/pdf-preview-loading';
 import { publicPdfQueryOptions } from '../queries/public-asset-preview';
 
-export const Route = createFileRoute('/pdf-preview/$publicId')({
-  component: PublicPdfPreview,
+export const Route = createFileRoute('/public/assets/$publicId/preview')({
+  component: PublicAssetPreview,
 });
 
 const PdfPreview = lazy(async () => {
@@ -14,7 +14,7 @@ const PdfPreview = lazy(async () => {
   return { default: createPdfPreview() };
 });
 
-function PublicPdfPreview() {
+function PublicAssetPreview() {
   const dark = useSyncExternalStore(subscribeToTheme, isDarkTheme, () => false);
   return (
     <main className={`${dark ? 'dark' : ''} flex min-h-dvh flex-col bg-muted text-foreground`}>
