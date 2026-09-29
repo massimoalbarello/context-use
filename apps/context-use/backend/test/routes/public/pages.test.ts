@@ -90,6 +90,7 @@ test('HTML and Markdown expose only the exact approved revision and retained lin
         'title',
       ]);
       expect(Object.keys((await service.pageContent({ publicId: id }))!).sort()).toEqual([
+        'assetMedia',
         'markdown',
         'modifiedAt',
         'title',
@@ -591,4 +592,53 @@ test('first-publication self references remain navigable inside the preview', as
       await publications.pageStatus({ ownerId: 'owner-a', readableId: page.readableId }),
     ).toEqual({ publicId: null, publishedAt: null, publishedRevisionNumber: null });
   });
+});
+
+test('published media keeps layout hints out of HTML and plays video through public-only asset URLs', async () => {
+  await withPublicResources(
+    async ({ assets, targets, transition, create, publish, request, app, service }) => {
+      const target = await targets();
+      const result = await assets.create({
+        ownerId: 'owner-a',
+        name: 'Private video name',
+        file: new Blob([Buffer.from('00000018667479706d703432000000006d70343169736f6d', 'hex')]),
+        change: CHANGE,
+      });
+      if (result.state !== 'created') {
+        throw new Error('Missing video');
+      }
+      const videoId = await transition({
+        ownerId: 'owner-a',
+        resourceType: 'asset',
+        action: 'publish',
+        readableId: result.asset.readableId,
+      });
+      const page = await create({
+        markdown: `# Media story\n\n![Picture](context-use://asset/${target.asset.readableId}){layout=half}\n![Film](context-use://asset/${result.asset.readableId}){layout=half}\n\n![Centered](context-use://asset/${target.asset.readableId}){size=large align=center}`,
+      });
+      const id = await publish({ readableId: page.readableId });
+      const response = await request({ id });
+      const html = await response.text();
+      expect(response.status).toBe(StatusMap.OK);
+      expect(response.headers.get('content-security-policy')).toContain("media-src 'self'");
+      expect(html).toContain(`<video src="/public/assets/${videoId}"`);
+      expect(html).toContain('controls=""');
+      expect(html).toContain('asset-half');
+      expect(html).toContain('asset-large asset-center');
+      expect(html).not.toContain('{layout=half}');
+      expect(html).not.toContain('{size=large align=center}');
+      expect(html).not.toContain('context-use://');
+      expect(html).not.toContain(result.asset.readableId);
+      const content = await service.pageContent({ publicId: id });
+      expect(content?.assetMedia).toEqual({
+        [`/public/assets/${videoId}`]: 'video/mp4',
+        [`/public/assets/${target.assetId}`]: 'image/png',
+      });
+      const bytes = await app.handle(new Request(`http://localhost/public/assets/${videoId}`));
+      expect(bytes.headers.get('content-type')).toBe('video/mp4');
+      expect(bytes.headers.get('content-disposition')).toStartWith('inline;');
+      const markdown = await (await request({ id, markdown: true })).text();
+      expect(markdown).toContain(`![Film](/public/assets/${videoId})`);
+    },
+  );
 });

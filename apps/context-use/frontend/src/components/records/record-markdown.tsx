@@ -1,8 +1,9 @@
 import { cn } from '@repo/ui/class-names';
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { internalLink } from '../../lib/internal-link';
-import { AssetMarkdownImage, AssetMarkdownLink } from '../assets/asset-markdown';
+import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
 
 export function externalRecordUrl(url: string): string {
   try {
@@ -37,14 +38,20 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
   return (
     <article className="py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
+        remarkPlugins={[remarkAssetLayout]}
         skipHtml
         urlTransform={(url) => (internalLink(url)?.kind === 'asset' ? url : externalRecordUrl(url))}
         components={{
           a: ({ href, children }) => <ContextRecordLink href={href}>{children}</ContextRecordLink>,
-          img: ({ src, alt }) => {
+          img: ({ src, alt, className, node }) => {
             const asset = src ? internalLink(src) : null;
             return asset?.kind === 'asset' ? (
-              <AssetMarkdownImage readableId={asset.readableId} alt={alt} />
+              <AssetMarkdownEmbed
+                readableId={asset.readableId}
+                alt={alt}
+                className={className}
+                linked={Boolean(node?.properties['data-asset-linked'])}
+              />
             ) : alt ? (
               <span className="text-muted-foreground text-sm">Image: {alt}</span>
             ) : null;

@@ -1,6 +1,7 @@
 import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema, NotFoundError } from '#backend/lib/errors.ts';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
+import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
 import { createPublicDiscoveryController } from '#backend/routes/public/discovery-controller.ts';
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';
@@ -212,7 +213,9 @@ export function createPublicController({
         const response = assetContentResponse({
           asset: content.asset,
           blob: content.blob,
-          inline: isEmbeddableAssetMedia(content.asset.mediaType),
+          inline:
+            isEmbeddableAssetMedia(content.asset.mediaType) ||
+            isVideoAssetMedia(content.asset.mediaType),
         });
         response.headers.set('content-security-policy', "default-src 'none'; sandbox");
         return response;

@@ -1,11 +1,16 @@
 import { cn } from '@repo/ui/class-names';
 import { createContext, isValidElement, type ReactNode, useContext } from 'react';
-import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown';
+import ReactMarkdown, {
+  type Components,
+  defaultUrlTransform,
+  type ExtraProps,
+} from 'react-markdown';
+import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
 import { internalLink } from '../../lib/internal-link';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
-import { AssetMarkdownImage, AssetMarkdownLink } from '../assets/asset-markdown';
+import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
 import { EntityLink } from '../entities/entity-link';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
@@ -111,12 +116,28 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
   );
 }
 
-function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+function MarkdownImage({
+  src,
+  alt,
+  className,
+  node,
+}: ExtraProps & {
+  src?: string;
+  alt?: string;
+  className?: string;
+}) {
   const target = src ? internalLink(src) : null;
   if (target?.kind !== 'asset') {
     return null;
   }
-  return <AssetMarkdownImage readableId={target.readableId} alt={alt} />;
+  return (
+    <AssetMarkdownEmbed
+      readableId={target.readableId}
+      alt={alt}
+      className={className}
+      linked={Boolean(node?.properties['data-asset-linked'])}
+    />
+  );
 }
 
 const markdownComponents: Components = {
@@ -188,6 +209,7 @@ export function KnowledgePageMarkdown({
     <MarkdownReferences value={{ mentions, recordReferences }}>
       <article className="py-3 md:py-5">
         <ReactMarkdown
+          remarkPlugins={[remarkAssetLayout]}
           skipHtml
           urlTransform={(url) =>
             url.startsWith('context-use://') ? url : defaultUrlTransform(url)

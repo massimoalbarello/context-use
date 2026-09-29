@@ -1,7 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useContext } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
+import { assetPreviewQueryOptions } from '../../queries/assets';
 import { ResourceNavigation } from '../knowledge/resource-navigation';
 import { AssetLink } from './asset-link';
+import { AssetMedia } from './asset-media';
+import { AssetPreviewFallback } from './asset-preview-fallback';
 
 export function AssetMarkdownLink({
   readableId,
@@ -28,12 +32,45 @@ export function AssetMarkdownLink({
   );
 }
 
-export function AssetMarkdownImage({ readableId, alt }: { readableId: string; alt?: string }) {
+export function AssetMarkdownEmbed({
+  readableId,
+  alt,
+  className,
+  linked = false,
+}: {
+  readableId: string;
+  alt?: string;
+  className?: string;
+  linked?: boolean;
+}) {
+  const preview = useQuery(assetPreviewQueryOptions(readableId));
+  if (preview.data?.mediaType.startsWith('audio/')) {
+    return null;
+  }
+  const openAsset = linked ? null : (
+    <AssetMarkdownLink readableId={readableId}>Open asset</AssetMarkdownLink>
+  );
   return (
-    <img
-      className="my-7 max-h-[36rem] w-full rounded-xl bg-muted object-contain"
-      src={assetContentUrl(readableId)}
-      alt={alt ?? ''}
-    />
+    <div className={className ?? 'markdown-asset'}>
+      {preview.data ? (
+        <AssetMedia
+          asset={{ ...preview.data, name: alt || preview.data.name }}
+          className="max-h-[36rem] w-full rounded-xl bg-muted object-contain"
+          fallback={
+            <AssetPreviewFallback message="This file could not be previewed.">
+              {openAsset}
+            </AssetPreviewFallback>
+          }
+        />
+      ) : preview.error ? (
+        <AssetPreviewFallback message="This asset is unavailable.">
+          {openAsset}
+        </AssetPreviewFallback>
+      ) : (
+        <span className="text-muted-foreground text-sm" role="status">
+          Loading media…
+        </span>
+      )}
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 export function assetContentUrl(readableId: string): string {
   return `/api/assets/${encodeURIComponent(readableId)}/content`;
 }
@@ -11,7 +12,7 @@ export function isEmbeddableAsset(asset: { mediaType: string }): boolean {
 }
 
 export function isVideoAsset(asset: { mediaType: string }): boolean {
-  return ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'].includes(asset.mediaType);
+  return isVideoAssetMedia(asset.mediaType);
 }
 
 export function assetTypeLabel(asset: { mediaType: string; extension?: string | null }): string {

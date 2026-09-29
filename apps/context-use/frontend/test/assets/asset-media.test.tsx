@@ -104,19 +104,27 @@ test('broken images have a visible fallback and selecting another asset resets i
   }
 });
 
-test('video playback failures stay actionable', () => {
-  const { view, dispose } = preview({ mediaType: 'video/mp4' });
-  try {
-    const video = view.getByLabelText('Sample file');
-    expect(video.getAttribute('src')).toBe('/api/assets/sample-file/content');
-    expect(video.hasAttribute('controls')).toBe(true);
-    fireEvent.error(video);
-    expect(view.getByText('This file could not be previewed.')).toBeTruthy();
-    expect(view.getByRole('link', { name: 'Download' })).toBeTruthy();
-  } finally {
-    dispose();
-  }
-});
+test.each([
+  { mediaType: 'video/mp4', tag: 'VIDEO' },
+  { mediaType: 'video/matroska', tag: 'VIDEO' },
+  { mediaType: 'audio/aac', tag: 'AUDIO' },
+])(
+  'detected media families use native players and playback failures stay actionable: $mediaType',
+  ({ mediaType, tag }) => {
+    const { view, dispose } = preview({ mediaType });
+    try {
+      const player = view.getByLabelText('Sample file');
+      expect(player.tagName).toBe(tag);
+      expect(player.getAttribute('src')).toBe('/api/assets/sample-file/content');
+      expect(player.hasAttribute('controls')).toBe(true);
+      fireEvent.error(player);
+      expect(view.getByText('This file could not be previewed.')).toBeTruthy();
+      expect(view.getByRole('link', { name: 'Download' })).toBeTruthy();
+    } finally {
+      dispose();
+    }
+  },
+);
 
 test('oversized document responses stop at the preview limit and retain download access', async () => {
   const { view, dispose } = preview({

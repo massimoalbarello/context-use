@@ -1,5 +1,7 @@
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
+import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
+import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
 
 function headingText(node: ReactNode): string {
@@ -24,12 +26,33 @@ const headings: Components = Object.fromEntries(
 export function PublicMarkdown({
   markdown,
   components,
+  assetMedia = {},
 }: {
   markdown: string;
   components?: Components;
+  assetMedia?: Record<string, string>;
 }) {
   return (
-    <ReactMarkdown skipHtml components={{ ...headings, ...components }}>
+    <ReactMarkdown
+      skipHtml
+      remarkPlugins={[remarkAssetLayout]}
+      components={{
+        ...headings,
+        img: ({ src, alt, className }) => (
+          <span className={className}>
+            {src && isVideoAssetMedia(assetMedia[src] ?? '') ? (
+              // biome-ignore lint/a11y/useMediaCaption: uploaded videos do not have a paired caption asset.
+              <video src={src} aria-label={alt || 'Video'} controls playsInline preload="metadata">
+                <a href={src}>{alt || 'Open video'}</a>
+              </video>
+            ) : (
+              <img src={src} alt={alt ?? ''} />
+            )}
+          </span>
+        ),
+        ...components,
+      }}
+    >
       {markdown}
     </ReactMarkdown>
   );
