@@ -60,7 +60,7 @@ export function KnowledgePageRevisions({
               <div className="flex shrink-0 gap-1">
                 {publication && revision.revisionNumber !== publication.publishedRevisionNumber && (
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
                     aria-label={`Publish revision ${revision.revisionNumber}`}
                     disabled={publication.pending}

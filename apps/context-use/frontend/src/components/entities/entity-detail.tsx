@@ -205,12 +205,7 @@ function EntityPublicationActions({
       {publicId && (
         <ViewPublicLink size="lg" href={`/public/entities/${encodeURIComponent(publicId)}`} />
       )}
-      <Button
-        variant={isPublic ? 'outline' : 'secondary'}
-        size="lg"
-        disabled={unavailable}
-        onClick={onReview}
-      >
+      <Button variant="outline" size="lg" disabled={unavailable} onClick={onReview}>
         {isPublic ? 'Unpublish' : 'Publish'}
       </Button>
     </>

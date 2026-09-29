@@ -90,7 +90,7 @@ function RecordDetailContent({
                   />
                 )}
                 <Button
-                  variant={isPublic ? 'outline' : 'secondary'}
+                  variant="outline"
                   size="sm"
                   disabled={!!approval.request}
                   onClick={() =>
