@@ -67,12 +67,19 @@ export function PublicMarkdown({
         img: ({ src, alt, className }) => (
           <span className={className}>
             {src && isVideoAssetMedia(assetMedia[src] ?? '') ? (
-              // biome-ignore lint/a11y/useMediaCaption: uploaded videos do not have a paired caption asset.
-              <video src={src} aria-label={alt || 'Video'} controls playsInline preload="metadata">
+              // React's video types do not yet include the native loading attribute.
+              <video
+                src={src}
+                aria-label={alt || 'Video'}
+                controls
+                playsInline
+                preload="metadata"
+                {...{ loading: 'lazy' }}
+              >
                 <a href={src}>{alt || 'Open video'}</a>
               </video>
             ) : (
-              <img src={src} alt={alt ?? ''} />
+              <img src={src} alt={alt ?? ''} loading="lazy" decoding="async" />
             )}
           </span>
         ),
