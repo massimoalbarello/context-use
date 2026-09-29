@@ -15,9 +15,8 @@ import {
   UpdateAssetBodySchema,
 } from '#backend/routes/api/assets/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
+import { AssetContentHeadersSchema } from '#backend/routes/asset-content-response.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
-
-const MAX_CONDITIONAL_HEADER_LENGTH = 8192;
 
 export function createAssetReadableIdController({
   auth,
@@ -91,11 +90,7 @@ export function createAssetReadableIdController({
         detail: { tags: ['Assets'], summary: 'Stream asset bytes' },
         params: AssetParamsSchema,
         query: AssetContentQuerySchema,
-        headers: t.Object({
-          range: t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
-          'if-range': t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
-          'if-none-match': t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
-        }),
+        headers: AssetContentHeadersSchema,
       },
     )
     .put(

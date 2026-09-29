@@ -1,5 +1,6 @@
 import type { Storage } from '#backend/lib/storage/storage.ts';
-import { readVerifiedBytes, readVerifiedText } from '#backend/lib/storage/verified-file.ts';
+import { readStoredFile } from '#backend/lib/storage/stored-file.ts';
+import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import { InvalidKnowledgePageMarkdownError } from '#backend/models/knowledge-pages/markdown.ts';
 import {
   publicAssetMedia,
@@ -129,10 +130,9 @@ export class PublicResourcesService {
     if (!asset) {
       return null;
     }
-    const bytes = await readVerifiedBytes({
+    const blob = await readStoredFile({
       storage: this.storage,
       storageKey: asset.storageKey,
-      contentHash: asset.contentHash,
       sizeBytes: asset.sizeBytes,
       label: 'Public asset',
     });
@@ -143,7 +143,7 @@ export class PublicResourcesService {
         extension: asset.extension,
         sizeBytes: asset.sizeBytes,
       },
-      blob: new Blob([bytes], { type: asset.mediaType }),
+      blob,
     };
   }
 }

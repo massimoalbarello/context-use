@@ -15,6 +15,7 @@ import { AssetsService } from '#backend/services/assets/service.ts';
 import { PublicResourcesService } from '#backend/services/public-resources/service.ts';
 import { unusedAssetFacesService } from '../../support/app.ts';
 
+const RANGE_END = 7;
 const NOW = '2026-09-24T09:00:00.000Z';
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
@@ -115,10 +116,20 @@ async function publicAssetsFixture({
         headers: cookie ? { cookie } : {},
       }),
     );
-  return { database, storage, assetsRepository, resources, service, create, transition, request };
+  return {
+    app,
+    database,
+    storage,
+    assetsRepository,
+    resources,
+    service,
+    create,
+    transition,
+    request,
+  };
 }
 
-test('public reads return only verified bytes and restricted projections, identically with cookies', async () => {
+test('public reads stream stored bytes and restricted projections, identically with cookies', async () => {
   await withPublicAssets(async ({ create, transition, request, resources, service }) => {
     const asset = await create({ name: 'Approved image' });
     const publicId = await transition({ readableId: asset.readableId, action: 'publish' });
@@ -274,16 +285,16 @@ test('HTML, SVG and PDF content is downloaded with safe filenames, nosniff and a
   });
 });
 
-test('missing, same-size replaced and truncated stored bytes never reach a public response', async () => {
+test('public file reads reject missing and truncated files without hashing every download', async () => {
   await withPublicAssets(async ({ create, transition, request, assetsRepository, storage }) => {
-    const asset = await create({ name: 'Integrity protected' });
+    const asset = await create({ name: 'Stored file' });
     const publicId = await transition({ readableId: asset.readableId, action: 'publish' });
     const stored = (await assetsRepository.find({
       ownerId: 'owner-a',
       readableId: asset.readableId,
     }))!;
     await storage.delete(stored.storageKey);
-    for (const replacement of [null, Buffer.alloc(PNG.byteLength), PNG.subarray(1)]) {
+    for (const replacement of [null, PNG.subarray(1)]) {
       if (replacement) {
         await storage.write(stored.storageKey, new Blob([replacement]));
       }
@@ -292,7 +303,41 @@ test('missing, same-size replaced and truncated stored bytes never reach a publi
       expect(await response.json()).toEqual({ error: 'Internal server error' });
       expect(response.headers.get('cache-control')).toBe('private, no-store');
     }
-    await storage.write(stored.storageKey, new Blob([PNG]));
-    expect(new Uint8Array(await (await request({ id: publicId })).arrayBuffer())).toEqual(PNG);
+    const replacement = Buffer.alloc(PNG.byteLength);
+    await storage.write(stored.storageKey, new Blob([replacement]));
+    expect(new Uint8Array(await (await request({ id: publicId })).arrayBuffer())).toEqual(
+      replacement,
+    );
+  });
+});
+
+test('public byte ranges use the shared transport after checking publication availability', async () => {
+  await withPublicAssets(async ({ app, create, transition }) => {
+    const asset = await create({ name: 'Range image' });
+    const publicId = await transition({ readableId: asset.readableId, action: 'publish' });
+    const server = Bun.serve({ port: 0, fetch: app.handle });
+    const url = new URL(`/public/assets/${publicId}`, server.url);
+    try {
+      const partial = await fetch(url, { headers: { range: 'bytes=2-7' } });
+      expect(partial.status).toBe(StatusMap['Partial Content']);
+      expect(partial.headers.get('content-range')).toBe(`bytes 2-7/${PNG.length}`);
+      expect(partial.headers.get('content-length')).toBe('6');
+      expect(partial.headers.get('accept-ranges')).toBe('bytes');
+      expect(partial.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
+      expect(new Uint8Array(await partial.arrayBuffer())).toEqual(PNG.subarray(2, RANGE_END + 1));
+      const stale = await fetch(url, { headers: { range: 'bytes=2-7', 'if-range': '"old"' } });
+      expect(stale.status).toBe(StatusMap.OK);
+      expect(new Uint8Array(await stale.arrayBuffer())).toEqual(PNG);
+      const unsatisfiable = await fetch(url, { headers: { range: `bytes=${PNG.length}-` } });
+      expect(unsatisfiable.status).toBe(StatusMap['Range Not Satisfiable']);
+      expect(unsatisfiable.headers.get('content-range')).toBe(`bytes */${PNG.length}`);
+      expect(await unsatisfiable.text()).toBe('');
+      await transition({ readableId: asset.readableId, action: 'unpublish' });
+      const withdrawn = await fetch(url, { headers: { range: 'bytes=2-7' } });
+      expect(withdrawn.status).toBe(StatusMap['Not Found']);
+      expect(withdrawn.headers.has('content-range')).toBe(false);
+    } finally {
+      await server.stop(true);
+    }
   });
 });

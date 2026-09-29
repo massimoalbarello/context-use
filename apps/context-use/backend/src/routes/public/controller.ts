@@ -2,7 +2,10 @@ import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema, NotFoundError } from '#backend/lib/errors.ts';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
-import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
+import {
+  AssetContentHeadersSchema,
+  assetContentResponse,
+} from '#backend/routes/asset-content-response.ts';
 import { createPublicDiscoveryController } from '#backend/routes/public/discovery-controller.ts';
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';
 import { publicEntityHtml } from '#backend/routes/public/entity.tsx';
@@ -208,7 +211,7 @@ export function createPublicController({
     )
     .get(
       '/public/assets/:publicId',
-      async ({ params }) => {
+      async ({ params, request }) => {
         const content = await publicResourcesService.assetContent({ publicId: params.publicId });
         if (!content) {
           throw new NotFoundError();
@@ -216,6 +219,7 @@ export function createPublicController({
         const response = assetContentResponse({
           asset: content.asset,
           blob: content.blob,
+          request,
           inline:
             isEmbeddableAssetMedia(content.asset.mediaType) ||
             isVideoAssetMedia(content.asset.mediaType),
@@ -226,9 +230,12 @@ export function createPublicController({
       {
         // Private and unknown identifiers must take the same not-found path.
         params: t.Object({ publicId: t.String() }),
-        detail: { tags: ['Assets'], summary: 'Read an active public asset', security: [] },
+        headers: AssetContentHeadersSchema,
+        detail: { tags: ['Assets'], summary: 'Stream an active public asset', security: [] },
         response: {
           [StatusMap.OK]: t.File(),
+          [StatusMap['Partial Content']]: t.File(),
+          [StatusMap['Range Not Satisfiable']]: t.Void(),
           [StatusMap['Not Found']]: ErrorResponseSchema,
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,
         },
