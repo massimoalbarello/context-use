@@ -93,40 +93,79 @@ export function prepareConfiguration(input: {
   assertPersonalConfiguration(input);
   const grants = ['agents', 'entries', input.state.config.agentId, 'tools', 'alsoAllow'];
   const allow = ['agents', 'entries', input.state.config.agentId, 'tools', 'allow'];
-  const grantPath = readPath({ config, path: allow }) === undefined ? grants : allow;
-  const alsoAllow = readPath({ config, path: grantPath });
-  const pluginAllow = config.plugins?.allow;
+  const previousGrant = input.state.changes.find(
+    (change) => isDeepStrictEqual(change.path, grants) || isDeepStrictEqual(change.path, allow),
+  );
+  const grantPath =
+    previousGrant?.path ?? (readPath({ config, path: allow }) === undefined ? grants : allow);
+  const alsoAllow = previousGrant?.applied ?? readPath({ config, path: grantPath });
+  const pluginAllow =
+    input.state.changes.find((change) => isDeepStrictEqual(change.path, ['plugins', 'allow']))
+      ?.applied ?? config.plugins?.allow;
   const plan = configurationPlan(input.state);
   plan.push({
     path: grantPath,
     value: [...new Set([...(Array.isArray(alsoAllow) ? alsoAllow : []), PLUGIN_ID])],
   });
-  if (pluginAllow) {
+  if (Array.isArray(pluginAllow)) {
     plan.push({
       path: ['plugins', 'allow'],
       value: [...new Set([...pluginAllow, PLUGIN_ID, 'active-memory'])],
     });
   }
-  applyPlan({ ...input, plan });
+  const previousConnection = input.state.changes.find((change) =>
+    isDeepStrictEqual(change.path, ['plugins', 'entries', PLUGIN_ID, 'config']),
+  );
+  // The connection config is committed atomically with the initial settings. Its presence
+  // distinguishes reauthorization from retrying a journal whose config write never committed.
+  const reconfiguring = Boolean(
+    previousConnection &&
+      isDeepStrictEqual(
+        readPath({ config, path: previousConnection.path }),
+        previousConnection.applied,
+      ),
+  );
+  applyPlan({ ...input, plan, reconfiguring });
+}
+
+function mergeListChange(input: { current: unknown[]; from: unknown[]; to: unknown[] }): unknown[] {
+  const removed = input.from.filter((value) => !input.to.includes(value));
+  const added = input.to.filter((value) => !input.from.includes(value));
+  return [...new Set([...input.current.filter((value) => !removed.includes(value)), ...added])];
 }
 
 function applyPlan(input: {
   config: OpenClawConfig;
   state: ConnectionState;
   plan: { path: string[]; value: unknown }[];
+  reconfiguring: boolean;
 }): void {
   const config = input.config;
   for (const { path, value } of input.plan) {
     const before = readPath({ config, path });
     const existing = input.state.changes.find((change) => isDeepStrictEqual(change.path, path));
+    // Reauthorization owns changed connection values, not later edits to unchanged settings.
+    // A journal written before a failed config commit can still apply its original plan.
+    if (
+      existing &&
+      isDeepStrictEqual(value, existing.applied) &&
+      (input.reconfiguring || !isDeepStrictEqual(before, existing.before))
+    ) {
+      continue;
+    }
+    let updated = value;
     if (
       existing &&
       !isDeepStrictEqual(before, existing.applied) &&
       !isDeepStrictEqual(before, existing.before)
     ) {
-      throw new ConnectionError(
-        `Configuration changed since setup: ${path.join('.')}. Disconnect before reconfiguring.`,
-      );
+      if (Array.isArray(before) && Array.isArray(existing.applied) && Array.isArray(value)) {
+        updated = mergeListChange({ current: before, from: existing.applied, to: value });
+      } else {
+        throw new ConnectionError(
+          `Configuration changed since setup: ${path.join('.')}. Disconnect before reconfiguring.`,
+        );
+      }
     }
     if (!existing) {
       input.state.changes.push({
@@ -137,7 +176,7 @@ function applyPlan(input: {
     } else {
       existing.applied = structuredClone(value);
     }
-    writePath({ config, path, value });
+    writePath({ config, path, value: updated });
   }
 }
 
@@ -165,13 +204,14 @@ export function restoreConfiguration(input: {
       (change.before === undefined || Array.isArray(change.before)) &&
       ['allow', 'alsoAllow', 'toolsAllow'].includes(change.path.at(-1) ?? '')
     ) {
-      const added = change.applied.filter(
-        (value) => !(change.before as unknown[] | undefined)?.includes(value),
-      );
       writePath({
         config: input.config,
         path: change.path,
-        value: current.filter((value) => !added.includes(value)),
+        value: mergeListChange({
+          current,
+          from: change.applied,
+          to: (change.before as unknown[] | undefined) ?? [],
+        }),
       });
     } else if (!isDeepStrictEqual(current, change.before)) {
       preserved.push(change.path.join('.'));

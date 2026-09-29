@@ -6,7 +6,7 @@ import { ConnectionError } from './error';
 import { refreshGateway } from './gateway';
 import { verifyRuntime } from './host';
 import { checkHost } from './host-command';
-import { installedPlugin, installPackage } from './package-installation';
+import { installedPlugin } from './package-installation';
 import { removalStatus, requestRemoval, waitForRemoval } from './removal';
 import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
 import { connectionDirectory, readState } from './state';
@@ -30,7 +30,6 @@ async function connectCommand({
     throw new ConnectionError(SETUP_USAGE);
   }
   PluginConfigSchema.shape.agentId.parse(agentId);
-  await installPackage();
   const result = await connect({
     directory,
     instance,

@@ -181,7 +181,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     await Bun.file(connectionFile).exists(),
     'Fixture must reproduce orphaned connection state',
   );
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
+  // A stale operation record must not mistake this live, unrelated process for its worker.
+  await writeFile(`${dirname(connectionFile)}.removal.json`, JSON.stringify({ pid: process.pid }));
+  await Promise.all([
+    command(['npx', '--yes', packageSpec, 'remove', '--wait']),
+    command(['npx', '--yes', packageSpec, 'remove', '--wait']),
+  ]);
   assert(!(await Bun.file(connectionFile).exists()), 'Cancelled setup retained credentials');
   assert(!existsSync(dirname(connectionFile)), 'Removal retained its private directory');
   await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
@@ -238,6 +243,9 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(
     (await command(['npx', '--yes', packageSpec, 'status'])).includes('"authenticated": false'),
   );
+  await configure(
+    "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow.push('web_search');",
+  );
   await command(['npx', '--yes', packageSpec, 'reconnect']);
   const reauthorization = await Bun.file(connectionFile).json();
   assert(!reauthorization.oauth.tokens, 'Reconnect retained old credentials');
@@ -293,6 +301,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     }),
   );
   assert.deepEqual((await Bun.file(connectionFile).json()).changes, originalJournal);
+  const reauthorizedConfig = await configuration();
+  assert.equal(
+    reauthorizedConfig.plugins.entries['active-memory'].config.timeoutMs,
+    USER_TIMEOUT_MS,
+  );
+  assert(reauthorizedConfig.agents.entries.main.tools.alsoAllow.includes('web_search'));
   console.log(
     'Changed MCP servers in both directions with fresh credentials and preserved restoration history.',
   );
@@ -403,7 +417,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
   const afterRemoval = await configuration();
   assert(!afterRemoval.plugins.entries?.[PLUGIN_ID], 'Native uninstall tombstone survived');
-  assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['read']);
+  assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['web_search', 'read']);
   assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), editedAgents);
   assert.equal(
     await Bun.file(join(workspace, 'USER.md')).text(),
@@ -439,6 +453,13 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     clientName: 'OpenClaw reinstallation',
   });
   await authorize(newRedirect);
+  // This was the original timeout before reinstallation, so it must not look like a failed commit.
+  await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  assert.equal(
+    (await configuration()).plugins.entries['active-memory'].config.timeoutMs,
+    USER_TIMEOUT_MS,
+  );
   model.recall();
   const reinstalledRecall = await command([
     'openclaw',
@@ -662,7 +683,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await waitGateway();
   const inventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
   assert(!inventory.plugins.some((plugin: { id: string }) => plugin.id === PLUGIN_ID));
-  assert(!(await Bun.file(connectionFile).exists()));
+  assert(!existsSync(dirname(connectionFile)), 'A fresh chat recreated removed private state');
+  assert(
+    !existsSync(`${dirname(connectionFile)}.removal.json.lock`),
+    'Removal lease survived cleanup',
+  );
   console.log('The npm helper refreshed the gateway after uninstall.');
 } finally {
   try {

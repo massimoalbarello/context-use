@@ -1,15 +1,17 @@
-import { spawn } from 'node:child_process';
+import { fork } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
+import { check, lock } from 'proper-lockfile';
 import { z } from 'zod';
 import { ConnectionError } from './error';
 import { writePrivateFile } from './private-files';
 import { readState, withConnection, writeState } from './state';
 
-const RemovalSchema = z.object({ pid: z.number().int().positive(), error: z.string().optional() });
+const RemovalSchema = z.object({ error: z.string().optional() });
+const removalLease = { realpath: false, stale: 30_000, update: 2_000 };
 const removalFile = (directory: string) => `${directory}.removal.json`;
 
 export async function removalStatus(directory: string) {
@@ -17,13 +19,7 @@ export async function removalStatus(directory: string) {
     const operation = RemovalSchema.parse(
       JSON.parse(await readFile(removalFile(directory), 'utf8')),
     );
-    let running = false;
-    try {
-      process.kill(operation.pid, 0);
-      running = !operation.error;
-    } catch {
-      // An interrupted worker is retryable without reinstalling the plugin.
-    }
+    const running = await check(removalFile(directory), removalLease);
     return {
       running,
       error:
@@ -37,21 +33,43 @@ export async function removalStatus(directory: string) {
   }
 }
 
-export async function recordRemovalFailure(input: {
+// The worker owns a renewable filesystem lease, never a PID that another process can reuse.
+export async function runRemoval(input: {
   directory: string;
-  message: string;
+  run: () => Promise<void>;
 }): Promise<void> {
-  await writePrivateFile({
-    path: removalFile(input.directory),
-    data: JSON.stringify({
-      pid: process.pid,
-      error: input.message,
-    }),
-  });
-}
-
-export async function finishRemoval(directory: string): Promise<void> {
-  await rm(removalFile(directory), { force: true });
+  const release = await lock(removalFile(input.directory), removalLease);
+  let completed = false;
+  try {
+    process.send?.('ready');
+    await input.run();
+    completed = true;
+  } catch (error) {
+    await writePrivateFile({
+      path: removalFile(input.directory),
+      data: JSON.stringify({
+        error:
+          error instanceof ConnectionError
+            ? error.message
+            : 'Removal failed. Run remove again to resume cleanup.',
+      }),
+    });
+    throw error;
+  } finally {
+    // Finish atomically with respect to a new connect/remove request.
+    await withConnection({
+      directory: input.directory,
+      run: async () => {
+        try {
+          if (completed) {
+            await rm(removalFile(input.directory), { force: true });
+          }
+        } finally {
+          await release();
+        }
+      },
+    });
+  }
 }
 
 export async function requestRemoval(directory: string): Promise<void> {
@@ -66,21 +84,22 @@ export async function requestRemoval(directory: string): Promise<void> {
         state.oauth = {};
         await writeState({ directory, state });
       }
+      await writePrivateFile({ path: removalFile(directory), data: '{}' });
       const scripts = dirname(fileURLToPath(import.meta.url));
-      const child = spawn(
-        process.execPath,
-        ['--import', join(scripts, 'setup-runtime.js'), join(scripts, 'remove-worker.js')],
-        {
-          detached: true,
-          stdio: 'ignore',
-          env: process.env,
-        },
-      );
-      await once(child, 'spawn');
-      await writePrivateFile({
-        path: removalFile(directory),
-        data: JSON.stringify({ pid: child.pid }),
+      const child = fork(join(scripts, 'remove-worker.js'), [], {
+        execArgv: ['--import', join(scripts, 'setup-runtime.js')],
+        detached: true,
+        stdio: 'ignore',
       });
+      // Do not report success until the worker has acquired its lease. It then waits
+      // for this connection lock before touching config or deleting private state.
+      await Promise.race([
+        once(child, 'message'),
+        once(child, 'exit').then(() => {
+          throw new ConnectionError('Removal could not start. Run remove again.');
+        }),
+      ]);
+      child.disconnect();
       child.unref();
     },
   });

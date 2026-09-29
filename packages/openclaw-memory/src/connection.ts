@@ -19,6 +19,7 @@ import { AUTHORIZATION_SCOPE, PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from '.
 import { ConnectionError } from './error';
 import { attachmentDirectory, LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
+import { installPackage } from './package-installation';
 import { assertNotRemoving } from './removal';
 import type { ConnectionState } from './state';
 import { readState, withConnection, writeState } from './state';
@@ -82,6 +83,7 @@ export async function connect(input: {
         throw new ConnectionError('OpenClaw configuration is invalid. Run openclaw doctor first.');
       }
       assertPersonalConfiguration({ config: snapshot.config, state });
+      await installPackage();
       if (input.reauthorize || state.config.serverUrl !== config.serverUrl) {
         const previousLearningId = state.learningId;
         state.config = config;
