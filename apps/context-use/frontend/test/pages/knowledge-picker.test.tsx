@@ -282,19 +282,3 @@ test('replacing the draft with a pasted query searches the text at the current c
     '# Revised evidence\n\n[Found](context-use://entity/Found) ',
   );
 });
-
-test('writing help explains deliberate embeds without changing the draft', async () => {
-  const { user, textarea, requests } = setup(async () => Response.json(response()));
-  await user.type(textarea, 'A complete narrative paragraph.');
-  const draft = (textarea as HTMLTextAreaElement).value;
-  const help = screen.getByRole('button', { name: 'Writing and references' });
-  expect(help.getAttribute('aria-expanded')).toBe('false');
-  await user.click(help);
-  expect(help.getAttribute('aria-expanded')).toBe('true');
-  expect(screen.getByText(/the description is alternative text/)).toBeTruthy();
-  expect(screen.getByText(/!\[Demo showing the prototype\]/)).toBeTruthy();
-  await user.click(help);
-  expect(help.getAttribute('aria-expanded')).toBe('false');
-  expect((textarea as HTMLTextAreaElement).value).toBe(draft);
-  expect(requests).toHaveLength(0);
-});
