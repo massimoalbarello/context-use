@@ -69,7 +69,11 @@ export function createFrontendFallbackController({
     ) {
       throw new NotFoundError();
     }
-    if (pathname === '/app' || pathname.startsWith('/app/')) {
+    if (
+      pathname === '/app' ||
+      pathname.startsWith('/app/') ||
+      /^\/pdf-preview\/[^/]+$/.test(pathname)
+    ) {
       return frontendAssetsService.fallback(pathname) ?? publicNotFound({ request });
     }
     return publicNotFound({ request });

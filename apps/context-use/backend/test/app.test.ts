@@ -382,6 +382,7 @@ async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
       '/app/pages/example',
       '/app/settings/api-keys',
       '/app/mcp/authorize',
+      '/pdf-preview/74075bf0-08db-4c1a-878a-97a1e2bbc405',
     ]) {
       const response = await app.handle(
         new Request(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }),
@@ -410,6 +411,10 @@ async function expectUnknownRouteBoundary({
   for (const accept of ['text/html', 'text/markdown']) {
     for (const path of [
       '/some-path-that-does-not-exist',
+      '/pdf-preview',
+      '/pdf-preview/',
+      '/pdf-preview/example/extra',
+      '/pdf-preview-other/example',
       '/publicity',
       '/public-assets',
       '/pages',
