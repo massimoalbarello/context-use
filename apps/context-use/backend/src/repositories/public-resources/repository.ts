@@ -1,11 +1,13 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
+import { assetPreviewFrom, type StoredAssetPreview } from '#backend/models/assets/preview.ts';
 import { ENTITY_TYPES, type EntityType } from '#backend/models/entities/model.ts';
 import type { PublicMarkdownTarget } from '#backend/models/public-resources/markdown.ts';
 import type { IFindPublicPageResult, Queries } from '#backend/queries.gen.ts';
 
 export interface StoredPublicAsset {
+  preview?: StoredAssetPreview;
   name: string;
   mediaType: string;
   extension: string | null;
@@ -259,10 +261,12 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       select source."title", source."created_at" as "modifiedAt", source."storage_key" as "storageKey",
         source."content_hash" as "contentHash", source."size_bytes" as "sizeBytes",
         target."kind", target."readable_id" as "readableId", target."public_id" as "publicId",
-        target."media_type" as "mediaType", entity."name" as "entityName",
+        target."media_type" as "mediaType", preview."preview_metadata" as "previewMetadata", entity."name" as "entityName",
         entity."image_asset_id" is not null as "hasEntityImage",
         image."public_id" as "imagePublicId", image."media_type" as "imageMediaType"
       from active_page source left join link_targets target on true
+      left join "asset" preview on target."kind" = 'asset' and preview."public_id" = target."public_id"
+        and preview."owner_id" = source."owner_id"
       left join "entity" entity on target."kind" = 'entity'
         and entity."public_id" = target."public_id" and entity."owner_id" = source."owner_id"
         and entity."published_at" is not null and entity."archived_at" is null
@@ -298,6 +302,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
         readableId: target.readableId,
         publicId: target.publicId,
         mediaType: target.mediaType,
+        preview: assetPreviewFrom(target.previewMetadata),
       });
     }
     return {
@@ -327,8 +332,9 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       )
       select source."title", source."storage_key" as "storageKey", source."content_hash" as "contentHash",
         source."size_bytes" as "sizeBytes", target."kind", target."readable_id" as "readableId",
-        target."public_id" as "publicId", target."media_type" as "mediaType"
+        target."public_id" as "publicId", target."media_type" as "mediaType", preview."preview_metadata" as "previewMetadata"
       from active_record source left join link_targets target on true
+      left join "asset" preview on preview."public_id" = target."public_id" and preview."owner_id" = source."owner_id"
     `;
     const record = rows[0];
     if (!record) {
@@ -347,6 +353,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
         readableId: target.readableId,
         publicId: target.publicId,
         mediaType: target.mediaType,
+        preview: assetPreviewFrom(target.previewMetadata),
       });
     }
     return {
@@ -363,7 +370,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
       /* @notNull name mediaType sizeBytes contentHash storageKey */
       select asset."name", asset."media_type" as "mediaType", asset."extension",
         asset."size_bytes" as "sizeBytes", asset."content_hash" as "contentHash",
-        asset."storage_key" as "storageKey"
+        asset."storage_key" as "storageKey", asset."preview_metadata" as "previewMetadata"
       from "asset" asset
       where asset."public_id" = ${publicId}
         and asset."published_at" is not null and asset."archived_at" is null
@@ -371,6 +378,7 @@ export class PublicResourcesRepository implements PublicResourcesRepositoryContr
     const row = rows[0];
     return row
       ? {
+          preview: assetPreviewFrom(row.previewMetadata),
           name: row.name,
           mediaType: row.mediaType,
           extension: row.extension,

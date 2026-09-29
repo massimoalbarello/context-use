@@ -15,7 +15,7 @@ import type {
   AnalysisAttempt,
   FacesRepositoryContract,
 } from '#backend/repositories/faces/contract.ts';
-import { FaceProcessingWorker } from './processing-worker.ts';
+import { AssetProcessingWorker } from './processing-worker.ts';
 
 const ANALYSIS_TIMEOUT_MS = 90_000;
 const MODEL_RETRY_MS = 30_000;
@@ -38,7 +38,7 @@ export class AssetFacesService {
   private readonly storage: Storage;
   private readonly crops: Storage;
   private readonly analyzer: FaceAnalyzer;
-  private readonly worker: FaceProcessingWorker;
+  private readonly worker: AssetProcessingWorker;
   private modelCheck: Promise<void> | null = null;
   private modelRetryAt = 0;
   private activeAsset: string | null = null;
@@ -59,7 +59,7 @@ export class AssetFacesService {
     this.storage = input.storage;
     this.crops = input.crops;
     this.analyzer = input.analyzer;
-    this.worker = new FaceProcessingWorker(() => this.processNext());
+    this.worker = new AssetProcessingWorker(() => this.processNext());
   }
 
   async detail(input: AssetInput): Promise<AssetFaces | null> {

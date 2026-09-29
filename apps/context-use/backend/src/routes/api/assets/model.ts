@@ -62,6 +62,7 @@ export const AssetSchema = t.Object({
 });
 
 export const AssetPreviewSchema = t.Pick(AssetSummarySchema, [
+  'preview',
   'readableId',
   'name',
   'mediaType',
@@ -71,6 +72,9 @@ export const AssetPreviewSchema = t.Pick(AssetSummarySchema, [
 
 export function assetPreviewResponse(asset: AssetSummary) {
   return {
+    preview: asset.preview
+      ? { width: asset.preview.width, height: asset.preview.height }
+      : undefined,
     readableId: asset.readableId,
     name: asset.name,
     mediaType: asset.mediaType,
@@ -103,6 +107,7 @@ export const UpdateAssetBodySchema = t.Object({
 export const AssetParamsSchema = t.Object({ assetReadableId: ReadableIdSchema });
 
 export const AssetContentQuerySchema = t.Object({
+  preview: t.Optional(t.Literal('true')),
   download: t.Optional(t.Literal('true')),
 });
 

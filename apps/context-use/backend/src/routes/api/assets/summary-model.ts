@@ -6,6 +6,9 @@ import { ReadableIdSchema } from '#backend/routes/api/model.ts';
 import { PublicationSchema } from '#backend/routes/api/publications/model.ts';
 
 export const AssetSummarySchema = t.Object({
+  preview: t.Optional(
+    t.Object({ width: t.Integer({ minimum: 1 }), height: t.Integer({ minimum: 1 }) }),
+  ),
   publishedAt: PublicationSchema.properties.publishedAt,
   readableId: ReadableIdSchema,
   name: t.String({ minLength: 1, maxLength: MAX_ASSET_NAME_LENGTH }),
@@ -18,6 +21,9 @@ export const AssetSummarySchema = t.Object({
 
 export function assetSummaryResponse(asset: AssetSummary) {
   return {
+    preview: asset.preview
+      ? { width: asset.preview.width, height: asset.preview.height }
+      : undefined,
     publishedAt: asset.publishedAt,
     readableId: asset.readableId,
     name: asset.name,

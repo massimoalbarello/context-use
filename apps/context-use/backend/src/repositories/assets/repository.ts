@@ -2,6 +2,7 @@ import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#backend/lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#backend/models/assets/model.ts';
+import { assetPreviewFrom } from '#backend/models/assets/preview.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
@@ -43,11 +44,13 @@ type AssetRow = Queries['CreateAsset'];
 type AssetSummaryRow = Queries['ListAssets'];
 
 function storedAssetFrom(row: AssetRow): StoredAsset {
-  return { ...row, sizeBytes: Number(row.sizeBytes) };
+  const { previewMetadata, ...asset } = row;
+  return { ...asset, preview: assetPreviewFrom(previewMetadata), sizeBytes: Number(row.sizeBytes) };
 }
 
 function assetSummaryFrom(row: AssetSummaryRow): AssetSummary {
-  return { ...row, sizeBytes: Number(row.sizeBytes) };
+  const { previewMetadata, ...asset } = row;
+  return { ...asset, preview: assetPreviewFrom(previewMetadata), sizeBytes: Number(row.sizeBytes) };
 }
 
 export class AssetsRepository implements AssetsRepositoryContract {
@@ -71,7 +74,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
           "public_id" as "publicId", "published_at" as "publishedAt",
-          "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
+          "preview_metadata" as "previewMetadata", "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
           "storage_key" as "storageKey", "content_hash" as "contentHash",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;
@@ -118,7 +121,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     const rowsPromise = this.sql.ListAssets`
       /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
       select "id", "readable_id" as "readableId", "name", "public_id" as "publicId", "published_at" as "publishedAt",
-        "media_type" as "mediaType",
+        "preview_metadata" as "previewMetadata", "media_type" as "mediaType",
         "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
         "updated_at" as "updatedAt"
       from "asset"
@@ -161,7 +164,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
       select "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
         "public_id" as "publicId", "published_at" as "publishedAt",
-        "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
+        "preview_metadata" as "previewMetadata", "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
         "storage_key" as "storageKey", "content_hash" as "contentHash",
         "created_at" as "createdAt", "updated_at" as "updatedAt"
       from "asset"
@@ -211,7 +214,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
           and "archived_at" is null
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
           "public_id" as "publicId", "published_at" as "publishedAt",
-          "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
+          "preview_metadata" as "previewMetadata", "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
           "storage_key" as "storageKey", "content_hash" as "contentHash",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
       `;

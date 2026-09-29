@@ -209,8 +209,11 @@ export function createPublicController({
     )
     .get(
       '/public/assets/:publicId',
-      async ({ params, request }) => {
-        const content = await publicResourcesService.assetContent({ publicId: params.publicId });
+      async ({ params, query, request }) => {
+        const content = await publicResourcesService.assetContent({
+          publicId: params.publicId,
+          preview: query.preview === 'true',
+        });
         if (!content) {
           throw new NotFoundError();
         }
@@ -230,6 +233,7 @@ export function createPublicController({
         // Private and unknown identifiers must take the same not-found path.
         params: t.Object({ publicId: t.String() }),
         headers: AssetContentHeadersSchema,
+        query: t.Object({ preview: t.Optional(t.Literal('true')) }),
         detail: { tags: ['Assets'], summary: 'Stream an active public asset', security: [] },
         response: {
           [StatusMap.OK]: t.File(),

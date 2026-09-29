@@ -1,6 +1,7 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import { type Page, pageFrom } from '#backend/lib/pagination.ts';
+import { assetPreviewFrom } from '#backend/models/assets/preview.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
 import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type {
@@ -1150,7 +1151,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @type presentation 'embed' | 'attachment' */
       select asset."id", asset."readable_id" as "readableId", asset."name",
         asset."public_id" as "publicId", asset."published_at" as "publishedAt",
-        asset."media_type" as "mediaType", asset."extension",
+        asset."preview_metadata" as "previewMetadata", asset."media_type" as "mediaType", asset."extension",
         asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt",
         asset."updated_at" as "updatedAt", usage."presentation"
       from "knowledge_page_asset_usage" usage
@@ -1161,8 +1162,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         and asset."archived_at" is null
       order by asset."name" collate nocase, asset."readable_id", usage."presentation"
     `;
-    return rows.map(({ presentation, ...asset }) => ({
-      asset: { ...asset, sizeBytes: Number(asset.sizeBytes) },
+    return rows.map(({ presentation, previewMetadata, ...asset }) => ({
+      asset: {
+        ...asset,
+        preview: assetPreviewFrom(previewMetadata),
+        sizeBytes: Number(asset.sizeBytes),
+      },
       presentation,
     }));
   }

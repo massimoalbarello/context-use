@@ -31,6 +31,19 @@ export interface IAuthenticateApiKeyResult {
     name: string;
 }
 
+/** Result of query `NextAssetPreview`. */
+export interface INextAssetPreviewResult {
+    id: string;
+    ownerId: string;
+    storageKey: string;
+    sizeBytes: number;
+    mediaType: string;
+}
+
+/** Result of query `CompleteAssetPreview`. */
+export interface ICompleteAssetPreviewResult {
+}
+
 /** Result of query `CreateAsset`. */
 export interface ICreateAssetResult {
     id: string;
@@ -39,6 +52,7 @@ export interface ICreateAssetResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    previewMetadata: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -55,6 +69,7 @@ export interface IListAssetsResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    previewMetadata: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -75,6 +90,7 @@ export interface IFindAssetResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    previewMetadata: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -97,6 +113,7 @@ export interface IUpdateAssetNameResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    previewMetadata: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -788,6 +805,7 @@ export interface IListKnowledgePageAssetUsagesResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    previewMetadata: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -937,6 +955,7 @@ export interface IFindPublicPageResult {
     readableId: string | null;
     publicId: string | null;
     mediaType: string | null;
+    previewMetadata: string | null;
     entityName: string | null;
     hasEntityImage: number;
     imagePublicId: string | null;
@@ -953,6 +972,7 @@ export interface IFindPublicRecordResult {
     readableId: string | null;
     publicId: string | null;
     mediaType: string | null;
+    previewMetadata: string | null;
 }
 
 /** Result of query `FindPublicAsset`. */
@@ -963,6 +983,7 @@ export interface IFindPublicAssetResult {
     sizeBytes: number;
     contentHash: string;
     storageKey: string;
+    previewMetadata: string | null;
 }
 
 /** Result of query `FindPublicHomepage`. */
@@ -1275,6 +1296,8 @@ export interface Queries {
     ListApiKeys: IListApiKeysResult;
     RevokeApiKey: IRevokeApiKeyResult;
     AuthenticateApiKey: IAuthenticateApiKeyResult;
+    NextAssetPreview: INextAssetPreviewResult;
+    CompleteAssetPreview: ICompleteAssetPreviewResult;
     CreateAsset: ICreateAssetResult;
     ListAssets: IListAssetsResult;
     CountAssets: ICountAssetsResult;

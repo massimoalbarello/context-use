@@ -2,6 +2,7 @@ import { cp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   faceEngineDirectory as builtFaceEngineDirectory,
+  mediaEngineDirectory as builtMediaEngineDirectory,
   migrationDirectory,
 } from '../backend/scripts/shared/build-assets';
 import { prepareSyncBuild } from '../backend/scripts/shared/build-sync';
@@ -11,6 +12,11 @@ const output = join(import.meta.dir, '../dist');
 const faceEngineDirectory = join(output, 'instance/face-engine');
 await rm(faceEngineDirectory, { recursive: true, force: true });
 await cp(builtFaceEngineDirectory({ host: !BACKEND_BUILD_TARGET }), faceEngineDirectory, {
+  recursive: true,
+});
+const mediaEngineDirectory = join(output, 'instance/media-engine');
+await rm(mediaEngineDirectory, { recursive: true, force: true });
+await cp(builtMediaEngineDirectory({ host: !BACKEND_BUILD_TARGET }), mediaEngineDirectory, {
   recursive: true,
 });
 const syncBuild = await prepareSyncBuild();
@@ -27,6 +33,7 @@ try {
         join(output, 'instance/public'),
         migrationDirectory,
         faceEngineDirectory,
+        mediaEngineDirectory,
         ...syncBuild.assets,
       ],
     },

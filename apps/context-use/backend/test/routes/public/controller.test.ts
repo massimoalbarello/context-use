@@ -7,6 +7,7 @@ import { createSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
+import { AssetPreviewsRepository } from '#backend/repositories/asset-previews/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { PublicResourcesRepository } from '#backend/repositories/public-resources/repository.ts';
 import { PublicationsRepository } from '#backend/repositories/publications/repository.ts';
@@ -145,6 +146,7 @@ test('public reads stream stored bytes and restricted projections, identically w
       'extension',
       'mediaType',
       'name',
+      'preview',
       'sizeBytes',
       'storageKey',
     ]);
@@ -397,5 +399,42 @@ test('public cache revalidation checks current publication and file availability
     expect(missing.status).toBe(StatusMap['Internal Server Error']);
     expect(missing.headers.has('etag')).toBe(false);
     expect(missing.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
+
+test('preview bytes revalidate independently and become inaccessible on unpublish', async () => {
+  await withPublicAssets(async ({ create, transition, app, database, storage }) => {
+    const asset = await create({ name: 'Previewed image' });
+    const previews = new AssetPreviewsRepository(database);
+    const source = (await previews.next())!;
+    const blob = new Blob(['preview']);
+    const preview = {
+      width: 1,
+      height: 1,
+      sizeBytes: blob.size,
+      storageKey: `${source.ownerId}/assets/${source.id}/preview.webp`,
+      contentHash: new Bun.CryptoHasher('sha256').update(await blob.bytes()).digest('hex'),
+    };
+    await storage.write(preview.storageKey, blob);
+    await previews.complete({ source, preview });
+    const publicId = await transition({ readableId: asset.readableId, action: 'publish' });
+    const url = `http://localhost/public/assets/${publicId}`;
+    const original = await app.handle(new Request(url));
+    const response = await app.handle(new Request(`${url}?preview=true`));
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    expect(await response.text()).toBe('preview');
+    const etag = response.headers.get('etag')!;
+    expect(etag).not.toBe(original.headers.get('etag'));
+    const cached = () =>
+      app.handle(new Request(`${url}?preview=true`, { headers: { 'if-none-match': etag } }));
+    expect((await cached()).status).toBe(StatusMap['Not Modified']);
+    await transition({ readableId: asset.readableId, action: 'unpublish' });
+    expect((await cached()).status).toBe(StatusMap['Not Found']);
+    await transition({ readableId: asset.readableId, action: 'publish' });
+    await storage.delete(preview.storageKey);
+    const fallback = await cached();
+    expect(fallback.status).toBe(StatusMap.OK);
+    expect(fallback.headers.get('content-type')).toBe('image/png');
+    expect(await fallback.bytes()).toEqual(PNG);
   });
 });

@@ -9,6 +9,7 @@ import { runMigrations } from '#backend/db/migrate.ts';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
+import { AssetPreviewsRepository } from '#backend/repositories/asset-previews/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
@@ -787,5 +788,43 @@ test('asset caches revalidate metadata and authorization before returning bytes 
     expect(unavailable.status).toBe(StatusMap['Not Found']);
     expect(unavailable.headers.has('etag')).toBe(false);
     expect(unavailable.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
+
+test('private preview delivery keeps authentication, safe summaries, and original downloads', async () => {
+  await withAssetsApp(async ({ app, database, storage, auth }) => {
+    const { pngBytes } = await uploadChart(app);
+    const previews = new AssetPreviewsRepository(database);
+    const source = (await previews.next())!;
+    const blob = new Blob(['preview']);
+    const preview = {
+      width: 1,
+      height: 1,
+      sizeBytes: blob.size,
+      storageKey: `${source.ownerId}/assets/${source.id}/preview.webp`,
+      contentHash: new Bun.CryptoHasher('sha256').update(await blob.bytes()).digest('hex'),
+    };
+    await storage.write(preview.storageKey, blob);
+    await previews.complete({ source, preview });
+    const base = 'http://localhost/api/assets/quarterly-chart';
+    for (const path of [base, `${base}/preview`]) {
+      const summary = await (await app.handle(new Request(path))).json();
+      expect(summary.preview).toEqual({ width: 1, height: 1 });
+      expect(JSON.stringify(summary)).not.toContain(preview.storageKey);
+      expect(JSON.stringify(summary)).not.toContain(preview.contentHash);
+    }
+    const response = await app.handle(new Request(`${base}/content?preview=true`));
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    expect(await response.text()).toBe('preview');
+    const downloaded = await app.handle(new Request(`${base}/content?preview=true&download=true`));
+    expect(downloaded.headers.get('content-type')).toBe('image/png');
+    expect(await downloaded.bytes()).toEqual(pngBytes);
+    auth.getSession = async () => null;
+    const unauthorized = await app.handle(
+      new Request(`${base}/content?preview=true`, {
+        headers: { 'if-none-match': response.headers.get('etag')! },
+      }),
+    );
+    expect(unauthorized.status).toBe(StatusMap.Unauthorized);
   });
 });

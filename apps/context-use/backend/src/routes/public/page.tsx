@@ -1,6 +1,7 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toString as markdownText } from 'mdast-util-to-string';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
+import type { PublicAssetMedia } from '#backend/models/public-resources/markdown.ts';
 import { publicDocument } from './document.tsx';
 import { PublicMarkdown } from './markdown.tsx';
 
@@ -22,7 +23,7 @@ export function publicPageHtml({
   siteName?: string;
   title: string;
   markdown: string;
-  assetMedia?: Record<string, string>;
+  assetMedia?: PublicAssetMedia;
   mentions?: Record<string, { name: string; imageUrl: string | null }>;
   modifiedAt: string;
   linkTarget?: '_top';

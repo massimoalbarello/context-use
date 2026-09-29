@@ -635,8 +635,8 @@ test('published media keeps layout hints out of HTML and plays video through pub
       expect(html).not.toContain(result.asset.readableId);
       const content = await service.pageContent({ publicId: id });
       expect(content?.assetMedia).toEqual({
-        [`/public/assets/${videoId}`]: 'video/mp4',
-        [`/public/assets/${target.assetId}`]: 'image/png',
+        [`/public/assets/${videoId}`]: { mediaType: 'video/mp4', preview: undefined },
+        [`/public/assets/${target.assetId}`]: { mediaType: 'image/png', preview: undefined },
       });
       const bytes = await app.handle(new Request(`http://localhost/public/assets/${videoId}`));
       expect(bytes.headers.get('content-type')).toBe('video/mp4');

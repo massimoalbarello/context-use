@@ -20,6 +20,7 @@ type PreviewableAsset = {
   name: string;
   mediaType: string;
   sizeBytes?: number;
+  preview?: { width: number; height: number };
 };
 
 export function AssetMedia(props: {
@@ -41,6 +42,10 @@ function AssetMediaContent({
 }) {
   const [failed, setFailed] = useState(false);
   const contentUrl = assetContentUrl(asset.readableId);
+  const previewUrl = asset.preview ? `${contentUrl}?preview=true` : undefined;
+  const aspectRatio = asset.preview
+    ? `auto ${asset.preview.width} / ${asset.preview.height}`
+    : 'auto 16 / 9';
   if (failed) {
     return fallback ?? <AssetPreviewFallback message="This file could not be previewed." />;
   }
@@ -48,10 +53,12 @@ function AssetMediaContent({
     return (
       <img
         className={className}
-        src={contentUrl}
+        src={previewUrl ?? contentUrl}
         alt={asset.name}
         decoding="async"
-        style={{ aspectRatio: 'auto 16 / 9' }}
+        width={asset.preview?.width}
+        height={asset.preview?.height}
+        style={{ aspectRatio }}
         onError={() => setFailed(true)}
       />
     );
@@ -65,8 +72,11 @@ function AssetMediaContent({
         aria-label={asset.name}
         controls
         playsInline
-        preload="metadata"
-        style={{ aspectRatio: 'auto 16 / 9' }}
+        poster={previewUrl}
+        width={asset.preview?.width}
+        height={asset.preview?.height}
+        preload={asset.preview ? 'none' : 'metadata'}
+        style={{ aspectRatio }}
         onError={() => setFailed(true)}
       />
     );

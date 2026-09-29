@@ -72,6 +72,7 @@ export function createAssetReadableIdController({
         const content = await assetsService.content({
           ownerId: user.id,
           readableId: params.assetReadableId,
+          preview: query.preview === 'true' && query.download !== 'true',
         });
         if (!content) {
           return new Response(JSON.stringify({ error: 'Asset not found' }), {

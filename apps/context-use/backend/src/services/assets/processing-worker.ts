@@ -1,10 +1,10 @@
 import { createLogger } from '#backend/lib/logger.ts';
 
 const POLL_MS = 2000;
-const logger = createLogger('face-processing');
+const logger = createLogger('asset-processing');
 
-/** Serializes background polling; the face service owns inference, cancellation, and durable work. */
-export class FaceProcessingWorker {
+/** Serializes background polling; the owning service manages processing, cancellation, and durable work. */
+export class AssetProcessingWorker {
   private timer: ReturnType<typeof setInterval> | null = null;
   private running: Promise<void> | null = null;
   private requested = false;
@@ -15,7 +15,7 @@ export class FaceProcessingWorker {
 
   start() {
     if (this.closed) {
-      throw new Error('A closed face processing worker cannot be restarted.');
+      throw new Error('A closed asset processing worker cannot be restarted.');
     }
     if (this.timer) {
       return;

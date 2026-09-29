@@ -1,3 +1,4 @@
+import type { PublicAssetMedia } from '#backend/models/public-resources/markdown.ts';
 import { publicDocument } from './document.tsx';
 import { PublicMarkdown } from './markdown.tsx';
 
@@ -11,7 +12,7 @@ export function publicRecordHtml({
   publicId: string;
   title: string;
   markdown: string;
-  assetMedia?: Record<string, string>;
+  assetMedia?: PublicAssetMedia;
   origin: string;
 }): string {
   return publicDocument({

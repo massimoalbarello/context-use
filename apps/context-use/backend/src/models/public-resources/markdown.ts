@@ -3,11 +3,18 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
+import type { AssetPreview } from '#backend/models/assets/preview.ts';
 import { internalReferenceFromLink } from '#backend/models/knowledge-pages/markdown.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
 import { ASSET_ADDRESS_PREFIX } from '#backend/models/readable-ids/addresses.ts';
 
+export type PublicAssetMedia = Record<
+  string,
+  { mediaType: string; preview?: Pick<AssetPreview, 'width' | 'height'> }
+>;
+
 export interface PublicMarkdownTarget {
+  preview?: Pick<AssetPreview, 'width' | 'height'>;
   kind: 'page' | 'entity' | 'asset' | 'record';
   readableId: string;
   publicId: string;
@@ -155,11 +162,21 @@ export function publicRecordMarkdown({
   });
 }
 
-export function publicAssetMedia(targets: PublicMarkdownTarget[]): Record<string, string> {
+export function publicAssetMedia(targets: PublicMarkdownTarget[]): PublicAssetMedia {
   return Object.fromEntries(
     targets.flatMap((target) =>
       target.kind === 'asset' && target.mediaType
-        ? [[`/public/assets/${encodeURIComponent(target.publicId)}`, target.mediaType]]
+        ? [
+            [
+              `/public/assets/${encodeURIComponent(target.publicId)}`,
+              {
+                mediaType: target.mediaType,
+                preview: target.preview
+                  ? { width: target.preview.width, height: target.preview.height }
+                  : undefined,
+              },
+            ],
+          ]
         : [],
     ),
   );

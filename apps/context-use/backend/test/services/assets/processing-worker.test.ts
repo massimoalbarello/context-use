@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { FaceProcessingWorker } from '#backend/services/assets/processing-worker.ts';
+import { AssetProcessingWorker } from '#backend/services/assets/processing-worker.ts';
 
 test('wake-ups are serialized and shutdown waits for the current task without starting another', async () => {
   const firstStarted = Promise.withResolvers<void>();
@@ -7,7 +7,7 @@ test('wake-ups are serialized and shutdown waits for the current task without st
   const secondStarted = Promise.withResolvers<void>();
   const releaseSecond = Promise.withResolvers<void>();
   let calls = 0;
-  const worker = new FaceProcessingWorker(async () => {
+  const worker = new AssetProcessingWorker(async () => {
     calls++;
     if (calls === 1) {
       firstStarted.resolve();
@@ -47,7 +47,7 @@ test('wake-ups are serialized and shutdown waits for the current task without st
 
 test('closing before startup prevents acquiring a polling timer or running work', async () => {
   let calls = 0;
-  const worker = new FaceProcessingWorker(() => {
+  const worker = new AssetProcessingWorker(() => {
     calls++;
     return Promise.resolve(false);
   });
@@ -60,7 +60,7 @@ test('closing before startup prevents acquiring a polling timer or running work'
 test('a task error does not strand persisted work or stop subsequent polling', async () => {
   const recovered = Promise.withResolvers<void>();
   let attempts = 0;
-  const worker = new FaceProcessingWorker(() => {
+  const worker = new AssetProcessingWorker(() => {
     attempts++;
     if (attempts === 1) {
       return Promise.reject(new Error('Temporary persistence failure'));

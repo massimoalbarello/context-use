@@ -1,5 +1,5 @@
+import { readAssetContent } from '#backend/lib/storage/asset-content.ts';
 import type { Storage } from '#backend/lib/storage/storage.ts';
-import { readStoredFile } from '#backend/lib/storage/stored-file.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import { InvalidKnowledgePageMarkdownError } from '#backend/models/knowledge-pages/markdown.ts';
 import {
@@ -125,26 +125,25 @@ export class PublicResourcesService {
     return this.resources.findEntity(input);
   }
 
-  async assetContent(input: { publicId: string }) {
+  async assetContent(input: { publicId: string; preview?: boolean }) {
     const asset = await this.resources.findAsset(input);
     if (!asset) {
       return null;
     }
-    const blob = await readStoredFile({
+    const content = await readAssetContent({
+      asset,
       storage: this.storage,
-      storageKey: asset.storageKey,
-      sizeBytes: asset.sizeBytes,
-      label: 'Public asset',
+      preview: input.preview,
     });
     return {
+      blob: content.blob,
       asset: {
-        contentHash: asset.contentHash,
-        name: asset.name,
-        mediaType: asset.mediaType,
-        extension: asset.extension,
-        sizeBytes: asset.sizeBytes,
+        name: content.asset.name,
+        mediaType: content.asset.mediaType,
+        extension: content.asset.extension,
+        sizeBytes: content.asset.sizeBytes,
+        contentHash: content.asset.contentHash,
       },
-      blob,
     };
   }
 }

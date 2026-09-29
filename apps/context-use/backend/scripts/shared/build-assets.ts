@@ -6,3 +6,7 @@ export const migrationDirectory = join(backend, 'src/db/migrations');
 export function faceEngineDirectory({ host }: { host: boolean }) {
   return join(backend, '.cache', host ? 'face-engine-host' : 'face-engine-linux');
 }
+
+export function mediaEngineDirectory({ host }: { host: boolean }) {
+  return join(backend, '.cache', host ? 'media-engine-host' : 'media-engine-linux');
+}

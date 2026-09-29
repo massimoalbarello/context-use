@@ -139,3 +139,31 @@ test('oversized document responses stop at the preview limit and retain download
     dispose();
   }
 });
+
+test('generated previews give images dimensions and videos a poster without preloading playback', () => {
+  const dimensions = { width: 1280, height: 720 };
+  const view = render(
+    <AssetMedia
+      asset={{ ...asset, mediaType: 'image/jpeg', preview: dimensions }}
+      className="preview"
+    />,
+  );
+  try {
+    const image = view.getByRole('img', { name: asset.name });
+    expect(image.getAttribute('src')).toBe('/api/assets/sample-file/content?preview=true');
+    expect(image.getAttribute('width')).toBe(String(dimensions.width));
+    expect(image.getAttribute('height')).toBe(String(dimensions.height));
+    view.rerender(
+      <AssetMedia
+        asset={{ ...asset, mediaType: 'video/mp4', preview: dimensions }}
+        className="preview"
+      />,
+    );
+    const video = view.getByLabelText(asset.name);
+    expect(video.getAttribute('src')).toBe('/api/assets/sample-file/content');
+    expect(video.getAttribute('poster')).toBe('/api/assets/sample-file/content?preview=true');
+    expect(video.getAttribute('preload')).toBe('none');
+  } finally {
+    cleanup();
+  }
+});

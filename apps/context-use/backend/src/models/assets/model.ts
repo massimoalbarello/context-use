@@ -1,6 +1,7 @@
 import type { EntityReference } from '#backend/models/entities/model.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationStatus } from '#backend/models/publications/model.ts';
+import type { AssetPreview, StoredAssetPreview } from './preview.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
@@ -11,6 +12,7 @@ export const MAX_ASSET_NAME_LENGTH = 160;
 export type AssetPresentation = 'embed' | 'attachment';
 
 export interface AssetSummary extends PublicationStatus {
+  preview?: AssetPreview;
   id: string;
   readableId: string;
   name: string;
@@ -51,6 +53,7 @@ export interface Asset extends AssetSummary {
 }
 
 export interface StoredAsset extends AssetSummary {
+  preview?: StoredAssetPreview;
   ownerId: string;
   storageKey: string;
   contentHash: string;

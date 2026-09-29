@@ -7,9 +7,13 @@
       "outputs": ["dist/**"]
     },
     "build:instance": {
-      "dependsOn": ["^build", "build:client", "build:faces"],
+      "dependsOn": ["^build", "build:client", "build:faces", "build:media"],
       "env": ["BUILD_TARGET"],
-      "outputs": ["dist/context-use", "dist/instance/face-engine/**"]
+      "outputs": [
+        "dist/context-use",
+        "dist/instance/face-engine/**",
+        "dist/instance/media-engine/**"
+      ]
     },
     "build:demo": {
       "dependsOn": ["^build", "build:demo:client", "build:faces:host"],
@@ -90,6 +94,19 @@
     "test:binary:demo": {
       "dependsOn": ["build:demo"],
       "cache": false
+    },
+    "build:media": {
+      "inputs": [
+        "backend/native/media/**",
+        "$TURBO_ROOT$/LICENSE",
+        "backend/scripts/build-media.ts",
+        "backend/scripts/shared/**"
+      ],
+      "env": ["BUILD_TARGET"],
+      "outputs": [
+        "backend/.cache/media-engine-host/**",
+        "backend/.cache/media-engine-linux/**"
+      ]
     }
   }
 }

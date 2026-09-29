@@ -79,7 +79,7 @@ function DeferredAssetEmbed({ className, ...props }: EmbedProps) {
           <FetchedAssetEmbed {...props} />
         )
       ) : (
-        <AssetEmbedPlaceholder />
+        <AssetEmbedPlaceholder preview={props.asset?.preview} />
       )}
     </div>
   );
@@ -120,10 +120,11 @@ function AssetEmbedMedia({ asset, alt, linked }: EmbedProps & { asset: AssetPrev
   );
 }
 
-function AssetEmbedPlaceholder() {
+function AssetEmbedPlaceholder({ preview }: { preview?: AssetPreview['preview'] }) {
   return (
     <div
-      className="flex aspect-video items-center justify-center rounded-xl bg-muted text-muted-foreground text-sm"
+      style={{ aspectRatio: preview ? `${preview.width} / ${preview.height}` : undefined }}
+      className="flex aspect-video max-h-[36rem] items-center justify-center rounded-xl bg-muted text-muted-foreground text-sm"
       role="status"
     >
       Loading media…

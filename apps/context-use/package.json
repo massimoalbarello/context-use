@@ -22,10 +22,12 @@
     "test:frontend": "bun test --cwd frontend",
     "test:demo": "bun test ./demo/test/app.test.ts && bun test --cwd demo/frontend --preload ../test/dom.ts",
     "test:build": "bun test ./test/dev.test.ts ./test/build-targets.test.ts",
-    "test:binary:instance": "bun test ./test/binary-instance.test.ts",
+    "test:binary:instance": "bun test ./test/binary-instance.test.ts ./test/media-preview.test.ts",
     "test:binary:demo": "bun test ./demo/test/binary.test.ts",
     "generate:public-styles": "bun run scripts/generate-public-styles.ts",
-    "check:public-styles": "bun run generate:public-styles --check"
+    "check:public-styles": "bun run generate:public-styles --check",
+    "build:media": "bun run backend/scripts/build-media.ts",
+    "build:media:host": "bun run backend/scripts/build-media.ts --host"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -57,6 +59,7 @@
     "file-type": "^22.0.2",
     "fresh": "^2.0.0",
     "get-stream": "^9.0.1",
+    "image-size": "^2.0.4",
     "lucide-react": "^1.37.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-to-markdown": "^2.1.2",

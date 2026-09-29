@@ -1,6 +1,6 @@
 import { getStreamAsArrayBuffer } from 'get-stream';
+import { readAssetContent } from '#backend/lib/storage/asset-content.ts';
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
-import { readStoredFile } from '#backend/lib/storage/stored-file.ts';
 import { readVerifiedBytes } from '#backend/lib/storage/verified-file.ts';
 import { detectAssetMedia } from '#backend/models/assets/media.ts';
 import {
@@ -256,18 +256,13 @@ export class AssetsService {
   async content(input: {
     ownerId: string;
     readableId: string;
+    preview?: boolean;
   }): Promise<{ asset: StoredAsset; blob: Blob } | null> {
     const asset = await this.assets.find(input);
     if (!asset) {
       return null;
     }
-    const blob = await readStoredFile({
-      storage: this.storage,
-      storageKey: asset.storageKey,
-      sizeBytes: asset.sizeBytes,
-      label: `Asset blob ${asset.id}`,
-    });
-    return { asset, blob };
+    return readAssetContent({ asset, storage: this.storage, preview: input.preview });
   }
 }
 

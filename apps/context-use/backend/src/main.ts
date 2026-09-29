@@ -18,6 +18,7 @@ import { loadEnv } from '#backend/lib/env.ts';
 import { LocalFaceAnalyzer } from '#backend/lib/face-analysis/local-analyzer.ts';
 import { createLogger } from '#backend/lib/logger.ts';
 import { createMcpTransport } from '#backend/lib/mcp/transport.ts';
+import { LocalMediaPreviewProcessor } from '#backend/lib/media-preview/processor.ts';
 import { BACKEND_ENVIRONMENT } from '#backend/lib/runtime-config.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
@@ -25,6 +26,7 @@ import { MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
 import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.ts';
 import { LOCAL_RECORD_DESTINATION } from '#backend/models/syncs/managed.ts';
 import { ApiKeysRepository } from '#backend/repositories/api-keys/repository.ts';
+import { AssetPreviewsRepository } from '#backend/repositories/asset-previews/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { FacesRepository } from '#backend/repositories/faces/repository.ts';
@@ -47,6 +49,7 @@ import { createContextUseMcpServer } from '#backend/routes/mcp/server.ts';
 import { syncProviderLocation } from '#backend/routes/sync-callbacks.ts';
 import { ApiKeysService } from '#backend/services/api-keys/service.ts';
 import { AssetFacesService } from '#backend/services/assets/faces.ts';
+import { AssetPreviewsService } from '#backend/services/assets/previews.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import { FrontendAssetsService } from '#backend/services/frontend-assets/service.ts';
@@ -90,6 +93,8 @@ let sync: OpenSyncRuntime | undefined;
 let recordsDatabase: SQL | undefined;
 let retrievalDatabase: SQL | undefined;
 let facesDatabase: Database | undefined;
+let previewsDatabase: SQL | undefined;
+let previewsService: AssetPreviewsService | undefined;
 const faceAnalyzer = new LocalFaceAnalyzer({ dataFolder: env.DATA_FOLDER });
 
 try {
@@ -105,6 +110,12 @@ try {
   const graphService = new HypermediaGraphService({ graph: graphRepository });
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
+  });
+  previewsDatabase = await createSqliteDatabase({ dataFolder: env.DATA_FOLDER });
+  previewsService = new AssetPreviewsService({
+    repository: new AssetPreviewsRepository(previewsDatabase),
+    storage,
+    processor: new LocalMediaPreviewProcessor(join(env.DATA_FOLDER, 'media-engine')),
   });
   const assetsRepository = new AssetsRepository(database);
   facesDatabase = createSynchronousSqliteDatabase({ dataFolder: env.DATA_FOLDER });
@@ -237,6 +248,7 @@ try {
     apiKeysService,
   }).onStop(async () => {
     await sync?.close();
+    await previewsService?.close();
     await facesService.close();
     await faceAnalyzer.close();
     await Promise.all([
@@ -244,6 +256,7 @@ try {
       recordsDatabase?.close(),
       retrievalDatabase?.close(),
       facesDatabase?.close(),
+      previewsDatabase?.close(),
     ]);
   });
   const { server } = app.listen({
@@ -255,6 +268,7 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
   facesService.startProcessing();
+  previewsService.start();
   sync.start();
   const stop = () => {
     void app.stop();
@@ -263,12 +277,14 @@ try {
   process.once('SIGINT', stop);
 } catch (error) {
   await sync?.close();
+  await previewsService?.close();
   await faceAnalyzer.close();
   await Promise.all([
     database.close(),
     recordsDatabase?.close(),
     retrievalDatabase?.close(),
     facesDatabase?.close(),
+    previewsDatabase?.close(),
   ]);
   throw error;
 }
