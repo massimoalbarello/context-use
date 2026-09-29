@@ -64,4 +64,7 @@
   .markdown-asset.asset-half {
     width: calc(50% - 0.5rem);
   }
+  .markdown-asset.asset-third {
+    width: calc((100% - 2rem) / 3);
+  }
 }

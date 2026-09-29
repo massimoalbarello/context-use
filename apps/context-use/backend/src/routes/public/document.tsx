@@ -15,6 +15,7 @@ const READING_STYLES = `
 .markdown-asset.asset-right { margin-left: auto; }
 .markdown-asset.asset-left { margin-right: auto; }
 @media (min-width: 40rem) { .markdown-asset.asset-half { width: calc(50% - .5rem); } }
+@media (min-width: 40rem) { .markdown-asset.asset-third { width: calc((100% - 2rem) / 3); } }
 
 :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; color: #292723; background: #faf9f6; }
 * { box-sizing: border-box; }
