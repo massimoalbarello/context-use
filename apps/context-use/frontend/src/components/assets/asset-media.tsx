@@ -39,7 +39,6 @@ function AssetMediaContent({
   fallback?: ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const contentUrl = assetContentUrl(asset.readableId);
   if (failed) {
     return fallback ?? <AssetPreviewFallback message="This file could not be previewed." />;
@@ -51,8 +50,7 @@ function AssetMediaContent({
         src={contentUrl}
         alt={asset.name}
         decoding="async"
-        style={loaded ? undefined : { aspectRatio: '16 / 9' }}
-        onLoad={() => setLoaded(true)}
+        style={{ aspectRatio: 'auto 16 / 9' }}
         onError={() => setFailed(true)}
       />
     );
@@ -67,8 +65,7 @@ function AssetMediaContent({
         controls
         playsInline
         preload="metadata"
-        style={loaded ? undefined : { aspectRatio: '16 / 9' }}
-        onLoadedMetadata={() => setLoaded(true)}
+        style={{ aspectRatio: 'auto 16 / 9' }}
         onError={() => setFailed(true)}
       />
     );

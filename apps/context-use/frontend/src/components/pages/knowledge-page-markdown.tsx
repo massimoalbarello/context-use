@@ -1,7 +1,6 @@
 import { cn } from '@repo/ui/class-names';
 import { ReadingLink } from '@repo/ui/reading-link';
-import { createContext, isValidElement, type ReactNode, useContext, useMemo } from 'react';
-
+import { createContext, isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, {
   type Components,
   defaultUrlTransform,
@@ -138,7 +137,6 @@ function MarkdownImage({
   }
   return (
     <AssetMarkdownEmbed
-      key={target.readableId}
       readableId={target.readableId}
       asset={assets.get(target.readableId)}
       alt={alt}
@@ -215,12 +213,14 @@ export function KnowledgePageMarkdown({
   recordReferences?: RecordReference[];
   assets?: AssetPreview[];
 }) {
-  const assetsById = useMemo(
-    () => new Map(assets.map((asset) => [asset.readableId, asset])),
-    [assets],
-  );
   return (
-    <MarkdownReferences value={{ mentions, recordReferences, assets: assetsById }}>
+    <MarkdownReferences
+      value={{
+        mentions,
+        recordReferences,
+        assets: new Map(assets.map((asset) => [asset.readableId, asset])),
+      }}
+    >
       <article className="py-3 md:py-5">
         <ReactMarkdown
           remarkPlugins={[remarkAssetLayout]}
