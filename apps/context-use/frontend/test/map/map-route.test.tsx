@@ -106,6 +106,11 @@ test('Map previews entities without filtering pages and recovers from page failu
           expect(['owner', 'colleague']).toContain(url.searchParams.get('entityReadableId') ?? '');
           return Promise.resolve(Response.json({ items: [], total: 0, nextOffset: null }));
         }
+        if (url.pathname.startsWith('/api/publications/entity/')) {
+          return Promise.resolve(
+            Response.json({ resourceType: 'entity', publicId: null, publishedAt: null }),
+          );
+        }
         requests.push(url);
         expect(url.searchParams.has('query')).toBe(false);
         expect(url.searchParams.has('entities')).toBe(false);

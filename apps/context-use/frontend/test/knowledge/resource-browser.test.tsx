@@ -14,6 +14,10 @@ import { routeTree } from '../../src/routeTree.gen';
 
 afterEach(cleanup);
 
+function requestUrl(input: Parameters<typeof globalThis.fetch>[0]) {
+  return new URL(input instanceof Request ? input.url : input);
+}
+
 function collectionResponse({ url, item }: { url: URL; item: unknown }) {
   const items = url.searchParams.get('visibility') === 'public' ? [] : [item];
   return { items, total: items.length, nextOffset: null };
@@ -22,8 +26,16 @@ function collectionResponse({ url, item }: { url: URL; item: unknown }) {
 async function renderResourceBrowser({
   path = '/app/pages',
   entityPagesResponse,
+  publicationResponse = (url) =>
+    Response.json({
+      resourceType: url.pathname.split('/')[3],
+      publicId: null,
+      publishedAt: null,
+      publishedRevisionNumber: null,
+    }),
 }: {
   path?: string;
+  publicationResponse?: (url: URL) => Response | Promise<Response>;
   entityPagesResponse?: (input: { url: URL; page: KnowledgePage }) => Response;
 } = {}) {
   const timestamp = new Date('2026-01-01T00:00:00Z');
@@ -132,8 +144,11 @@ async function renderResourceBrowser({
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
-        const url = new URL(input instanceof Request ? input.url : input);
+        const url = requestUrl(input);
         requests.push(url);
+        if (url.pathname.startsWith('/api/publications/')) {
+          return Promise.resolve(publicationResponse(url));
+        }
         if (url.pathname === '/api/pages' && url.searchParams.has('entityReadableId')) {
           return Promise.resolve(
             entityPagesResponse?.({ url, page }) ??
@@ -803,6 +818,77 @@ test('entity preview explains when no pages mention it', async () => {
     const preview = await screen.findByRole('complementary', { name: 'Entity preview' });
     await within(preview).findByText('No pages mention this entity yet.');
     expect(within(preview).queryByRole('button', { name: 'Load more' })).toBeNull();
+  } finally {
+    app.dispose();
+  }
+});
+
+for (const [kind, id, label] of [
+  ['page', 'launch', 'Knowledge page'],
+  ['entity', 'owner', 'Entity'],
+  ['asset', 'chart', 'Asset'],
+  ['record', 'research', 'Record'],
+] as const) {
+  for (const published of [false, true]) {
+    test(`${kind} preview shows its ${published ? 'Public' : 'Private'} status`, async () => {
+      const app = await renderResourceBrowser({
+        path: `/app/pages?resource=${kind}&resourceId=${id}`,
+        publicationResponse: (url) => {
+          expect(url.pathname).toBe(`/api/publications/${kind}/${id}`);
+          return Response.json({
+            resourceType: kind,
+            publicId: published ? 'public_handle' : null,
+            publishedAt: published ? '2026-01-01T00:00:00Z' : null,
+            publishedRevisionNumber: published ? 1 : null,
+          });
+        },
+      });
+      try {
+        const preview = await screen.findByRole('complementary', { name: `${label} preview` });
+        expect(await within(preview).findByText(published ? 'Public' : 'Private')).toBeTruthy();
+        expect(within(preview).queryByText(published ? 'Private' : 'Public')).toBeNull();
+      } finally {
+        app.dispose();
+      }
+    });
+  }
+}
+
+test('switching previews does not reuse visibility while status loads or fails, and retry recovers', async () => {
+  const pending = Promise.withResolvers<Response>();
+  let entityResponse = pending.promise;
+  const app = await renderResourceBrowser({
+    path: '/app/pages?resource=page&resourceId=launch',
+    publicationResponse: (url) =>
+      url.pathname === '/api/publications/entity/owner'
+        ? entityResponse
+        : Response.json({
+            resourceType: 'page',
+            publicId: 'public_page',
+            publishedAt: '2026-01-01T00:00:00Z',
+            publishedRevisionNumber: 1,
+          }),
+  });
+  try {
+    const user = userEvent.setup();
+    const page = await screen.findByRole('complementary', { name: 'Knowledge page preview' });
+    await within(page).findByText('Public');
+    await user.click(await within(page).findByRole('link', { name: 'Owner' }));
+    const entity = await screen.findByRole('complementary', { name: 'Entity preview' });
+    await within(entity).findByText('Loading publication status…');
+    expect(within(entity).queryByText('Public')).toBeNull();
+    expect(within(entity).queryByText('Private')).toBeNull();
+
+    pending.resolve(Response.json({ error: 'Status unavailable' }, { status: 503 }));
+    const retry = await within(entity).findByRole('button', { name: 'Retry publication status' });
+    expect(within(entity).queryByText('Public')).toBeNull();
+    expect(within(entity).queryByText('Private')).toBeNull();
+
+    entityResponse = Promise.resolve(
+      Response.json({ resourceType: 'entity', publicId: null, publishedAt: null }),
+    );
+    await user.click(retry);
+    expect(await within(entity).findByText('Private')).toBeTruthy();
   } finally {
     app.dispose();
   }

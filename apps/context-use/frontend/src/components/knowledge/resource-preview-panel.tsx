@@ -1,5 +1,5 @@
 import { Button } from '@repo/ui/button';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Expand, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { assetTypeLabel } from '../../lib/asset-presentation';
@@ -9,6 +9,7 @@ import { usePagePreview } from '../../lib/hooks/use-page';
 import { useRecord } from '../../lib/hooks/use-records';
 import type { ResourceSelection } from '../../lib/resource-selection';
 import { entityPagesQueryOptions } from '../../queries/pages';
+import { publicationStatusQueryOptions } from '../../queries/publications';
 import { AssetFileActions } from '../assets/asset-file-actions';
 import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
@@ -16,6 +17,7 @@ import { EntityAvatar } from '../entities/entity-link';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
+import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { ResourceList } from './resource-list';
@@ -27,12 +29,14 @@ function focusPreviewPanel(panel: HTMLElement | null) {
 
 function PreviewPanelShell({
   label,
+  publicationStatus,
   context,
   onExpand,
   onClose,
   children,
 }: {
   label: string;
+  publicationStatus: ReactNode;
   context?: ReactNode;
   onExpand: () => void;
   onClose: () => void;
@@ -55,6 +59,7 @@ function PreviewPanelShell({
       <header className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <span className="truncate font-medium text-muted-foreground text-sm">{label}</span>
+          {publicationStatus}
           {context}
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onExpand}>
@@ -92,16 +97,18 @@ function PreviewError({ error, retry }: { error: Error; retry: () => Promise<unk
 }
 
 type PreviewProps = {
+  publicationStatus: ReactNode;
   onExpand: () => void;
   readableId: string;
   onClose: () => void;
 };
 
-function PagePreview({ readableId, onClose, onExpand }: PreviewProps) {
+function PagePreview({ readableId, publicationStatus, onClose, onExpand }: PreviewProps) {
   const { data: page, error, refetch } = usePagePreview(readableId);
   return (
     <PreviewPanelShell
       label="Knowledge page"
+      publicationStatus={publicationStatus}
       context={
         page?.temporalCoverage ? (
           <TemporalCoverageLabel
@@ -128,10 +135,15 @@ function PagePreview({ readableId, onClose, onExpand }: PreviewProps) {
   );
 }
 
-function EntityPreview({ readableId, onClose, onExpand }: PreviewProps) {
+function EntityPreview({ readableId, publicationStatus, onClose, onExpand }: PreviewProps) {
   const { data: entity, error, refetch } = useEntityPreview(readableId);
   return (
-    <PreviewPanelShell label="Entity" onClose={onClose} onExpand={onExpand}>
+    <PreviewPanelShell
+      label="Entity"
+      publicationStatus={publicationStatus}
+      onClose={onClose}
+      onExpand={onExpand}
+    >
       {error ? (
         <PreviewError error={error} retry={refetch} />
       ) : entity ? (
@@ -196,21 +208,33 @@ export function ResourcePreviewPanel({
   onExpand: () => void;
   onClose: () => void;
 }) {
+  const publication = useQuery(
+    publicationStatusQueryOptions({
+      resourceType: selection.kind,
+      readableId: selection.readableId,
+    }),
+  );
   const Preview = previewComponents[selection.kind];
   return (
     <Preview
       key={`${selection.kind}:${selection.readableId}`}
       readableId={selection.readableId}
+      publicationStatus={<PublicationStatus query={publication} showPublic />}
       onClose={onClose}
       onExpand={onExpand}
     />
   );
 }
 
-function AssetPreview({ readableId, onClose, onExpand }: PreviewProps) {
+function AssetPreview({ readableId, publicationStatus, onClose, onExpand }: PreviewProps) {
   const { data: asset, error, refetch } = useAssetPreview(readableId);
   return (
-    <PreviewPanelShell label="Asset" onClose={onClose} onExpand={onExpand}>
+    <PreviewPanelShell
+      label="Asset"
+      publicationStatus={publicationStatus}
+      onClose={onClose}
+      onExpand={onExpand}
+    >
       {error ? (
         <PreviewError error={error} retry={refetch} />
       ) : asset ? (
@@ -229,10 +253,15 @@ function AssetPreview({ readableId, onClose, onExpand }: PreviewProps) {
   );
 }
 
-function RecordPreview({ readableId, onClose, onExpand }: PreviewProps) {
+function RecordPreview({ readableId, publicationStatus, onClose, onExpand }: PreviewProps) {
   const { data: record, error, refetch } = useRecord(readableId);
   return (
-    <PreviewPanelShell label="Record" onClose={onClose} onExpand={onExpand}>
+    <PreviewPanelShell
+      label="Record"
+      publicationStatus={publicationStatus}
+      onClose={onClose}
+      onExpand={onExpand}
+    >
       {error ? (
         <PreviewError error={error} retry={refetch} />
       ) : record ? (
