@@ -59,19 +59,27 @@ export function createFrontendFallbackController({
 }: {
   frontendAssetsService: FrontendAssetsServiceContract;
 }) {
-  return new Elysia().mount((request) => {
-    const { pathname } = new URL(request.url);
-    if (
-      !['GET', 'HEAD'].includes(request.method) ||
-      pathname.startsWith(API_PATH) ||
-      pathname === MCP_ROUTE_PATH ||
-      pathname === `${MCP_ROUTE_PATH}/`
-    ) {
-      throw new NotFoundError();
-    }
-    if (pathname === '/app' || pathname.startsWith('/app/')) {
-      return frontendAssetsService.fallback(pathname) ?? publicNotFound({ request });
-    }
-    return publicNotFound({ request });
-  });
+  return new Elysia()
+    .get(
+      '/public/assets/:publicId/preview',
+      ({ request }) =>
+        frontendAssetsService.fallback(new URL(request.url).pathname) ??
+        publicNotFound({ request }),
+      { detail: { hide: true } },
+    )
+    .mount((request) => {
+      const { pathname } = new URL(request.url);
+      if (
+        !['GET', 'HEAD'].includes(request.method) ||
+        pathname.startsWith(API_PATH) ||
+        pathname === MCP_ROUTE_PATH ||
+        pathname === `${MCP_ROUTE_PATH}/`
+      ) {
+        throw new NotFoundError();
+      }
+      if (pathname === '/app' || pathname.startsWith('/app/')) {
+        return frontendAssetsService.fallback(pathname) ?? publicNotFound({ request });
+      }
+      return publicNotFound({ request });
+    });
 }
