@@ -64,43 +64,28 @@ describe('knowledge links', () => {
     });
   });
 
-  test('embeds verified raster assets and attaches other files by default', () => {
-    const markdown = 'See @chart';
-    const link = findActiveKnowledgeLink({ markdown, cursor: markdown.length });
-    if (!link) {
-      throw new Error('Expected an active knowledge link');
-    }
-
-    expect(
-      insertKnowledgeLink({
+  test.each(['image/png', 'image/jpeg', 'application/pdf', 'video/mp4', 'application/zip'])(
+    'inserts %s assets as visible attachments within prose',
+    (mediaType) => {
+      const markdown = 'See @chart for the evidence.';
+      const link = findActiveKnowledgeLink({ markdown, cursor: 'See @chart'.length });
+      if (!link) {
+        throw new Error('Expected an active knowledge link');
+      }
+      const inserted = insertKnowledgeLink({
         markdown,
         link,
         target: {
           kind: 'asset',
-          asset: {
-            name: 'Quarterly chart',
-            readableId: 'quarterly-chart',
-            mediaType: 'image/png',
-          },
+          asset: { name: 'Quarterly chart', readableId: 'quarterly-chart', mediaType },
         },
-      }).markdown,
-    ).toBe('See ![Quarterly chart](context-use://asset/quarterly-chart) ');
-
-    expect(
-      insertKnowledgeLink({
-        markdown,
-        link,
-        target: {
-          kind: 'asset',
-          asset: {
-            name: 'Financial model',
-            readableId: 'financial-model',
-            mediaType: 'application/zip',
-          },
-        },
-      }).markdown,
-    ).toBe('See [Financial model](context-use://asset/financial-model) ');
-  });
+      });
+      expect(inserted.markdown).toBe(
+        'See [Quarterly chart](context-use://asset/quarterly-chart) for the evidence.',
+      );
+      expect(inserted.markdown.slice(inserted.cursor)).toBe(' for the evidence.');
+    },
+  );
 });
 
 describe('knowledge picker scrolling', () => {

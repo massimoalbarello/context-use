@@ -252,29 +252,3 @@ describe('knowledge page Markdown', () => {
     }
   });
 });
-
-test('inline asset labels remain visible in the full paragraph above the embed', async () => {
-  const client = new QueryClient();
-  try {
-    render(
-      <QueryClientProvider client={client}>
-        <KnowledgePageMarkdown
-          markdown="![The product was a proof of concept](context-use://asset/demo). It could not do much, but **the idea** mattered."
-          assets={[{ readableId: 'demo', name: 'Demo', mediaType: 'image/png', sizeBytes: 100 }]}
-        />
-      </QueryClientProvider>,
-    );
-    const paragraph = screen.getByRole('paragraph');
-    expect(paragraph.textContent).toBe(
-      'The product was a proof of concept. It could not do much, but the idea mattered.',
-    );
-    const image = await screen.findByRole('img', { name: 'The product was a proof of concept' });
-    expect(
-      paragraph.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(screen.queryByRole('link')).toBeNull();
-  } finally {
-    cleanup();
-    client.clear();
-  }
-});

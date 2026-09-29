@@ -738,8 +738,8 @@ test('published PDFs retain their embeds and prose while bytes stay behind publi
       expect(html).toContain(`src="/pdf-preview/${assetId}"`);
       expect(html).toContain('title="Rehearsal notes"');
       expect(html).not.toContain(`href="/public/assets/${assetId}"`);
-      expect(html).toContain('<p>Before. Rehearsal notes After <strong>the PDF</strong>.</p>');
-      expect(html.indexOf('Before. Rehearsal notes After')).toBeLessThan(html.indexOf('<iframe'));
+      expect(html).toContain('<p>Before. </p>');
+      expect(html).toContain('<p> After <strong>the PDF</strong>.</p>');
       expect(html).not.toContain(result.asset.readableId);
       expect(html).not.toContain('{size=large}');
       expect(response.headers.get('content-security-policy')).toContain("script-src 'none'");

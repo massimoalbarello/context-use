@@ -1,4 +1,4 @@
-import type { Nodes, Paragraph, PhrasingContent, Root } from 'mdast';
+import type { Nodes, Paragraph, Root } from 'mdast';
 import { SKIP, visit } from 'unist-util-visit';
 import { markdownLinks } from './links.ts';
 
@@ -67,45 +67,7 @@ function layoutEmbeds({
   return hasEmbed;
 }
 
-function hasVisibleProse(node: PhrasingContent): boolean {
-  if (node.type === 'text') {
-    return Boolean(node.value.trim());
-  }
-  return node.type !== 'html' && node.type !== 'break';
-}
-
-function separateEmbedContent({
-  children,
-  embeds,
-}: {
-  children: PhrasingContent[];
-  embeds: Set<Nodes>;
-}): { prose: PhrasingContent[]; media: PhrasingContent[]; hasProse: boolean } {
-  const prose: PhrasingContent[] = [];
-  const media: PhrasingContent[] = [];
-  let hasProse = false;
-  for (const node of children) {
-    if (embeds.has(node) && 'alt' in node) {
-      prose.push({ type: 'text', value: node.alt ?? '' });
-      media.push(node);
-    } else if ('children' in node) {
-      const separated = separateEmbedContent({ children: node.children, embeds });
-      if (separated.prose.length) {
-        prose.push({ ...node, children: separated.prose });
-      }
-      if (separated.media.length) {
-        media.push({ ...node, children: separated.media });
-      }
-      hasProse ||= separated.hasProse;
-    } else {
-      prose.push(node);
-      hasProse ||= hasVisibleProse(node);
-    }
-  }
-  return { prose, media, hasProse };
-}
-
-/** Lay out local asset embeds, keeping inline labels in their surrounding prose. */
+/** Interpret only the supported presentation hints immediately following an asset embed. */
 export function remarkAssetLayout() {
   return (tree: Root) => {
     const embeds = new Set<Nodes>(
@@ -122,18 +84,34 @@ export function remarkAssetLayout() {
       if (!layoutEmbeds({ paragraph, embeds }) || !parent || index === undefined) {
         return;
       }
-      const { prose, media, hasProse } = separateEmbedContent({
-        children: paragraph.children,
-        embeds,
-      });
-      const blocks: Paragraph[] = [
-        ...(hasProse ? [{ ...paragraph, children: prose }] : []),
-        {
-          ...paragraph,
-          children: hasProse ? media : paragraph.children,
-          data: { hName: 'div', hProperties: { className: ['markdown-media-row'] } },
-        },
-      ];
+      const blocks: Paragraph[] = [];
+      let children: Paragraph['children'] = [];
+      let media = false;
+      const flush = () => {
+        if (children.some((node) => node.type !== 'text' || node.value.trim())) {
+          blocks.push({
+            ...paragraph,
+            children,
+            ...(media
+              ? { data: { hName: 'div', hProperties: { className: ['markdown-media-row'] } } }
+              : {}),
+          });
+        }
+        children = [];
+      };
+      for (const node of paragraph.children) {
+        let containsEmbed = false;
+        visit(node, (child) => {
+          containsEmbed ||= embeds.has(child);
+        });
+        const whitespace = node.type === 'text' && !node.value.trim();
+        if (!whitespace && containsEmbed !== media) {
+          flush();
+          media = containsEmbed;
+        }
+        children.push(node);
+      }
+      flush();
       parent.children.splice(index, 1, ...blocks);
       return [SKIP, index + blocks.length];
     });

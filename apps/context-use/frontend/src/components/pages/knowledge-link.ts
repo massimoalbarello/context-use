@@ -1,4 +1,3 @@
-import { isEmbeddableAsset } from '../../lib/asset-presentation';
 import type { AssetSummary } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePageSummary } from '../../queries/pages';
@@ -69,8 +68,7 @@ export function insertKnowledgeLink({
   const label = 'title' in resource ? resource.title : resource.name;
   const readableId = resource.readableId;
   const address = `context-use://${target.kind}/${readableId}`;
-  const embedPrefix = target.kind === 'asset' && isEmbeddableAsset(target.asset) ? '!' : '';
-  const markdownLink = `${embedPrefix}[${escapeMarkdownLabel(label)}](${address})`;
+  const markdownLink = `[${escapeMarkdownLabel(label)}](${address})`;
   const separator = /\s/.test(markdown[link.end] ?? '') ? '' : ' ';
   const nextMarkdown = `${markdown.slice(0, link.start)}${markdownLink}${separator}${markdown.slice(link.end)}`;
 

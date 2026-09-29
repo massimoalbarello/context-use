@@ -14,6 +14,7 @@ import { knowledgeSuggestionsQueryOptions } from '../../queries/knowledge-sugges
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
+import { KnowledgeMarkdownHelp } from './knowledge-markdown-help';
 
 export type KnowledgePageFormValues = {
   markdown: string;
@@ -160,8 +161,9 @@ export function KnowledgePageForm({
               />
               <FieldDescription>
                 Keep one coherent idea here. Type @ to mention an entity, reference a page or
-                record, or use an asset; use H2 or lower headings for linkable sections.
+                record, or attach an asset. References keep their labels visible.
               </FieldDescription>
+              <KnowledgeMarkdownHelp />
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
