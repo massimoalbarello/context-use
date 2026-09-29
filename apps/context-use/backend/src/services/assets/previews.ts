@@ -31,11 +31,11 @@ export class AssetPreviewsService {
 
   async runNext() {
     const { repository, storage, processor } = this.dependencies;
-    await processor.prepare();
     const source = await repository.next();
     if (!source || this.stopping.signal.aborted) {
       return false;
     }
+    await processor.prepare();
     let preview: StoredAssetPreview | undefined;
     try {
       const blob = await readStoredFile({

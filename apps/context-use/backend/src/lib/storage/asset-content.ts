@@ -22,12 +22,6 @@ export async function readAssetContent<T extends ContentAsset>({
   storage: Storage;
   preview?: boolean;
 }) {
-  const blob = await readStoredFile({
-    storage,
-    storageKey: asset.storageKey,
-    sizeBytes: asset.sizeBytes,
-    label: 'Asset blob',
-  });
   if (
     preview &&
     asset.preview &&
@@ -42,5 +36,11 @@ export async function readAssetContent<T extends ContentAsset>({
     };
     return { asset: representation, blob: storage.file(representation.storageKey) };
   }
+  const blob = await readStoredFile({
+    storage,
+    storageKey: asset.storageKey,
+    sizeBytes: asset.sizeBytes,
+    label: 'Asset blob',
+  });
   return { asset, blob };
 }

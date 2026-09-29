@@ -59,6 +59,34 @@ test(
         expect(imageSize(await preview.bytes())).toMatchObject({ ...dimensions, type: 'webp' });
         expect(preview.size).toBeLessThan(input.size);
       }
+      let requests = 0;
+      const server = Bun.serve({
+        port: 0,
+        fetch: () => {
+          requests++;
+          return new Response('Unexpected media request');
+        },
+      });
+      try {
+        const playlist = join(directory, 'playlist');
+        await Bun.write(
+          playlist,
+          `#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\n${server.url}video.ts\n#EXT-X-ENDLIST\n`,
+        );
+        const child = Bun.spawn(
+          [executable, playlist, join(directory, 'blocked.webp'), join(directory, 'engine')],
+          {
+            env: { PATH: '' },
+            stdin: 'ignore',
+            stdout: 'ignore',
+            stderr: 'ignore',
+          },
+        );
+        expect(await child.exited).not.toBe(0);
+        expect(requests).toBe(0);
+      } finally {
+        await server.stop(true);
+      }
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

@@ -96,12 +96,7 @@
       "cache": false
     },
     "build:media": {
-      "inputs": [
-        "backend/native/media/**",
-        "$TURBO_ROOT$/LICENSE",
-        "backend/scripts/build-media.ts",
-        "backend/scripts/shared/**"
-      ],
+      "inputs": ["backend/scripts/build-media.ts", "backend/scripts/shared/**"],
       "env": ["BUILD_TARGET"],
       "outputs": [
         "backend/.cache/media-engine-host/**",
