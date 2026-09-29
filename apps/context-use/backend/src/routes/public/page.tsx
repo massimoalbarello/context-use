@@ -1,6 +1,5 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toString as markdownText } from 'mdast-util-to-string';
-import type { Components } from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { publicDocument } from './document.tsx';
 import { PublicMarkdown } from './markdown.tsx';
@@ -12,9 +11,11 @@ export function publicPageHtml({
   title,
   markdown,
   assetMedia,
+  mentions,
   modifiedAt,
   linkTarget,
-  components,
+  origin,
+  fragmentBase,
 }: {
   publicId?: string;
   canonicalUrl?: string;
@@ -22,9 +23,11 @@ export function publicPageHtml({
   title: string;
   markdown: string;
   assetMedia?: Record<string, string>;
+  mentions?: Record<string, { name: string; imageUrl: string | null }>;
   modifiedAt: string;
-  linkTarget?: '_blank';
-  components?: Components;
+  linkTarget?: '_top';
+  origin?: string;
+  fragmentBase?: 'about:srcdoc';
 }): string {
   const tree = fromMarkdown(markdown);
   remarkAssetLayout()(tree);
@@ -38,7 +41,13 @@ export function publicPageHtml({
     markdownUrl: publicId ? `/public/pages/${encodeURIComponent(publicId)}/markdown` : undefined,
     children: (
       <article>
-        <PublicMarkdown markdown={markdown} assetMedia={assetMedia} components={components} />
+        <PublicMarkdown
+          markdown={markdown}
+          assetMedia={assetMedia}
+          mentions={mentions}
+          origin={origin ?? (canonicalUrl ? new URL(canonicalUrl).origin : undefined)}
+          fragmentBase={fragmentBase}
+        />
       </article>
     ),
   });

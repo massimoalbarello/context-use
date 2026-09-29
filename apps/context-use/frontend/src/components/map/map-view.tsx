@@ -1,8 +1,9 @@
 import { cn } from '@repo/ui/class-names';
+import { entityInitial } from '@repo/ui/inline-entity';
 import { type ComponentProps, type ReactNode, useId } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import type { MapEntity, MapPage } from '../../queries/map';
-import { EntityCardContent, entityInitial } from '../entities/entity-link';
+import { EntityCardContent } from '../entities/entity-link';
 import { useKnowledgeWorkspace } from '../knowledge/knowledge-workspace';
 import { KnowledgePageCardContent } from '../pages/knowledge-page-link';
 import { MAP_PAGE_LABEL_MAX_CHARACTERS, type MapLayoutEntity } from './map-layout';

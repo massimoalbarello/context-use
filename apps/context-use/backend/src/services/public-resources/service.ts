@@ -78,6 +78,17 @@ export class PublicResourcesService {
             markdown,
             modifiedAt: page.modifiedAt,
             assetMedia: publicAssetMedia(page.targets),
+            mentions: Object.fromEntries(
+              page.mentions.map((entity) => [
+                `/public/entities/${encodeURIComponent(entity.publicId)}`,
+                {
+                  name: entity.name,
+                  imageUrl: entity.imagePublicId
+                    ? `/public/assets/${encodeURIComponent(entity.imagePublicId)}`
+                    : null,
+                },
+              ]),
+            ),
           };
     } catch (error) {
       if (error instanceof InvalidKnowledgePageMarkdownError) {

@@ -110,6 +110,10 @@ test(
       catalogProviders: string[];
     } = JSON.parse(output);
     const instance = graphs['backend/src/main.ts']!;
+    expect(instance.some((path) => path.endsWith('/public/styles.gen.ts'))).toBe(true);
+    expect(
+      instance.filter((path) => /node_modules\/.*\/(?:vite|postcss|tailwindcss)\//.test(path)),
+    ).toEqual([]);
     expect(catalogFiles).toEqual(['github.json']);
     expect(catalogProviders).toEqual(['github']);
     const connectorProviders = instance.flatMap((path) => {

@@ -164,9 +164,12 @@ export function createPublicController({
         if (!content) {
           throw new NotFoundError();
         }
-        return new Response(publicRecordHtml({ publicId: params.publicId, ...content }), {
-          headers: { 'content-type': 'text/html; charset=utf-8' },
-        });
+        return new Response(
+          publicRecordHtml({ publicId: params.publicId, ...content, origin: publicOrigin }),
+          {
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          },
+        );
       },
       {
         params: t.Object({ publicId: t.String() }),

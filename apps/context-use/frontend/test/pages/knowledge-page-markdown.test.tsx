@@ -16,6 +16,32 @@ import { KnowledgePageMarkdown } from '../../src/components/pages/knowledge-page
 afterEach(cleanup);
 
 describe('knowledge page Markdown', () => {
+  test('announces new tabs only for external destinations', async () => {
+    const router = createRouter({
+      routeTree: createRootRoute(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+    await router.load();
+    render(
+      <RouterContextProvider router={router}>
+        <KnowledgePageMarkdown
+          markdown={`# Links\n\n[Website](https://elsewhere.example/path) [Same site](${location.origin}/public) [Relative](/public) [Section](#section) [Other page](context-use://page/other-page) [Protocol relative](//elsewhere.example/path)`}
+        />
+      </RouterContextProvider>,
+    );
+    for (const name of ['Website', 'Protocol relative']) {
+      const link = screen.getByRole('link', { name: `${name} (opens in a new tab)` });
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(link.getAttribute('title')).toBe('Opens in a new tab');
+    }
+    for (const name of ['Same site', 'Relative', 'Section', 'Other page']) {
+      const link = screen.getByRole('link', { name });
+      expect(link.getAttribute('target')).toBeNull();
+      expect(link.querySelector('svg')).toBeNull();
+    }
+  });
+
   test('keeps a link focused across refreshes while updating entity and record information', async () => {
     const router = createRouter({
       routeTree: createRootRoute(),

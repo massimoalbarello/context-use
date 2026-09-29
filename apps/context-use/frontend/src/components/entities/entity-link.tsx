@@ -1,4 +1,5 @@
 import { cn } from '@repo/ui/class-names';
+import { entityInitial, InlineEntity } from '@repo/ui/inline-entity';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
@@ -37,10 +38,6 @@ type EntityLinkProps =
       active?: boolean;
       children?: never;
     };
-
-export function entityInitial(name: string): string {
-  return name.trim().charAt(0).toLocaleUpperCase() || '?';
-}
 
 export function EntityAvatar({
   entity,
@@ -93,17 +90,14 @@ export function EntityLink({ entity, presentation, active, children, search }: E
       <Link
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
-        className="relative mx-0.5 inline-block rounded-full bg-muted py-0.5 pr-2 pl-[2.0625rem] align-baseline font-medium text-foreground no-underline transition hover:bg-accent"
+        className="group/entity text-inherit no-underline"
         to="/app/entities/$id"
         params={{ id: entity.readableId }}
         search={search}
       >
-        <EntityAvatar
-          entity={entity}
-          size="sm"
-          className="absolute top-1/2 left-[0.3125rem] -translate-y-1/2 text-[0.6rem]"
-        />
-        <span>{children ?? entity.name}</span>
+        <InlineEntity name={entity.name} avatar={<EntityAvatar entity={entity} size="sm" />}>
+          {children}
+        </InlineEntity>
       </Link>
     );
   }
