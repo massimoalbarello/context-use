@@ -60,35 +60,37 @@ const EncodedValueSchema = t.String({
 });
 export const CompletePublicationBodySchema = t.Object(
   {
-    assertion: t.Object(
-      {
-        id: EncodedValueSchema,
-        rawId: EncodedValueSchema,
-        type: t.Literal('public-key'),
-        authenticatorAttachment: t.Optional(
-          t.Union([t.Literal('platform'), t.Literal('cross-platform')]),
-        ),
-        response: t.Object(
-          {
-            clientDataJSON: EncodedValueSchema,
-            authenticatorData: EncodedValueSchema,
-            signature: EncodedValueSchema,
-            userHandle: t.Optional(t.String({ maxLength: 16384, pattern: '^[A-Za-z0-9_-]*$' })),
-          },
-          { additionalProperties: false },
-        ),
-        clientExtensionResults: t.Object(
-          {
-            appid: t.Optional(t.Boolean()),
-            credProps: t.Optional(
-              t.Object({ rk: t.Optional(t.Boolean()) }, { additionalProperties: false }),
-            ),
-            hmacCreateSecret: t.Optional(t.Boolean()),
-          },
-          { additionalProperties: false },
-        ),
-      },
-      { additionalProperties: false },
+    assertion: t.Optional(
+      t.Object(
+        {
+          id: EncodedValueSchema,
+          rawId: EncodedValueSchema,
+          type: t.Literal('public-key'),
+          authenticatorAttachment: t.Optional(
+            t.Union([t.Literal('platform'), t.Literal('cross-platform')]),
+          ),
+          response: t.Object(
+            {
+              clientDataJSON: EncodedValueSchema,
+              authenticatorData: EncodedValueSchema,
+              signature: EncodedValueSchema,
+              userHandle: t.Optional(t.String({ maxLength: 16384, pattern: '^[A-Za-z0-9_-]*$' })),
+            },
+            { additionalProperties: false },
+          ),
+          clientExtensionResults: t.Object(
+            {
+              appid: t.Optional(t.Boolean()),
+              credProps: t.Optional(
+                t.Object({ rk: t.Optional(t.Boolean()) }, { additionalProperties: false }),
+              ),
+              hmacCreateSecret: t.Optional(t.Boolean()),
+            },
+            { additionalProperties: false },
+          ),
+        },
+        { additionalProperties: false },
+      ),
     ),
   },
   { additionalProperties: false },
@@ -149,6 +151,7 @@ export const PublicationReadySchema = t.Object({
   state: t.Literal('ready'),
   approvalId: t.String(),
   expiresAt: t.String(),
+  authorizationExpiresAt: t.Nullable(t.String()),
   preparation: PreparationSchema,
   options: t.Object({
     challenge: t.String(),

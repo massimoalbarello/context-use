@@ -25,6 +25,7 @@ export type PublicationApprovalBeginResult =
       state: 'ready';
       approvalId: string;
       expiresAt: string;
+      authorizationExpiresAt: string | null;
       preparation: PublicationPreparation;
       options: PublicKeyCredentialRequestOptionsJSON;
     }
@@ -101,6 +102,11 @@ export class PublicationApprovalService {
           state: 'ready',
           approvalId: approval.id,
           expiresAt: approval.expiresAt,
+          authorizationExpiresAt: await this.approvals.authorizationExpiresAt({
+            ownerId: request.ownerId,
+            sessionId,
+            now: this.now().toISOString(),
+          }),
           preparation,
           options,
         }
@@ -116,9 +122,15 @@ export class PublicationApprovalService {
     ownerId: string;
     sessionId: string;
     approvalId: string;
-    assertion: AuthenticationResponseJSON;
+    assertion?: AuthenticationResponseJSON;
   }): Promise<PublicationApprovalCompleteResult> {
     const identity = { ownerId, sessionId, approvalId };
+    if (!assertion) {
+      return this.approvals.completeAuthorizedApproval({
+        ...identity,
+        now: this.now().toISOString(),
+      });
+    }
     const approval = await this.approvals.find({ ...identity, now: this.now().toISOString() });
     if (!approval) {
       return { state: 'approval_invalid' };

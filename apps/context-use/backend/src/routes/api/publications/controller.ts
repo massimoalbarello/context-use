@@ -1,7 +1,7 @@
-import { Elysia, StatusMap } from 'elysia';
+import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
-import { ErrorResponseSchema } from '#backend/lib/errors.ts';
+import { ErrorResponseSchema, ForbiddenError } from '#backend/lib/errors.ts';
 import type {
   PublicationApprovalBeginResult,
   PublicationApprovalServiceContract,
@@ -46,6 +46,14 @@ export function createPublicationsController({
         [StatusMap['Internal Server Error']]: ErrorResponseSchema,
       },
     })
+    .onBeforeHandle(({ request }) => {
+      if (
+        request.method !== 'GET' &&
+        !auth.passkeyOrigins.includes(request.headers.get('origin') ?? '')
+      ) {
+        throw new ForbiddenError();
+      }
+    })
     .get(
       '/publications/:resourceType/:readableId',
       async ({ params, user, status }) => {
@@ -89,6 +97,7 @@ export function createPublicationsController({
         body: BeginPublicationBodySchema,
         response: {
           [StatusMap.OK]: PublicationReadySchema,
+          [StatusMap.Forbidden]: ErrorResponseSchema,
           [StatusMap.Conflict]: BeginPublicationConflictSchema,
         },
       },
@@ -138,7 +147,7 @@ export function createPublicationsController({
         response: {
           [StatusMap.OK]: PublicationCompleteSchema,
           [StatusMap.Conflict]: CompletePublicationConflictSchema,
-          [StatusMap.Forbidden]: InvalidAssertionSchema,
+          [StatusMap.Forbidden]: t.Union([InvalidAssertionSchema, ErrorResponseSchema]),
         },
       },
     );
@@ -153,6 +162,7 @@ function publicationReadyResponse(
     state: result.state,
     approvalId: result.approvalId,
     expiresAt: result.expiresAt,
+    authorizationExpiresAt: result.authorizationExpiresAt,
     preparation: {
       resource,
       publication,

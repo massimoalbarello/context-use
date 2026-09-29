@@ -116,26 +116,31 @@ export function usePublicationApproval() {
       return;
     }
     busy.current = true;
-    ceremony.current = true;
-    setAuthenticating(true);
+    const requiresPasskey =
+      !ready.authorizationExpiresAt || Date.parse(ready.authorizationExpiresAt) <= Date.now();
+    ceremony.current = requiresPasskey;
+    setAuthenticating(requiresPasskey);
     const current = sequence.current;
-    const assertion = await startAuthentication({ optionsJSON: ready.options }).catch((error) => {
-      if (sequence.current === current) {
-        setCeremonyError(
-          passkeyErrorMessage({
-            error: error instanceof Error ? error : {},
-            fallback: 'Passkey verification did not finish. Review the operation again to retry.',
-          }),
-        );
-      }
-      return null;
-    });
+    const assertion = requiresPasskey
+      ? await startAuthentication({ optionsJSON: ready.options }).catch((error) => {
+          if (sequence.current === current) {
+            setCeremonyError(
+              passkeyErrorMessage({
+                error: error instanceof Error ? error : {},
+                fallback:
+                  'Passkey verification did not finish. Review the operation again to retry.',
+              }),
+            );
+          }
+          return null;
+        })
+      : undefined;
     if (sequence.current !== current) {
       return;
     }
     ceremony.current = false;
     setAuthenticating(false);
-    if (assertion) {
+    if (assertion !== null) {
       await completion
         .mutateAsync({ approvalId: ready.approvalId, assertion, request })
         .then(() => {

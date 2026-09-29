@@ -11,7 +11,7 @@ export type PublicationTarget = Pick<PublicationRequest, 'resourceType' | 'reada
 type CompleteApproval = ReturnType<typeof api.api.publications.approvals>['complete']['post'];
 export type CompletePublicationVariables = {
   approvalId: string;
-  assertion: Parameters<CompleteApproval>[0]['assertion'];
+  assertion: NonNullable<Parameters<CompleteApproval>[0]>['assertion'];
 };
 
 export class PublicationError extends Error {

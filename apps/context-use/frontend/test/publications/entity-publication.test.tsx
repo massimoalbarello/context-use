@@ -79,6 +79,7 @@ async function renderEntity({ isPublic = false, statusError = false } = {}) {
       state: 'ready',
       approvalId: `approval-${state.begins.length}`,
       expiresAt: new Date(Date.now() + APPROVAL_LIFETIME_MS).toISOString(),
+      authorizationExpiresAt: null,
       options: { challenge: 'AQ', rpId: 'localhost', userVerification: 'required' },
       preparation: {
         resource: { resourceType: 'entity', readableId: 'studio', name: state.preparedName },
@@ -239,7 +240,7 @@ test('entity review keeps its prepared name and refreshes entity and image publi
   });
   expect(within(dialog).getByText('Prepared studio')).toBeTruthy();
   expect(within(dialog).queryByText('New live identity')).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Confirm with passkey' }));
+  await user.click(screen.getByRole('button', { name: 'Confirm' }));
   await screen.findByRole('button', { name: 'Unpublish' });
   expect(
     screen
@@ -260,7 +261,7 @@ test('entity review keeps its prepared name and refreshes entity and image publi
   }
   await user.click(screen.getByRole('button', { name: 'Unpublish' }));
   expect(await screen.findByText(/does not unpublish its image assets/)).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: 'Confirm with passkey' }));
+  await user.click(screen.getByRole('button', { name: 'Confirm' }));
   await screen.findByRole('button', { name: 'Publish' });
   expect(screen.getByText('Private')).toBeTruthy();
   expect(state.begins.map((request) => request.action)).toEqual(['publish', 'unpublish']);
@@ -366,7 +367,7 @@ test('entity resource failure aborts a deferred approval and cannot complete aft
   const assertion = deferred<Credential>();
   device.pending = assertion.promise;
   await user.click(screen.getByRole('button', { name: 'Publish' }));
-  await user.click(await screen.findByRole('button', { name: 'Confirm with passkey' }));
+  await user.click(await screen.findByRole('button', { name: 'Confirm' }));
   await screen.findByRole('button', { name: 'Waiting for passkey…' });
   state.entityError = true;
   await client.invalidateQueries(entityQueryOptions('studio'));

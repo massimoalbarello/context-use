@@ -994,6 +994,15 @@ export interface IFindPendingPublicationApprovalResult {
     expiresAt: string;
 }
 
+/** Result of query `FindPublicationAuthorization`. */
+export interface IFindPublicationAuthorizationResult {
+    expiresAt: string;
+}
+
+/** Result of query `ConsumePublicationApproval`. */
+export interface IConsumePublicationApprovalResult {
+}
+
 /** Result of query `DeleteExpiredPublicationApprovals`. */
 export interface IDeleteExpiredPublicationApprovalsResult {
 }
@@ -1012,13 +1021,13 @@ export interface IListPublicationCredentialsResult {
     transports: string | null;
 }
 
-/** Result of query `ConsumePublicationApproval`. */
-export interface IConsumePublicationApprovalResult {
-}
-
 /** Result of query `AdvancePublicationCredentialCounter`. */
 export interface IAdvancePublicationCredentialCounterResult {
     id: string | null;
+}
+
+/** Result of query `GrantPublicationAuthorization`. */
+export interface IGrantPublicationAuthorizationResult {
 }
 
 /** Result of query `FindPublicationReferringPages`. */
@@ -1351,11 +1360,13 @@ export interface Queries {
     ClearPublicHomepage: IClearPublicHomepageResult;
     SetPublicHomepage: ISetPublicHomepageResult;
     FindPendingPublicationApproval: IFindPendingPublicationApprovalResult;
+    FindPublicationAuthorization: IFindPublicationAuthorizationResult;
+    ConsumePublicationApproval: IConsumePublicationApprovalResult;
     DeleteExpiredPublicationApprovals: IDeleteExpiredPublicationApprovalsResult;
     CreatePublicationApproval: ICreatePublicationApprovalResult;
     ListPublicationCredentials: IListPublicationCredentialsResult;
-    ConsumePublicationApproval: IConsumePublicationApprovalResult;
     AdvancePublicationCredentialCounter: IAdvancePublicationCredentialCounterResult;
+    GrantPublicationAuthorization: IGrantPublicationAuthorizationResult;
     FindPublicationReferringPages: IFindPublicationReferringPagesResult;
     FindPublicationReferringRecords: IFindPublicationReferringRecordsResult;
     FindPublicationPortraitEntities: IFindPublicationPortraitEntitiesResult;

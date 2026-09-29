@@ -60,6 +60,7 @@ async function renderAsset({ statusError = false }: { statusError?: boolean } = 
     completeError: undefined as Response | undefined,
     lostResponse: false,
     expiresAt: undefined as string | undefined,
+    authorizationExpiresAt: null as string | null,
     begins: [] as PublicationRequest[],
     ready: [] as PublicationReady[],
     completes: [] as CompletePublicationVariables[],
@@ -74,6 +75,7 @@ async function renderAsset({ statusError = false }: { statusError?: boolean } = 
       state: 'ready',
       approvalId: `approval-${state.begins.length}`,
       expiresAt: state.expiresAt ?? new Date(Date.now() + APPROVAL_LIFETIME_MS).toISOString(),
+      authorizationExpiresAt: state.authorizationExpiresAt,
       options: {
         challenge: state.begins.length === 1 ? 'AQ' : 'Ag',
         rpId: 'localhost',
@@ -179,7 +181,7 @@ async function renderAsset({ statusError = false }: { statusError?: boolean } = 
 }
 
 async function confirmReview(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: 'Confirm with passkey' }));
+  await user.click(await screen.findByRole('button', { name: 'Confirm' }));
 }
 
 test('asset is reviewed, published, and withdrawn with a retained handle and fresh confirmation each time', async () => {
@@ -245,7 +247,7 @@ test('public dependencies provide private resource links without starting a pass
   expect(screen.getByRole('link', { name: 'Alex' }).getAttribute('href')).toStartWith(
     '/app/entities/alex',
   );
-  expect(screen.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
   expect(device.calls).toHaveLength(1);
   expect(state.completes).toHaveLength(1);
 });
@@ -271,7 +273,7 @@ test('stale review requires an explicit new review and uses its new challenge on
   expect(state.completes).toHaveLength(1);
   state.completeError = undefined;
   await user.click(screen.getByRole('button', { name: 'Review again' }));
-  await screen.findByRole('button', { name: 'Confirm with passkey' });
+  await screen.findByRole('button', { name: 'Confirm' });
   expect(within(dialog).getByText('Updated launch chart')).toBeTruthy();
   expect(device.calls).toHaveLength(1);
   await confirmReview(user);
@@ -287,7 +289,7 @@ test('an expired preparation cannot start verification until it is reviewed agai
   state.expiresAt = new Date(0).toISOString();
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   await screen.findByText(/This review has expired/);
-  expect(screen.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
   expect(device.calls).toHaveLength(0);
   state.expiresAt = undefined;
   await user.click(screen.getByRole('button', { name: 'Review again' }));
@@ -384,3 +386,23 @@ test('an archive rejected by newly published server state explains withdrawal an
   );
   expect(state.statusReads).toBe(2);
 });
+
+for (const authorized of [true, false]) {
+  test(`publication confirmation ${authorized ? 'reuses a valid authorization' : 'prompts again after authorization expiry'}`, async () => {
+    const { state, user, device } = await renderAsset();
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    await confirmReview(user);
+    await screen.findByRole('button', { name: 'Unpublish' });
+    expect(device.calls).toHaveLength(1);
+    state.authorizationExpiresAt = new Date(
+      Date.now() + (authorized ? APPROVAL_LIFETIME_MS : -1),
+    ).toISOString();
+    await user.click(screen.getByRole('button', { name: 'Unpublish' }));
+    await screen.findByRole('dialog', { name: 'Unpublish asset' });
+    expect(state.completes).toHaveLength(1);
+    await confirmReview(user);
+    await screen.findByRole('button', { name: 'Publish' });
+    expect(device.calls).toHaveLength(authorized ? 1 : 2);
+    expect(!!state.completes[1]?.assertion).toBe(!authorized);
+  });
+}

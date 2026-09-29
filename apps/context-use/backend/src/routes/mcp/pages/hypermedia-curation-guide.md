@@ -77,9 +77,9 @@ the public page. Updating a public page requires explicit user confirmation of t
 even when the latest revision is private. Existing explicit confirmation counts.
 
 Edits create private page revisions; `publishedRevisionNumber` identifies the unchanged public
-revision. Only the owner can publish or unpublish with a fresh passkey approval bound to that
-action. MCP cannot perform either action. Public entity fields are live, not versioned; public asset
-names are live too, while file bytes are immutable. Check their status before editing too.
+revision. Only the owner can publish or unpublish after reviewing that action, using a passkey or a
+short-lived publication authorization in their signed-in session. MCP cannot perform either action.
+Public entity fields are live, not versioned; public asset names are live too, while file bytes are immutable. Check their status before editing too.
 References never publish their targets automatically. Records always remain private, and pages
 referencing records cannot be published. A page's managed page, entity, and asset targets must
 already be public before publication.
