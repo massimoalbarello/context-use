@@ -10,7 +10,10 @@ export function privateAssetContentResponse({
   inline,
   request,
 }: {
-  asset: StoredAsset;
+  asset: Pick<
+    StoredAsset,
+    'ownerId' | 'id' | 'contentHash' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
+  >;
   blob: Blob;
   inline: boolean;
   request: Request;

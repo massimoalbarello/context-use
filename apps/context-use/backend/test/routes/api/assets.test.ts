@@ -184,11 +184,7 @@ async function uploadChart(app: ReturnType<typeof createApp>) {
 }
 
 test('assets are server-inspected, linked or assigned, and archived only when unused', async () => {
-  await withAssetsApp(async ({ app, database, storage, timestamp, auth }) => {
-    const ownerSession = await auth.getSession({ headers: new Headers() });
-    let currentSession = ownerSession;
-    auth.getSession = async () => currentSession;
-
+  await withAssetsApp(async ({ app, database, storage, timestamp }) => {
     const { pngBytes, uploadResponse } = await uploadChart(app);
     expect(uploadResponse.status).toBe(StatusMap.Created);
     expectNoInternalResourceIds(await uploadResponse.clone().json());
@@ -210,69 +206,6 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     expect(contentResponse.headers.get('content-type')).toBe('image/png');
     expect(contentResponse.headers.get('content-disposition')).toStartWith('inline;');
     expect(new Uint8Array(await contentResponse.arrayBuffer())).toEqual(pngBytes);
-
-    const etag = contentResponse.headers.get('etag')!;
-    expect(etag).toMatch(/^"[a-f0-9]+"$/);
-    expect(contentResponse.headers.get('cache-control')).toBe('private, no-cache');
-    expect(contentResponse.headers.get('vary')).toBe('Cookie, Authorization');
-    for (const match of [etag, `W/${etag}`, `"older", ${etag}`, '*']) {
-      const cached = await app.handle(
-        new Request('http://localhost/api/assets/quarterly-chart/content', {
-          headers: { 'if-none-match': match, range: 'bytes=0-7' },
-        }),
-      );
-      expect(cached.status).toBe(StatusMap['Not Modified']);
-      expect(cached.headers.get('etag')).toBe(etag);
-      expect(cached.headers.get('cache-control')).toBe('private, no-cache');
-      expect(await cached.text()).toBe('');
-    }
-    for (const session of [
-      null,
-      { ...ownerSession!, user: { ...ownerSession!.user, id: 'another-owner' } },
-    ]) {
-      currentSession = session;
-      const denied = await app.handle(
-        new Request('http://localhost/api/assets/quarterly-chart/content', {
-          headers: { 'if-none-match': etag, range: 'bytes=0-7' },
-        }),
-      );
-      expect(denied.status).toBe(StatusMap.Unauthorized);
-      expect(denied.headers.has('etag')).toBe(false);
-    }
-    currentSession = ownerSession;
-    const resumed = await app.handle(
-      new Request('http://localhost/api/assets/quarterly-chart/content', {
-        headers: { 'if-range': etag, range: 'bytes=0-7' },
-      }),
-    );
-    expect(resumed.status).toBe(StatusMap['Partial Content']);
-    expect(resumed.headers.get('etag')).toBe(etag);
-    expect(new Uint8Array(await resumed.arrayBuffer())).toEqual(
-      pngBytes.subarray(0, RANGE_CHUNK_BYTES),
-    );
-    const renamed = await app.handle(
-      jsonRequest({
-        method: 'PUT',
-        path: '/assets/quarterly-chart',
-        body: { name: 'Renamed chart' },
-      }),
-    );
-    expect(renamed.status).toBe(StatusMap.OK);
-    const changed = await app.handle(
-      new Request('http://localhost/api/assets/quarterly-chart/content', {
-        headers: { 'if-none-match': etag },
-      }),
-    );
-    expect(changed.status).toBe(StatusMap.OK);
-    expect(changed.headers.get('etag')).not.toBe(etag);
-    expect(changed.headers.get('content-disposition')).toContain('Renamed_chart.png');
-    await app.handle(
-      jsonRequest({
-        method: 'PUT',
-        path: '/assets/quarterly-chart',
-        body: { name: 'Quarterly chart' },
-      }),
-    );
 
     const downloadResponse = await app.handle(
       new Request('http://localhost/api/assets/quarterly-chart/content?download=true'),
@@ -658,13 +591,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       (await app.handle(new Request('http://localhost/api/assets/quarterly-chart/preview'))).status,
     ).toBe(StatusMap['Not Found']);
     expect(
-      (
-        await app.handle(
-          new Request('http://localhost/api/assets/quarterly-chart/content', {
-            headers: { 'if-none-match': etag },
-          }),
-        )
-      ).status,
+      (await app.handle(new Request('http://localhost/api/assets/quarterly-chart/content'))).status,
     ).toBe(StatusMap['Not Found']);
     expect(
       (await app.handle(jsonRequest({ method: 'PUT', path: `/pages/${page.readableId}/archive` })))
@@ -762,5 +689,103 @@ test('asset byte ranges stream exact portions and preserve full-response fallbac
     } finally {
       await server.stop(true);
     }
+  });
+});
+
+test('asset caches revalidate metadata and authorization before returning bytes or 304', async () => {
+  await withAssetsApp(async ({ app, auth }) => {
+    const ownerSession = await auth.getSession({ headers: new Headers() });
+    let currentSession = ownerSession;
+    auth.getSession = async () => currentSession;
+
+    const { pngBytes, uploadResponse } = await uploadChart(app);
+    expect(uploadResponse.status).toBe(StatusMap.Created);
+    const contentResponse = await app.handle(
+      new Request('http://localhost/api/assets/quarterly-chart/content'),
+    );
+    expect(contentResponse.status).toBe(StatusMap.OK);
+    await contentResponse.arrayBuffer();
+
+    const etag = contentResponse.headers.get('etag')!;
+    expect(etag).toMatch(/^"[a-f0-9]+"$/);
+    expect(contentResponse.headers.get('cache-control')).toBe('private, no-cache');
+    expect(contentResponse.headers.get('vary')).toBe('Cookie, Authorization');
+    for (const match of [etag, `W/${etag}`, `"older", ${etag}`, '*']) {
+      const cached = await app.handle(
+        new Request('http://localhost/api/assets/quarterly-chart/content', {
+          headers: {
+            'if-none-match': match,
+            'if-modified-since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+            range: 'bytes=0-7',
+          },
+        }),
+      );
+      expect(cached.status).toBe(StatusMap['Not Modified']);
+      expect(cached.headers.get('etag')).toBe(etag);
+      expect(cached.headers.get('cache-control')).toBe('private, no-cache');
+      expect(await cached.text()).toBe('');
+    }
+    for (const session of [
+      null,
+      { ...ownerSession!, user: { ...ownerSession!.user, id: 'another-owner' } },
+    ]) {
+      currentSession = session;
+      const denied = await app.handle(
+        new Request('http://localhost/api/assets/quarterly-chart/content', {
+          headers: { 'if-none-match': etag, range: 'bytes=0-7' },
+        }),
+      );
+      expect(denied.status).toBe(StatusMap.Unauthorized);
+      expect(denied.headers.has('etag')).toBe(false);
+    }
+    currentSession = ownerSession;
+    const resumed = await app.handle(
+      new Request('http://localhost/api/assets/quarterly-chart/content', {
+        headers: { 'if-range': etag, range: 'bytes=0-7' },
+      }),
+    );
+    expect(resumed.status).toBe(StatusMap['Partial Content']);
+    expect(resumed.headers.get('etag')).toBe(etag);
+    expect(new Uint8Array(await resumed.arrayBuffer())).toEqual(
+      pngBytes.subarray(0, RANGE_CHUNK_BYTES),
+    );
+    const renamed = await app.handle(
+      jsonRequest({
+        method: 'PUT',
+        path: '/assets/quarterly-chart',
+        body: { name: 'Renamed chart' },
+      }),
+    );
+    expect(renamed.status).toBe(StatusMap.OK);
+    const changed = await app.handle(
+      new Request('http://localhost/api/assets/quarterly-chart/content', {
+        headers: { 'if-none-match': etag },
+      }),
+    );
+    expect(changed.status).toBe(StatusMap.OK);
+    expect(changed.headers.get('etag')).not.toBe(etag);
+    expect(changed.headers.get('content-disposition')).toContain('Renamed_chart.png');
+    await changed.arrayBuffer();
+    const download = await app.handle(
+      new Request('http://localhost/api/assets/quarterly-chart/content?download=true', {
+        headers: { 'if-none-match': changed.headers.get('etag')! },
+      }),
+    );
+    expect(download.status).toBe(StatusMap.OK);
+    expect(download.headers.get('etag')).not.toBe(changed.headers.get('etag'));
+    await download.arrayBuffer();
+
+    const archived = await app.handle(
+      jsonRequest({ method: 'PUT', path: '/assets/quarterly-chart/archive' }),
+    );
+    expect(archived.status).toBe(StatusMap['No Content']);
+    const unavailable = await app.handle(
+      new Request('http://localhost/api/assets/quarterly-chart/content', {
+        headers: { 'if-none-match': changed.headers.get('etag')! },
+      }),
+    );
+    expect(unavailable.status).toBe(StatusMap['Not Found']);
+    expect(unavailable.headers.has('etag')).toBe(false);
+    expect(unavailable.headers.get('cache-control')).toBe('private, no-store');
   });
 });
