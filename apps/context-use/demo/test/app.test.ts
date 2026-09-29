@@ -560,6 +560,7 @@ test('demo identity stays local while instance reads and writes require real aut
     // The exact same controller with real personal authentication still rejects anonymity,
     // even with the demo's public metadata supplied as a forged cookie/token.
     const auth = createAuth({
+      getMcpAuthorizationId: async () => null,
       database,
       baseUrl: new URL('https://personal.test'),
       secret: 'test-only-personal-auth-secret-123456789',

@@ -23,6 +23,7 @@ describe('passkey-only authentication', () => {
     await withAuthTestDatabase({
       run: async (database) => {
         const auth = createAuth({
+          getMcpAuthorizationId: async () => null,
           database,
           baseUrl: new URL(AUTH_ORIGIN),
           secret: TEST_SECRET,
@@ -65,6 +66,7 @@ function authApp({
   nibrunHostname?: string;
 }) {
   const auth = createAuth({
+    getMcpAuthorizationId: async () => null,
     database,
     baseUrl: new URL(baseUrl),
     nibrunHostname,

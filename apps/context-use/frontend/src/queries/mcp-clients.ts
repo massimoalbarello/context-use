@@ -49,24 +49,12 @@ export async function approveMcpClient(input: { clientId: string; name: string }
   return data;
 }
 
-export async function renameMcpClient(input: { clientAuthorizationId: string; name: string }) {
-  const { data, error } = await api.api.mcp
-    .clients({
-      clientAuthorizationId: input.clientAuthorizationId,
-    })
-    .patch({ name: input.name, changeMessage: 'Renamed an MCP client' });
-  if (error) {
-    throw new Error(apiErrorMessage(error));
-  }
-  return data;
-}
-
-export async function archiveMcpClient(input: { clientAuthorizationId: string }): Promise<void> {
+export async function revokeMcpClient(input: { clientAuthorizationId: string }): Promise<void> {
   const { error } = await api.api.mcp
     .clients({
       clientAuthorizationId: input.clientAuthorizationId,
     })
-    .archive.put({ changeMessage: 'Archived an MCP client' });
+    .archive.put({ changeMessage: 'Revoked an MCP client' });
   if (error) {
     throw new Error(apiErrorMessage(error));
   }

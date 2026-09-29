@@ -264,21 +264,14 @@ export class McpClientAuthorizationsRepository
         where "id" = ${input.clientAuthorizationId} and "owner_id" = ${input.ownerId}
       `;
       await tx`
-        update "auth_oauthRefreshToken"
-        set
-          "revoked" = ${input.archivedAt},
-          "rotationReplayResponse" = null,
-          "rotationReplayExpiresAt" = null
+        delete from "auth_oauthAccessToken"
         where "clientId" = ${clientAuthorization.oauthClientId}
           and "userId" = ${input.ownerId}
-          and "revoked" is null
       `;
       await tx`
-        update "auth_oauthAccessToken"
-        set "revoked" = ${input.archivedAt}
+        delete from "auth_oauthRefreshToken"
         where "clientId" = ${clientAuthorization.oauthClientId}
           and "userId" = ${input.ownerId}
-          and "revoked" is null
       `;
       await tx`
         delete from "auth_oauthConsent"

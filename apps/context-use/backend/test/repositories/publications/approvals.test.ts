@@ -44,6 +44,7 @@ async function withApprovals(
   await withDatabase(async ({ database }) => {
     const auth = betterAuth(
       createAuthOptions({
+        getMcpAuthorizationId: async () => null,
         database,
         baseUrl: new URL('http://localhost:3000'),
         secret: 'test-secret-at-least-thirty-two-characters',

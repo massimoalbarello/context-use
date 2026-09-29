@@ -39,7 +39,7 @@ export function createMcpController({
         ownerId: token.ownerId,
         oauthClientId: token.oauthClientId,
       });
-      if (!principal) {
+      if (!principal || principal.clientAuthorizationId !== token.clientAuthorizationId) {
         return unauthorizedClientResponse(token.resource);
       }
       return await transport.fetch({

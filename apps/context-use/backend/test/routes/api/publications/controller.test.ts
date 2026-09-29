@@ -36,6 +36,7 @@ async function withController(
 
 async function controllerFixture(database: Parameters<typeof createAuth>[0]['database']) {
   const auth = createAuth({
+    getMcpAuthorizationId: async () => null,
     database,
     baseUrl: new URL(ORIGIN),
     nibrunHostname: RP_ID,

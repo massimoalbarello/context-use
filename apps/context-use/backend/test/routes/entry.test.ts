@@ -30,6 +30,7 @@ test(
     await withAuthTestDatabase({
       run: async (database) => {
         const rawAuth = createAuth({
+          getMcpAuthorizationId: async () => null,
           database,
           baseUrl: new URL(ORIGIN),
           secret: 'test-secret-at-least-thirty-two-characters',
