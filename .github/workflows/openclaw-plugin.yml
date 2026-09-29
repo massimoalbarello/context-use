@@ -62,6 +62,11 @@ jobs:
       - name: Package and test the release through real OpenClaw
         run: bun run --cwd packages/openclaw-memory test:e2e
 
+      - name: Test the release through OpenClaw 2026.9.6
+        run: |
+          npm install --prefix "$RUNNER_TEMP/openclaw-host" --no-audit --no-fund openclaw@2026.9.6
+          OPENCLAW_TEST_HOST_ROOT="$RUNNER_TEMP/openclaw-host/node_modules/openclaw" bun run --cwd packages/openclaw-memory scripts/e2e.ts
+
       - uses: actions/upload-artifact@v7
         with:
           name: openclaw-memory-package
