@@ -64,9 +64,24 @@ export function PublicMarkdown({
             </ReadingLink>
           );
         },
-        img: ({ src, alt, className }) => (
+        img: ({ src, alt, className, node }) => (
           <span className={className}>
-            {src && isVideoAssetMedia(assetMedia[src] ?? '') ? (
+            {src && assetMedia[src] === 'application/pdf' ? (
+              <>
+                <iframe
+                  src={`/pdf-preview/${encodeURIComponent(src.split('/').at(-1)!)}`}
+                  title={alt || 'PDF preview'}
+                  loading="lazy"
+                  sandbox="allow-scripts allow-same-origin"
+                  className="pdf-preview"
+                />
+                {!node?.properties['data-asset-linked'] && (
+                  <a href={src} download>
+                    Download PDF
+                  </a>
+                )}
+              </>
+            ) : src && isVideoAssetMedia(assetMedia[src] ?? '') ? (
               // React's video types do not yet include the native loading attribute.
               <video
                 src={src}

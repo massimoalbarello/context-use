@@ -43,7 +43,8 @@ function linkDestination({
   if (
     link.embedded &&
     !isEmbeddableAssetMedia(target.mediaType ?? '') &&
-    !isVideoAssetMedia(target.mediaType ?? '')
+    !isVideoAssetMedia(target.mediaType ?? '') &&
+    target.mediaType !== 'application/pdf'
   ) {
     return null;
   }

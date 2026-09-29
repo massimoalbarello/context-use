@@ -23,6 +23,9 @@ test('public documents embed compiled component styles authorized by CSP without
   expect(styles).toContain('prefers-color-scheme:dark');
   expect(html).toContain('src="/public/assets/portrait"');
   expect(html).not.toContain('<script');
+  expect(html).toMatch(
+    /<meta http-equiv="Content-Security-Policy" content="[^"]*script-src &#x27;none&#x27;/,
+  );
   expect(PUBLIC_DOCUMENT_CSP).toContain("script-src 'none'");
   expect(PUBLIC_DOCUMENT_CSP).toContain('allow-scripts');
   expect(html).not.toContain('rel="stylesheet"');

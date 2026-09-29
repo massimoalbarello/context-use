@@ -113,6 +113,14 @@
     border-radius: 0.75rem;
     margin: 0;
   }
+  .pdf-preview {
+    display: block;
+    width: 100%;
+    height: 32rem;
+    border: 0;
+    border-radius: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
   .markdown-asset.asset-small {
     max-width: 20rem;
   }
