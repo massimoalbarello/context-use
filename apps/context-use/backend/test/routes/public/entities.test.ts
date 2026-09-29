@@ -100,7 +100,7 @@ test('live public identity uses only the approved current image and safely escap
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(response.headers.get('content-security-policy')).toContain("default-src 'none'");
     expect(response.headers.get('x-content-type-options')).toBe('nosniff');
-    expect(body).toMatch(/<h1[^>]*>Ada Lovelace<\/h1>/);
+    expect(body).toContain('<h1>Ada Lovelace</h1>');
     expect(body).toContain('href="https://github.com/massimoalbarello/context-use"');
     expect(body).toMatch(/24 Sept? 2026/);
     expect(body).toContain('Person');
@@ -146,9 +146,7 @@ test('live public identity uses only the approved current image and safely escap
       change: CHANGE,
     });
     const edited = await (await request({ fixture, id })).text();
-    expect(edited).toMatch(
-      /<h1[^>]*>Live &lt;script&gt;alert\(1\)&lt;\/script&gt; &amp; name<\/h1>/,
-    );
+    expect(edited).toContain('<h1>Live &lt;script&gt;alert(1)&lt;/script&gt; &amp; name</h1>');
     expect(edited).toContain(
       '&lt;img src=&quot;/api/private&quot; onerror=&quot;alert(1)&quot;&gt;',
     );

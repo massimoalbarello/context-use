@@ -1,4 +1,3 @@
-import { PublicArticle } from './article.tsx';
 import { publicDocument } from './document.tsx';
 import { PublicMarkdown } from './markdown.tsx';
 
@@ -19,7 +18,7 @@ export function publicRecordHtml({
     title,
     markdownUrl: `/public/records/${encodeURIComponent(publicId)}/markdown`,
     children: (
-      <PublicArticle>
+      <article>
         <h1>{title}</h1>
         <PublicMarkdown
           origin={origin}
@@ -30,7 +29,7 @@ export function publicRecordHtml({
               node?.position?.start.line === 1 && children === title ? null : <h2>{children}</h2>,
           }}
         />
-      </PublicArticle>
+      </article>
     ),
   });
 }

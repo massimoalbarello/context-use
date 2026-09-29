@@ -1,6 +1,5 @@
 import { DEFAULT_PUBLIC_SITE_NAME } from '#backend/lib/runtime-config.ts';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
-import { PublicArticle } from './article.tsx';
 import { publicDocument } from './document.tsx';
 import { publicResourcePath } from './markdown.ts';
 
@@ -26,7 +25,7 @@ export function publicIndexHtml({
     description: 'Explore the pages and people shared publicly from this knowledge base.',
     canonicalUrl: new URL(path, origin).href,
     children: (
-      <PublicArticle>
+      <article>
         <h1>{siteName}</h1>
         <p>
           Browse published pages and people. Each page shows the version its owner chose to share;
@@ -52,10 +51,7 @@ export function publicIndexHtml({
           <p>No public content is listed here yet.</p>
         )}
         {page > 1 || nextPage ? (
-          <nav
-            className="mb-12 flex items-center justify-between gap-4 text-[#69655d] text-[0.875rem] max-sm:mb-8 dark:text-[#bbb5a9]"
-            aria-label="Index pages"
-          >
+          <nav className="pagination" aria-label="Index pages">
             {page > 1 ? (
               <a
                 rel="prev"
@@ -71,7 +67,7 @@ export function publicIndexHtml({
             ) : null}
           </nav>
         ) : null}
-      </PublicArticle>
+      </article>
     ),
   });
 }

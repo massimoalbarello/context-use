@@ -1,4 +1,3 @@
-import { cn } from '@repo/ui/class-names';
 import { InlineEntity } from '@repo/ui/inline-entity';
 import { ReadingLink } from '@repo/ui/reading-link';
 import { isValidElement, type ReactNode } from 'react';
@@ -65,48 +64,18 @@ export function PublicMarkdown({
             </ReadingLink>
           );
         },
-        div: ({ className, children }) => (
-          <div
-            className={cn(
-              className,
-              className === 'markdown-media-row' &&
-                'my-7 flex flex-wrap gap-4 [&>.markdown-asset]:my-0',
+        img: ({ src, alt, className }) => (
+          <span className={className}>
+            {src && isVideoAssetMedia(assetMedia[src] ?? '') ? (
+              // biome-ignore lint/a11y/useMediaCaption: uploaded videos do not have a paired caption asset.
+              <video src={src} aria-label={alt || 'Video'} controls playsInline preload="metadata">
+                <a href={src}>{alt || 'Open video'}</a>
+              </video>
+            ) : (
+              <img src={src} alt={alt ?? ''} />
             )}
-          >
-            {children}
-          </div>
+          </span>
         ),
-        img: ({ src, alt, className }) => {
-          const isAsset = className?.split(' ').includes('markdown-asset');
-          const mediaClassName = isAsset
-            ? 'm-0 block max-h-[36rem] w-full rounded-[0.75rem] object-contain'
-            : undefined;
-          return (
-            <span
-              className={cn(
-                className,
-                isAsset &&
-                  'my-7 block w-full min-w-0 [&.asset-center]:mx-auto sm:[&.asset-half]:w-[calc(50%-0.5rem)] [&.asset-left]:mr-auto [&.asset-medium]:max-w-lg [&.asset-right]:ml-auto [&.asset-small]:max-w-80 sm:[&.asset-third]:w-[calc((100%-2rem)/3)]',
-              )}
-            >
-              {src && isVideoAssetMedia(assetMedia[src] ?? '') ? (
-                // biome-ignore lint/a11y/useMediaCaption: uploaded videos do not have a paired caption asset.
-                <video
-                  className={mediaClassName}
-                  src={src}
-                  aria-label={alt || 'Video'}
-                  controls
-                  playsInline
-                  preload="metadata"
-                >
-                  <a href={src}>{alt || 'Open video'}</a>
-                </video>
-              ) : (
-                <img className={mediaClassName} src={src} alt={alt ?? ''} />
-              )}
-            </span>
-          );
-        },
         ...components,
       }}
     >

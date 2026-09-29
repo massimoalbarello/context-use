@@ -1,4 +1,3 @@
-import { PublicArticle } from './article.tsx';
 import { publicDocument } from './document.tsx';
 
 export function emptyPublicHomepageHtml({
@@ -13,10 +12,10 @@ export function emptyPublicHomepageHtml({
     canonicalUrl,
     siteName,
     children: (
-      <PublicArticle>
+      <article>
         <h1>Nothing published yet</h1>
         <p>This knowledge base doesn’t have a public homepage yet. Check back soon.</p>
-      </PublicArticle>
+      </article>
     ),
   });
 }
