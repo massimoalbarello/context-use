@@ -50,22 +50,54 @@ Ordinary prose {size=large align=center}
   },
 );
 
-test('keeps prose in paragraphs before and after embedded media, including linked references', () => {
+test('inline asset labels stay in complete paragraphs and their media follows in source order', () => {
   const tree =
-    fromMarkdown(`Before **the preview**. ![Document](context-use://asset/document){size=large} After *the preview*.
+    fromMarkdown(`![The product was nothing more than a proof of concept](context-use://asset/demo){size=large}. It couldn't do much, but **the concept** was fascinating.
 
-[![Linked][asset]](https://example.com) After the link.
+Compare ![First][asset] with [![Second](context-use://asset/second)](https://example.com). Both matter.
 
-[asset]: context-use://asset/image`);
+[asset]: context-use://asset/first`);
   remarkAssetLayout()(tree);
   const paragraphs = tree.children.filter((node) => node.type === 'paragraph');
-  expect(paragraphs.map((node) => node.data?.hName ?? 'p')).toEqual(['p', 'div', 'p', 'div', 'p']);
-  expect(paragraphs.map((node) => markdownText(node).trim())).toEqual([
-    'Before the preview.',
-    'Document',
-    'After the preview.',
-    'Linked',
-    'After the link.',
-  ]);
-  expect(paragraphs[2]?.children.some((node) => node.type === 'emphasis')).toBe(true);
+  expect(paragraphs.map((node) => node.data?.hName ?? 'p')).toEqual(['p', 'div', 'p', 'div']);
+  expect(markdownText(paragraphs[0])).toBe(
+    "The product was nothing more than a proof of concept. It couldn't do much, but the concept was fascinating.",
+  );
+  expect(paragraphs[0]?.children.some((node) => node.type === 'strong')).toBe(true);
+  expect(markdownText(paragraphs[2])).toBe('Compare First with Second. Both matter.');
+  expect(paragraphs[3]?.children.map((node) => markdownText(node))).toEqual(['First', 'Second']);
+  expect(paragraphs[3]?.children[1]).toMatchObject({
+    type: 'link',
+    url: 'https://example.com',
+    children: [{ type: 'image', alt: 'Second' }],
+  });
+});
+
+test('empty labels and formatted embed containers retain the surrounding prose without moving its formatting', () => {
+  const tree = fromMarkdown(
+    'Before **![label](context-use://asset/first) and bold text**. ![](context-use://asset/second) After.',
+  );
+  remarkAssetLayout()(tree);
+  const [paragraph, media] = tree.children;
+  expect(markdownText(paragraph)).toBe('Before label and bold text.  After.');
+  if (paragraph?.type !== 'paragraph') {
+    throw new Error('Expected prose paragraph');
+  }
+  expect(paragraph.children[1]).toMatchObject({
+    type: 'strong',
+    children: [
+      { type: 'text', value: 'label' },
+      { type: 'text', value: ' and bold text' },
+    ],
+  });
+  expect(markdownText(media)).toBe('label');
+});
+
+test('hidden HTML and line breaks do not turn standalone embed labels into prose', () => {
+  const tree = fromMarkdown(
+    '![Caption](context-use://asset/picture)<!-- hidden -->  \n![Second](context-use://asset/second)',
+  );
+  remarkAssetLayout()(tree);
+  expect(tree.children).toHaveLength(1);
+  expect(tree.children[0]?.data?.hName).toBe('div');
 });
