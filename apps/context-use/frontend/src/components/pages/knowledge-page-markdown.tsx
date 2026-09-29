@@ -9,6 +9,7 @@ import ReactMarkdown, {
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
 import { internalLink } from '../../lib/internal-link';
+import type { AssetPreview } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
@@ -22,7 +23,8 @@ type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readable
 const MarkdownReferences = createContext<{
   mentions: EntityMention[];
   recordReferences: RecordReference[];
-}>({ mentions: [], recordReferences: [] });
+  assets: ReadonlyMap<string, AssetPreview>;
+}>({ mentions: [], recordReferences: [], assets: new Map() });
 
 function textContent(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -128,6 +130,7 @@ function MarkdownImage({
   alt?: string;
   className?: string;
 }) {
+  const { assets } = useContext(MarkdownReferences);
   const target = src ? internalLink(src) : null;
   if (target?.kind !== 'asset') {
     return null;
@@ -135,6 +138,7 @@ function MarkdownImage({
   return (
     <AssetMarkdownEmbed
       readableId={target.readableId}
+      asset={assets.get(target.readableId)}
       alt={alt}
       className={className}
       linked={Boolean(node?.properties['data-asset-linked'])}
@@ -202,13 +206,21 @@ export function KnowledgePageMarkdown({
   markdown,
   mentions = [],
   recordReferences = [],
+  assets = [],
 }: {
   markdown: string;
   mentions?: EntityMention[];
   recordReferences?: RecordReference[];
+  assets?: AssetPreview[];
 }) {
   return (
-    <MarkdownReferences value={{ mentions, recordReferences }}>
+    <MarkdownReferences
+      value={{
+        mentions,
+        recordReferences,
+        assets: new Map(assets.map((asset) => [asset.readableId, asset])),
+      }}
+    >
       <article className="py-3 md:py-5">
         <ReactMarkdown
           remarkPlugins={[remarkAssetLayout]}

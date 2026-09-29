@@ -409,6 +409,7 @@ function KnowledgePageDetailContent({
             <TabsContent value="preview">
               <KnowledgePageMarkdown
                 markdown={page.markdown}
+                assets={page.assetUsages.map(({ asset }) => asset)}
                 mentions={page.mentions}
                 recordReferences={page.recordReferences}
               />

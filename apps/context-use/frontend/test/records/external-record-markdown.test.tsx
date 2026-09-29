@@ -6,6 +6,7 @@ import {
   ContextRecordMarkdown,
   externalRecordUrl,
 } from '../../src/components/records/record-markdown';
+import { mockViewport } from '../support/viewport';
 
 describe('external record Markdown', () => {
   test('omits a repeated leading title while retaining distinct and later headings', () => {
@@ -64,6 +65,7 @@ describe('external record Markdown', () => {
 });
 
 test('renders local asset images and attachments while suppressing external and malformed image addresses', async () => {
+  const viewport = mockViewport();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const fetch = spyOn(globalThis, 'fetch').mockResolvedValue(
     new Response(
@@ -106,5 +108,6 @@ test('renders local asset images and attachments while suppressing external and 
     cleanup();
     client.clear();
     fetch.mockRestore();
+    viewport.restore();
   }
 });

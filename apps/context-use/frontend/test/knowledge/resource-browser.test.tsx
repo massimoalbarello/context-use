@@ -11,6 +11,7 @@ import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/pr
 import type { ContextRecord } from '../../src/queries/records';
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
+import { mockViewport } from '../support/viewport';
 
 afterEach(cleanup);
 
@@ -430,6 +431,7 @@ test('direct detail URLs keep related resources expanded and support browser Bac
 });
 
 test('preview links retain canonical URLs and modifier clicks without leaving the collection', async () => {
+  const viewport = mockViewport();
   const app = await renderResourceBrowser({ path: '/app/pages?resource=page&resourceId=launch' });
   const user = userEvent.setup();
   try {
@@ -456,6 +458,7 @@ test('preview links retain canonical URLs and modifier clicks without leaving th
     expect(app.router.state.location.search.resourceId).toBe('launch');
   } finally {
     app.dispose();
+    viewport.restore();
   }
 });
 

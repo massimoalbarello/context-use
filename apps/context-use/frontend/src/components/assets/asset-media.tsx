@@ -49,6 +49,8 @@ function AssetMediaContent({
         className={className}
         src={contentUrl}
         alt={asset.name}
+        decoding="async"
+        style={{ aspectRatio: 'auto 16 / 9' }}
         onError={() => setFailed(true)}
       />
     );
@@ -63,6 +65,7 @@ function AssetMediaContent({
         controls
         playsInline
         preload="metadata"
+        style={{ aspectRatio: 'auto 16 / 9' }}
         onError={() => setFailed(true)}
       />
     );
