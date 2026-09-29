@@ -21,11 +21,13 @@ export function assetContentResponse({
   blob,
   inline,
   request,
+  etag,
 }: {
   asset: Pick<StoredAsset, 'name' | 'extension' | 'mediaType' | 'sizeBytes'>;
   blob: Blob;
   inline: boolean;
   request?: Request;
+  etag?: string;
 }): Response {
   const headers = new Headers({
     'content-type': asset.mediaType,
@@ -43,7 +45,8 @@ export function assetContentResponse({
   }
   let body = blob;
   let status: number = StatusMap.OK;
-  const range = request?.headers.has('if-range') ? null : request?.headers.get('range');
+  const ifRange = request?.headers.get('if-range');
+  const range = ifRange != null && ifRange !== etag ? null : request?.headers.get('range');
   if (range?.startsWith('bytes=')) {
     // range-parser treats an oversized suffix as unsatisfiable; HTTP requires the whole file.
     const normalizedRange =
