@@ -151,6 +151,7 @@ async function renderPage({
       state: 'ready',
       approvalId: `approval-${state.begins.length}`,
       expiresAt: new Date(Date.now() + APPROVAL_LIFETIME_MS).toISOString(),
+      authorizationExpiresAt: null,
       options: {
         challenge: state.begins.length === 1 ? 'AQ' : 'Ag',
         rpId: 'localhost',
@@ -297,7 +298,7 @@ async function refreshPage(client: QueryClient) {
 }
 
 async function confirm(user: ReturnType<typeof userEvent.setup>) {
-  const button = await screen.findByRole('button', { name: 'Confirm with passkey' });
+  const button = await screen.findByRole('button', { name: 'Confirm' });
   await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false));
   await user.click(button);
 }
@@ -326,7 +327,7 @@ test('first publication reviews full selected content before allowing confirmati
     ),
   ).toBeTruthy();
   await screen.findByText('Loading preview…');
-  const button = screen.getByRole('button', { name: 'Confirm with passkey' });
+  const button = screen.getByRole('button', { name: 'Confirm' });
   expect(button.hasAttribute('disabled')).toBe(true);
   await user.click(button);
   expect(device.calls).toHaveLength(0);
@@ -520,9 +521,7 @@ test('preview failure prevents approval until retry succeeds without changing th
   state.revisionResponse = () => Response.json({ error: 'Preview unavailable' }, { status: 503 });
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   expect((await screen.findByRole('alert')).textContent).toBe('Preview unavailable');
-  expect(
-    screen.getByRole('button', { name: 'Confirm with passkey' }).hasAttribute('disabled'),
-  ).toBe(true);
+  expect(screen.getByRole('button', { name: 'Confirm' }).hasAttribute('disabled')).toBe(true);
   expect(device.calls).toHaveLength(0);
   state.revisionResponse = undefined;
   await user.click(screen.getByRole('button', { name: 'Retry preview' }));
@@ -542,9 +541,7 @@ test('an optional comparison failure can be retried and does not prevent approva
   state.diffResponse = () => Response.json({ error: 'Comparison unavailable' }, { status: 503 });
   await user.click(dialog.getByRole('tab', { name: 'Changes' }));
   expect((await dialog.findByRole('alert')).textContent).toBe('Comparison unavailable');
-  expect(
-    dialog.getByRole('button', { name: 'Confirm with passkey' }).hasAttribute('disabled'),
-  ).toBe(false);
+  expect(dialog.getByRole('button', { name: 'Confirm' }).hasAttribute('disabled')).toBe(false);
   state.diffResponse = undefined;
   await user.click(dialog.getByRole('button', { name: 'Retry changes' }));
   await dialog.findByText('Revision 1 → 3');
@@ -576,7 +573,7 @@ test('private resources stay collapsed and OK returns to the page before publish
     'Publish referenced assets, entities, and records before publishing this page.',
   );
   expect(dialog.queryByRole('link')).toBeNull();
-  expect(dialog.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(dialog.queryByRole('button', { name: 'Confirm' })).toBeNull();
   expect(dialog.queryByRole('button', { name: 'Review again' })).toBeNull();
   expect(dialog.queryByRole('button', { name: 'Cancel' })).toBeNull();
   expect(device.calls).toHaveLength(0);
@@ -605,9 +602,7 @@ test('private resources stay collapsed and OK returns to the page before publish
   dialog = within(await screen.findByRole('dialog', { name: 'Publish page' }));
   await expectPreview(SELECTED_REVISION);
   await waitFor(() =>
-    expect(
-      dialog.getByRole('button', { name: 'Confirm with passkey' }).hasAttribute('disabled'),
-    ).toBe(false),
+    expect(dialog.getByRole('button', { name: 'Confirm' }).hasAttribute('disabled')).toBe(false),
   );
 });
 

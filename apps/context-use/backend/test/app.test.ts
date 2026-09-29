@@ -282,7 +282,8 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     openApi.paths?.['/api/publications/approvals/{approvalId}/complete']?.post?.requestBody
       ?.content?.['application/json']?.schema;
   expect(Object.keys(completeSchema?.properties ?? {})).toEqual(['assertion']);
-  expect(completeSchema).toMatchObject({ required: ['assertion'], additionalProperties: false });
+  expect(completeSchema).toMatchObject({ additionalProperties: false });
+  expect(completeSchema).not.toHaveProperty('required');
   expect(openApi.paths?.['/api/publications/{resourceType}/{readableId}']?.get).toBeDefined();
   expect(receiverOperation?.security).toContainEqual({ [API_KEY_SECURITY_SCHEME]: [] });
   expect(receiverOperation?.requestBody?.content?.['application/json']).toBeDefined();

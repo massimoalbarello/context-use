@@ -116,7 +116,7 @@ export function createApp({
           tags: [
             {
               name: 'Publications',
-              description: 'Publication status and fresh owner passkey approval.',
+              description: 'Publication status and owner passkey authorization.',
             },
             {
               name: 'Assets',

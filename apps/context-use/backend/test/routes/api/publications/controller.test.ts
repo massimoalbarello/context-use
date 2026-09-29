@@ -100,6 +100,7 @@ async function controllerFixture(database: Parameters<typeof createAuth>[0]['dat
         method: body === undefined ? 'GET' : 'POST',
         headers: new Headers({
           'content-type': 'application/json',
+          origin: ORIGIN,
           ...Object.fromEntries(new Headers(headers)),
         }),
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -544,3 +545,143 @@ test('records use owner passkey approval and stale content cannot be published',
       publishedAt: null,
     });
   }));
+
+test('publication authorization lasts exactly two minutes without sliding; expiry requires a new passkey', async () => {
+  await withController(async ({ begin, complete, request, setTime }) => {
+    const first = await begin();
+    expect(first.authorizationExpiresAt).toBeNull();
+    expect(
+      (await request({ path: `/approvals/${first.approvalId}/complete`, body: {} })).status,
+    ).toBe(StatusMap.Forbidden);
+    expect((await complete(first)).status).toBe(StatusMap.OK);
+    setTime('2026-09-24T09:01:59.999Z');
+    const withdraw = await begin({ ...ASSET, action: 'unpublish' });
+    expect(withdraw.authorizationExpiresAt).toBe('2026-09-24T09:02:00.000Z');
+    const path = `/approvals/${withdraw.approvalId}/complete`;
+    expect((await request({ path, body: {} })).status).toBe(StatusMap.OK);
+    expect((await request({ path, body: {} })).status).toBe(StatusMap.Conflict);
+    const next = await begin();
+    expect(next.authorizationExpiresAt).toBe(withdraw.authorizationExpiresAt);
+    setTime('2026-09-24T09:02:00.000Z');
+    const expired = await request({ path: `/approvals/${next.approvalId}/complete`, body: {} });
+    expect(expired.status).toBe(StatusMap.Forbidden);
+    expect(await expired.json()).toMatchObject({ state: 'assertion_invalid' });
+    expect(await (await request({ path: '/asset/primary' })).json()).toMatchObject({
+      publishedAt: null,
+    });
+    expect((await begin()).authorizationExpiresAt).toBeNull();
+    expect((await complete(next)).status).toBe(StatusMap.OK);
+    expect((await begin()).authorizationExpiresAt).toBe('2026-09-24T09:04:00.000Z');
+  });
+});
+
+test('the authorization is restricted to the verified owner session and trusted request origin', async () => {
+  await withController(async ({ begin, complete, request, cookie, login, foreignPasskey }) => {
+    expect((await complete(await begin())).status).toBe(StatusMap.OK);
+    const ownerSession = await login();
+    const otherOwner = await login(foreignPasskey);
+    for (const isolatedCookie of [ownerSession, otherOwner]) {
+      const response = await request({
+        path: '/approvals',
+        body: { ...ASSET, readableId: 'secondary' },
+        headers: { cookie: isolatedCookie },
+      });
+      const approval: Ready = await response.json();
+      expect(approval.authorizationExpiresAt).toBeNull();
+      expect(
+        (
+          await request({
+            path: `/approvals/${approval.approvalId}/complete`,
+            body: {},
+            headers: { cookie: isolatedCookie },
+          })
+        ).status,
+      ).toBe(StatusMap.Forbidden);
+    }
+    const next = await begin({ ...ASSET, readableId: 'secondary' });
+    const path = `/approvals/${next.approvalId}/complete`;
+    for (const origin of ['https://attacker.example', 'null', '']) {
+      expect((await request({ path, body: {}, headers: { cookie, origin } })).status).toBe(
+        StatusMap.Forbidden,
+      );
+    }
+    expect(await (await request({ path: '/asset/secondary' })).json()).toMatchObject({
+      publishedAt: null,
+    });
+    expect((await request({ path, body: {} })).status).toBe(StatusMap.OK);
+  });
+});
+
+for (const invalidation of [
+  'key deletion',
+  'key replacement',
+  'key reassignment',
+  'credential replacement',
+  'session deletion',
+  'session expiry',
+] as const) {
+  test(`publication authorization fails closed after ${invalidation}`, async () => {
+    await withController(async ({ database, begin, complete, request }) => {
+      expect((await complete(await begin())).status).toBe(StatusMap.OK);
+      const next = await begin({ ...ASSET, readableId: 'secondary' });
+      expect(next.authorizationExpiresAt).not.toBeNull();
+      if (invalidation === 'key deletion') {
+        await database`delete from "auth_passkey" where "id" = 'owner-a-key'`;
+      } else if (invalidation === 'key replacement') {
+        await database`update "auth_passkey" set "publicKey" = 'changed-key' where "id" = 'owner-a-key'`;
+      } else if (invalidation === 'key reassignment') {
+        await database`update "auth_passkey" set "userId" = 'owner-b' where "id" = 'owner-a-key'`;
+      } else if (invalidation === 'credential replacement') {
+        await database`update "auth_passkey" set "credentialID" = 'changed-credential' where "id" = 'owner-a-key'`;
+      } else if (invalidation === 'session deletion') {
+        await database`delete from "auth_session" where "userId" = 'owner-a'`;
+      } else {
+        await database`update "auth_session" set "expiresAt" = ${NOW} where "userId" = 'owner-a'`;
+      }
+      const result = await request({ path: `/approvals/${next.approvalId}/complete`, body: {} });
+      expect(
+        result.status === StatusMap.Forbidden || result.status === StatusMap.Unauthorized,
+      ).toBe(true);
+      const rows =
+        await database`select "published_at" from "asset" where "id" = 'owner-a-asset-secondary'`;
+      expect(rows[0]?.published_at).toBeNull();
+    });
+  });
+}
+
+test('reused authorization still rejects stale content and new publication dependencies', async () => {
+  await withController(async ({ database, begin, complete, request }) => {
+    expect((await complete(await begin())).status).toBe(StatusMap.OK);
+    const next = await begin({ ...ASSET, resourceType: 'entity' });
+    await database`update "entity" set "name" = 'Changed after review' where "id" = 'owner-a-entity-primary'`;
+    const path = `/approvals/${next.approvalId}/complete`;
+    const result = await request({ path, body: {} });
+    expect(result.status).toBe(StatusMap.Conflict);
+    expect(await result.json()).toMatchObject({ state: 'state_changed' });
+    expect((await request({ path, body: {} })).status).toBe(StatusMap.Conflict);
+    expect(await (await request({ path: '/entity/primary' })).json()).toMatchObject({
+      publishedAt: null,
+    });
+    const withdraw = await begin({ ...ASSET, action: 'unpublish' });
+    await database`update "entity" set "image_asset_id" = 'owner-a-asset-primary' where "id" = 'owner-a-entity-primary'`;
+    const entity = await begin({ ...ASSET, resourceType: 'entity' });
+    expect(
+      (await request({ path: `/approvals/${entity.approvalId}/complete`, body: {} })).status,
+    ).toBe(StatusMap.OK);
+    const blocked = await request({ path: `/approvals/${withdraw.approvalId}/complete`, body: {} });
+    expect(blocked.status).toBe(StatusMap.Conflict);
+    expect(await blocked.json()).toMatchObject({ state: 'blocked' });
+    expect(await (await request({ path: '/asset/primary' })).json()).toMatchObject({
+      publishedAt: NOW,
+    });
+  });
+});
+
+test('a failed passkey-approved operation does not open a publication authorization window', async () => {
+  await withController(async ({ database, begin, complete }) => {
+    const approval = await begin();
+    await database`update "asset" set "name" = 'Changed after review' where "id" = 'owner-a-asset-primary'`;
+    expect((await complete(approval)).status).toBe(StatusMap.Conflict);
+    expect((await begin()).authorizationExpiresAt).toBeNull();
+  });
+});

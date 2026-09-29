@@ -54,6 +54,7 @@ async function renderRecord({ statusError = false }: { statusError?: boolean } =
       state: 'ready',
       approvalId: `approval-${state.begins.length}`,
       expiresAt: new Date(Date.now() + APPROVAL_LIFETIME_MS).toISOString(),
+      authorizationExpiresAt: null,
       options: {
         challenge: state.begins.length === 1 ? 'AQ' : 'Ag',
         rpId: 'localhost',
@@ -138,7 +139,7 @@ test('records disclose live sync updates and use fresh passkey approval for publ
   const dialog = within(await screen.findByRole('dialog', { name: 'Publish record' }));
   expect(await dialog.findByText('Meeting notes')).toBeTruthy();
   expect(dialog.getByText(/Future sync updates will also be public/)).toBeTruthy();
-  await user.click(dialog.getByRole('button', { name: 'Confirm with passkey' }));
+  await user.click(dialog.getByRole('button', { name: 'Confirm' }));
   await screen.findByRole('button', { name: 'Unpublish' });
   expect(screen.getByRole('link', { name: 'View public' }).getAttribute('href')).toBe(
     '/public/records/record_public-handle',
@@ -148,7 +149,7 @@ test('records disclose live sync updates and use fresh passkey approval for publ
   expect(
     await screen.findByText(/Referenced assets keep their own publication state/),
   ).toBeTruthy();
-  await user.click(screen.getByRole('button', { name: 'Confirm with passkey' }));
+  await user.click(screen.getByRole('button', { name: 'Confirm' }));
   await screen.findByRole('button', { name: 'Publish' });
   expect(screen.queryByRole('link', { name: 'View public' })).toBeNull();
   expect(state.begins).toEqual([
@@ -179,6 +180,6 @@ test('private record attachments block confirmation and expose an actionable ass
   await user.click(screen.getByRole('button', { name: 'Publish' }));
   const link = await screen.findByRole('link', { name: 'Private attachment' });
   expect(link.getAttribute('href')).toStartWith('/app/assets/attachment');
-  expect(screen.queryByRole('button', { name: 'Confirm with passkey' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
   expect(device.calls).toHaveLength(0);
 });

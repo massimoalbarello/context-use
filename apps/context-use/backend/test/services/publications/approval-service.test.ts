@@ -315,6 +315,8 @@ test('a credential removed after verification input is read cannot approve publi
         passkeys: PASSKEYS,
         now: () => new Date(NOW),
         approvals: {
+          authorizationExpiresAt: (input) => approvals.authorizationExpiresAt(input),
+          completeAuthorizedApproval: (input) => approvals.completeAuthorizedApproval(input),
           create: (input) => approvals.create(input),
           find: (input) => approvals.find(input),
           completeVerifiedApproval: (input) => approvals.completeVerifiedApproval(input),

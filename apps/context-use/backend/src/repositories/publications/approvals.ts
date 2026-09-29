@@ -1,10 +1,11 @@
-import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
+import { type TypedSQL, type TypedTransactionSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
 import type { Queries } from '#backend/queries.gen.ts';
 import type { PublicationRequest, PublicationTransitionResult } from './repository.ts';
 import { executePublication } from './transitions.ts';
 
 const APPROVAL_LIFETIME_MS = 300_000;
+const AUTHORIZATION_LIFETIME_MS = 120_000;
 
 export interface PublicationApproval {
   id: string;
@@ -22,13 +23,19 @@ export interface PublicationCredential {
   transports: string | null;
 }
 
-type ApprovalIdentity = { ownerId: string; sessionId: string; approvalId: string; now: string };
+type AuthorizationIdentity = { ownerId: string; sessionId: string; now: string };
+type ApprovalIdentity = AuthorizationIdentity & { approvalId: string };
 
 export type PublicationApprovalResult =
   | PublicationTransitionResult
   | { state: 'approval_invalid' | 'credential_changed' };
 
 export interface PublicationApprovalsRepositoryContract {
+  authorizationExpiresAt(input: AuthorizationIdentity): Promise<string | null>;
+  completeAuthorizedApproval(
+    input: ApprovalIdentity,
+  ): Promise<PublicationApprovalResult | { state: 'assertion_invalid' }>;
+
   create(input: {
     request: PublicationRequest;
     sessionId: string;
@@ -87,11 +94,68 @@ async function findApproval({ db, ...input }: ApprovalIdentity & { db: TypedSQL<
   };
 }
 
+async function authorizationExpiresAt({
+  db,
+  ...input
+}: AuthorizationIdentity & { db: TypedSQL<Queries> }) {
+  const rows = await db.FindPublicationAuthorization`
+    /* @notNull expiresAt */
+    select authorization."expires_at" as "expiresAt"
+    from "publication_authorization" authorization
+    join "auth_session" session on session."id" = authorization."session_id"
+      and session."userId" = authorization."owner_id"
+    join "auth_passkey" passkey on passkey."id" = authorization."passkey_id"
+      and passkey."userId" = authorization."owner_id"
+      and passkey."credentialID" = authorization."credential_id"
+      and passkey."publicKey" = authorization."public_key"
+    where authorization."session_id" = ${input.sessionId}
+      and authorization."owner_id" = ${input.ownerId}
+      and authorization."expires_at" > ${input.now} and session."expiresAt" > ${input.now}
+  `;
+  return rows[0]?.expiresAt ?? null;
+}
+
+async function executeApproval({
+  db,
+  approval,
+  now,
+}: {
+  db: TypedTransactionSQL<Queries>;
+  approval: PublicationApproval;
+  now: string;
+}) {
+  // Every authorized attempt consumes its review, including a stale or blocked operation.
+  await db.ConsumePublicationApproval`
+    delete from "publication_approval" where "id" = ${approval.id} and "owner_id" = ${approval.request.ownerId}
+  `;
+  return executePublication({
+    db,
+    input: { ...approval.request, expectedState: approval.expectedState, publishedAt: now },
+  });
+}
+
 export class PublicationApprovalsRepository implements PublicationApprovalsRepositoryContract {
   private readonly sql: TypedSQL<Queries>;
 
   constructor(sql: SQL) {
     this.sql = withTypes<Queries>(sql);
+  }
+
+  authorizationExpiresAt(input: AuthorizationIdentity): Promise<string | null> {
+    return authorizationExpiresAt({ db: this.sql, ...input });
+  }
+
+  completeAuthorizedApproval(input: ApprovalIdentity) {
+    return this.sql.begin('immediate', async (db) => {
+      const approval = await findApproval({ db, ...input });
+      if (!approval) {
+        return { state: 'approval_invalid' as const };
+      }
+      if (!(await authorizationExpiresAt({ db, ...input }))) {
+        return { state: 'assertion_invalid' as const };
+      }
+      return executeApproval({ db, approval, now: input.now });
+    });
   }
 
   create({
@@ -151,18 +215,20 @@ export class PublicationApprovalsRepository implements PublicationApprovalsRepos
       if (!approval) {
         return { state: 'approval_invalid' };
       }
-      // A verified attempt is single-use even when reviewed state is no longer eligible.
-      await db.ConsumePublicationApproval`
-        delete from "publication_approval" where "id" = ${approval.id} and "owner_id" = ${input.ownerId}
-          and "session_id" = ${input.sessionId}
-      `;
+      // Invalid credentials also consume this verified attempt.
+      const rejectCredential = async () => {
+        await db.RejectPublicationApproval`
+          delete from "publication_approval" where "id" = ${approval.id} and "owner_id" = ${input.ownerId}
+        `;
+        return { state: 'credential_changed' as const };
+      };
       const { credential, newCounter } = input;
       if (
         !Number.isSafeInteger(newCounter) ||
         newCounter < 0 ||
         (newCounter <= credential.counter && !(newCounter === 0 && credential.counter === 0))
       ) {
-        return { state: 'credential_changed' };
+        return rejectCredential();
       }
       const updated = await db.AdvancePublicationCredentialCounter`
         update "auth_passkey" set "counter" = ${newCounter}
@@ -172,16 +238,24 @@ export class PublicationApprovalsRepository implements PublicationApprovalsRepos
         returning "id"
       `;
       if (!updated.length) {
-        return { state: 'credential_changed' };
+        return rejectCredential();
       }
-      return executePublication({
-        db,
-        input: {
-          ...approval.request,
-          expectedState: approval.expectedState,
-          publishedAt: input.now,
-        },
-      });
+      const result = await executeApproval({ db, approval, now: input.now });
+      if (result.state === 'changed' || result.state === 'unchanged') {
+        const expiresAt = new Date(
+          new Date(input.now).getTime() + AUTHORIZATION_LIFETIME_MS,
+        ).toISOString();
+        await db.GrantPublicationAuthorization`
+          insert into "publication_authorization"
+            ("session_id", "owner_id", "passkey_id", "credential_id", "public_key", "expires_at")
+          values (${input.sessionId}, ${input.ownerId}, ${credential.id}, ${credential.credentialId}, ${credential.publicKey}, ${expiresAt})
+          on conflict ("session_id") do update set
+            "owner_id" = excluded."owner_id", "passkey_id" = excluded."passkey_id",
+            "credential_id" = excluded."credential_id", "public_key" = excluded."public_key",
+            "expires_at" = excluded."expires_at"
+        `;
+      }
+      return result;
     });
   }
 }

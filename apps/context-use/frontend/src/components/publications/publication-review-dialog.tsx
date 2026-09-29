@@ -207,7 +207,7 @@ function ReviewActions({
             ? 'Waiting for passkey…'
             : approval.completing
               ? 'Applying…'
-              : 'Confirm with passkey'}
+              : 'Confirm'}
         </Button>
       )}
     </div>
