@@ -3,26 +3,26 @@ import fresh from 'fresh';
 import type { StoredAsset } from '#backend/models/assets/model.ts';
 import { assetContentResponse } from '#backend/routes/asset-content-response.ts';
 
-/** Called only after resolving the current actor's available asset and stored file. */
-export function privateAssetContentResponse({
+/** Call only after checking access to the current asset and availability of its stored file. */
+export function revalidatedAssetContentResponse({
   asset,
   blob,
   inline,
   request,
+  cacheKey,
+  vary,
 }: {
-  asset: Pick<
-    StoredAsset,
-    'ownerId' | 'id' | 'contentHash' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
-  >;
+  asset: Pick<StoredAsset, 'contentHash' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'>;
   blob: Blob;
   inline: boolean;
   request: Request;
+  cacheKey: string;
+  vary?: string;
 }): Response {
   const version = new Bun.CryptoHasher('sha256')
     .update(
       JSON.stringify([
-        asset.ownerId,
-        asset.id,
+        cacheKey,
         asset.contentHash,
         asset.name,
         asset.mediaType,
@@ -32,11 +32,13 @@ export function privateAssetContentResponse({
     )
     .digest('hex');
   const etag = `"${version}"`;
-  const cacheHeaders = {
+  const cacheHeaders = new Headers({
     etag,
     'cache-control': 'private, no-cache',
-    vary: 'Cookie, Authorization',
-  };
+  });
+  if (vary) {
+    cacheHeaders.set('vary', vary);
+  }
   if (fresh(Object.fromEntries(request.headers), { etag })) {
     return new Response(null, { status: StatusMap['Not Modified'], headers: cacheHeaders });
   }
@@ -49,7 +51,7 @@ export function privateAssetContentResponse({
   });
   // Failed range requests should not replace a cached representation.
   if (response.ok) {
-    for (const [name, value] of Object.entries(cacheHeaders)) {
+    for (const [name, value] of cacheHeaders) {
       response.headers.set(name, value);
     }
   }

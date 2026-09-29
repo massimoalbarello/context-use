@@ -151,6 +151,7 @@ test('public reads stream stored bytes and restricted projections, identically w
     const content = await service.assetContent({ publicId });
     expect(Object.keys(content!).sort()).toEqual(['asset', 'blob']);
     expect(content?.asset).toEqual({
+      contentHash: expect.any(String),
       name: 'Approved image',
       mediaType: 'image/png',
       extension: 'png',
@@ -168,7 +169,8 @@ test('public reads stream stored bytes and restricted projections, identically w
     expect(new Uint8Array(await withCookie.arrayBuffer())).toEqual(PNG);
     expect(anonymous.headers.get('content-type')).toBe('image/png');
     expect(anonymous.headers.get('content-disposition')).toStartWith('inline;');
-    expect(anonymous.headers.get('cache-control')).toBe('private, no-store');
+    expect(anonymous.headers.get('cache-control')).toBe('private, no-cache');
+    expect(anonymous.headers.get('etag')).toMatch(/^"[a-f0-9]+"$/);
     expect(anonymous.headers.get('x-content-type-options')).toBe('nosniff');
     expect(anonymous.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
     const headers = JSON.stringify([...anonymous.headers]);
@@ -318,7 +320,10 @@ test('public byte ranges use the shared transport after checking publication ava
     const server = Bun.serve({ port: 0, fetch: app.handle });
     const url = new URL(`/public/assets/${publicId}`, server.url);
     try {
-      const partial = await fetch(url, { headers: { range: 'bytes=2-7' } });
+      const original = await fetch(url);
+      const etag = original.headers.get('etag')!;
+      await original.arrayBuffer();
+      const partial = await fetch(url, { headers: { range: 'bytes=2-7', 'if-range': etag } });
       expect(partial.status).toBe(StatusMap['Partial Content']);
       expect(partial.headers.get('content-range')).toBe(`bytes 2-7/${PNG.length}`);
       expect(partial.headers.get('content-length')).toBe('6');
@@ -339,5 +344,58 @@ test('public byte ranges use the shared transport after checking publication ava
     } finally {
       await server.stop(true);
     }
+  });
+});
+
+test('public cache revalidation checks current publication and file availability', async () => {
+  await withPublicAssets(async ({ app, create, transition, storage, assetsRepository }) => {
+    const asset = await create({ name: 'Cached public image' });
+    const publicId = await transition({ readableId: asset.readableId, action: 'publish' });
+    const url = `http://localhost/public/assets/${publicId}`;
+    const original = await app.handle(new Request(url));
+    const etag = original.headers.get('etag')!;
+    await original.arrayBuffer();
+    for (const headers of [
+      new Headers({ 'if-none-match': etag }),
+      new Headers({ 'if-none-match': `W/${etag}`, cookie: 'irrelevant-session' }),
+    ]) {
+      const cached = await app.handle(new Request(url, { headers }));
+      expect(cached.status).toBe(StatusMap['Not Modified']);
+      expect(cached.headers.get('etag')).toBe(etag);
+      expect(cached.headers.get('cache-control')).toBe('private, no-cache');
+      expect(cached.headers.get('content-security-policy')).toBe("default-src 'none'; sandbox");
+      expect(await cached.text()).toBe('');
+    }
+    const identical = await create({ name: 'Cached public image', ownerId: 'owner-b' });
+    const otherId = await transition({
+      readableId: identical.readableId,
+      action: 'publish',
+      ownerId: 'owner-b',
+    });
+    const other = await app.handle(
+      new Request(`http://localhost/public/assets/${otherId}`, {
+        headers: { 'if-none-match': etag },
+      }),
+    );
+    expect(other.status).toBe(StatusMap.OK);
+    expect(other.headers.get('etag')).not.toBe(etag);
+    await other.arrayBuffer();
+
+    await transition({ readableId: asset.readableId, action: 'unpublish' });
+    const withdrawn = await app.handle(new Request(url, { headers: { 'if-none-match': etag } }));
+    expect(withdrawn.status).toBe(StatusMap['Not Found']);
+    expect(withdrawn.headers.has('etag')).toBe(false);
+    expect(withdrawn.headers.get('cache-control')).toBe('private, no-store');
+
+    await transition({ readableId: asset.readableId, action: 'publish' });
+    const stored = (await assetsRepository.find({
+      ownerId: 'owner-a',
+      readableId: asset.readableId,
+    }))!;
+    await storage.delete(stored.storageKey);
+    const missing = await app.handle(new Request(url, { headers: { 'if-none-match': etag } }));
+    expect(missing.status).toBe(StatusMap['Internal Server Error']);
+    expect(missing.headers.has('etag')).toBe(false);
+    expect(missing.headers.get('cache-control')).toBe('private, no-store');
   });
 });

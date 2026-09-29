@@ -138,6 +138,7 @@ export class PublicResourcesService {
     });
     return {
       asset: {
+        contentHash: asset.contentHash,
         name: asset.name,
         mediaType: asset.mediaType,
         extension: asset.extension,
