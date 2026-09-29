@@ -1,5 +1,6 @@
 import { getStreamAsArrayBuffer } from 'get-stream';
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
+import { readStoredFile } from '#backend/lib/storage/stored-file.ts';
 import { readVerifiedBytes } from '#backend/lib/storage/verified-file.ts';
 import { detectAssetMedia } from '#backend/models/assets/media.ts';
 import {
@@ -260,13 +261,13 @@ export class AssetsService {
     if (!asset) {
       return null;
     }
-    if (!(await this.storage.exists(asset.storageKey))) {
-      throw new Error(`Asset blob ${asset.id} is missing`);
-    }
-    if ((await this.storage.size(asset.storageKey)) !== asset.sizeBytes) {
-      throw new Error(`Asset blob ${asset.id} failed its size check`);
-    }
-    return { asset, blob: this.storage.file(asset.storageKey) };
+    const blob = await readStoredFile({
+      storage: this.storage,
+      storageKey: asset.storageKey,
+      sizeBytes: asset.sizeBytes,
+      label: `Asset blob ${asset.id}`,
+    });
+    return { asset, blob };
   }
 }
 

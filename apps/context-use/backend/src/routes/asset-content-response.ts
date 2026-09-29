@@ -1,6 +1,14 @@
-import { StatusMap } from 'elysia';
+import { StatusMap, t } from 'elysia';
 import rangeParser from 'range-parser';
 import type { StoredAsset } from '#backend/models/assets/model.ts';
+
+const MAX_CONDITIONAL_HEADER_LENGTH = 8192;
+
+export const AssetContentHeadersSchema = t.Object({
+  range: t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
+  'if-range': t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
+  'if-none-match': t.Optional(t.String({ maxLength: MAX_CONDITIONAL_HEADER_LENGTH })),
+});
 
 function contentDisposition({
   name,
