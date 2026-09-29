@@ -1,7 +1,7 @@
 import { ArrowUpRight } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
-export function isExternalLink({ href, origin }: { href?: string; origin?: string }): boolean {
+function isExternalLink({ href, origin }: { href?: string; origin?: string }): boolean {
   if (!href || href.startsWith('#')) {
     return false;
   }

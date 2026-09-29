@@ -38,7 +38,7 @@ describe('knowledge page Markdown', () => {
     for (const name of ['Same site', 'Relative', 'Section', 'Other page']) {
       const link = screen.getByRole('link', { name });
       expect(link.getAttribute('target')).toBeNull();
-      expect(link.textContent).not.toContain('↗');
+      expect(link.querySelector('svg')).toBeNull();
     }
   });
 

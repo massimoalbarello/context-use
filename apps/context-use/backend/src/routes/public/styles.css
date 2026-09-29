@@ -4,7 +4,6 @@
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 @source "../../../../../../packages/ui/src/components/reading";
 @source "./*.tsx";
-@custom-variant dark (@media (prefers-color-scheme: dark));
 
 @layer base {
   :root {
