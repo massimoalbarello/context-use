@@ -1021,10 +1021,6 @@ export interface IListPublicationCredentialsResult {
     transports: string | null;
 }
 
-/** Result of query `RejectPublicationApproval`. */
-export interface IRejectPublicationApprovalResult {
-}
-
 /** Result of query `AdvancePublicationCredentialCounter`. */
 export interface IAdvancePublicationCredentialCounterResult {
     id: string | null;
@@ -1369,7 +1365,6 @@ export interface Queries {
     DeleteExpiredPublicationApprovals: IDeleteExpiredPublicationApprovalsResult;
     CreatePublicationApproval: ICreatePublicationApprovalResult;
     ListPublicationCredentials: IListPublicationCredentialsResult;
-    RejectPublicationApproval: IRejectPublicationApprovalResult;
     AdvancePublicationCredentialCounter: IAdvancePublicationCredentialCounterResult;
     GrantPublicationAuthorization: IGrantPublicationAuthorizationResult;
     FindPublicationReferringPages: IFindPublicationReferringPagesResult;

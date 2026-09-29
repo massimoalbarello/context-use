@@ -115,23 +115,16 @@ async function authorizationExpiresAt({
   return rows[0]?.expiresAt ?? null;
 }
 
-async function executeApproval({
+async function consumeApproval({
   db,
   approval,
-  now,
 }: {
   db: TypedTransactionSQL<Queries>;
   approval: PublicationApproval;
-  now: string;
 }) {
-  // Every authorized attempt consumes its review, including a stale or blocked operation.
   await db.ConsumePublicationApproval`
     delete from "publication_approval" where "id" = ${approval.id} and "owner_id" = ${approval.request.ownerId}
   `;
-  return executePublication({
-    db,
-    input: { ...approval.request, expectedState: approval.expectedState, publishedAt: now },
-  });
 }
 
 export class PublicationApprovalsRepository implements PublicationApprovalsRepositoryContract {
@@ -154,7 +147,15 @@ export class PublicationApprovalsRepository implements PublicationApprovalsRepos
       if (!(await authorizationExpiresAt({ db, ...input }))) {
         return { state: 'assertion_invalid' as const };
       }
-      return executeApproval({ db, approval, now: input.now });
+      await consumeApproval({ db, approval });
+      return executePublication({
+        db,
+        input: {
+          ...approval.request,
+          expectedState: approval.expectedState,
+          publishedAt: input.now,
+        },
+      });
     });
   }
 
@@ -215,20 +216,15 @@ export class PublicationApprovalsRepository implements PublicationApprovalsRepos
       if (!approval) {
         return { state: 'approval_invalid' };
       }
-      // Invalid credentials also consume this verified attempt.
-      const rejectCredential = async () => {
-        await db.RejectPublicationApproval`
-          delete from "publication_approval" where "id" = ${approval.id} and "owner_id" = ${input.ownerId}
-        `;
-        return { state: 'credential_changed' as const };
-      };
+      // A verified attempt is single-use even if its credential or reviewed state has changed.
+      await consumeApproval({ db, approval });
       const { credential, newCounter } = input;
       if (
         !Number.isSafeInteger(newCounter) ||
         newCounter < 0 ||
         (newCounter <= credential.counter && !(newCounter === 0 && credential.counter === 0))
       ) {
-        return rejectCredential();
+        return { state: 'credential_changed' };
       }
       const updated = await db.AdvancePublicationCredentialCounter`
         update "auth_passkey" set "counter" = ${newCounter}
@@ -238,9 +234,16 @@ export class PublicationApprovalsRepository implements PublicationApprovalsRepos
         returning "id"
       `;
       if (!updated.length) {
-        return rejectCredential();
+        return { state: 'credential_changed' };
       }
-      const result = await executeApproval({ db, approval, now: input.now });
+      const result = await executePublication({
+        db,
+        input: {
+          ...approval.request,
+          expectedState: approval.expectedState,
+          publishedAt: input.now,
+        },
+      });
       if (result.state === 'changed' || result.state === 'unchanged') {
         const expiresAt = new Date(
           new Date(input.now).getTime() + AUTHORIZATION_LIFETIME_MS,
