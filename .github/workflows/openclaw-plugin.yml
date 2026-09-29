@@ -2,6 +2,15 @@ name: openclaw-plugin
 
 on:
   pull_request:
+    paths:
+      - packages/openclaw-memory/**
+      - packages/typescript-config/**
+      - package.json
+      - bun.lock
+      - LICENSE
+      - .bun-version
+      - .github/actions/prepare/**
+      - .github/workflows/openclaw-plugin.yml
   push:
     branches: [main]
     paths:
