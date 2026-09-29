@@ -24,6 +24,9 @@
   gap: 1rem;
   margin: 1.75rem 0;
 }
+.markdown-media-row:not(:has(> *)) {
+  display: none;
+}
 .markdown-asset {
   display: block;
   width: 100%;

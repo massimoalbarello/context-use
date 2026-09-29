@@ -6,7 +6,7 @@ import {
   createRouter,
   RouterContextProvider,
 } from '@tanstack/react-router';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { publicPageMarkdown } from '#backend/models/public-resources/markdown.ts';
@@ -96,13 +96,18 @@ describe('knowledge page Markdown', () => {
       Object.assign(
         (input: Parameters<typeof globalThis.fetch>[0]) => {
           const url = String(input instanceof Request ? input.url : input);
-          const readableId = url.includes('/film/') ? 'film' : 'chart';
+          const readableId = url.split('/').at(-2)!;
+          const mediaTypes: Record<string, string> = {
+            chart: 'image/png',
+            film: 'video/mp4',
+            audio: 'audio/aac',
+          };
           return Promise.resolve(
             new Response(
               JSON.stringify({
                 readableId,
                 name: readableId,
-                mediaType: readableId === 'film' ? 'video/mp4' : 'image/png',
+                mediaType: mediaTypes[readableId],
                 extension: null,
                 sizeBytes: 100,
               }),
@@ -118,7 +123,7 @@ describe('knowledge page Markdown', () => {
         <QueryClientProvider client={client}>
           <KnowledgePageMarkdown
             markdown={
-              '# Evidence\n\n![Chart](context-use://asset/chart){layout=half}\n![Film](context-use://asset/film){layout=half}\n\n![Centered][chart]{size=large align=center}\n\n[chart]: context-use://asset/chart\n\n[Download model](context-use://asset/financial-model)\n\n`{size=large align=center}`\n\n[![Linked image](context-use://asset/chart){size=small}](https://example.com)'
+              '# Evidence\n\n![Chart](context-use://asset/chart){layout=half}\n![Film](context-use://asset/film){layout=half}\n\n![Centered][chart]{size=large align=center}\n\n![Soundtrack](context-use://asset/audio)\n\n[chart]: context-use://asset/chart\n\n[Download model](context-use://asset/financial-model)\n\n`{size=large align=center}`\n\n[![Linked image](context-use://asset/chart){size=small}](https://example.com)'
             }
           />
         </QueryClientProvider>,
@@ -134,6 +139,9 @@ describe('knowledge page Markdown', () => {
       expect(video.hasAttribute('controls')).toBe(true);
       expect(screen.queryByText('Chart')).toBeNull();
       expect(screen.queryByText('Film')).toBeNull();
+      await waitFor(() => expect(screen.queryAllByRole('status')).toHaveLength(0));
+      expect(screen.queryByLabelText('Soundtrack')).toBeNull();
+      expect(screen.queryByText('Soundtrack')).toBeNull();
       expect(screen.queryByRole('link', { name: 'Open asset' })).toBeNull();
       expect(screen.queryByText('{layout=half}')).toBeNull();
       expect(screen.getAllByText('{size=large align=center}')).toHaveLength(1);

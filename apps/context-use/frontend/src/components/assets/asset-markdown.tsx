@@ -44,6 +44,9 @@ export function AssetMarkdownEmbed({
   linked?: boolean;
 }) {
   const preview = useQuery(assetPreviewQueryOptions(readableId));
+  if (preview.data?.mediaType.startsWith('audio/')) {
+    return null;
+  }
   const openAsset = linked ? null : (
     <AssetMarkdownLink readableId={readableId}>Open asset</AssetMarkdownLink>
   );
