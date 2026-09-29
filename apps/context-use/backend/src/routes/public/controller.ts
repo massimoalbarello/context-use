@@ -2,10 +2,7 @@ import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema, NotFoundError } from '#backend/lib/errors.ts';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
-import {
-  AssetContentHeadersSchema,
-  assetContentResponse,
-} from '#backend/routes/asset-content-response.ts';
+import { AssetContentHeadersSchema } from '#backend/routes/asset-content-response.ts';
 import { createPublicDiscoveryController } from '#backend/routes/public/discovery-controller.ts';
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';
 import { publicEntityHtml } from '#backend/routes/public/entity.tsx';
@@ -13,6 +10,7 @@ import { publicEntityMarkdown } from '#backend/routes/public/markdown.ts';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
 import { publicRecordHtml } from '#backend/routes/public/record.tsx';
 import { publicNotFound, publicReadingResponse } from '#backend/routes/public/response.tsx';
+import { revalidatedAssetContentResponse } from '#backend/routes/revalidated-asset-content-response.ts';
 import type { PublicResourcesServiceContract } from '#backend/services/public-resources/service.ts';
 import { emptyPublicHomepageHtml } from './homepage.tsx';
 
@@ -216,10 +214,11 @@ export function createPublicController({
         if (!content) {
           throw new NotFoundError();
         }
-        const response = assetContentResponse({
+        const response = revalidatedAssetContentResponse({
           asset: content.asset,
           blob: content.blob,
           request,
+          cacheKey: params.publicId,
           inline:
             isEmbeddableAssetMedia(content.asset.mediaType) ||
             isVideoAssetMedia(content.asset.mediaType),
@@ -235,6 +234,7 @@ export function createPublicController({
         response: {
           [StatusMap.OK]: t.File(),
           [StatusMap['Partial Content']]: t.File(),
+          [StatusMap['Not Modified']]: t.Void(),
           [StatusMap['Range Not Satisfiable']]: t.Void(),
           [StatusMap['Not Found']]: ErrorResponseSchema,
           [StatusMap['Internal Server Error']]: ErrorResponseSchema,

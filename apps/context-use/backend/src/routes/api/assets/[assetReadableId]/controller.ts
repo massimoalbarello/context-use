@@ -2,7 +2,6 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
-import { privateAssetContentResponse } from '#backend/routes/api/assets/content-response.ts';
 import {
   AssetContentQuerySchema,
   AssetParamsSchema,
@@ -16,6 +15,7 @@ import {
 } from '#backend/routes/api/assets/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import { AssetContentHeadersSchema } from '#backend/routes/asset-content-response.ts';
+import { revalidatedAssetContentResponse } from '#backend/routes/revalidated-asset-content-response.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
 
 export function createAssetReadableIdController({
@@ -79,11 +79,13 @@ export function createAssetReadableIdController({
             headers: { 'content-type': 'application/json', 'cache-control': 'private, no-store' },
           });
         }
-        return privateAssetContentResponse({
+        return revalidatedAssetContentResponse({
           asset: content.asset,
           blob: content.blob,
           inline: query.download !== 'true',
           request,
+          cacheKey: `${content.asset.ownerId}:${content.asset.id}`,
+          vary: 'Cookie, Authorization',
         });
       },
       {
