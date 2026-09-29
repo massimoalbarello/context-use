@@ -2,7 +2,7 @@ import { type Button, buttonVariants } from '@repo/ui/button';
 import type { ComponentProps } from 'react';
 import { Badge } from '../ui/badge';
 
-export const publicActionClassName =
+const publicActionClassName =
   'bg-public text-public-foreground hover:bg-public-foreground/15 hover:text-public-foreground focus-visible:border-public-foreground/40 focus-visible:ring-public-foreground/20 dark:hover:bg-public-foreground/15';
 
 export function PublicBadge() {

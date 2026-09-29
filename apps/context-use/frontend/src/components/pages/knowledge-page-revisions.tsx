@@ -2,7 +2,7 @@ import { Collapsible } from '@base-ui/react/collapsible';
 import { Button } from '@repo/ui/button';
 import { ChevronDown } from 'lucide-react';
 import type { KnowledgePage } from '../../queries/pages';
-import { PublicBadge, publicActionClassName } from '../publications/publication-appearance';
+import { PublicBadge } from '../publications/publication-appearance';
 import { Badge } from '../ui/badge';
 import { KnowledgePageRevisionComparison } from './knowledge-page-revision-comparison';
 import { TemporalCoverageLabel } from './temporal-coverage-label';
@@ -60,8 +60,7 @@ export function KnowledgePageRevisions({
               <div className="flex shrink-0 gap-1">
                 {publication && revision.revisionNumber !== publication.publishedRevisionNumber && (
                   <Button
-                    variant="ghost"
-                    className={publicActionClassName}
+                    variant="outline"
                     size="sm"
                     aria-label={`Publish revision ${revision.revisionNumber}`}
                     disabled={publication.pending}

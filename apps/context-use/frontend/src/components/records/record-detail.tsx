@@ -9,7 +9,7 @@ import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceList } from '../knowledge/resource-list';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
-import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
+import { ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
@@ -90,8 +90,7 @@ function RecordDetailContent({
                   />
                 )}
                 <Button
-                  variant={isPublic ? 'outline' : 'ghost'}
-                  className={isPublic ? undefined : publicActionClassName}
+                  variant="outline"
                   size="sm"
                   disabled={!!approval.request}
                   onClick={() =>
