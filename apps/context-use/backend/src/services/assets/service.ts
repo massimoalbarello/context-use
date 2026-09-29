@@ -158,6 +158,13 @@ export class AssetsService {
     ) {
       return { state: 'conflict' };
     }
+    await readVerifiedBytes({
+      storage: this.storage,
+      storageKey: existing.asset.storageKey,
+      contentHash: existing.asset.contentHash,
+      sizeBytes: existing.asset.sizeBytes,
+      label: `Asset blob ${existing.asset.id}`,
+    });
     return { state: 'ready', readableId: existing.asset.readableId };
   }
 
@@ -256,14 +263,13 @@ export class AssetsService {
     if (!asset) {
       return null;
     }
-    const bytes = await readVerifiedBytes({
-      storage: this.storage,
-      storageKey: asset.storageKey,
-      contentHash: asset.contentHash,
-      sizeBytes: asset.sizeBytes,
-      label: `Asset blob ${asset.id}`,
-    });
-    return { asset, blob: new Blob([bytes], { type: asset.mediaType }) };
+    if (!(await this.storage.exists(asset.storageKey))) {
+      throw new Error(`Asset blob ${asset.id} is missing`);
+    }
+    if ((await this.storage.size(asset.storageKey)) !== asset.sizeBytes) {
+      throw new Error(`Asset blob ${asset.id} failed its size check`);
+    }
+    return { asset, blob: this.storage.file(asset.storageKey) };
   }
 }
 

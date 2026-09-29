@@ -46,6 +46,7 @@ import {
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
 const SHA256_HEX_LENGTH = 64;
+const RANGE_CHUNK_BYTES = 8;
 const EXPECTED_ASSET_BLOCKER_COUNT = 3;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
@@ -188,6 +189,61 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(downloadResponse.status).toBe(StatusMap.OK);
     expect(downloadResponse.headers.get('content-disposition')).toStartWith('attachment;');
+
+    // Exercise the actual Bun transport as well as Elysia's request handler.
+    const server = Bun.serve({ port: 0, fetch: app.handle });
+    try {
+      for (const [range, start, end] of [
+        ['bytes=0-7', 0, RANGE_CHUNK_BYTES - 1],
+        ['bytes=8-', RANGE_CHUNK_BYTES, pngBytes.length - 1],
+        ['bytes=-8', pngBytes.length - RANGE_CHUNK_BYTES, pngBytes.length - 1],
+        ['bytes=0-999999', 0, pngBytes.length - 1],
+        ['bytes=-999999', 0, pngBytes.length - 1],
+      ] as const) {
+        const response = await fetch(new URL('/api/assets/quarterly-chart/content', server.url), {
+          headers: { range },
+        });
+        expect(response.status).toBe(StatusMap['Partial Content']);
+        expect(response.headers.get('accept-ranges')).toBe('bytes');
+        expect(response.headers.get('content-range')).toBe(
+          `bytes ${start}-${end}/${pngBytes.length}`,
+        );
+        expect(response.headers.get('content-length')).toBe(String(end - start + 1));
+        expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+          pngBytes.subarray(start, end + 1),
+        );
+      }
+      const unsatisfiable = await app.handle(
+        new Request('http://localhost/api/assets/quarterly-chart/content', {
+          headers: { range: `bytes=${pngBytes.length}-` },
+        }),
+      );
+      expect(unsatisfiable.status).toBe(StatusMap['Range Not Satisfiable']);
+      expect(unsatisfiable.headers.get('content-range')).toBe(`bytes */${pngBytes.length}`);
+      expect(await unsatisfiable.text()).toBe('');
+      const fallbackHeaders: Record<string, string>[] = [
+        { range: 'nonsense' },
+        { range: 'items=0-2' },
+        { range: 'bytes=0-2,5-7' },
+        { range: 'bytes=0-2', 'if-range': '"old-version"' },
+      ];
+      for (const headers of fallbackHeaders) {
+        const response = await fetch(new URL('/api/assets/quarterly-chart/content', server.url), {
+          headers,
+        });
+        expect(response.status).toBe(StatusMap.OK);
+        expect(new Uint8Array(await response.arrayBuffer())).toEqual(pngBytes);
+      }
+      const missing = await app.handle(
+        new Request('http://localhost/api/assets/unknown/content', {
+          headers: { range: 'bytes=0-1' },
+        }),
+      );
+      expect(missing.status).toBe(StatusMap['Not Found']);
+      expect(missing.headers.has('content-range')).toBe(false);
+    } finally {
+      await server.stop(true);
+    }
 
     const pdfBytes = Buffer.from('%PDF-1.7\nasset preview');
     const pdfForm = new FormData();

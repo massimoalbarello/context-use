@@ -109,7 +109,7 @@ test('both entry points notify after saving, and notification failures cannot de
   });
 });
 
-test('asset reads return verified bytes and reject missing or corrupt stored content', async () => {
+test('asset reads stay file-backed and reject missing or truncated content; imports verify hashes', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       await input.database`insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (${OWNER_USER_ID}, 'Owner', 'owner@example.invalid', 1, '2026-09-24', '2026-09-24')`;
@@ -127,14 +127,21 @@ test('asset reads return verified bytes and reject missing or corrupt stored con
         change: { clientName: null, message: 'Upload' },
       });
       const content = (await assets.content(scope))!;
-      expect(content.blob.type.split(';')[0]).toBe(content.asset.mediaType);
-      for (const corrupt of ['replaced', 'short']) {
-        await storage.write(content.asset.storageKey, new Blob([corrupt]));
-        await expect(assets.content(scope)).rejects.toThrow('integrity check');
-      }
+      expect(await content.blob.text()).toBe('original');
+      await storage.write(content.asset.storageKey, new Blob(['replaced']));
+      expect(await (await assets.content(scope))!.blob.text()).toBe('replaced');
+      await expect(
+        assets.import({
+          asset: { ...content.asset },
+          signal: new AbortController().signal,
+          change: { clientName: null, message: 'Import' },
+          read: async () => new Blob(['original']).stream(),
+        }),
+      ).rejects.toThrow('integrity check');
+      await storage.write(content.asset.storageKey, new Blob(['short']));
+      await expect(assets.content(scope)).rejects.toThrow('size check');
       await storage.delete(content.asset.storageKey);
       await expect(assets.content(scope)).rejects.toThrow('missing');
-      expect(await content.blob.text()).toBe('original');
     },
   });
 });
