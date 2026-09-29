@@ -17,3 +17,48 @@
   --public: #052e16;
   --public-foreground: #86efac;
 }
+
+.markdown-media-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1.75rem 0;
+}
+.markdown-asset {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 1.75rem 0;
+}
+.markdown-media-row > .markdown-asset {
+  margin-block: 0;
+}
+.markdown-asset img,
+.markdown-asset video {
+  display: block;
+  width: 100%;
+  max-height: 36rem;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  margin: 0;
+}
+.markdown-asset.asset-small {
+  max-width: 20rem;
+}
+.markdown-asset.asset-medium {
+  max-width: 32rem;
+}
+.markdown-asset.asset-center {
+  margin-inline: auto;
+}
+.markdown-asset.asset-right {
+  margin-left: auto;
+}
+.markdown-asset.asset-left {
+  margin-right: auto;
+}
+@media (min-width: 40rem) {
+  .markdown-asset.asset-half {
+    width: calc(50% - 0.5rem);
+  }
+}

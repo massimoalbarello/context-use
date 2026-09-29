@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import Papa from 'papaparse';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, type ReactNode, Suspense, useState } from 'react';
 import { assetContentUrl, isEmbeddableAsset, isVideoAsset } from '../../lib/asset-presentation';
 import { assetDocumentQueryOptions, MAX_DOCUMENT_PREVIEW_BYTES } from '../../queries/assets';
 import { AssetPreviewFallback } from './asset-preview-fallback';
@@ -21,15 +21,27 @@ type PreviewableAsset = {
   sizeBytes?: number;
 };
 
-export function AssetMedia(props: { asset: PreviewableAsset; className: string }) {
+export function AssetMedia(props: {
+  asset: PreviewableAsset;
+  className: string;
+  fallback?: ReactNode;
+}) {
   return <AssetMediaContent key={props.asset.readableId} {...props} />;
 }
 
-function AssetMediaContent({ asset, className }: { asset: PreviewableAsset; className: string }) {
+function AssetMediaContent({
+  asset,
+  className,
+  fallback,
+}: {
+  asset: PreviewableAsset;
+  className: string;
+  fallback?: ReactNode;
+}) {
   const [failed, setFailed] = useState(false);
   const contentUrl = assetContentUrl(asset.readableId);
   if (failed) {
-    return <AssetPreviewFallback message="This file could not be previewed." />;
+    return fallback ?? <AssetPreviewFallback message="This file could not be previewed." />;
   }
   if (isEmbeddableAsset(asset)) {
     return (

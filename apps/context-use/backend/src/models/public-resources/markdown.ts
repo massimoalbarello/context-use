@@ -2,6 +2,7 @@ import type { Nodes, Root, RootContent } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
+import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { internalReferenceFromLink } from '#backend/models/knowledge-pages/markdown.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
 import { ASSET_ADDRESS_PREFIX } from '#backend/models/readable-ids/addresses.ts';
@@ -39,7 +40,11 @@ function linkDestination({
   if (!target) {
     return reference.kind === 'page' ? null : undefined;
   }
-  if (link.embedded && !isEmbeddableAssetMedia(target.mediaType ?? '')) {
+  if (
+    link.embedded &&
+    !isEmbeddableAssetMedia(target.mediaType ?? '') &&
+    !isVideoAssetMedia(target.mediaType ?? '')
+  ) {
     return null;
   }
   const resource = { page: 'pages', entity: 'entities', asset: 'assets', record: 'records' }[
@@ -147,4 +152,14 @@ export function publicRecordMarkdown({
         : null;
     },
   });
+}
+
+export function publicAssetMedia(targets: PublicMarkdownTarget[]): Record<string, string> {
+  return Object.fromEntries(
+    targets.flatMap((target) =>
+      target.kind === 'asset' && target.mediaType
+        ? [[`/public/assets/${encodeURIComponent(target.publicId)}`, target.mediaType]]
+        : [],
+    ),
+  );
 }

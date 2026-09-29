@@ -2,6 +2,7 @@ import type { Storage } from '#backend/lib/storage/storage.ts';
 import { readVerifiedBytes, readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import { InvalidKnowledgePageMarkdownError } from '#backend/models/knowledge-pages/markdown.ts';
 import {
+  publicAssetMedia,
   publicPageMarkdown,
   publicRecordMarkdown,
 } from '#backend/models/public-resources/markdown.ts';
@@ -72,7 +73,12 @@ export class PublicResourcesService {
       });
       return markdown === null
         ? null
-        : { title: page.title, markdown, modifiedAt: page.modifiedAt };
+        : {
+            title: page.title,
+            markdown,
+            modifiedAt: page.modifiedAt,
+            assetMedia: publicAssetMedia(page.targets),
+          };
     } catch (error) {
       if (error instanceof InvalidKnowledgePageMarkdownError) {
         return null;
@@ -98,7 +104,9 @@ export class PublicResourcesService {
       label: 'Public record',
     });
     const markdown = publicRecordMarkdown({ markdown: source, targets: record.targets });
-    return markdown === null ? null : { title: record.title, markdown };
+    return markdown === null
+      ? null
+      : { title: record.title, markdown, assetMedia: publicAssetMedia(record.targets) };
   }
 
   entityContent(input: { publicId: string }) {

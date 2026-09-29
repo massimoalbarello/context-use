@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   ContextRecordMarkdown,
@@ -61,11 +63,26 @@ describe('external record Markdown', () => {
   });
 });
 
-test('renders local asset images and attachments while suppressing external and malformed image addresses', () => {
-  const html = renderToStaticMarkup(
-    <ContextRecordMarkdown
-      label="Attachments"
-      markdown={`![Diagram][image]
+test('renders local asset images and attachments while suppressing external and malformed image addresses', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const fetch = spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        readableId: 'local-diagram',
+        name: 'Diagram',
+        mediaType: 'image/png',
+        sizeBytes: 100,
+        extension: 'png',
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    ),
+  );
+  try {
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ContextRecordMarkdown
+          label="Attachments"
+          markdown={`![Diagram][image]{size=large align=center}
 
 [Download](context-use://asset/notes)
 
@@ -74,11 +91,20 @@ test('renders local asset images and attachments while suppressing external and 
 ![External](https://tracker.example/pixel.png)
 
 ![Malformed](context-use://asset/../../private)`}
-    />,
-  );
-  expect(html).toContain('src="/api/assets/local-diagram/content"');
-  expect(html).toContain('href="/api/assets/notes/content"');
-  expect(html).toContain('alt="Diagram"');
-  expect(html).not.toContain('tracker.example');
-  expect(html).not.toContain('../../private');
+        />
+      </QueryClientProvider>,
+    );
+    await screen.findByRole('img', { name: 'Diagram' });
+    const html = view.container.innerHTML;
+    expect(html).toContain('src="/api/assets/local-diagram/content"');
+    expect(html).toContain('href="/api/assets/notes/content"');
+    expect(html).toContain('alt="Diagram"');
+    expect(html).not.toContain('tracker.example');
+    expect(html).not.toContain('../../private');
+    expect(html).not.toContain('{size=large align=center}');
+  } finally {
+    cleanup();
+    client.clear();
+    fetch.mockRestore();
+  }
 });

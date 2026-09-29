@@ -5,6 +5,17 @@ import { DEFAULT_PUBLIC_SITE_NAME } from '#backend/lib/runtime-config.ts';
 const DESCRIPTION_LENGTH = 280;
 
 const READING_STYLES = `
+.markdown-media-row { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.75rem 0; }
+.markdown-asset { display: block; width: 100%; min-width: 0; margin: 1.75rem 0; }
+.markdown-media-row > .markdown-asset { margin-block: 0; }
+.markdown-asset img, .markdown-asset video { display: block; width: 100%; max-height: 36rem; object-fit: contain; border-radius: .75rem; margin: 0; }
+.markdown-asset.asset-small { max-width: 20rem; }
+.markdown-asset.asset-medium { max-width: 32rem; }
+.markdown-asset.asset-center { margin-inline: auto; }
+.markdown-asset.asset-right { margin-left: auto; }
+.markdown-asset.asset-left { margin-right: auto; }
+@media (min-width: 40rem) { .markdown-asset.asset-half { width: calc(50% - .5rem); } }
+
 :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; color: #292723; background: #faf9f6; }
 * { box-sizing: border-box; }
 body { margin: 0; }
@@ -145,4 +156,4 @@ export function publicDocument({
 
 const STYLE_HASH = new Bun.CryptoHasher('sha256').update(READING_STYLES).digest('base64');
 
-export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; img-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads`;
+export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads`;

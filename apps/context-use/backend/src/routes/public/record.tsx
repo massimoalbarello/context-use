@@ -5,10 +5,12 @@ export function publicRecordHtml({
   publicId,
   title,
   markdown,
+  assetMedia,
 }: {
   publicId: string;
   title: string;
   markdown: string;
+  assetMedia?: Record<string, string>;
 }): string {
   return publicDocument({
     title,
@@ -18,6 +20,7 @@ export function publicRecordHtml({
         <h1>{title}</h1>
         <PublicMarkdown
           markdown={markdown}
+          assetMedia={assetMedia}
           components={{
             h1: ({ children, node }) =>
               node?.position?.start.line === 1 && children === title ? null : <h2>{children}</h2>,
