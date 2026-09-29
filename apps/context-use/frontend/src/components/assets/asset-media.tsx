@@ -67,11 +67,7 @@ function AssetMediaContent({
       />
     );
   }
-  if (
-    ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/flac'].includes(
-      asset.mediaType,
-    )
-  ) {
+  if (asset.mediaType.startsWith('audio/')) {
     return (
       // biome-ignore lint/a11y/useMediaCaption: uploaded audio has no paired transcript asset.
       <audio
