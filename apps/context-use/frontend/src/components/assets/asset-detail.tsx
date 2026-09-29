@@ -21,7 +21,7 @@ import { ResourceList } from '../knowledge/resource-list';
 import { ResourceName, ResourceNameInput } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
-import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
+import { ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
@@ -148,8 +148,7 @@ function AssetPublicationActions({
         <ViewPublicLink size="lg" href={`/public/assets/${encodeURIComponent(publicId)}`} />
       )}
       <Button
-        variant={isPublic ? 'outline' : 'ghost'}
-        className={isPublic ? undefined : publicActionClassName}
+        variant={isPublic ? 'outline' : 'secondary'}
         size="lg"
         disabled={unavailable}
         onClick={onReview}

@@ -21,7 +21,7 @@ import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { KnowledgePageRevisions } from '../pages/knowledge-page-revisions';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
-import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
+import { ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
@@ -461,8 +461,7 @@ function PagePublicationActions({
         <ViewPublicLink href={`/public/pages/${encodeURIComponent(publicId)}`} />
       )}
       <Button
-        variant={isPublic ? 'outline' : 'ghost'}
-        className={isPublic ? undefined : publicActionClassName}
+        variant={isPublic ? 'outline' : 'secondary'}
         size="lg"
         disabled={unavailable}
         onClick={onReview}

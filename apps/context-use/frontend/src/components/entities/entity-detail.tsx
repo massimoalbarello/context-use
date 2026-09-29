@@ -20,7 +20,7 @@ import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceName } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
-import { publicActionClassName, ViewPublicLink } from '../publications/publication-appearance';
+import { ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { Badge } from '../ui/badge';
@@ -206,8 +206,7 @@ function EntityPublicationActions({
         <ViewPublicLink size="lg" href={`/public/entities/${encodeURIComponent(publicId)}`} />
       )}
       <Button
-        variant={isPublic ? 'outline' : 'ghost'}
-        className={isPublic ? undefined : publicActionClassName}
+        variant={isPublic ? 'outline' : 'secondary'}
         size="lg"
         disabled={unavailable}
         onClick={onReview}
