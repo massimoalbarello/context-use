@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -6,14 +6,22 @@ import {
   createRouter,
   RouterContextProvider,
 } from '@tanstack/react-router';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { publicPageMarkdown } from '#backend/models/public-resources/markdown.ts';
 import { publicPageHtml } from '#backend/routes/public/page.tsx';
 import { KnowledgePageMarkdown } from '../../src/components/pages/knowledge-page-markdown';
+import { mockViewport } from '../support/viewport';
 
-afterEach(cleanup);
+let viewport: ReturnType<typeof mockViewport>;
+beforeEach(() => {
+  viewport = mockViewport();
+});
+afterEach(() => {
+  cleanup();
+  viewport.restore();
+});
 
 describe('knowledge page Markdown', () => {
   test('announces new tabs only for external destinations', async () => {
@@ -207,6 +215,39 @@ describe('knowledge page Markdown', () => {
     } finally {
       cleanup();
       client.clear();
+      fetch.mockRestore();
+    }
+  });
+  test('embedded summaries avoid metadata requests and offscreen media waits for its viewport', () => {
+    viewport.automatic = false;
+    const fetch = spyOn(globalThis, 'fetch').mockRejectedValue(
+      new Error('Unexpected metadata request'),
+    );
+    try {
+      const assets = [
+        { readableId: 'chart', name: 'Chart', mediaType: 'image/png', sizeBytes: 100 },
+        { readableId: 'film', name: 'Film', mediaType: 'video/mp4', sizeBytes: 100 },
+      ];
+      const markdown = '![Chart](context-use://asset/chart)\n\n![Film](context-use://asset/film)';
+      const view = render(<KnowledgePageMarkdown markdown={markdown} assets={assets} />);
+      expect(screen.queryByRole('img')).toBeNull();
+      expect(screen.queryByLabelText('Film')).toBeNull();
+      expect(fetch).not.toHaveBeenCalled();
+      const [first, second] = [...viewport.enter.values()];
+      act(() => first!());
+      expect(screen.getByRole('img', { name: 'Chart' }).getAttribute('src')).toBe(
+        '/api/assets/chart/content',
+      );
+      expect(screen.queryByLabelText('Film')).toBeNull();
+      act(() => second!());
+      const video = screen.getByLabelText('Film');
+      expect(video.getAttribute('preload')).toBe('metadata');
+      expect(video.getAttribute('src')).toBe('/api/assets/film/content');
+      expect(video.hasAttribute('autoplay')).toBe(false);
+      view.rerender(<KnowledgePageMarkdown markdown={markdown} assets={assets} />);
+      expect(screen.getByLabelText('Film')).toBe(video);
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
       fetch.mockRestore();
     }
   });

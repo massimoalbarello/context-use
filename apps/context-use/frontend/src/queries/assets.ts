@@ -8,6 +8,7 @@ import { searchHypermedia } from './hypermedia-search';
 
 export type AssetPage = NonNullable<Awaited<ReturnType<typeof api.api.assets.get>>['data']>;
 export type AssetSummary = AssetPage['items'][number];
+export type AssetPreview = Pick<AssetSummary, 'readableId' | 'name' | 'mediaType' | 'sizeBytes'>;
 export type Asset = NonNullable<
   Awaited<ReturnType<ReturnType<typeof api.api.assets>['get']>>['data']
 >;
