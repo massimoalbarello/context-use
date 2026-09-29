@@ -4,6 +4,7 @@ import { markdownLinks } from './links.ts';
 
 const LAYOUT_CLASSES: Record<string, string> = {
   'layout=half': 'asset-half',
+  'layout=third': 'asset-third',
   'size=small': 'asset-small',
   'size=medium': 'asset-medium',
   'size=large': 'asset-large',
