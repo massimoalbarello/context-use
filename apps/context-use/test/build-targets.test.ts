@@ -152,6 +152,7 @@ const BUILD_PLANS = [
       '@repo/context-use#build:client',
       '@repo/context-use#build:faces',
       '@repo/context-use#build:instance',
+      '@repo/context-use#build:media',
     ],
   },
   {
