@@ -50,7 +50,7 @@ export function PublicMarkdown({
           const entity = href ? mentions[href] : undefined;
           const localFragment = fragmentBase && href?.startsWith('#');
           return entity ? (
-            <a href={href} title={title} className="reading-entity-link">
+            <a href={href} title={title} className="group/entity text-inherit no-underline">
               <InlineEntity {...entity}>{children}</InlineEntity>
             </a>
           ) : (

@@ -656,7 +656,7 @@ test('public mentions preserve authored labels and use only available published 
       });
       const id = await publish({ readableId: page.readableId });
       const fallback = await (await request({ id })).text();
-      expect(fallback).toContain('aria-hidden="true">E</span><span>My friend</span>');
+      expect(fallback).toContain('>E</span><span>My friend</span>');
       await entities.setImage({
         ownerId: 'owner-a',
         readableId: target.entity.readableId,
@@ -665,10 +665,8 @@ test('public mentions preserve authored labels and use only available published 
         change: CHANGE,
       });
       const html = await (await request({ id })).text();
-      expect(html).toContain(
-        `href="/public/entities/${target.entityId}" class="reading-entity-link"`,
-      );
-      expect(html).toContain(`<img src="/public/assets/${target.assetId}" alt=""/>`);
+      expect(html).toContain(`href="/public/entities/${target.entityId}"`);
+      expect(html).toContain(`<img src="/public/assets/${target.assetId}" alt=""`);
       expect(html).toContain('<span>My friend</span>');
       expect(html).not.toContain(target.asset.readableId);
       expect(html).not.toContain(target.asset.name);
@@ -705,9 +703,8 @@ test('public reading distinguishes off-site links from managed pages, same-site 
     expect(html).toContain('href="http://localhost/public">Same site</a>');
     expect(html).toContain('href="#section">Section</a>');
     expect(html).toContain('href="https://example.com" target="_blank" rel="noopener noreferrer"');
-    expect(html).toContain(
-      'Website<span class="reading-external-icon" aria-hidden="true">↗</span><span class="reading-sr-only"> (opens in a new tab)</span>',
-    );
+    expect(html).toContain('Website<svg');
+    expect(html).toContain('<span class="sr-only"> (opens in a new tab)</span>');
     expect(response.headers.get('content-security-policy')).toContain(
       'allow-popups allow-popups-to-escape-sandbox',
     );

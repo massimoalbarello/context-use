@@ -496,7 +496,7 @@ test('preview HTML declares external navigation and local section jumps without 
     expect(preview.html).toContain(
       'href="https://example.com" target="_blank" rel="noopener noreferrer"',
     );
-    expect(preview.html).toContain('Website<span class="reading-external-icon"');
+    expect(preview.html).toContain('Website<svg');
     expect(preview.html).toContain('(opens in a new tab)');
     expect(preview.html).not.toContain('<script');
   } finally {

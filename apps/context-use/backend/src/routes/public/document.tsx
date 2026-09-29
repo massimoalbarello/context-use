@@ -1,62 +1,10 @@
-import readingStyles from '@repo/ui/reading.css' with { type: 'text' };
 import { ReadingLink } from '@repo/ui/reading-link';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DEFAULT_PUBLIC_SITE_NAME } from '#backend/lib/runtime-config.ts';
+import { publicStyles } from './styles.gen.ts';
 
 const DESCRIPTION_LENGTH = 280;
-
-const READING_STYLES = `${readingStyles}
-
-.markdown-media-row { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.75rem 0; }
-.markdown-asset { display: block; width: 100%; min-width: 0; margin: 1.75rem 0; }
-.markdown-media-row > .markdown-asset { margin-block: 0; }
-.markdown-asset img, .markdown-asset video { display: block; width: 100%; max-height: 36rem; object-fit: contain; border-radius: .75rem; margin: 0; }
-.markdown-asset.asset-small { max-width: 20rem; }
-.markdown-asset.asset-medium { max-width: 32rem; }
-.markdown-asset.asset-center { margin-inline: auto; }
-.markdown-asset.asset-right { margin-left: auto; }
-.markdown-asset.asset-left { margin-right: auto; }
-@media (min-width: 40rem) { .markdown-asset.asset-half { width: calc(50% - .5rem); } }
-@media (min-width: 40rem) { .markdown-asset.asset-third { width: calc((100% - 2rem) / 3); } }
-
-:root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, sans-serif; color: #292723; background: #faf9f6; }
-* { box-sizing: border-box; }
-body { margin: 0; }
-main { max-width: 48rem; margin: auto; padding: 3rem 1.5rem 0; }
-nav { display: flex; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 3rem; font-size: .875rem; color: #69655d; }
-article { overflow-wrap: anywhere; line-height: 1.8; font-size: 1.0625rem; }
-h1, h2, h3, h4, h5, h6 { line-height: 1.25; letter-spacing: -.025em; scroll-margin-top: 1.5rem; }
-h1 { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 2rem; }
-h2 { font-size: 1.65rem; margin-top: 2.5rem; }
-h3, h4, h5, h6 { margin-top: 2rem; }
-p, ul, ol { margin: 1.25rem 0; }
-a { color: inherit; text-decoration-color: #8a8479; text-underline-offset: .2em; }
-a:hover { text-decoration-thickness: .15em; }
-a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
-img { display: block; max-width: 100%; height: auto; border-radius: .5rem; margin: 1.5rem auto; }
-blockquote { margin: 1.5rem 0; border-left: 3px solid #c8c2b7; padding-left: 1.25rem; color: #69655d; }
-code { font-size: .875em; background: #eeeae2; padding: .15em .3em; border-radius: .2rem; }
-pre { overflow-x: auto; padding: 1.25rem; background: #eeeae2; border-radius: .5rem; line-height: 1.6; }
-pre code { padding: 0; background: none; }
-footer { max-width: 45rem; width: calc(100% - 3rem); margin: 3.5rem auto 4rem; padding-top: 1.5rem; border-top: 1px solid #d7d1c6; line-height: 1.6; }
-.footer-credit { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-.owner-login { flex-shrink: 0; font-size: .875rem; }
-footer p { margin: 0; font-size: 1rem; }
-footer [role="img"] { margin-inline: .15em; }
-footer .repository { color: #315e4e; font-weight: 700; text-decoration-style: dotted; }
-.footer-details { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-top: .75rem; font-size: .875rem; color: #69655d; }
-.footer-details a { margin-left: auto; font-weight: 600; }
-hr { border: 0; border-top: 1px solid #d7d1c6; margin: 2rem 0; }
-.entity-identity { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
-.entity-identity h1 { margin: 0; }
-.entity-identity > div { flex: 1; min-width: min(15rem, 100%); }
-img.entity-portrait { width: 10rem; height: 10rem; object-fit: cover; margin: 0; }
-.entity-type { margin: 0 0 .5rem; font-size: .875rem; }
-.entity-description { white-space: pre-wrap; }
-@media (max-width: 40rem) { main { padding: 1.5rem 1.25rem 0; } footer { width: calc(100% - 2.5rem); margin-top: 2.5rem; } nav { margin-bottom: 2rem; } }
-@media (prefers-color-scheme: dark) { :root { color: #e9e5dc; background: #201f1c; } nav, blockquote, .footer-details { color: #bbb5a9; } footer { border-color: #514d46; } footer .repository { color: #a1cbb9; } code, pre { background: #302e29; } }
-`;
 
 export function publicDocument({
   title,
@@ -106,7 +54,7 @@ export function publicDocument({
             }).replace(/</g, '\\u003c')}
           </script>
         ) : null}
-        <style>{READING_STYLES}</style>
+        <style>{publicStyles}</style>
       </head>
       <body>
         <main>
@@ -161,6 +109,6 @@ export function publicDocument({
   )}`;
 }
 
-const STYLE_HASH = new Bun.CryptoHasher('sha256').update(READING_STYLES).digest('base64');
+const STYLE_HASH = new Bun.CryptoHasher('sha256').update(publicStyles).digest('base64');
 
 export const PUBLIC_DOCUMENT_CSP = `default-src 'none'; img-src 'self'; media-src 'self'; style-src 'sha256-${STYLE_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-same-origin allow-downloads allow-popups allow-popups-to-escape-sandbox`;

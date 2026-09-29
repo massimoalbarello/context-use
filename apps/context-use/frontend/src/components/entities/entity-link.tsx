@@ -90,7 +90,7 @@ export function EntityLink({ entity, presentation, active, children, search }: E
       <Link
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
-        className="reading-entity-link"
+        className="group/entity text-inherit no-underline"
         to="/app/entities/$id"
         params={{ id: entity.readableId }}
         search={search}

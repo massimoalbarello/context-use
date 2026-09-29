@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
 export function isExternalLink({ href, origin }: { href?: string; origin?: string }): boolean {
@@ -36,10 +37,11 @@ export function ReadingLink({
       {children}
       {external && (
         <>
-          <span className="reading-external-icon" aria-hidden="true">
-            ↗
-          </span>
-          <span className="reading-sr-only"> (opens in a new tab)</span>
+          <ArrowUpRight
+            className="ml-[0.15em] inline size-[0.8em] align-baseline"
+            aria-hidden="true"
+          />
+          <span className="sr-only"> (opens in a new tab)</span>
         </>
       )}
     </a>
