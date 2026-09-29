@@ -95,7 +95,14 @@ function jsonRequest({ method, path, body }: { method: string; path: string; bod
   });
 }
 
-test('assets are server-inspected, linked or assigned, and archived only when unused', async () => {
+async function withAssetsApp(
+  run: (fixture: {
+    app: ReturnType<typeof createApp>;
+    database: Awaited<ReturnType<typeof createSqliteDatabase>>;
+    storage: LocalStorage;
+    timestamp: string;
+  }) => Promise<void>,
+) {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-assets-test-'));
   const database = await createSqliteDatabase({ dataFolder });
   try {
@@ -152,17 +159,31 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       apiKeysService: unusedApiKeysService,
     });
 
-    const pngBytes = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
-      'base64',
-    );
-    const form = new FormData();
-    form.set('changeMessage', 'Added test asset');
-    form.set('name', 'Quarterly chart');
-    form.set('file', new File([pngBytes], 'misleading.html', { type: 'text/html' }));
-    const uploadResponse = await app.handle(
-      new Request('http://localhost/api/assets', { method: 'POST', body: form }),
-    );
+    await run({ app, database, storage, timestamp });
+  } finally {
+    await database.close();
+    await rm(dataFolder, { recursive: true, force: true });
+  }
+}
+
+async function uploadChart(app: ReturnType<typeof createApp>) {
+  const pngBytes = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
+    'base64',
+  );
+  const form = new FormData();
+  form.set('changeMessage', 'Added test asset');
+  form.set('name', 'Quarterly chart');
+  form.set('file', new File([pngBytes], 'misleading.html', { type: 'text/html' }));
+  const uploadResponse = await app.handle(
+    new Request('http://localhost/api/assets', { method: 'POST', body: form }),
+  );
+  return { pngBytes, uploadResponse };
+}
+
+test('assets are server-inspected, linked or assigned, and archived only when unused', async () => {
+  await withAssetsApp(async ({ app, database, storage, timestamp }) => {
+    const { pngBytes, uploadResponse } = await uploadChart(app);
     expect(uploadResponse.status).toBe(StatusMap.Created);
     expectNoInternalResourceIds(await uploadResponse.clone().json());
     expect(await uploadResponse.json()).toEqual(
@@ -189,61 +210,6 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(downloadResponse.status).toBe(StatusMap.OK);
     expect(downloadResponse.headers.get('content-disposition')).toStartWith('attachment;');
-
-    // Exercise the actual Bun transport as well as Elysia's request handler.
-    const server = Bun.serve({ port: 0, fetch: app.handle });
-    try {
-      for (const [range, start, end] of [
-        ['bytes=0-7', 0, RANGE_CHUNK_BYTES - 1],
-        ['bytes=8-', RANGE_CHUNK_BYTES, pngBytes.length - 1],
-        ['bytes=-8', pngBytes.length - RANGE_CHUNK_BYTES, pngBytes.length - 1],
-        ['bytes=0-999999', 0, pngBytes.length - 1],
-        ['bytes=-999999', 0, pngBytes.length - 1],
-      ] as const) {
-        const response = await fetch(new URL('/api/assets/quarterly-chart/content', server.url), {
-          headers: { range },
-        });
-        expect(response.status).toBe(StatusMap['Partial Content']);
-        expect(response.headers.get('accept-ranges')).toBe('bytes');
-        expect(response.headers.get('content-range')).toBe(
-          `bytes ${start}-${end}/${pngBytes.length}`,
-        );
-        expect(response.headers.get('content-length')).toBe(String(end - start + 1));
-        expect(new Uint8Array(await response.arrayBuffer())).toEqual(
-          pngBytes.subarray(start, end + 1),
-        );
-      }
-      const unsatisfiable = await app.handle(
-        new Request('http://localhost/api/assets/quarterly-chart/content', {
-          headers: { range: `bytes=${pngBytes.length}-` },
-        }),
-      );
-      expect(unsatisfiable.status).toBe(StatusMap['Range Not Satisfiable']);
-      expect(unsatisfiable.headers.get('content-range')).toBe(`bytes */${pngBytes.length}`);
-      expect(await unsatisfiable.text()).toBe('');
-      const fallbackHeaders: Record<string, string>[] = [
-        { range: 'nonsense' },
-        { range: 'items=0-2' },
-        { range: 'bytes=0-2,5-7' },
-        { range: 'bytes=0-2', 'if-range': '"old-version"' },
-      ];
-      for (const headers of fallbackHeaders) {
-        const response = await fetch(new URL('/api/assets/quarterly-chart/content', server.url), {
-          headers,
-        });
-        expect(response.status).toBe(StatusMap.OK);
-        expect(new Uint8Array(await response.arrayBuffer())).toEqual(pngBytes);
-      }
-      const missing = await app.handle(
-        new Request('http://localhost/api/assets/unknown/content', {
-          headers: { range: 'bytes=0-1' },
-        }),
-      );
-      expect(missing.status).toBe(StatusMap['Not Found']);
-      expect(missing.headers.has('content-range')).toBe(false);
-    } finally {
-      await server.stop(true);
-    }
 
     const pdfBytes = Buffer.from('%PDF-1.7\nasset preview');
     const pdfForm = new FormData();
@@ -652,8 +618,67 @@ test('assets are server-inspected, linked or assigned, and archived only when un
       (await app.handle(jsonRequest({ method: 'PUT', path: '/assets/investment-memo/archive' })))
         .status,
     ).toBe(StatusMap['No Content']);
-  } finally {
-    await database.close();
-    await rm(dataFolder, { recursive: true, force: true });
-  }
+  });
+});
+
+test('asset byte ranges stream exact portions and preserve full-response fallbacks over HTTP', async () => {
+  await withAssetsApp(async ({ app }) => {
+    const { pngBytes, uploadResponse } = await uploadChart(app);
+    expect(uploadResponse.status).toBe(StatusMap.Created);
+
+    // Exercise the actual Bun transport as well as Elysia's request handler.
+    const server = Bun.serve({ port: 0, fetch: app.handle });
+    try {
+      for (const [range, start, end] of [
+        ['bytes=0-7', 0, RANGE_CHUNK_BYTES - 1],
+        ['bytes=8-', RANGE_CHUNK_BYTES, pngBytes.length - 1],
+        ['bytes=-8', pngBytes.length - RANGE_CHUNK_BYTES, pngBytes.length - 1],
+        ['bytes=0-999999', 0, pngBytes.length - 1],
+        ['bytes=-999999', 0, pngBytes.length - 1],
+      ] as const) {
+        const response = await fetch(new URL('/api/assets/quarterly-chart/content', server.url), {
+          headers: { range },
+        });
+        expect(response.status).toBe(StatusMap['Partial Content']);
+        expect(response.headers.get('accept-ranges')).toBe('bytes');
+        expect(response.headers.get('content-range')).toBe(
+          `bytes ${start}-${end}/${pngBytes.length}`,
+        );
+        expect(response.headers.get('content-length')).toBe(String(end - start + 1));
+        expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+          pngBytes.subarray(start, end + 1),
+        );
+      }
+      const unsatisfiable = await app.handle(
+        new Request('http://localhost/api/assets/quarterly-chart/content', {
+          headers: { range: `bytes=${pngBytes.length}-` },
+        }),
+      );
+      expect(unsatisfiable.status).toBe(StatusMap['Range Not Satisfiable']);
+      expect(unsatisfiable.headers.get('content-range')).toBe(`bytes */${pngBytes.length}`);
+      expect(await unsatisfiable.text()).toBe('');
+      const fallbackHeaders: Record<string, string>[] = [
+        { range: 'nonsense' },
+        { range: 'items=0-2' },
+        { range: 'bytes=0-2,5-7' },
+        { range: 'bytes=0-2', 'if-range': '"old-version"' },
+      ];
+      for (const headers of fallbackHeaders) {
+        const response = await fetch(new URL('/api/assets/quarterly-chart/content', server.url), {
+          headers,
+        });
+        expect(response.status).toBe(StatusMap.OK);
+        expect(new Uint8Array(await response.arrayBuffer())).toEqual(pngBytes);
+      }
+      const missing = await app.handle(
+        new Request('http://localhost/api/assets/unknown/content', {
+          headers: { range: 'bytes=0-1' },
+        }),
+      );
+      expect(missing.status).toBe(StatusMap['Not Found']);
+      expect(missing.headers.has('content-range')).toBe(false);
+    } finally {
+      await server.stop(true);
+    }
+  });
 });

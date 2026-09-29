@@ -69,7 +69,7 @@ export function createAssetReadableIdController({
     )
     .get(
       '/assets/:assetReadableId/content',
-      async ({ params, query, headers, user }) => {
+      async ({ params, query, request, user }) => {
         const content = await assetsService.content({
           ownerId: user.id,
           readableId: params.assetReadableId,
@@ -84,7 +84,7 @@ export function createAssetReadableIdController({
           asset: content.asset,
           blob: content.blob,
           inline: query.download !== 'true',
-          range: headers['if-range'] ? '' : (headers.range ?? ''),
+          request,
         });
       },
       {

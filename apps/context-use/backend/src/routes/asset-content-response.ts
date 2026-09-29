@@ -20,12 +20,12 @@ export function assetContentResponse({
   asset,
   blob,
   inline,
-  range,
+  request,
 }: {
   asset: Pick<StoredAsset, 'name' | 'extension' | 'mediaType' | 'sizeBytes'>;
   blob: Blob;
   inline: boolean;
-  range?: string;
+  request?: Request;
 }): Response {
   const headers = new Headers({
     'content-type': asset.mediaType,
@@ -38,16 +38,19 @@ export function assetContentResponse({
     'x-content-type-options': 'nosniff',
     'cache-control': 'private, no-store',
   });
-  if (range !== undefined) {
+  if (request) {
     headers.set('accept-ranges', 'bytes');
+  }
+  let body = blob;
+  let status: number = StatusMap.OK;
+  const range = request?.headers.has('if-range') ? null : request?.headers.get('range');
+  if (range?.startsWith('bytes=')) {
     // range-parser treats an oversized suffix as unsatisfiable; HTTP requires the whole file.
     const normalizedRange =
       /^bytes=-\d+$/.test(range) && Number(range.slice('bytes=-'.length)) > asset.sizeBytes
         ? 'bytes=0-'
         : range;
-    const ranges = normalizedRange.startsWith('bytes=')
-      ? rangeParser(asset.sizeBytes, normalizedRange)
-      : -2;
+    const ranges = rangeParser(asset.sizeBytes, normalizedRange);
     if (ranges === -1) {
       headers.set('content-range', `bytes */${asset.sizeBytes}`);
       headers.set('content-length', '0');
@@ -58,19 +61,11 @@ export function assetContentResponse({
       const { start, end } = ranges[0]!;
       headers.set('content-range', `bytes ${start}-${end}/${asset.sizeBytes}`);
       headers.set('content-length', String(end - start + 1));
-      return new Response(
-        blob
-          .slice(start, end + 1)
-          .stream()
-          .pipeThrough(new TransformStream()),
-        {
-          status: StatusMap['Partial Content'],
-          headers,
-        },
-      );
+      body = blob.slice(start, end + 1);
+      status = StatusMap['Partial Content'];
     }
   }
   // Hide Bun's native file stream marker: its sendfile shortcut reapplies Range,
   // even when If-Range requires a full response. The transform retains backpressure.
-  return new Response(blob.stream().pipeThrough(new TransformStream()), { headers });
+  return new Response(body.stream().pipeThrough(new TransformStream()), { status, headers });
 }
