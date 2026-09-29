@@ -17,7 +17,8 @@ const pdfjsDirectory = dirname(
 const BACKEND_ORIGIN = `http://localhost:${process.env.PORT || DEFAULT_BACKEND_PORT}`;
 const MCP_TRANSPORT_PROXY_CONTEXT = '^/mcp/?(?:\\?.*)?$';
 const MCP_ASSET_TRANSFERS_PROXY_CONTEXT = '^/mcp/asset-transfers(?:/|\\?|$)';
-const PUBLIC_RESOURCES_PROXY_CONTEXT = '^/public(?:/|\\?|$)';
+// Asset preview documents are client routes; public file bytes stay on the backend.
+const PUBLIC_RESOURCES_PROXY_CONTEXT = '^/public(?!/assets/[^/]+/preview/?(?:\\?|$))(?:/|\\?|$)';
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),

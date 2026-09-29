@@ -58,7 +58,7 @@ test(
         expect(response.status, path).toBe(OK);
         expect(await response.text()).toContain('<div id="app"></div>');
       }
-      const viewerPath = '/pdf-preview/74075bf0-08db-4c1a-878a-97a1e2bbc405';
+      const viewerPath = '/public/assets/74075bf0-08db-4c1a-878a-97a1e2bbc405/preview';
       const viewer = await binary.request({ path: viewerPath, redirect: 'manual' });
       expect(viewer.status).toBe(OK);
       expect(viewer.headers.get('content-type')).toContain('text/html');
@@ -80,8 +80,11 @@ test(
         '/assets/missing.js',
         '/pdf-preview',
         '/pdf-preview/',
+        '/pdf-preview/example',
         '/pdf-preview/example/extra',
         '/pdf-preview/missing.js',
+        '/public/assets/example/preview/extra',
+        '/public/assets/example/preview.js',
       ]) {
         const response = await binary.request({ path, headers: { accept: 'text/markdown' } });
         expect(response.status, path).toBe(NOT_FOUND);

@@ -21,7 +21,6 @@ import { Route as AppRecordsRouteImport } from './routes/app.records'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppSetupRouteImport } from './routes/app.setup'
 import { Route as AppSyncsRouteImport } from './routes/app.syncs'
-import { Route as PdfPreviewPublicIdRouteImport } from './routes/pdf-preview.$publicId'
 import { Route as AppAssetsIndexRouteImport } from './routes/app.assets.index'
 import { Route as AppAssetsIdRouteImport } from './routes/app.assets.$id'
 import { Route as AppAssetsNewRouteImport } from './routes/app.assets.new'
@@ -42,6 +41,7 @@ import { Route as AppSettingsPluginsRouteImport } from './routes/app.settings.pl
 import { Route as AppSettingsPublicSiteRouteImport } from './routes/app.settings.public-site'
 import { Route as AppSyncsIndexRouteImport } from './routes/app.syncs.index'
 import { Route as AppSyncsProviderIdRouteImport } from './routes/app.syncs.$providerId'
+import { Route as PublicAssetsPublicIdPreviewRouteImport } from './routes/public.assets.$publicId.preview'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -102,11 +102,6 @@ const AppSyncsRoute = AppSyncsRouteImport.update({
   id: '/syncs',
   path: '/syncs',
   getParentRoute: () => AppRoute,
-} as any)
-const PdfPreviewPublicIdRoute = PdfPreviewPublicIdRouteImport.update({
-  id: '/pdf-preview/$publicId',
-  path: '/pdf-preview/$publicId',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AppAssetsIndexRoute = AppAssetsIndexRouteImport.update({
   id: '/',
@@ -208,6 +203,12 @@ const AppSyncsProviderIdRoute = AppSyncsProviderIdRouteImport.update({
   path: '/$providerId',
   getParentRoute: () => AppSyncsRoute,
 } as any)
+const PublicAssetsPublicIdPreviewRoute =
+  PublicAssetsPublicIdPreviewRouteImport.update({
+    id: '/public/assets/$publicId/preview',
+    path: '/public/assets/$publicId/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
@@ -221,7 +222,6 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/setup': typeof AppSetupRoute
   '/app/syncs': typeof AppSyncsRouteWithChildren
-  '/pdf-preview/$publicId': typeof PdfPreviewPublicIdRoute
   '/app/': typeof AppIndexRoute
   '/app/assets/$id': typeof AppAssetsIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
@@ -243,13 +243,13 @@ export interface FileRoutesByFullPath {
   '/app/records/': typeof AppRecordsIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/syncs/': typeof AppSyncsIndexRoute
+  '/public/assets/$publicId/preview': typeof PublicAssetsPublicIdPreviewRoute
 }
 export interface FileRoutesByTo {
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
   '/app/map': typeof AppMapRoute
   '/app/setup': typeof AppSetupRoute
-  '/pdf-preview/$publicId': typeof PdfPreviewPublicIdRoute
   '/app': typeof AppIndexRoute
   '/app/assets/$id': typeof AppAssetsIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
@@ -271,6 +271,7 @@ export interface FileRoutesByTo {
   '/app/records': typeof AppRecordsIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/app/syncs': typeof AppSyncsIndexRoute
+  '/public/assets/$publicId/preview': typeof PublicAssetsPublicIdPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -285,7 +286,6 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRouteWithChildren
   '/app/setup': typeof AppSetupRoute
   '/app/syncs': typeof AppSyncsRouteWithChildren
-  '/pdf-preview/$publicId': typeof PdfPreviewPublicIdRoute
   '/app/': typeof AppIndexRoute
   '/app/assets/$id': typeof AppAssetsIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
@@ -307,6 +307,7 @@ export interface FileRoutesById {
   '/app/records/': typeof AppRecordsIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/syncs/': typeof AppSyncsIndexRoute
+  '/public/assets/$publicId/preview': typeof PublicAssetsPublicIdPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -322,7 +323,6 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/setup'
     | '/app/syncs'
-    | '/pdf-preview/$publicId'
     | '/app/'
     | '/app/assets/$id'
     | '/app/assets/new'
@@ -344,13 +344,13 @@ export interface FileRouteTypes {
     | '/app/records/'
     | '/app/settings/'
     | '/app/syncs/'
+    | '/public/assets/$publicId/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/app/history'
     | '/app/login'
     | '/app/map'
     | '/app/setup'
-    | '/pdf-preview/$publicId'
     | '/app'
     | '/app/assets/$id'
     | '/app/assets/new'
@@ -372,6 +372,7 @@ export interface FileRouteTypes {
     | '/app/records'
     | '/app/settings'
     | '/app/syncs'
+    | '/public/assets/$publicId/preview'
   id:
     | '__root__'
     | '/app'
@@ -385,7 +386,6 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/setup'
     | '/app/syncs'
-    | '/pdf-preview/$publicId'
     | '/app/'
     | '/app/assets/$id'
     | '/app/assets/new'
@@ -407,11 +407,12 @@ export interface FileRouteTypes {
     | '/app/records/'
     | '/app/settings/'
     | '/app/syncs/'
+    | '/public/assets/$publicId/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
-  PdfPreviewPublicIdRoute: typeof PdfPreviewPublicIdRoute
+  PublicAssetsPublicIdPreviewRoute: typeof PublicAssetsPublicIdPreviewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -499,13 +500,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/syncs'
       preLoaderRoute: typeof AppSyncsRouteImport
       parentRoute: typeof AppRoute
-    }
-    '/pdf-preview/$publicId': {
-      id: '/pdf-preview/$publicId'
-      path: '/pdf-preview/$publicId'
-      fullPath: '/pdf-preview/$publicId'
-      preLoaderRoute: typeof PdfPreviewPublicIdRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/app/assets/': {
       id: '/app/assets/'
@@ -647,6 +641,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSyncsProviderIdRouteImport
       parentRoute: typeof AppSyncsRoute
     }
+    '/public/assets/$publicId/preview': {
+      id: '/public/assets/$publicId/preview'
+      path: '/public/assets/$publicId/preview'
+      fullPath: '/public/assets/$publicId/preview'
+      preLoaderRoute: typeof PublicAssetsPublicIdPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -782,7 +783,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
-  PdfPreviewPublicIdRoute: PdfPreviewPublicIdRoute,
+  PublicAssetsPublicIdPreviewRoute: PublicAssetsPublicIdPreviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
