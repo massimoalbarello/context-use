@@ -1,4 +1,3 @@
-import { cn } from '@repo/ui/class-names';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AssetPreviewFallback } from './asset-preview-fallback';
@@ -16,15 +15,7 @@ export function createPdfPreview() {
   return PdfPreview;
 }
 
-function PdfPreview({
-  bytes,
-  name,
-  className,
-}: {
-  bytes: Uint8Array;
-  name: string;
-  className?: string;
-}) {
+function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
   const file = useMemo(() => ({ data: bytes.slice() }), [bytes]);
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -40,10 +31,7 @@ function PdfPreview({
   );
   return (
     <section
-      className={cn(
-        'max-h-[32rem] min-w-0 overflow-auto overscroll-contain rounded-[0.75rem] bg-muted p-3',
-        className,
-      )}
+      className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain rounded-[0.75rem] bg-muted p-3"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll the PDF.
       tabIndex={0}
       aria-label={`${name} preview`}

@@ -16,7 +16,7 @@ const PdfPreview = lazy(async () => {
 
 function PublicAssetPreview() {
   return (
-    <main className="flex min-h-dvh flex-col bg-muted text-foreground">
+    <main className="flex h-dvh flex-col bg-muted text-foreground">
       <PublicPdfContent />
     </main>
   );
@@ -30,7 +30,7 @@ function PublicPdfContent() {
   }
   return content.data ? (
     <Suspense fallback={<PdfPreviewLoading />}>
-      <PdfPreview bytes={content.data} name="PDF" className="h-dvh max-h-none" />
+      <PdfPreview bytes={content.data} name="PDF" />
     </Suspense>
   ) : (
     <PdfPreviewLoading />

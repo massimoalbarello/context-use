@@ -112,9 +112,11 @@ function DocumentPreview({ asset }: { asset: PreviewableAsset }) {
   }
   if (asset.mediaType === 'application/pdf') {
     return (
-      <Suspense fallback={<PdfPreviewLoading />}>
-        <PdfPreview bytes={content.data} name={asset.name} />
-      </Suspense>
+      <div className="flex max-h-[32rem] min-w-0 flex-col">
+        <Suspense fallback={<PdfPreviewLoading />}>
+          <PdfPreview bytes={content.data} name={asset.name} />
+        </Suspense>
+      </div>
     );
   }
   const text = new TextDecoder().decode(content.data);
