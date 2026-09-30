@@ -302,7 +302,10 @@ test(
           expect.objectContaining({
             id: 'github',
             name: 'GitHub',
-            oauthApp: expect.objectContaining({ configured: false }),
+            oauthApp: expect.objectContaining({
+              configured: false,
+              callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
+            }),
             account: { name: null, status: 'disconnected' },
             syncs: [],
           }),

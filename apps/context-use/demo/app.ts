@@ -79,14 +79,14 @@ export function createDemoApp({
     .onError((context) =>
       context.code === 'NOT_FOUND' ? unavailableResponse() : elysiaErrorHandler(context),
     )
-    .get('/syncs/managed', (): SyncProviderSummary[] =>
+    .get('/syncs/managed', ({ request }): SyncProviderSummary[] =>
       syncProviders.map((provider) => ({
         id: provider.id,
         name: provider.name,
         description: provider.description,
         oauthApp: {
           configured: false,
-          callbackUrl: '',
+          callbackUrl: new URL('/api/open-sync/oauth/callback', request.url).href,
           createAppUrl: provider.oauth.createAppUrl,
         },
         account: { name: null, status: 'disconnected' },
