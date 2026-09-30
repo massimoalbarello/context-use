@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { AssetPreviewFallback } from './asset-preview-fallback';
+import { PdfPreviewLoading } from './pdf-preview-loading';
 
 const PDF_OPTIONS = {
   cMapUrl: '/pdfjs/cmaps/',
@@ -16,7 +17,7 @@ export function createPdfPreview() {
 
 function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
   const file = useMemo(() => ({ data: bytes.slice() }), [bytes]);
-  const container = useRef<HTMLElement>(null);
+  const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -30,45 +31,47 @@ function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
   );
   return (
     <section
-      ref={container}
-      className="max-h-[32rem] min-w-0 overflow-auto overscroll-contain"
+      className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain rounded-[0.75rem] bg-muted p-3"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll the PDF.
       tabIndex={0}
       aria-label={`${name} preview`}
     >
-      {failed ? (
-        fallback
-      ) : (
-        <Document
-          file={file}
-          options={PDF_OPTIONS}
-          suspense={false}
-          error={fallback}
-          loading={<p role="status">Loading PDF…</p>}
-          onPassword={() => setFailed(true)}
-        >
-          {({ pdf }) => (
-            <div className="grid gap-3">
-              {width > 0 &&
-                Array.from(Array(pdf.numPages).keys()).map((pageIndex) => (
-                  <Page
-                    key={pageIndex + 1}
-                    pageNumber={pageIndex + 1}
-                    width={width}
-                    suspense={false}
-                    className="overflow-hidden rounded-lg"
-                    aria-label={`${name}, page ${pageIndex + 1}`}
-                    renderTextLayer={false}
-                    renderAnnotationLayer={false}
-                    error={fallback}
-                    loading={<p role="status">Loading page…</p>}
-                    onRenderError={() => setFailed(true)}
-                  />
-                ))}
-            </div>
-          )}
-        </Document>
-      )}
+      <div ref={container} className="flex min-h-full flex-col">
+        {failed ? (
+          fallback
+        ) : (
+          <Document
+            className="flex flex-1 flex-col"
+            file={file}
+            options={PDF_OPTIONS}
+            suspense={false}
+            error={fallback}
+            loading={<PdfPreviewLoading />}
+            onPassword={() => setFailed(true)}
+          >
+            {({ pdf }) => (
+              <div className="grid gap-2">
+                {width > 0 &&
+                  Array.from(Array(pdf.numPages).keys()).map((pageIndex) => (
+                    <Page
+                      key={pageIndex + 1}
+                      pageNumber={pageIndex + 1}
+                      width={width}
+                      suspense={false}
+                      className="bg-muted! shadow-sm ring-1 ring-foreground/20"
+                      aria-label={`${name}, page ${pageIndex + 1}`}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      error={fallback}
+                      loading={<PdfPreviewLoading />}
+                      onRenderError={() => setFailed(true)}
+                    />
+                  ))}
+              </div>
+            )}
+          </Document>
+        )}
+      </div>
     </section>
   );
 }
