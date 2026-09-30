@@ -1,5 +1,6 @@
 import { Elysia, StatusMap } from 'elysia';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
+import type { SyncProviderSummary } from '#backend/models/syncs/managed.ts';
 import { createAssetReadableIdController } from '#backend/routes/api/assets/[assetReadableId]/controller.ts';
 import { createAssetFacesController } from '#backend/routes/api/assets/[assetReadableId]/faces/controller.ts';
 import { createAssetsController } from '#backend/routes/api/assets/controller.ts';
@@ -18,6 +19,7 @@ import { createPublicationsController } from '#backend/routes/api/publications/c
 import { createRecordReadableIdController } from '#backend/routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#backend/routes/api/records/controller.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
@@ -52,6 +54,8 @@ function isWorkspacePath(path: string): boolean {
     path === '/app' ||
     path === '/app/map' ||
     path === '/app/history' ||
+    path === '/app/syncs' ||
+    /^\/app\/syncs\/[a-z][a-z0-9-]{0,63}$/.test(path) ||
     path === '/app/settings' ||
     path === '/app/settings/api-keys' ||
     path === '/app/settings/faces' ||
@@ -70,10 +74,24 @@ export function createDemoApp({
   const dependencies = { ...resources, auth };
   const faceDependencies = { auth, faces: resources.assetsService.faces };
   // Only these resource controllers receive the demo identity. Account, credential,
-  // sync, MCP, and public-site controllers belong exclusively to the instance app.
+  // sync runtime, MCP, and public-site controllers belong exclusively to the instance app.
   const api = new Elysia({ prefix: '/api', strictPath: true })
     .onError((context) =>
       context.code === 'NOT_FOUND' ? unavailableResponse() : elysiaErrorHandler(context),
+    )
+    .get('/syncs/managed', (): SyncProviderSummary[] =>
+      syncProviders.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        description: provider.description,
+        oauthApp: {
+          configured: false,
+          callbackUrl: '',
+          createAppUrl: provider.oauth.createAppUrl,
+        },
+        account: { name: null, status: 'disconnected' },
+        syncs: [],
+      })),
     )
     .use(createHistoryController(dependencies))
     .use(createAssetsController(dependencies))

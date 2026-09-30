@@ -128,7 +128,9 @@ async function assertUnavailableReads(fetchDemo: (request: Request) => Promise<R
     '/api/api-keys',
     '/api/mcp/clients',
     '/api/owner-registration',
-    '/api/syncs/managed',
+    '/api/syncs/managed/providers/github/connect',
+    '/api/syncs/managed/providers/github/app',
+    '/api/open-sync/oauth/callback?code=test&state=test',
     '/api/public-site',
     '/api/publications/approvals',
     '/api/publications/approvals/test-approval/complete',
@@ -279,6 +281,9 @@ test(
           '/api/hypermedia/search?query=iPhone',
           '/app',
           '/app/map',
+          '/app/syncs',
+          '/app/syncs/github?tab=authorization',
+          '/api/syncs/managed',
           '/app/pages/new',
           '/app/entities/new',
           '/app/assets/new',
@@ -292,6 +297,21 @@ test(
           expect(response.headers.has('set-cookie')).toBe(false);
           await response.arrayBuffer();
         }
+        const syncProviders = await (await read('/api/syncs/managed')).json();
+        expect(syncProviders).toEqual([
+          expect.objectContaining({
+            id: 'github',
+            name: 'GitHub',
+            oauthApp: expect.objectContaining({ configured: false }),
+            account: { name: null, status: 'disconnected' },
+            syncs: [],
+          }),
+        ]);
+        const syncsHead = await fetchDemo(
+          new Request('http://demo.test/api/syncs/managed', { method: 'HEAD' }),
+        );
+        expect(syncsHead.status).toBe(StatusMap.OK);
+        expect(await syncsHead.text()).toBe('');
         await assertPublicationStatuses(fetchDemo);
         await assertPreviewFormats(read);
         // Prove the shared seed produces distinct, discoverable pages each month through
@@ -467,6 +487,10 @@ test(
         expect(await head.text()).toBe('');
         // Try every mutation registered by the reused controllers, plus unmounted surfaces.
         const deniedPaths = [
+          '/api/syncs/managed/providers/github/app',
+          '/api/syncs/managed/providers/github/connect',
+          '/api/syncs/managed/github.pull-requests',
+          '/api/open-sync/oauth/callback',
           '/api/publications/page/pictures-of-me-and-our-pocket-devices',
           '/api/publications/approvals',
           '/api/publications/approvals/test-approval/complete',

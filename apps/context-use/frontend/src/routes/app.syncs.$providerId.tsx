@@ -23,7 +23,11 @@ export const Route = createFileRoute('/app/syncs/$providerId')({
   validateSearch: syncProviderSearch,
   component: SyncProviderRoute,
 });
-function SyncProviderRoute() {
+export function SyncProviderRoute({
+  actionsUnavailableReason,
+}: {
+  actionsUnavailableReason?: string;
+}) {
   const { providerId } = Route.useParams();
   const { tab, authorization } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -50,6 +54,7 @@ function SyncProviderRoute() {
         <ProviderDetail
           key={provider.id}
           provider={provider}
+          actionsUnavailableReason={actionsUnavailableReason}
           tab={tab}
           authorizationFailed={authorization === 'failed'}
           pending={connect.isPending || configure.isPending || update.isPending}

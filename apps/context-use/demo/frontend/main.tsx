@@ -26,6 +26,14 @@ const { Route } = await import('#frontend/routes/__root.tsx');
 const Workspace = Route.options.component!;
 const introductionTrigger = document.getElementById('demo-introduction-trigger');
 Route.update({ component: DemoWorkspace, errorComponent: DemoRouteError });
+const { Route: syncProviderRoute, SyncProviderRoute } = await import(
+  '#frontend/routes/app.syncs.$providerId.tsx'
+);
+syncProviderRoute.update({
+  component: () => (
+    <SyncProviderRoute actionsUnavailableReason="Connecting sources is disabled in this read-only demo. Deploy your own instance to connect your accounts." />
+  ),
+});
 const { mountDashboard } = await import('#frontend/mount.tsx');
 mountDashboard();
 

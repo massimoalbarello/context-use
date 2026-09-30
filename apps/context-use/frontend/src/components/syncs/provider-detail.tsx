@@ -11,6 +11,7 @@ import { ProviderAccount } from './provider-account';
 export type SyncProviderTab = 'sync' | 'authorization';
 export function ProviderDetail(input: {
   provider: SyncProvider;
+  actionsUnavailableReason?: string;
   tab: SyncProviderTab;
   onTabChange: (tab: SyncProviderTab) => void;
   onConnect: () => void;
@@ -26,6 +27,9 @@ export function ProviderDetail(input: {
     <div className="grid gap-7">
       <header className="grid gap-2">
         <h1 className="font-semibold text-3xl tracking-tight">{provider.name}</h1>
+        {input.actionsUnavailableReason && (
+          <p className="text-muted-foreground">{input.actionsUnavailableReason}</p>
+        )}
       </header>
       <Tabs
         value={input.tab}
@@ -40,7 +44,10 @@ export function ProviderDetail(input: {
           <TabsTrigger value="authorization">Authorization</TabsTrigger>
         </TabsList>
         <TabsContent value="sync" className="pt-7">
-          <div className="grid gap-8">
+          <fieldset
+            disabled={Boolean(input.actionsUnavailableReason)}
+            className="grid min-w-0 gap-8"
+          >
             {!provider.oauthApp.configured || provider.account.status === 'disconnected' ? (
               <div className="grid justify-items-start gap-4">
                 <Button variant="outline" onClick={() => input.onTabChange('authorization')}>
@@ -57,10 +64,13 @@ export function ProviderDetail(input: {
                 />
               ))
             )}
-          </div>
+          </fieldset>
         </TabsContent>
         <TabsContent value="authorization" className="pt-7">
-          <div className="grid gap-10">
+          <fieldset
+            disabled={Boolean(input.actionsUnavailableReason)}
+            className="grid min-w-0 gap-10"
+          >
             <OAuthAppPanel
               provider={provider}
               pending={input.pending}
@@ -73,7 +83,7 @@ export function ProviderDetail(input: {
               authorizationFailed={input.authorizationFailed}
               onConnect={input.onConnect}
             />
-          </div>
+          </fieldset>
         </TabsContent>
       </Tabs>
       {input.error && (
