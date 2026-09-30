@@ -174,6 +174,8 @@ try {
     passkeys: passkeyConfiguration({ baseUrl: env.BASE_URL, nibrunHostname: env.NIBRUN_HOSTNAME }),
   });
   const auth = createAuth({
+    getMcpAuthorizationId: async (input) =>
+      (await mcpClientAuthorizationsService.authenticate(input))?.clientAuthorizationId ?? null,
     database,
     baseUrl: env.BASE_URL,
     nibrunHostname: env.NIBRUN_HOSTNAME,

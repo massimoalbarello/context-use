@@ -49,18 +49,25 @@ function ownerRegistrationApiError(error: unknown): never {
   throw APIError.from(status, { code: error.code, message: error.message });
 }
 
+type McpAuthorizationIdResolver = (input: {
+  ownerId: string;
+  oauthClientId: string;
+}) => Promise<string | null>;
+
 export function createAuthOptions({
   database,
   baseUrl,
   nibrunHostname,
   secret,
   fetchClientMetadataResource,
+  getMcpAuthorizationId,
 }: {
   database: SQL;
   baseUrl: URL;
   nibrunHostname?: string;
   secret: string;
   fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
+  getMcpAuthorizationId: McpAuthorizationIdResolver;
 }) {
   const mcpResource = mcpServerUrl({ baseUrl });
   const { rpID, origins: trustedOrigins } = passkeyConfiguration({ baseUrl, nibrunHostname });
@@ -137,6 +144,21 @@ export function createAuthOptions({
       }),
       mcp({
         resource: mcpResource,
+        extensions: [
+          {
+            claims: {
+              accessToken: async ({ user, client }) => {
+                const authorizationId =
+                  user &&
+                  (await getMcpAuthorizationId({
+                    ownerId: user.id,
+                    oauthClientId: client.clientId,
+                  }));
+                return { mcp_authorization_id: authorizationId ?? null };
+              },
+            },
+          },
+        ],
         loginPage: '/app/login',
         consentPage: '/app/mcp/authorize',
         scopes: [MCP_SCOPE, 'offline_access'],
@@ -168,6 +190,7 @@ export function createAuth(input: {
   nibrunHostname?: string;
   secret: string;
   fetchClientMetadataResource: CimdOptions['fetchClientMetadataResource'];
+  getMcpAuthorizationId: McpAuthorizationIdResolver;
 }) {
   const mcpResource = mcpServerUrl({ baseUrl: input.baseUrl });
   const options = createAuthOptions(input);
@@ -213,11 +236,20 @@ function mcpAccessToken({
 }): McpAccessToken | null {
   const ownerId = stringClaim(claims.sub);
   const oauthClientId = stringClaim(claims.client_id) ?? stringClaim(claims.azp);
+  const clientAuthorizationId = stringClaim(claims.mcp_authorization_id);
   const expiresAt = typeof claims.exp === 'number' ? claims.exp : null;
   const scopes = stringClaim(claims.scope)?.split(' ') ?? [];
   const token = request.headers.get('authorization')?.replace(/^\S+\s+/, '') ?? '';
-  return ownerId && oauthClientId && expiresAt && token
-    ? { ownerId, oauthClientId, expiresAt, resource: new URL(resource), scopes, token }
+  return ownerId && oauthClientId && clientAuthorizationId && expiresAt && token
+    ? {
+        ownerId,
+        oauthClientId,
+        clientAuthorizationId,
+        expiresAt,
+        resource: new URL(resource),
+        scopes,
+        token,
+      }
     : null;
 }
 
@@ -244,6 +276,7 @@ function verifiedMcpRequestHandler({
 export type McpAccessToken = {
   ownerId: string;
   oauthClientId: string;
+  clientAuthorizationId: string;
   expiresAt: number;
   resource: URL;
   scopes: string[];

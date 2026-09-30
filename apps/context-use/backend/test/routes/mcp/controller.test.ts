@@ -25,6 +25,7 @@ test('an archived or revoked client authorization is rejected before the MCP tra
           token: {
             ownerId: 'owner',
             oauthClientId: 'client',
+            clientAuthorizationId: 'client-authorization',
             expiresAt:
               Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + ACCESS_TOKEN_LIFETIME_SECONDS,
             resource: new URL('https://context.example/mcp'),
@@ -86,6 +87,7 @@ test('the authenticated owner and stable client authorization identity reach the
           token: {
             ownerId: principal.ownerId,
             oauthClientId: 'oauth-client',
+            clientAuthorizationId: principal.clientAuthorizationId,
             expiresAt:
               Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + ACCESS_TOKEN_LIFETIME_SECONDS,
             resource: new URL('https://context.example/mcp'),

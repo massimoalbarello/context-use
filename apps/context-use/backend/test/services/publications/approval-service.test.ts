@@ -57,6 +57,7 @@ async function withApprovalService(
   await withDatabase(async ({ database }) => {
     const auth = betterAuth(
       createAuthOptions({
+        getMcpAuthorizationId: async () => null,
         database,
         baseUrl: new URL(ORIGIN),
         nibrunHostname: RP_ID,

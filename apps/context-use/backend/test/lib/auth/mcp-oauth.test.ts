@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createMcpProtectedRequestHandler } from '@better-auth/mcp';
 import { betterAuth } from 'better-auth';
 import { testUtils } from 'better-auth/plugins';
+import { Elysia } from 'elysia';
 import {
   createAuth,
   createAuthOptions,
@@ -15,8 +16,11 @@ import {
   OWNER_USER_ID,
 } from '#backend/lib/auth/owner-registration.ts';
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
+import { createMcpClientsController } from '#backend/routes/api/mcp/clients/controller.ts';
 import { createAuthDiscoveryController } from '#backend/routes/auth-discovery/controller.ts';
+import { createMcpController } from '#backend/routes/mcp/controller.ts';
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
+import { unusedMcpTransport } from '../../support/mcp.ts';
 import { withAuthTestDatabase } from './auth-test-database.ts';
 
 const TEST_SECRET = 'test-secret-at-least-thirty-two-characters';
@@ -228,8 +232,34 @@ async function refreshClient({
   );
 }
 
+async function expectRevokedCredentials({
+  tokens,
+  access,
+  handler,
+  clientId,
+  urls,
+}: {
+  tokens: OAuthTokenResponse[];
+  access: (token: string) => Promise<Response>;
+  handler: (request: Request) => Promise<Response>;
+  clientId: string;
+  urls: OAuthTestUrls;
+}) {
+  for (const credentials of tokens) {
+    expect((await access(credentials.access_token)).status).toBe(HTTP_UNAUTHORIZED);
+    const refresh = await refreshClient({
+      handler,
+      clientId,
+      refreshToken: credentials.refresh_token,
+      urls,
+    });
+    expect(refresh.status).toBe(HTTP_BAD_REQUEST);
+    expect(await refresh.json()).toMatchObject({ error: 'invalid_grant' });
+  }
+}
+
 describe('MCP OAuth foundation', () => {
-  test('keeps resource-bound authorization valid across auth-server restarts', async () => {
+  test('preserves OAuth resource and revocation boundaries across restarts and reauthorization', async () => {
     await withAuthTestDatabase({
       run: async (database) => {
         let oauthHandler: (request: Request) => Promise<Response> = async (_request) =>
@@ -245,7 +275,12 @@ describe('MCP OAuth foundation', () => {
           authBase: `${origin}/api/auth`,
           mcpResource: `${origin}/mcp`,
         };
+        const clientAuthorizations = new McpClientAuthorizationsService(
+          new McpClientAuthorizationsRepository(database),
+        );
         const options = createAuthOptions({
+          getMcpAuthorizationId: async (input) =>
+            (await clientAuthorizations.authenticate(input))?.clientAuthorizationId ?? null,
           database,
           baseUrl: new URL(origin),
           secret: TEST_SECRET,
@@ -300,9 +335,6 @@ describe('MCP OAuth foundation', () => {
             name: 'Desktop Agent',
             urls,
           });
-          const clientAuthorizations = new McpClientAuthorizationsService(
-            new McpClientAuthorizationsRepository(database),
-          );
           const approval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: client.client_id,
@@ -332,6 +364,8 @@ describe('MCP OAuth foundation', () => {
           expect(Number(claims.exp) - Number(claims.iat)).toBe(ACCESS_TOKEN_LIFETIME_SECONDS);
 
           const resourceServerAuth = createAuth({
+            getMcpAuthorizationId: async (input) =>
+              (await clientAuthorizations.authenticate(input))?.clientAuthorizationId ?? null,
             database,
             baseUrl: new URL(origin),
             secret: TEST_SECRET,
@@ -460,26 +494,107 @@ describe('MCP OAuth foundation', () => {
               urls,
             }),
           ) as OAuthTokenResponse;
-          expect(
-            await clientAuthorizations.archive({
-              actorId: OWNER_USER_ID,
-              clientAuthorizationId: archivedApproval.clientAuthorization.id,
+          const mcpApp = new Elysia()
+            .use(
+              createMcpController({
+                auth: resourceServerAuth,
+                clientAuthorizationsService: clientAuthorizations,
+                transport: {
+                  ...unusedMcpTransport,
+                  fetch: async () => new Response(null, { status: HTTP_NO_CONTENT }),
+                },
+              }),
+            )
+            .use(
+              createMcpClientsController({
+                auth: resourceServerAuth,
+                clientAuthorizationsService: clientAuthorizations,
+                mcpServerUrl: urls.mcpResource,
+              }),
+            );
+          const access = (token: string) =>
+            mcpApp.handle(
+              new Request(urls.mcpResource, {
+                method: 'POST',
+                headers: { authorization: `Bearer ${token}` },
+              }),
+            );
+          expect((await access(archivedTokens.access_token)).status).toBe(HTTP_NO_CONTENT);
+          const rotated = await responseJson<OAuthTokenResponse>(
+            await refreshClient({
+              handler: oauth.handler,
+              clientId: archivedClient.client_id,
+              refreshToken: archivedTokens.refresh_token,
+              urls,
             }),
-          ).toEqual({ state: 'archived' });
+          );
+          expect((await access(rotated.access_token)).status).toBe(HTTP_NO_CONTENT);
+          const revokeHeaders = new Headers(sessionHeaders);
+          revokeHeaders.set('content-type', 'application/json');
+          const revocation = await mcpApp.handle(
+            new Request(
+              `${origin}/mcp/clients/${archivedApproval.clientAuthorization.id}/archive`,
+              {
+                method: 'PUT',
+                headers: revokeHeaders,
+                body: JSON.stringify({ changeMessage: 'Revoke MCP client' }),
+              },
+            ),
+          );
+          expect(revocation.status).toBe(HTTP_NO_CONTENT);
           expect(
-            await clientAuthorizations.authenticate({
-              ownerId: OWNER_USER_ID,
-              oauthClientId: archivedClient.client_id,
+            await database`
+            select "id" from "auth_oauthRefreshToken"
+            where "clientId" = ${archivedClient.client_id} and "userId" = ${OWNER_USER_ID}
+          `,
+          ).toHaveLength(0);
+          expect(
+            await database`
+            select "id" from "auth_oauthAccessToken"
+            where "clientId" = ${archivedClient.client_id} and "userId" = ${OWNER_USER_ID}
+          `,
+          ).toHaveLength(0);
+          expect(
+            await database`
+            select "id" from "auth_oauthConsent"
+            where "clientId" = ${archivedClient.client_id} and "userId" = ${OWNER_USER_ID}
+          `,
+          ).toHaveLength(0);
+          expect((await access(archivedTokens.access_token)).status).toBe(HTTP_UNAUTHORIZED);
+          expect((await access(rotated.access_token)).status).toBe(HTTP_UNAUTHORIZED);
+          expect((await access(refreshed.access_token)).status).toBe(HTTP_NO_CONTENT);
+
+          const newApproval = await clientAuthorizations.approve({
+            actorId: OWNER_USER_ID,
+            clientId: archivedClient.client_id,
+            name: 'Another coding agent',
+          });
+          expect(newApproval.state).toBe('approved');
+          const newTokens = JSON.parse(
+            await authorizeClient({
+              handler: oauth.handler,
+              sessionHeaders,
+              clientId: archivedClient.client_id,
+              urls,
             }),
-          ).toBeNull();
-          const archivedRefresh = await refreshClient({
+          ) as OAuthTokenResponse;
+          expect((await access(newTokens.access_token)).status).toBe(HTTP_NO_CONTENT);
+          await expectRevokedCredentials({
+            tokens: [archivedTokens, rotated],
+            access,
             handler: oauth.handler,
             clientId: archivedClient.client_id,
-            refreshToken: archivedTokens.refresh_token,
             urls,
           });
-          expect(archivedRefresh.status).toBe(HTTP_BAD_REQUEST);
-          expect(await archivedRefresh.json()).toMatchObject({ error: 'invalid_grant' });
+
+          const reauthorizedRefresh = await refreshClient({
+            handler: oauth.handler,
+            clientId: archivedClient.client_id,
+            refreshToken: newTokens.refresh_token,
+            urls,
+          });
+          const reauthorizedTokens = await responseJson<OAuthTokenResponse>(reauthorizedRefresh);
+          expect((await access(reauthorizedTokens.access_token)).status).toBe(HTTP_NO_CONTENT);
 
           await database`
           update "auth_oauthRefreshToken"
@@ -493,7 +608,7 @@ describe('MCP OAuth foundation', () => {
             urls,
           });
           expect(replayed.status).toBe(HTTP_BAD_REQUEST);
-          expect(await replayed.json()).toMatchObject({ error: 'invalid_grant' });
+          await expect(replayed.json()).resolves.toMatchObject({ error: 'invalid_grant' });
 
           const familyInvalidated = await refreshClient({
             handler: oauth.handler,
