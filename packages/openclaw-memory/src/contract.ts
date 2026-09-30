@@ -4,6 +4,7 @@ import packageJson from '../package.json';
 import { ConnectionError } from './error';
 
 export const PLUGIN_ID = 'context-use';
+export const PREPARE_REMOVAL_METHOD = `${PLUGIN_ID}.prepare-removal`;
 export const PACKAGE_VERSION = packageJson.version;
 export const OPENCLAW_VERSION_RANGE = packageJson.peerDependencies.openclaw;
 export const CALLBACK_URL = 'http://127.0.0.1:49187/context-use/callback';

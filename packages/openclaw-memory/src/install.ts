@@ -1,14 +1,19 @@
 import { setTimeout } from 'node:timers/promises';
 import { mutateConfigFile } from 'openclaw/plugin-sdk/config-mutation';
 import { PLUGIN_ID } from './contract';
-import { hostCommandErrorOutput, openclaw } from './host-command';
+import { openclaw } from './host-command';
 import { installedPlugin } from './package-installation';
 
 const DRAIN_TIMEOUT_MS = 120_000;
 const DRAIN_RETRY_MS = 1_000;
 
 function retainedWorkRejection(error: unknown): boolean {
-  const output = hostCommandErrorOutput(error);
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const output = ['stdout', 'stderr']
+    .map((key) => (key in error ? String(error[key as keyof typeof error]) : ''))
+    .join('\n');
   return (
     output.includes('still has active retained work') && output.includes('replacement not applied')
   );

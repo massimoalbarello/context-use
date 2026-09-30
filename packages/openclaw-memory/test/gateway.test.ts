@@ -13,12 +13,17 @@ test('removal preparation requires the matching profile and a confirmed cleanup 
 case "$*" in
   'config file --json') echo '{"path":"/fixture/openclaw.json"}' ;;
   *config.get*)
-    if [ "$REMOVAL_CASE" = mismatch ]; then echo '{"path":"/another/openclaw.json"}';
-    else echo '{"path":"/fixture/openclaw.json"}'; fi ;;
+    case "$REMOVAL_CASE" in
+      mismatch) echo '{"path":"/another/openclaw.json"}' ;;
+      offline) echo '{"ok":false,"error":{"type":"gateway_transport_error","message":"Gateway not reachable","reason":"connect ECONNREFUSED 127.0.0.1:18789"}}'; exit 1 ;;
+      unauthorized) echo '{"ok":false,"error":{"type":"gateway_auth_error","message":"token mismatch"}}'; exit 1 ;;
+      timeout) echo '{"ok":false,"error":{"type":"gateway_transport_error","message":"Gateway timed out","reason":"timeout"}}'; exit 1 ;;
+      invalid-probe) echo 'not JSON' ;;
+      *) echo '{"path":"/fixture/openclaw.json"}' ;;
+    esac ;;
   *context-use.prepare-removal*)
     case "$REMOVAL_CASE" in
-      absent) echo 'unknown method: context-use.prepare-removal' >&2; exit 1 ;;
-      absent-json) echo '{"ok":false,"error":{"code":"INVALID_REQUEST","message":"unknown method: context-use.prepare-removal"}}'; exit 1 ;;
+      absent-json) echo '{"ok":false,"error":{"type":"gateway_request_error","code":"INVALID_REQUEST","message":"unknown method: context-use.prepare-removal"}}'; exit 1 ;;
       failed) echo 'cleanup failed' >&2; exit 1 ;;
       uncertain) echo '{"stopped":false}' ;;
       *) echo '{"stopped":true}' ;;
@@ -29,7 +34,17 @@ esac
     );
     const executableMode = 0o700;
     await chmod(command, executableMode);
-    for (const scenario of ['ready', 'absent', 'absent-json', 'mismatch', 'failed', 'uncertain']) {
+    for (const scenario of [
+      'ready',
+      'offline',
+      'absent-json',
+      'mismatch',
+      'failed',
+      'uncertain',
+      'unauthorized',
+      'timeout',
+      'invalid-probe',
+    ]) {
       const child = Bun.spawn(
         [
           process.execPath,
@@ -44,12 +59,16 @@ esac
       );
       const code = await child.exited;
       const error = await new Response(child.stderr).text();
-      if (['ready', 'absent', 'absent-json'].includes(scenario)) {
+      if (['ready', 'offline', 'absent-json'].includes(scenario)) {
         expect(code).toBe(0);
       } else {
         expect(code).not.toBe(0);
         expect(error).toContain(
-          scenario === 'mismatch' ? 'another configuration' : 'Could not stop',
+          scenario === 'mismatch'
+            ? 'another configuration'
+            : ['unauthorized', 'timeout', 'invalid-probe'].includes(scenario)
+              ? 'Could not verify'
+              : 'Could not stop',
         );
       }
     }

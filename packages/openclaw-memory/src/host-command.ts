@@ -7,15 +7,6 @@ import { ConnectionError } from './error';
 const execute = promisify(execFile);
 const HOST_TIMEOUT_MS = 120_000;
 
-export function hostCommandErrorOutput(error: unknown): string {
-  if (!error || typeof error !== 'object') {
-    return '';
-  }
-  return ['stdout', 'stderr']
-    .map((key) => (key in error ? String(error[key as keyof typeof error]) : ''))
-    .join('\n');
-}
-
 export async function runSetupCommand(input: {
   script: string;
   args: string[];

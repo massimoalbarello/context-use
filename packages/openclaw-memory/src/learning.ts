@@ -5,7 +5,12 @@ import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
 import { isIncognitoSessionKey, isSubagentSessionKey } from 'openclaw/plugin-sdk/routing';
 import { lock } from 'proper-lockfile';
 import { configMatches } from './configuration';
-import { FINISH_LEARNING_TOOL, type PluginConfig, SAVE_ATTACHMENT_TOOL } from './contract';
+import {
+  FINISH_LEARNING_TOOL,
+  type PluginConfig,
+  PREPARE_REMOVAL_METHOD,
+  SAVE_ATTACHMENT_TOOL,
+} from './contract';
 import { LEARNING_GUIDANCE, MEMORY_GUIDANCE } from './guidance';
 import { clearStagedAttachments, stageAttachments } from './learning-attachments';
 import { attachmentsFromMessages, evidenceFromMessages } from './learning-evidence';
@@ -270,7 +275,7 @@ export function registerLearning(input: {
     return stopping;
   };
   api.registerGatewayMethod(
-    'context-use.prepare-removal',
+    PREPARE_REMOVAL_METHOD,
     async ({ respond }) => {
       if (!existsSync(removalFile(directory))) {
         respond(false, undefined, {
