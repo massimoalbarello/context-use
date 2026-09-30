@@ -17,7 +17,9 @@ import { createKnowledgeProfileController } from '#backend/routes/api/profile/co
 import { createPublicationsController } from '#backend/routes/api/publications/controller.ts';
 import { createRecordReadableIdController } from '#backend/routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#backend/routes/api/records/controller.ts';
+import { createManagedSyncsController } from '#backend/routes/api/syncs/managed/controller.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
+import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
@@ -52,6 +54,8 @@ function isWorkspacePath(path: string): boolean {
     path === '/app' ||
     path === '/app/map' ||
     path === '/app/history' ||
+    path === '/app/syncs' ||
+    /^\/app\/syncs\/[a-z][a-z0-9-]{0,63}$/.test(path) ||
     path === '/app/settings' ||
     path === '/app/settings/api-keys' ||
     path === '/app/settings/faces' ||
@@ -62,19 +66,22 @@ function isWorkspacePath(path: string): boolean {
 export function createDemoApp({
   resources,
   frontendAssetsService,
+  managedSyncsService,
 }: {
   resources: ReturnType<typeof createDemoResources>;
   frontendAssetsService: FrontendAssetsServiceContract;
+  managedSyncsService: ManagedSyncsServiceContract;
 }) {
   const auth = createDemoIdentity();
   const dependencies = { ...resources, auth };
   const faceDependencies = { auth, faces: resources.assetsService.faces };
   // Only these resource controllers receive the demo identity. Account, credential,
-  // sync, MCP, and public-site controllers belong exclusively to the instance app.
+  // sync runtime, MCP, and public-site controllers belong exclusively to the instance app.
   const api = new Elysia({ prefix: '/api', strictPath: true })
     .onError((context) =>
       context.code === 'NOT_FOUND' ? unavailableResponse() : elysiaErrorHandler(context),
     )
+    .use(createManagedSyncsController({ auth, syncs: managedSyncsService }))
     .use(createHistoryController(dependencies))
     .use(createAssetsController(dependencies))
     .use(createAssetReadableIdController(dependencies))

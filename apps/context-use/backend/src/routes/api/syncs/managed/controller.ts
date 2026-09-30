@@ -36,7 +36,7 @@ export function createManagedSyncsController(input: {
       }
     })
     .get(
-      '/',
+      '',
       async ({ user, status }) =>
         status(StatusMap.OK, await input.syncs.list({ actorId: user.id })),
       {
