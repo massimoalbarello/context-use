@@ -45,8 +45,7 @@ function ClientRevokeAction({
       <AlertDialogContent>
         <AlertDialogTitle>Revoke access for {client.name}?</AlertDialogTitle>
         <AlertDialogDescription>
-          Access and refresh tokens will be revoked immediately. Reconnect from your MCP client and
-          approve it again to restore access.
+          Access and refresh tokens will be revoked immediately.
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="outline">Cancel</Button>} />

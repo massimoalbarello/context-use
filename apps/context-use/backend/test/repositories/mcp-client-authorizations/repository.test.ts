@@ -1,12 +1,14 @@
 import { expect, test } from 'bun:test';
 import type { SQL } from 'bun';
+import { runMigrations } from '#backend/db/migrate.ts';
+import { getMigrations } from '#backend/lib/assets.ts';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
 import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
 
-const EXPECTED_CLIENT_AUTHORIZATION_COUNT = 3;
-const EXPECTED_ACTIVE_CLIENT_AUTHORIZATION_COUNT = 2;
+const EXPECTED_CLIENT_AUTHORIZATION_COUNT = 4;
+const EXPECTED_ACTIVE_CLIENT_AUTHORIZATION_COUNT = 1;
 
 async function insertOAuthClient({
   database,
@@ -25,8 +27,11 @@ async function insertOAuthClient({
   `;
 }
 
-test('client authorization identity is stable and its friendly name remains unique after archive', async () => {
+test('client names are reusable only after every matching authorization is revoked', async () => {
   await withAuthTestDatabase({
+    migrations: new Map(
+      [...getMigrations()].filter(([name]) => name < '0014_reuse_revoked_mcp_client_names.sql'),
+    ),
     run: async (database) => {
       const now = new Date().toISOString();
       await database`
@@ -37,6 +42,7 @@ test('client authorization identity is stable and its friendly name remains uniq
       `;
       await insertOAuthClient({ database, clientId: 'verified-client', discovery: 'cimd' });
       await insertOAuthClient({ database, clientId: 'fresh-client', discovery: null });
+      await insertOAuthClient({ database, clientId: 'replacement-client', discovery: null });
 
       const service = new McpClientAuthorizationsService(
         new McpClientAuthorizationsRepository(database),
@@ -122,36 +128,75 @@ test('client authorization identity is stable and its friendly name remains uniq
           name: 'Archived identities stay fixed',
         }),
       ).toEqual({ state: 'not_found' });
+      await runMigrations({ db: database });
+      await runMigrations({ db: database });
       expect(
         await service.rename({
           actorId: OWNER_USER_ID,
           clientAuthorizationId: fresh.clientAuthorization.id,
           name: 'Renamed on reconnect',
         }),
+      ).toMatchObject({ state: 'renamed' });
+      expect(
+        await service.approve({
+          actorId: OWNER_USER_ID,
+          clientId: 'replacement-client',
+          name: 'renamed on reconnect',
+        }),
       ).toEqual({ state: 'name_conflict' });
+      expect(
+        await service.archive({
+          actorId: OWNER_USER_ID,
+          clientAuthorizationId: fresh.clientAuthorization.id,
+        }),
+      ).toEqual({ state: 'archived' });
+
+      const replacement = await service.approve({
+        actorId: OWNER_USER_ID,
+        clientId: 'replacement-client',
+        name: 'renamed on reconnect',
+      });
+      expect(replacement.state).toBe('approved');
+      if (replacement.state !== 'approved') {
+        throw new Error('Expected name reuse after both matching clients were revoked');
+      }
+      expect(replacement.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
+      expect(replacement.clientAuthorization.id).not.toBe(fresh.clientAuthorization.id);
       expect(
         await service.approve({
           actorId: OWNER_USER_ID,
           clientId: 'verified-client',
-          name: 'renamed on reconnect',
+          name: 'Renamed on reconnect',
         }),
       ).toEqual({ state: 'name_conflict' });
-      const afterArchive = await service.approve({
+      expect(
+        await service.archive({
+          actorId: OWNER_USER_ID,
+          clientAuthorizationId: replacement.clientAuthorization.id,
+        }),
+      ).toEqual({ state: 'archived' });
+      const reauthorized = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',
-        name: 'New approval',
+        name: 'Renamed on reconnect',
       });
-      expect(afterArchive.state).toBe('approved');
-      if (afterArchive.state !== 'approved') {
-        throw new Error('Expected approval after archive');
+      expect(reauthorized.state).toBe('approved');
+      if (reauthorized.state !== 'approved') {
+        throw new Error('Expected same-name reauthorization');
       }
-      expect(afterArchive.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
+      expect(reauthorized.clientAuthorization.id).not.toBe(first.clientAuthorization.id);
 
       const listed = await service.list({ actorId: OWNER_USER_ID });
       expect(listed.state).toBe('found');
       if (listed.state !== 'found') {
         throw new Error('Expected client authorization list');
       }
+      expect(
+        listed.clientAuthorizations.find(({ id }) => id === first.clientAuthorization.id),
+      ).toMatchObject({
+        name: 'Renamed on reconnect',
+        archivedAt: expect.any(String),
+      });
       expect(listed.clientAuthorizations).toHaveLength(EXPECTED_CLIENT_AUTHORIZATION_COUNT);
       expect(
         listed.clientAuthorizations.filter(({ archivedAt }) => archivedAt === null),

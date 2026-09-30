@@ -567,7 +567,7 @@ describe('MCP OAuth foundation', () => {
           const newApproval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: archivedClient.client_id,
-            name: 'Reauthorized coding agent',
+            name: 'Another coding agent',
           });
           expect(newApproval.state).toBe('approved');
           const newTokens = JSON.parse(

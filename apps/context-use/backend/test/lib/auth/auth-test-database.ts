@@ -7,14 +7,16 @@ import { runMigrations } from '#backend/db/migrate.ts';
 
 export async function withAuthTestDatabase<T>({
   run,
+  migrations,
 }: {
   run: (database: SQL) => Promise<T>;
+  migrations?: Map<string, Blob>;
 }): Promise<T> {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-auth-test-'));
   const database = await createSqliteDatabase({ dataFolder });
 
   try {
-    await runMigrations({ db: database });
+    await runMigrations({ db: database, migrations });
     return await run(database);
   } finally {
     await database.close();
