@@ -17,6 +17,7 @@ case "$*" in
       mismatch) echo '{"path":"/another/openclaw.json"}' ;;
       offline) echo '{"ok":false,"error":{"type":"gateway_transport_error","message":"Gateway not reachable","reason":"connect ECONNREFUSED 127.0.0.1:18789"}}'; exit 1 ;;
       unauthorized) echo '{"ok":false,"error":{"type":"gateway_auth_error","message":"token mismatch"}}'; exit 1 ;;
+      unavailable) echo '{"ok":false,"error":{"type":"gateway_request_error","code":"UNAVAILABLE","message":"gateway rejected websocket upgrade (HTTP 503)"}}'; exit 1 ;;
       timeout) echo '{"ok":false,"error":{"type":"gateway_transport_error","message":"Gateway timed out","reason":"timeout"}}'; exit 1 ;;
       invalid-probe) echo 'not JSON' ;;
       *) echo '{"path":"/fixture/openclaw.json"}' ;;
@@ -42,6 +43,7 @@ esac
       'failed',
       'uncertain',
       'unauthorized',
+      'unavailable',
       'timeout',
       'invalid-probe',
     ]) {
@@ -66,7 +68,7 @@ esac
         expect(error).toContain(
           scenario === 'mismatch'
             ? 'another configuration'
-            : ['unauthorized', 'timeout', 'invalid-probe'].includes(scenario)
+            : ['unauthorized', 'unavailable', 'timeout', 'invalid-probe'].includes(scenario)
               ? 'Could not verify'
               : 'Could not stop',
         );

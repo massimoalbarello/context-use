@@ -52,6 +52,8 @@ const sdkConfig = createRequire(join(hostRoot, 'package.json')).resolve(
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
 using gatewayReservation = reservePort();
 const gatewayPort = gatewayReservation.port!;
+// The setup/removal tests below require an offline gateway, not an HTTP 503 listener.
+await gatewayReservation.stop(true);
 
 async function command(input: string[] | { args: string[]; stdin: string }): Promise<string> {
   const { args, stdin } = Array.isArray(input) ? { args: input, stdin: undefined } : input;
@@ -476,7 +478,6 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   assert(reinstalledRecall.includes('architecture'));
-  await gatewayReservation.stop(true);
   gateway = Bun.spawn(['openclaw', 'gateway', 'run'], {
     cwd: directory,
     // This test owns restart and shutdown, even under CI's service manager.
