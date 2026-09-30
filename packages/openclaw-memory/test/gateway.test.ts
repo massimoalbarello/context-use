@@ -18,6 +18,7 @@ case "$*" in
   *context-use.prepare-removal*)
     case "$REMOVAL_CASE" in
       absent) echo 'unknown method: context-use.prepare-removal' >&2; exit 1 ;;
+      absent-json) echo '{"ok":false,"error":{"code":"INVALID_REQUEST","message":"unknown method: context-use.prepare-removal"}}'; exit 1 ;;
       failed) echo 'cleanup failed' >&2; exit 1 ;;
       uncertain) echo '{"stopped":false}' ;;
       *) echo '{"stopped":true}' ;;
@@ -28,7 +29,7 @@ esac
     );
     const executableMode = 0o700;
     await chmod(command, executableMode);
-    for (const scenario of ['ready', 'absent', 'mismatch', 'failed', 'uncertain']) {
+    for (const scenario of ['ready', 'absent', 'absent-json', 'mismatch', 'failed', 'uncertain']) {
       const child = Bun.spawn(
         [
           process.execPath,
@@ -43,7 +44,7 @@ esac
       );
       const code = await child.exited;
       const error = await new Response(child.stderr).text();
-      if (['ready', 'absent'].includes(scenario)) {
+      if (['ready', 'absent', 'absent-json'].includes(scenario)) {
         expect(code).toBe(0);
       } else {
         expect(code).not.toBe(0);

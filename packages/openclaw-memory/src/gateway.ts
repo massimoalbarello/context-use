@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { z } from 'zod';
 import { ConnectionError } from './error';
-import { openclaw } from './host-command';
+import { hostCommandErrorOutput, openclaw } from './host-command';
 import { OPENCLAW_INSTALL_COMMAND } from './setup-prompt';
 
 async function hasMatchingGateway(): Promise<boolean> {
@@ -48,13 +48,7 @@ export async function prepareGatewayRemoval(): Promise<void> {
     z.object({ stopped: z.literal(true) }).parse(result);
   } catch (error) {
     // A disabled or absent plugin has no runtime method to prepare.
-    if (
-      error &&
-      typeof error === 'object' &&
-      'stderr' in error &&
-      typeof error.stderr === 'string' &&
-      /unknown method: context-use\.prepare-removal/i.test(error.stderr)
-    ) {
+    if (/unknown method: context-use\.prepare-removal/i.test(hostCommandErrorOutput(error))) {
       return;
     }
     throw new ConnectionError(
