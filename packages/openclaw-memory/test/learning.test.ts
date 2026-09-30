@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/complexity/useMaxParams: Host hook callbacks use positional arguments. */
 import { afterEach, expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
@@ -13,6 +13,7 @@ import { callMemoryTool } from '../src/client';
 import { FINISH_LEARNING_TOOL, SAVE_ATTACHMENT_TOOL } from '../src/contract';
 import { registerLearning } from '../src/learning';
 import { LearningStore } from '../src/learning-store';
+import { removalFile } from '../src/removal';
 import { writeState } from '../src/state';
 
 const cleanups: (() => Promise<void>)[] = [];
@@ -47,6 +48,8 @@ async function fixture() {
   };
   await writeState({ directory, state });
   const hooks = new Map<string, unknown>();
+  let prepareRemoval: Parameters<OpenClawPluginApi['registerGatewayMethod']>[1];
+  let cleanupError = false;
   let service: OpenClawPluginService;
   type ToolFactory = (
     context: unknown,
@@ -69,6 +72,9 @@ async function fixture() {
       service = value;
     },
     lifecycle: { registerRuntimeLifecycle: () => {} },
+    registerGatewayMethod: (_name: string, handler: typeof prepareRemoval) => {
+      prepareRemoval = handler;
+    },
     logger: { warn: (warning: string) => warnings.push(warning) },
     runtime: {
       agent: {
@@ -87,6 +93,9 @@ async function fixture() {
           return Promise.resolve({ messages });
         },
         deleteSession: (params: { sessionKey: string }) => {
+          if (cleanupError) {
+            return Promise.reject(new Error('cleanup still running'));
+          }
           deleted.push(params.sessionKey);
           return Promise.resolve();
         },
@@ -125,6 +134,18 @@ async function fixture() {
   };
   return {
     db,
+    prepareRemoval: async () => {
+      let result: { ok: boolean; error?: unknown } | undefined;
+      await prepareRemoval({
+        respond: (ok, _payload, error) => {
+          result = { ok, error };
+        },
+      } as Parameters<typeof prepareRemoval>[0]);
+      return result;
+    },
+    failCleanup: (fail: boolean) => {
+      cleanupError = fail;
+    },
     state,
     directory,
     hook,
@@ -249,4 +270,33 @@ test('attachment tools cannot select arbitrary paths or attachments outside thei
   await expect(
     tool.execute('save', { attachmentId: 'another-job', name: 'Photo' }),
   ).rejects.toThrow('not part');
+});
+
+test('explicit removal cancels only its unfinished learning session and fences new captures', async () => {
+  const f = await fixture();
+  await f.hook('agent_end', { messages });
+  await f.cycle();
+  const ownedSession = f.db.current()!.sessionKey;
+  expect((await f.prepareRemoval())?.ok).toBe(false);
+  expect(f.deleted).toEqual([]);
+  await writeFile(removalFile(f.directory), '{}');
+  f.state.oauth = {} as typeof f.state.oauth;
+  await writeState({ directory: f.directory, state: f.state });
+  expect((await f.prepareRemoval())?.ok).toBe(true);
+  expect(f.deleted).toEqual([ownedSession]);
+  await f.hook('agent_end', { messages: [{ role: 'user', content: 'Do not learn this' }] });
+  expect(f.db.status().pending).toBe(1);
+});
+
+test('failed session cancellation remains retryable and retains recovery evidence', async () => {
+  const f = await fixture();
+  await f.hook('agent_end', { messages });
+  await f.cycle();
+  await writeFile(removalFile(f.directory), '{}');
+  f.failCleanup(true);
+  expect((await f.prepareRemoval())?.ok).toBe(false);
+  expect(f.db.status().running).toBe(true);
+  f.failCleanup(false);
+  expect((await f.prepareRemoval())?.ok).toBe(true);
+  expect(f.deleted).toEqual([f.db.current()!.sessionKey]);
 });

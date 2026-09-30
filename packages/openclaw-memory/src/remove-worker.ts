@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { disconnect } from './connection';
 import { ConnectionError } from './error';
-import { refreshGateway } from './gateway';
+import { prepareGatewayRemoval, refreshGateway } from './gateway';
 import { uninstall } from './install';
 import { runRemoval } from './removal';
 import { connectionDirectory } from './state';
@@ -13,8 +13,10 @@ try {
   await runRemoval({
     directory,
     run: async () => {
-      let step = 'restore memory settings';
+      let step = 'stop background learning';
       try {
+        await prepareGatewayRemoval();
+        step = 'restore memory settings';
         await disconnect(directory);
         step = 'uninstall the package after active OpenClaw work finishes';
         await uninstall();

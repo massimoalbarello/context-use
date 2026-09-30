@@ -12,7 +12,7 @@ import { readState, withConnection, writeState } from './state';
 
 const RemovalSchema = z.object({ error: z.string().optional() });
 const removalLease = { realpath: false, stale: 30_000, update: 2_000 };
-const removalFile = (directory: string) => `${directory}.removal.json`;
+export const removalFile = (directory: string) => `${directory}.removal.json`;
 
 export async function removalStatus(directory: string) {
   try {
