@@ -41,6 +41,7 @@ function neighborhood(anchor: MapEntity, neighbors: MapEntity[]): MapLayoutNeigh
 function page(readableId: string): MapPage {
   return {
     publishedAt: null,
+    publishedRevisionNumber: null,
     readableId,
     title: readableId,
     excerpt: `${readableId} excerpt`,

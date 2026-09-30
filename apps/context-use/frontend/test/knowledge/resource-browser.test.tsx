@@ -78,6 +78,7 @@ async function renderResourceBrowser({
   };
   const page: KnowledgePage = {
     publishedAt: null,
+    publishedRevisionNumber: null,
     readableId: 'launch',
     title: 'Launch plan',
     excerpt: 'Launch overview',
@@ -105,6 +106,7 @@ async function renderResourceBrowser({
   entity.pages = [
     {
       publishedAt: null,
+      publishedRevisionNumber: null,
       readableId: page.readableId,
       title: page.title,
       excerpt: page.excerpt,

@@ -174,6 +174,7 @@ test('mixed BM25 order and more than seven matches of one type are preserved wit
       matchExcerpt: 'Body evidence',
       knowledgePage: {
         publishedAt: null,
+        publishedRevisionNumber: null,
         readableId: 'notes',
         title: 'Research notes',
         excerpt: 'Research overview',

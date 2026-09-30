@@ -28,6 +28,7 @@ import {
 
 export const KnowledgePageSummarySchema = t.Object({
   publishedAt: PublicationSchema.properties.publishedAt,
+  publishedRevisionNumber: t.Nullable(t.Integer({ minimum: 1 })),
   readableId: ReadableIdSchema,
   title: t.String(),
   excerpt: t.String({ maxLength: MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH }),
@@ -117,6 +118,7 @@ export const KnowledgePageListQuerySchema = t.Object({
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {
     publishedAt: page.publishedAt,
+    publishedRevisionNumber: page.publishedRevisionNumber,
     readableId: page.readableId,
     title: page.title,
     excerpt: page.excerpt,

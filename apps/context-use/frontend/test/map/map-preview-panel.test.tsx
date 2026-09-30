@@ -29,6 +29,7 @@ async function renderInteractivePreview(onClose: () => void) {
   ] as const) {
     queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
       publishedAt: null,
+      publishedRevisionNumber: null,
       readableId: selection.readableId,
       title,
       excerpt: title,

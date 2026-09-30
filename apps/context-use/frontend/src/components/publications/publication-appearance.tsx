@@ -13,6 +13,14 @@ export function PublicBadge() {
   );
 }
 
+export function UnpublishedRevisionsBadge() {
+  return (
+    <Badge variant="secondary" className="bg-warning/10 text-warning dark:bg-warning/20">
+      Unpublished revisions
+    </Badge>
+  );
+}
+
 export function ViewPublicLink({
   href,
   size = 'lg',

@@ -5,13 +5,13 @@ import type { ReactNode } from 'react';
 import type { KnowledgePageSummary } from '../../queries/pages';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
-import { PublicBadge } from '../publications/publication-appearance';
+import { PublicBadge, UnpublishedRevisionsBadge } from '../publications/publication-appearance';
 import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 type KnowledgePageName = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
 type KnowledgePageIdentity = KnowledgePageName &
   Pick<KnowledgePageSummary, 'excerpt' | 'temporalCoverage'> &
-  Partial<Pick<KnowledgePageSummary, 'publishedAt'>>;
+  Partial<Pick<KnowledgePageSummary, 'publishedAt' | 'publishedRevisionNumber' | 'revisionNumber'>>;
 
 type KnowledgePageLinkProps =
   | {
@@ -65,7 +65,14 @@ export function KnowledgePageCardContent({
           </small>
         )}
       </span>
-      {page.publishedAt != null && <PublicBadge />}
+      {page.publishedAt != null && (
+        <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {page.publishedRevisionNumber != null &&
+            page.revisionNumber != null &&
+            page.publishedRevisionNumber !== page.revisionNumber && <UnpublishedRevisionsBadge />}
+          <PublicBadge />
+        </span>
+      )}
     </>
   );
 }
