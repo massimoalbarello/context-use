@@ -631,7 +631,42 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log(
     'A reply made no memory calls; background learning saved the plan and original image, video and document assets across /new, displayed their links in the app, and cleared its evidence.',
   );
-  console.log('Removing the installed plugin.');
+  model.holdLearning();
+  const unfinishedSession = `${personalGroup}:topic:8`;
+  const unfinished = JSON.parse(
+    await command([
+      'openclaw',
+      'gateway',
+      'call',
+      'chat.send',
+      '--params',
+      JSON.stringify({
+        sessionKey: unfinishedSession,
+        message: 'UNSAVED_REMOVAL_CANARY',
+        idempotencyKey: crypto.randomUUID(),
+        deliver: false,
+      }),
+      '--json',
+    ]),
+  );
+  await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'agent.wait',
+    '--timeout',
+    String(COMMAND_TIMEOUT_MS),
+    '--params',
+    JSON.stringify({ runId: unfinished.runId, timeoutMs: COMMAND_TIMEOUT_MS }),
+    '--json',
+  ]);
+  const learningStartDeadline = Date.now() + learningTimeoutMs;
+  while (!model.observations.heldLearningCalls && Date.now() < learningStartDeadline) {
+    await Bun.sleep(pollIntervalMs);
+  }
+  assert(model.observations.heldLearningCalls > 0, 'No active learning run to cancel');
+  assert(model.observations.cancelledLearningCalls === 0, 'Learning ended before removal');
+  console.log('Removing the plugin with an unfinished background model request.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
   model.setup('openclaw context-use remove');
   const queuedRemoval = await command([
@@ -656,6 +691,28 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   }
   assert(!existsSync(`${dirname(connectionFile)}.removal.json`), 'Removal worker did not finish');
   assert(!existsSync(dirname(connectionFile)), 'Removal retained private data');
+  assert(
+    model.observations.cancelledLearningCalls > 0,
+    'Removal did not cancel the background model request',
+  );
+  const survivingHistory = await command([
+    'openclaw',
+    'gateway',
+    'call',
+    'chat.history',
+    '--params',
+    JSON.stringify({ sessionKey: unfinishedSession }),
+    '--json',
+  ]);
+  assert(
+    survivingHistory.includes('UNSAVED_REMOVAL_CANARY'),
+    'Removal deleted the user conversation',
+  );
+  const survivingPages = await owner.page.request.get(`${app.origin}/api/pages`);
+  assert(survivingPages.ok());
+  const pageText = await survivingPages.text();
+  assert(pageText.includes('Exhibition visit'), 'Removal deleted saved memories');
+  assert(!pageText.includes('UNSAVED_REMOVAL_CANARY'), 'Removal flushed discarded evidence');
   console.log('Removal requested by the active Gateway agent finished after its own turn ended.');
   // OpenClaw may reload itself as configuration changes. Verify the next chat's
   // provider below, regardless of whether removal needed to request another refresh.

@@ -30,10 +30,13 @@ export function startModel() {
     removedCalls: 0,
     setupCalls: 0,
     backgroundCalls: 0,
+    heldLearningCalls: 0,
+    cancelledLearningCalls: 0,
     prompt: '',
     tools: new Set<string>(),
   };
   let phase: 'setup' | 'learn' | 'recall' | 'background' | 'removed' = 'learn';
+  let holdLearning = false;
   let setupCommand = '';
   let setupStarted = false;
   let setupConfirmed = false;
@@ -366,9 +369,64 @@ export function startModel() {
       ? mainReply(input)
       : recallReply(input);
   }
+  function modelResponse(input: ModelInput): Response {
+    const names = input.tools.map((tool) => tool.function.name);
+    const { call, answer } = reply(input);
+    const toolName = call
+      ? phase === 'setup'
+        ? call.name
+        : `context_use_${call.name}`
+      : undefined;
+    if (toolName) {
+      assert(names.includes(toolName), `Native tool ${toolName} is unavailable`);
+      observations.tools.add(toolName);
+    }
+    const properties =
+      input.tools.find((tool) => tool.function.name === toolName)?.function.parameters.properties ??
+      {};
+    // Reproduce providers that require every field: unspecified inputs must
+    // have an omission value, including cursors, search filters and updates.
+    const args =
+      call && phase !== 'setup'
+        ? {
+            ...Object.fromEntries(Object.keys(properties).map((key) => [key, null])),
+            ...call.arguments,
+          }
+        : call?.arguments;
+    const delta = call
+      ? {
+          role: 'assistant',
+          tool_calls: [
+            {
+              index: 0,
+              id: `call_${crypto.randomUUID()}`,
+              type: 'function',
+              function: { name: toolName, arguments: JSON.stringify(args) },
+            },
+          ],
+        }
+      : { role: 'assistant', content: answer };
+    const chunk = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
+    const base = {
+      id: 'fixture',
+      object: 'chat.completion.chunk',
+      created: 0,
+      model: 'memory-fixture',
+    };
+    return new Response(
+      chunk({ ...base, choices: [{ index: 0, delta, finish_reason: null }] }) +
+        chunk({
+          ...base,
+          choices: [{ index: 0, delta: {}, finish_reason: call ? 'tool_calls' : 'stop' }],
+        }) +
+        'data: [DONE]\n\n',
+      { headers: { 'content-type': 'text/event-stream' } },
+    );
+  }
   const server = Bun.serve({
     port: 0,
     hostname: '127.0.0.1',
+    idleTimeout: 0,
     error: (error) =>
       Response.json(
         { error: { message: error.message, type: 'invalid_request_error' } },
@@ -377,62 +435,31 @@ export function startModel() {
     async fetch(request) {
       const input = RequestSchema.parse(await request.json());
       const names = input.tools.map((tool) => tool.function.name);
-      const { call, answer } = reply(input);
-      const toolName = call
-        ? phase === 'setup'
-          ? call.name
-          : `context_use_${call.name}`
-        : undefined;
-      if (toolName) {
-        assert(names.includes(toolName), `Native tool ${toolName} is unavailable`);
-        observations.tools.add(toolName);
+      if (holdLearning && names.includes('context_use_finish_learning')) {
+        observations.heldLearningCalls += 1;
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(': learning deliberately unfinished\n\n'),
+              );
+            },
+            cancel() {
+              observations.cancelledLearningCalls += 1;
+            },
+          }),
+          { headers: { 'content-type': 'text/event-stream' } },
+        );
       }
-      const properties =
-        input.tools.find((tool) => tool.function.name === toolName)?.function.parameters
-          .properties ?? {};
-      // Reproduce providers that require every field: unspecified inputs must
-      // have an omission value, including cursors, search filters and updates.
-      const args =
-        call && phase !== 'setup'
-          ? {
-              ...Object.fromEntries(Object.keys(properties).map((key) => [key, null])),
-              ...call.arguments,
-            }
-          : call?.arguments;
-      const delta = call
-        ? {
-            role: 'assistant',
-            tool_calls: [
-              {
-                index: 0,
-                id: `call_${crypto.randomUUID()}`,
-                type: 'function',
-                function: { name: toolName, arguments: JSON.stringify(args) },
-              },
-            ],
-          }
-        : { role: 'assistant', content: answer };
-      const chunk = (value: unknown) => `data: ${JSON.stringify(value)}\n\n`;
-      const base = {
-        id: 'fixture',
-        object: 'chat.completion.chunk',
-        created: 0,
-        model: 'memory-fixture',
-      };
-      return new Response(
-        chunk({ ...base, choices: [{ index: 0, delta, finish_reason: null }] }) +
-          chunk({
-            ...base,
-            choices: [{ index: 0, delta: {}, finish_reason: call ? 'tool_calls' : 'stop' }],
-          }) +
-          'data: [DONE]\n\n',
-        { headers: { 'content-type': 'text/event-stream' } },
-      );
+      return modelResponse(input);
     },
   });
   return {
     origin: `http://127.0.0.1:${server.port}`,
     observations,
+    holdLearning: () => {
+      holdLearning = true;
+    },
     setup: (command: string) => {
       phase = 'setup';
       setupCommand = command;

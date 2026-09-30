@@ -38,7 +38,7 @@ async function connectCommand({
   });
   if (result.authorizationUrl) {
     console.log(
-      `Open this URL to authorize Context Use:\n${result.authorizationUrl}\n\nCopy the final localhost URL and send it back, even if the page does not load. Finish with ${OPENCLAW_INSTALL_COMMAND} authorize, passing the returned URL through standard input.`,
+      `Open this URL to authorize Context Use:\n${result.authorizationUrl}\n\nCopy the final localhost URL and send it back, even if the page does not load. Finish with ${OPENCLAW_INSTALL_COMMAND} authorize, passing the returned URL through standard input. Use this standalone helper while the plugin is disabled; do not manually enable it, select a memory slot, or edit configuration.`,
     );
   } else {
     console.log('Context Use authorized. Memory settings saved.');
