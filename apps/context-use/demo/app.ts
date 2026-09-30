@@ -1,6 +1,5 @@
 import { Elysia, StatusMap } from 'elysia';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
-import type { SyncProviderSummary } from '#backend/models/syncs/managed.ts';
 import { createAssetReadableIdController } from '#backend/routes/api/assets/[assetReadableId]/controller.ts';
 import { createAssetFacesController } from '#backend/routes/api/assets/[assetReadableId]/faces/controller.ts';
 import { createAssetsController } from '#backend/routes/api/assets/controller.ts';
@@ -18,8 +17,8 @@ import { createKnowledgeProfileController } from '#backend/routes/api/profile/co
 import { createPublicationsController } from '#backend/routes/api/publications/controller.ts';
 import { createRecordReadableIdController } from '#backend/routes/api/records/[recordReadableId]/controller.ts';
 import { createRecordsController } from '#backend/routes/api/records/controller.ts';
+import { createManagedSyncsController } from '#backend/routes/api/syncs/managed/controller.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
-import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 import { createDemoIdentity } from './identity';
 import type { createDemoResources } from './resources';
 
@@ -79,20 +78,7 @@ export function createDemoApp({
     .onError((context) =>
       context.code === 'NOT_FOUND' ? unavailableResponse() : elysiaErrorHandler(context),
     )
-    .get('/syncs/managed', ({ request }): SyncProviderSummary[] =>
-      syncProviders.map((provider) => ({
-        id: provider.id,
-        name: provider.name,
-        description: provider.description,
-        oauthApp: {
-          configured: false,
-          callbackUrl: new URL('/api/open-sync/oauth/callback', request.url).href,
-          createAppUrl: provider.oauth.createAppUrl,
-        },
-        account: { name: null, status: 'disconnected' },
-        syncs: [],
-      })),
-    )
+    .use(createManagedSyncsController({ auth, syncs: resources.managedSyncsService }))
     .use(createHistoryController(dependencies))
     .use(createAssetsController(dependencies))
     .use(createAssetReadableIdController(dependencies))

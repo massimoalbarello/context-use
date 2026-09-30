@@ -36,9 +36,20 @@ export function createManagedSyncsController(input: {
       }
     })
     .get(
-      '/',
-      async ({ user, status }) =>
-        status(StatusMap.OK, await input.syncs.list({ actorId: user.id })),
+      '',
+      async ({ user, request, status }) => {
+        const providers = await input.syncs.list({ actorId: user.id });
+        return status(
+          StatusMap.OK,
+          providers.map((provider) => ({
+            ...provider,
+            oauthApp: {
+              ...provider.oauthApp,
+              callbackUrl: new URL(provider.oauthApp.callbackUrl, request.url).href,
+            },
+          })),
+        );
+      },
       {
         response: { [StatusMap.OK]: ManagedSyncListSchema },
         detail: { tags: ['Syncs'], summary: 'List locally managed syncs' },
