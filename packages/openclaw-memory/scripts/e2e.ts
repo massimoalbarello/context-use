@@ -695,6 +695,8 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     model.observations.cancelledLearningCalls > 0,
     'Removal did not cancel the background model request',
   );
+  // Removal requests a deferred refresh; wait before reading the surviving history.
+  await waitGateway();
   const survivingHistory = await command([
     'openclaw',
     'gateway',
@@ -714,9 +716,6 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(pageText.includes('Exhibition visit'), 'Removal deleted saved memories');
   assert(!pageText.includes('UNSAVED_REMOVAL_CANARY'), 'Removal flushed discarded evidence');
   console.log('Removal requested by the active Gateway agent finished after its own turn ended.');
-  // OpenClaw may reload itself as configuration changes. Verify the next chat's
-  // provider below, regardless of whether removal needed to request another refresh.
-  await waitGateway();
   model.removed();
   const gatewayChat = await command([
     'openclaw',
