@@ -78,7 +78,7 @@ test(
     const syncBuild = await prepareSyncBuild();
     try {
       for (const entry of ${JSON.stringify(entries)}) {
-        const options = entry === 'backend/src/main.ts'
+        const options = entry !== '../landing/src/server.ts'
           ? { external: syncBuild.external, plugins: syncBuild.plugins } : {};
         const result = await Bun.build({ entrypoints: [entry], ...options, target: 'bun', metafile: true });
         if (!result.success) throw new AggregateError(result.logs);
@@ -131,7 +131,7 @@ test(
     ).toEqual([]);
     expect(
       graphs['demo/main.ts']!.filter((path) =>
-        /backend\/src\/(app\.ts|routes\/(api\/(controller\.ts|auth\/|api-keys\/|mcp\/|owner-registration\/|syncs\/|public-site\/)|auth-discovery\/|mcp\/|public\/|sync-callbacks\.ts))/.test(
+        /backend\/src\/(app\.ts|routes\/(api\/(controller\.ts|auth\/|api-keys\/|mcp\/|owner-registration\/|public-site\/)|auth-discovery\/|mcp\/|public\/|sync-callbacks\.ts))/.test(
           path,
         ),
       ),

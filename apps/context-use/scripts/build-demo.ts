@@ -1,6 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { LocalFaceAnalyzer } from '#backend/lib/face-analysis/local-analyzer.ts';
+import { prepareSyncBuild } from '../backend/scripts/shared/build-sync';
 import { BACKEND_BUILD_TARGET } from '../backend/scripts/shared/build-target';
 import { seedDemoSnapshot } from '../demo/seed';
 
@@ -13,14 +14,17 @@ const analyzer = new LocalFaceAnalyzer({
 });
 await rm(snapshot, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
+const syncBuild = await prepareSyncBuild();
 try {
   await seedDemoSnapshot({ dataFolder: snapshot, analyzer });
   const result = await Bun.build({
+    external: syncBuild.external,
+    plugins: syncBuild.plugins,
     entrypoints: [join(import.meta.dir, '../demo/main.ts')],
     compile: {
       outfile: join(output, 'context-use-demo'),
       ...(BACKEND_BUILD_TARGET ? { target: BACKEND_BUILD_TARGET } : {}),
-      assets: [frontend, snapshot],
+      assets: [frontend, snapshot, ...syncBuild.assets],
     },
     bytecode: true,
     format: 'esm',
@@ -34,6 +38,7 @@ try {
   }
   console.log(`Built ${join(output, 'context-use-demo')}`);
 } finally {
+  await syncBuild.dispose();
   await analyzer.close();
   await rm(snapshot, { recursive: true, force: true });
 }

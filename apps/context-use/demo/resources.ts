@@ -25,7 +25,6 @@ import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/s
 import { RecordsService } from '#backend/services/records/service.ts';
 import { createDemoFaces } from './faces';
 import { createDemoPublications } from './publications';
-import { createDemoSyncs } from './syncs';
 
 /** Demo composition only. Seeding is sequential; serving uses a read-only connection. */
 export function createDemoResources({
@@ -56,7 +55,6 @@ export function createDemoResources({
   const faces = createDemoFaces(facesService);
   return {
     facesService,
-    managedSyncsService: createDemoSyncs(),
     publicationApprovalService: createDemoPublications(new PublicationsRepository(database)),
     assetsService: new AssetsService({
       assets,

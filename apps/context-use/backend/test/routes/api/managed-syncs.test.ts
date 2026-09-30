@@ -44,20 +44,7 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   const completed: string[] = [];
   const configured: string[] = [];
   const services: ManagedSyncsServiceContract = {
-    list: async () => [
-      {
-        id: 'github',
-        name: 'GitHub',
-        description: 'Pull requests',
-        oauthApp: {
-          configured: false,
-          callbackUrl: 'https://public.example/api/open-sync/oauth/callback',
-          createAppUrl: 'https://github.com/settings/applications/new',
-        },
-        account: { name: null, status: 'disconnected' },
-        syncs: [],
-      },
-    ],
+    list: () => Promise.resolve([]),
     configureApp: ({ actorId }) => {
       configured.push(actorId);
       return Promise.resolve();
@@ -92,13 +79,6 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
     );
   expect((await app.handle(new Request('http://host/api/syncs/managed'))).status).toBe(
     StatusMap.Unauthorized,
-  );
-  const listed = await app.handle(
-    new Request('http://host/api/syncs/managed', { headers: { cookie: 'owner-session' } }),
-  );
-  expect(listed.status).toBe(StatusMap.OK);
-  expect((await listed.json())[0].oauthApp.callbackUrl).toBe(
-    'https://public.example/api/open-sync/oauth/callback',
   );
   const post = (origin: string) =>
     app.handle(

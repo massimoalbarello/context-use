@@ -69,11 +69,24 @@ test(
       assert.ok(
         files.every(
           (file) =>
-            file === 'app.db' || file.startsWith('objects/') || file.startsWith('face-crops/'),
+            file === 'app.db' ||
+            file.startsWith('objects/') ||
+            file.startsWith('face-crops/') ||
+            file.startsWith('open-sync/'),
         ),
         'Snapshot must not include inference binaries or models',
       );
+      const providers = (await (await request({ path: '/api/syncs/managed' })).json()) as {
+        id: string;
+        oauthApp: { configured: boolean };
+        account: { status: string };
+      }[];
+      assert.equal(providers[0]?.id, 'github');
+      assert.equal(providers[0]?.oauthApp.configured, false);
+      assert.equal(providers[0]?.account.status, 'disconnected');
       for (const path of [
+        '/api/syncs/managed/providers/github/app',
+        '/api/syncs/managed/providers/github/connect',
         '/api/pages',
         '/api/profile',
         '/api/auth/get-session',
@@ -89,6 +102,7 @@ test(
         '/api/auth/sign-out',
         '/api/auth/passkey/generate-register-options',
         '/api/api-keys',
+        '/api/open-sync/oauth/callback?code=test&state=test',
         '/mcp/asset-transfers/token',
       ]) {
         assert.equal((await request({ path })).status, StatusMap.Forbidden, path);
