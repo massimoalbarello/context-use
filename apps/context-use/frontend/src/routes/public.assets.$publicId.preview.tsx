@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { lazy, Suspense, useSyncExternalStore } from 'react';
+import { lazy, Suspense } from 'react';
 import { AssetPreviewFallback } from '../components/assets/asset-preview-fallback';
 import { PdfPreviewLoading } from '../components/assets/pdf-preview-loading';
 import { publicPdfQueryOptions } from '../queries/public-asset-preview';
@@ -15,22 +15,11 @@ const PdfPreview = lazy(async () => {
 });
 
 function PublicAssetPreview() {
-  const dark = useSyncExternalStore(subscribeToTheme, isDarkTheme, () => false);
   return (
-    <main className={`${dark ? 'dark' : ''} flex min-h-dvh flex-col bg-muted text-foreground`}>
+    <main className="flex min-h-dvh flex-col bg-muted text-foreground">
       <PublicPdfContent />
     </main>
   );
-}
-
-function subscribeToTheme(onChange: () => void) {
-  const query = window.matchMedia('(prefers-color-scheme: dark)');
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
-}
-
-function isDarkTheme() {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
 function PublicPdfContent() {
@@ -41,7 +30,7 @@ function PublicPdfContent() {
   }
   return content.data ? (
     <Suspense fallback={<PdfPreviewLoading />}>
-      <PdfPreview bytes={content.data} name="PDF" className="h-dvh" />
+      <PdfPreview bytes={content.data} name="PDF" className="h-dvh max-h-none" />
     </Suspense>
   ) : (
     <PdfPreviewLoading />
