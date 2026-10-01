@@ -65,10 +65,10 @@ async function readItems(input: { context: SyncContext; checkpoint: Checkpoint }
         part: 'snippet',
         playlistId,
         maxResults: pageSize,
-        // Only request the fields that become records; no descriptions, thumbnails,
-        // media, or transcripts are acquired for video memberships.
+        // Only acquire metadata needed for pagination and video records;
+        // descriptions, thumbnails, media, and transcripts are excluded.
         fields:
-          'nextPageToken,pageInfo(totalResults),items(id,snippet(title,playlistId,publishedAt,resourceId,videoOwnerChannelId,videoOwnerChannelTitle))',
+          'nextPageToken,pageInfo(totalResults),items(id,snippet(title,playlistId,position,publishedAt,resourceId,videoOwnerChannelId,videoOwnerChannelTitle))',
         ...(checkpoint.itemPageToken ? { pageToken: checkpoint.itemPageToken } : {}),
       },
     }),
@@ -90,22 +90,39 @@ async function readItems(input: { context: SyncContext; checkpoint: Checkpoint }
     previous: checkpoint.itemPageToken,
     count: page.items.length,
   });
+  const pageOffset = tail
+    ? checkpoint.itemPageToken === tail.pageToken
+      ? tail.pageOffset
+      : tail.itemCount
+    : 0;
+  for (const [index, item] of page.items.entries()) {
+    if (item.snippet.position !== pageOffset + index) {
+      throw new ResetRequired(
+        'YouTube item positions no longer match saved progress. Resync explicitly to backfill again.',
+      );
+    }
+  }
+  const itemCount = pageOffset + page.items.length;
+  if (
+    itemCount < (tail?.itemCount ?? 0) ||
+    itemCount > page.pageInfo.totalResults ||
+    Boolean(itemPageToken) !== itemCount < page.pageInfo.totalResults
+  ) {
+    throw new Error('YouTube returned incomplete pagination.');
+  }
   return {
-    records: page.items.map((item) =>
-      playlistItemRecord({ item, playlistTitle: checkpoint.playlistTitle! }),
-    ),
-    checkpoint: itemPageToken
-      ? checkpoint
-      : {
-          ...checkpoint,
-          tails: {
-            ...checkpoint.tails,
-            [playlistId]: {
-              pageToken: checkpoint.itemPageToken,
-              itemCount: page.pageInfo.totalResults,
-            },
-          },
-        },
+    records: page.items
+      .filter((item) => item.snippet.position >= (tail?.itemCount ?? 0))
+      .map((item) => playlistItemRecord({ item, playlistTitle: checkpoint.playlistTitle! })),
+    checkpoint: {
+      ...checkpoint,
+      // Count only complete memberships committed with this page, never the
+      // directory's prospective total. Restart can then resume the remaining delta.
+      tails: {
+        ...checkpoint.tails,
+        [playlistId]: { pageToken: checkpoint.itemPageToken, pageOffset, itemCount },
+      },
+    },
     itemPageToken,
   };
 }
@@ -122,10 +139,11 @@ async function readPlaylist(input: { context: SyncContext; checkpoint: Checkpoin
       context,
       path: playlistsPath,
       query: {
-        part: 'snippet',
+        part: 'snippet,contentDetails',
         mine: true,
         maxResults: 1,
-        fields: 'nextPageToken,pageInfo(totalResults),items(id,snippet(title,channelId))',
+        fields:
+          'nextPageToken,pageInfo(totalResults),items(id,snippet(title,channelId),contentDetails(itemCount))',
         ...(checkpoint.directoryPageToken ? { pageToken: checkpoint.directoryPageToken } : {}),
       },
     }),
@@ -139,14 +157,21 @@ async function readPlaylist(input: { context: SyncContext; checkpoint: Checkpoin
   if (playlist && playlist.snippet.channelId !== checkpoint.account) {
     throw new Error('YouTube returned a playlist owned by another channel.');
   }
+  const tail = playlist ? checkpoint.tails[playlist.id] : undefined;
+  if (playlist && tail && playlist.contentDetails.itemCount < tail.itemCount) {
+    throw new ResetRequired(
+      'YouTube playlist is no longer append-only. Resync explicitly to backfill again.',
+    );
+  }
+  const changed = playlist && (!tail || playlist.contentDetails.itemCount > tail.itemCount);
   return {
     records: [] as SyncRecord[],
     checkpoint: {
       ...checkpoint,
       directoryPageToken,
-      playlistId: playlist?.id ?? null,
-      playlistTitle: playlist?.snippet.title ?? null,
-      itemPageToken: playlist ? (checkpoint.tails[playlist.id]?.pageToken ?? null) : null,
+      playlistId: changed ? playlist.id : null,
+      playlistTitle: changed ? playlist.snippet.title : null,
+      itemPageToken: changed ? (tail?.pageToken ?? null) : null,
     },
   };
 }
@@ -185,9 +210,9 @@ function finish(input: {
   const complete = !input.itemPageToken && !input.checkpoint.directoryPageToken;
   return {
     records: input.records,
-    // PublishedAt is membership creation, not an update watermark. For append-only
-    // playlists we reuse only the final page's native token and recheck at most
-    // 50 old memberships per poll. Never synthesize tokens or assume date ordering.
+    // PublishedAt is membership creation, not an update watermark. Counts gate
+    // polling and positions select the new append delta; opaque native tokens
+    // resume acquisition without replaying earlier archive pages.
     checkpoint: complete
       ? { ...initialCheckpoint, account: input.checkpoint.account, tails: input.checkpoint.tails }
       : {

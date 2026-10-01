@@ -4,7 +4,7 @@ import { pageSize } from '#backend/services/syncs/sources/youtube/models.ts';
 import { unused } from './fixture.ts';
 
 export const addedAt = '2020-01-02T03:04:05Z';
-export function playlist(id: string): JsonObject {
+export function playlist({ id, itemCount }: { id: string; itemCount: number }): JsonObject {
   return {
     id,
     snippet: {
@@ -15,6 +15,7 @@ export function playlist(id: string): JsonObject {
       publishedAt: addedAt,
     },
     status: { privacyStatus: 'private' },
+    contentDetails: { itemCount },
   };
 }
 export function item({ playlistId, index }: { playlistId: string; index: number }): JsonObject {
@@ -23,6 +24,7 @@ export function item({ playlistId, index }: { playlistId: string; index: number 
     snippet: {
       title: `Video ${index}`,
       playlistId,
+      position: index,
       publishedAt: addedAt,
       resourceId: { kind: 'youtube#video', videoId: `video-${index}` },
       videoOwnerChannelId: 'uploader',
@@ -85,7 +87,9 @@ export function youtubeFixture() {
       return failure({ reason: 'invalidPageToken', status: badRequest });
     }
     return reply({
-      items: ids[offset] ? [playlist(ids[offset]!)] : [],
+      items: ids[offset]
+        ? [playlist({ id: ids[offset]!, itemCount: listings.get(ids[offset]!)!.length })]
+        : [],
       pageInfo: { totalResults: ids.length },
       ...(ids[offset + 1] ? { nextPageToken: `directory-${ids[offset + 1]}` } : {}),
     });

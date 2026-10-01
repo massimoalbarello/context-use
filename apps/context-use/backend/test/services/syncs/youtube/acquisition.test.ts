@@ -18,17 +18,19 @@ import {
   youtubeFixture,
 } from './youtube-fixture.ts';
 
+const thirdPageOffset = pageSize * 2 + pageSize;
+
 // The external API is simulated; the engine, SQLite checkpoint/outbox, change
 // detection, restart, and delivery are real. A live YouTube test must establish
 // how long page tokens remain reusable and verify the playlist's append order.
-test('YouTube backfills, resumes exactly at the next page, and polls only the final page plus new pages', async () => {
+test('YouTube backfills, resumes exactly at the next page, skips unchanged playlists, and emits exactly the append delta', async () => {
   const source = youtubeFixture();
   const f = await fixture({ registration: youtubePlaylists, provider: source.provider });
   try {
     await f.engine.tick();
     expect(f.saved.checkpoint).toEqual({
       account: 'owner',
-      tails: {},
+      tails: { a: { pageToken: null, pageOffset: 0, itemCount: pageSize } },
       directoryPageToken: 'directory-b',
       playlistId: 'a',
       playlistTitle: 'Playlist a',
@@ -52,8 +54,8 @@ test('YouTube backfills, resumes exactly at the next page, and polls only the fi
       playlistTitle: null,
       itemPageToken: null,
       tails: {
-        a: { pageToken: 'opaque-hundred', itemCount: archiveCount },
-        b: { pageToken: null, itemCount: 1 },
+        a: { pageToken: 'opaque-hundred', pageOffset: pageSize * 2, itemCount: archiveCount },
+        b: { pageToken: null, pageOffset: 0, itemCount: 1 },
       },
     });
     expect(f.records.find((record) => record.id === 'a-membership-0')).toMatchObject({
@@ -73,11 +75,14 @@ test('YouTube backfills, resumes exactly at the next page, and polls only the fi
     source.requests.length = 0;
     f.queue();
     await f.finish();
-    expect(source.itemRequests).toEqual([
-      ['a', 'opaque-hundred'],
-      ['b', null],
-    ]);
+    expect(source.itemRequests).toEqual([]);
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(0);
     expect(f.records).toHaveLength(initialCount);
+    // A fetched old item must not be emitted, even when its title changed.
+    source.listings.get('a')![archiveCount - 1]!.snippet = {
+      ...(source.listings.get('a')![archiveCount - 1]!.snippet as Record<string, string>),
+      title: 'Edited after sync',
+    };
     const appendedCount = 43;
     source.listings
       .get('a')!
@@ -88,20 +93,23 @@ test('YouTube backfills, resumes exactly at the next page, and polls only the fi
     expect(source.itemRequests).toEqual([
       ['a', 'opaque-hundred'],
       ['a', 'opaque-one-fifty'],
-      ['b', null],
     ]);
     expect(f.records).toHaveLength(initialCount + appendedCount);
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(
+      appendedCount,
+    );
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsQueued).toBe(
+      appendedCount,
+    );
     expect(f.saved.checkpoint.tails.a).toEqual({
       pageToken: 'opaque-one-fifty',
+      pageOffset: thirdPageOffset,
       itemCount: archiveCount + appendedCount,
     });
     source.requests.length = 0;
     f.queue();
     await f.finish();
-    expect(source.itemRequests).toEqual([
-      ['a', 'opaque-one-fifty'],
-      ['b', null],
-    ]);
+    expect(source.itemRequests).toEqual([]);
     expect(f.records).toHaveLength(initialCount + appendedCount);
     source.listings.set('c', [item({ playlistId: 'c', index: 0 })]);
     f.queue();
@@ -122,8 +130,15 @@ test.each(['empty', 'full'] as const)(
     const f = await fixture({ registration: youtubePlaylists, provider: source.provider });
     try {
       await f.finish();
-      expect(f.saved.checkpoint.tails.a).toEqual({ pageToken: null, itemCount: count });
+      expect(f.saved.checkpoint.tails.a).toEqual({
+        pageToken: null,
+        pageOffset: 0,
+        itemCount: count,
+      });
       source.requests.length = 0;
+      f.queue();
+      await f.finish();
+      expect(source.itemRequests).toEqual([]);
       source.listings.get('a')!.push(item({ playlistId: 'a', index: count }));
       f.queue();
       await f.finish();
@@ -136,6 +151,7 @@ test.each(['empty', 'full'] as const)(
           : [['a', null]],
       );
       expect(f.records).toHaveLength(count + 1);
+      expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(1);
     } finally {
       await f.close();
     }
@@ -184,6 +200,9 @@ test.each(['expired', 'rejected', 'shrunken'] as const)(
       await f.finish();
       const committed = f.saved.checkpoint;
       source.requests.length = 0;
+      if (mode !== 'shrunken') {
+        source.listings.get('a')!.push(item({ playlistId: 'a', index: archiveCount }));
+      }
       if (mode === 'expired') {
         source.intercept = ({ path }) =>
           path.endsWith('/playlistItems')
@@ -216,7 +235,7 @@ test.each(['expired', 'rejected', 'shrunken'] as const)(
         status: 'disabled',
         enabled: false,
       });
-      expect(source.itemRequests).toEqual([['a', 'opaque-hundred']]);
+      expect(source.itemRequests).toEqual(mode === 'shrunken' ? [] : [['a', 'opaque-hundred']]);
       expect(f.records).toHaveLength(archiveRecordCount);
       source.intercept = undefined;
       await f.engine.api.setEnabled({ ...owner, id: f.saved.id, enabled: true });
@@ -226,10 +245,10 @@ test.each(['expired', 'rejected', 'shrunken'] as const)(
       expect(source.itemRequests).toContainEqual(['a', null]);
       // An explicit resync intentionally republishes the archive; stable IDs
       // let an upsert destination keep the original record identity.
-      const replayedCount = mode === 'shrunken' ? archiveRecordCount - 1 : archiveRecordCount;
+      const replayedCount = mode === 'shrunken' ? archiveRecordCount - 1 : archiveRecordCount + 1;
       expect(f.records).toHaveLength(archiveRecordCount + replayedCount);
       expect(new Set(f.records.map((record) => `${record.kind}:${record.id}`)).size).toBe(
-        archiveRecordCount,
+        mode === 'shrunken' ? archiveRecordCount : archiveRecordCount + 1,
       );
     } finally {
       await f.close();
@@ -262,11 +281,7 @@ test('YouTube expired directory tokens replay discovery while retaining every co
     await f.restart();
     source.intercept = undefined;
     await f.finish();
-    expect(source.itemRequests).toEqual([
-      ['a', 'opaque-hundred'],
-      ['a', 'opaque-hundred'],
-      ['b', null],
-    ]);
+    expect(source.itemRequests).toEqual([]);
     expect(f.records).toHaveLength(archiveRecordCount);
   } finally {
     await f.close();
@@ -351,6 +366,169 @@ test('YouTube changed accounts fail before foreign data is read, and disappearin
     source.listings.delete('a');
     await f.finish();
     expect(f.records.filter((record) => record.operation === 'delete')).toHaveLength(0);
+  } finally {
+    await f.close();
+  }
+});
+
+test('YouTube commits only the acquired prefix across an interrupted multi-page append', async () => {
+  const source = youtubeFixture();
+  const f = await fixture({ registration: youtubePlaylists, provider: source.provider });
+  const appendedCount = 43;
+  const firstNewPageCount = thirdPageOffset - archiveCount;
+  try {
+    await f.finish();
+    source.requests.length = 0;
+    source.listings
+      .get('a')!
+      .push(...memberships({ playlistId: 'a', start: archiveCount, count: appendedCount }));
+    f.queue();
+    await f.engine.tick();
+    const committed = f.saved.checkpoint;
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(
+      firstNewPageCount,
+    );
+    expect(committed.tails.a).toEqual({
+      pageToken: 'opaque-hundred',
+      pageOffset: pageSize * 2,
+      itemCount: thirdPageOffset,
+    });
+    expect(committed.itemPageToken).toBe('opaque-one-fifty');
+    source.intercept = ({ path, query }) =>
+      path.endsWith('/playlistItems') && query.pageToken === 'opaque-one-fifty'
+        ? failure({ reason: 'backendError', status: unavailable })
+        : undefined;
+    await f.engine.tick();
+    expect(f.saved.checkpoint).toEqual(committed);
+    await f.restart();
+    source.intercept = undefined;
+    f.queue();
+    await f.finish();
+    expect(source.itemRequests).toEqual([
+      ['a', 'opaque-hundred'],
+      ['a', 'opaque-one-fifty'],
+      ['a', 'opaque-one-fifty'],
+    ]);
+    expect(f.records).toHaveLength(archiveRecordCount + appendedCount);
+    expect(f.records.slice(archiveRecordCount).map((record) => record.id)).toEqual(
+      memberships({ playlistId: 'a', start: archiveCount, count: appendedCount }).map((record) =>
+        String(record.id),
+      ),
+    );
+    const polls = f.engine.api.polls({ ...owner, id: f.saved.id }).polls;
+    expect(polls[0]!.recordsProcessed).toBe(appendedCount);
+    expect(polls[0]!.recordsQueued).toBe(appendedCount);
+    source.requests.length = 0;
+    f.queue();
+    await f.finish();
+    expect(source.itemRequests).toEqual([]);
+  } finally {
+    await f.close();
+  }
+});
+
+test('YouTube never checkpoints a directory count ahead of the actual acquired memberships', async () => {
+  const source = youtubeFixture();
+  const f = await fixture({ registration: youtubePlaylists, provider: source.provider });
+  try {
+    await f.finish();
+    const committed = f.saved.checkpoint.tails.a;
+    source.listings.get('a')!.push(item({ playlistId: 'a', index: archiveCount }));
+    source.intercept = ({ path }) =>
+      path.endsWith('/playlistItems')
+        ? reply({
+            items: memberships({
+              playlistId: 'a',
+              start: pageSize * 2,
+              count: archiveCount - pageSize * 2,
+            }),
+            pageInfo: { totalResults: archiveCount },
+          })
+        : undefined;
+    f.queue();
+    await f.finish();
+    expect(f.saved.checkpoint.tails.a).toEqual(committed);
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(0);
+    source.intercept = undefined;
+    f.queue();
+    await f.finish();
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(1);
+    expect(f.records).toHaveLength(archiveRecordCount + 1);
+  } finally {
+    await f.close();
+  }
+});
+
+test.each(['shifted', 'gap', 'truncated-tail'] as const)(
+  'YouTube %s append page cannot silently advance the count past missing records',
+  async (mode) => {
+    const source = youtubeFixture();
+    const f = await fixture({ registration: youtubePlaylists, provider: source.provider });
+    try {
+      await f.finish();
+      const committed = f.saved.checkpoint;
+      source.listings.get('a')!.push(item({ playlistId: 'a', index: archiveCount }));
+      const tailStart = pageSize * 2;
+      const entries = memberships({
+        playlistId: 'a',
+        start: mode === 'shifted' ? tailStart + 1 : tailStart,
+        count: archiveCount + 1 - tailStart,
+      });
+      if (mode === 'gap') {
+        entries.splice(1, 1);
+      }
+      if (mode === 'truncated-tail') {
+        entries.pop();
+      }
+      source.intercept = ({ path }) =>
+        path.endsWith('/playlistItems')
+          ? reply({ items: entries, pageInfo: { totalResults: archiveCount + 1 } })
+          : undefined;
+      f.queue();
+      await f.engine.tick();
+      expect(f.saved.checkpoint).toEqual(committed);
+      expect(f.engine.api.status(owner).queue.pendingRecords).toBe(0);
+      expect(f.records).toHaveLength(archiveRecordCount);
+      expect(f.saved.errorCode).toBe(
+        mode === 'truncated-tail'
+          ? 'execution_failed'
+          : 'youtube_checkpoint_invalid_resync_required',
+      );
+    } finally {
+      await f.close();
+    }
+  },
+);
+
+test('YouTube appends arriving between pages are counted only once after restart', async () => {
+  const source = youtubeFixture();
+  const f = await fixture({ registration: youtubePlaylists, provider: source.provider });
+  const firstAppend = 30;
+  const secondAppend = 11;
+  try {
+    await f.finish();
+    source.listings
+      .get('a')!
+      .push(...memberships({ playlistId: 'a', start: archiveCount, count: firstAppend }));
+    f.queue();
+    await f.engine.tick();
+    source.listings
+      .get('a')!
+      .push(
+        ...memberships({ playlistId: 'a', start: archiveCount + firstAppend, count: secondAppend }),
+      );
+    await f.restart();
+    await f.finish();
+    const acquiredCount = archiveCount + firstAppend + secondAppend;
+    expect(f.saved.checkpoint.tails.a.itemCount).toBe(acquiredCount);
+    expect(f.engine.api.polls({ ...owner, id: f.saved.id }).polls[0]!.recordsProcessed).toBe(
+      firstAppend + secondAppend,
+    );
+    expect(f.records).toHaveLength(acquiredCount + 1);
+    source.requests.length = 0;
+    f.queue();
+    await f.finish();
+    expect(source.itemRequests).toEqual([]);
   } finally {
     await f.close();
   }

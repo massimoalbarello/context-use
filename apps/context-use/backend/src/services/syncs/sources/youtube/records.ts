@@ -17,12 +17,14 @@ export const playlistItemSchema = z.strictObject({
 export const providerPlaylistSchema = z.object({
   id,
   snippet: z.object({ title: z.string(), channelId: id }),
+  contentDetails: z.object({ itemCount: z.number().int().nonnegative() }),
 });
 export const providerPlaylistItemSchema = z.object({
   id,
   snippet: z.object({
     title: z.string(),
     playlistId: id,
+    position: z.number().int().nonnegative(),
     publishedAt: timestamp,
     resourceId: z.object({ kind: z.literal('youtube#video'), videoId: id }),
     // Private/deleted videos can omit uploader identity. Preserve the membership

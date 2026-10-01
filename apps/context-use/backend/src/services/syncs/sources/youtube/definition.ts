@@ -9,7 +9,7 @@ export const youtubePlaylists = {
     id: 'youtube.playlists',
     name: 'YouTube playlist videos',
     description:
-      'Videos saved to your owned playlists with title, channel, URL, saved time, and playlist name and URL. Backfills once, then checks each final page for appended entries. Requires append-only API order; old edits/removals are not tracked. Expired item cursors require an explicit resync. Excludes Watch Later and playlists owned by others.',
+      'Videos saved to your owned playlists with title, channel, URL, saved time, and playlist name and URL. Backfills once, then compares playlist counts and emits only newly appended entries. Requires append-only API order; old edits/removals are not tracked. Expired item cursors require an explicit resync. Excludes Watch Later and playlists owned by others.',
     provider: {
       service: 'youtube',
       actions: [],

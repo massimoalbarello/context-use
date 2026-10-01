@@ -5,16 +5,18 @@ export const checkpointSchema = z.strictObject({
   // Bound YouTube channel identity survives completion; reject a different owner
   // before reading or committing another page under the old sync.
   account: z.string().min(1).nullable(),
-  // Per-playlist append frontier: the native token used to fetch its last complete
-  // page and the observed size. These are resume positions, not a discovered work
-  // list. Retaining them across polls avoids rediscovering archive pages. Tokens
-  // are opaque and may expire; fail instead of silently restarting the archive.
+  // Per-playlist append frontier, committed with each page: its native request
+  // token, starting API position, and count of memberships already emitted. At
+  // completion the count gates future polls against the directory's itemCount.
+  // The position verifies token reuse and filters old items from the final page.
+  // Tokens stay opaque; rejection requires reset rather than archive replay.
   // New entries must be appended in API position order. Removal/reordering and
   // edits outside the tail are not tracked; a detected size decrease requires reset.
   tails: z.record(
     z.string().min(1),
     z.strictObject({
       pageToken: z.string().min(1).nullable(),
+      pageOffset: z.number().int().nonnegative(),
       itemCount: z.number().int().nonnegative(),
     }),
   ),

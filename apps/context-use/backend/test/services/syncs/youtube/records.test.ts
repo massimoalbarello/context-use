@@ -116,10 +116,8 @@ test('YouTube stores only video memberships with playlist details and source cre
         runtime.api.runNow(resource);
         await finish();
         expect((await list()).items).toHaveLength(archiveRecordCount + 1);
-        expect(source.itemRequests).toEqual([
-          ['a', 'opaque-hundred'],
-          ['b', null],
-        ]);
+        expect(source.itemRequests).toEqual([['a', 'opaque-hundred']]);
+        expect(runtime.api.polls(resource).polls[0]!.recordsProcessed).toBe(1);
         const added = (await list()).items.find(
           (record) => record.source.id === `a-membership-${archiveCount}`,
         )!;
