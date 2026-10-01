@@ -358,7 +358,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
           and (${createdTo ?? null} is null or julianday(record."source_created_at") < julianday(${createdTo ?? null}))
           and (${updatedFrom ?? null} is null or julianday(record."source_updated_at") >= julianday(${updatedFrom ?? null}))
           and (${updatedTo ?? null} is null or julianday(record."source_updated_at") < julianday(${updatedTo ?? null}))
-        order by julianday(record."source_updated_at") desc, record."readable_id"
+        order by julianday(coalesce(record."source_updated_at", record."source_created_at")) desc, record."readable_id"
         limit ${limit + 1} offset ${offset}
       `;
       const items = rows.slice(0, limit).map(recordSummaryFrom);

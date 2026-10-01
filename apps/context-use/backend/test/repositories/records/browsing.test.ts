@@ -99,34 +99,55 @@ async function withRecords(
   });
 }
 
-test('orders by newest source update before pagination, with missing dates last', async () => {
-  await withRecords(async ({ repository, database }) => {
+test('orders by source update or creation before pagination, with missing dates last', async () => {
+  await withRecords(async ({ repository, service, database }) => {
+    for (const [id, created] of [
+      ['newest-created', '2026-01-04T00:00:00Z'],
+      ['middle-created', '2026-01-01T12:00:00Z'],
+    ] as const) {
+      await service.upsert({
+        change: { clientName: null, message: 'Save playlist item' },
+        ownerId: OWNER_ID,
+        record: record({ id, provider: 'youtube', kind: 'playlist-item', created }),
+      });
+    }
     // Local receipt time must not promote an older or undated source record.
     await database`update "record" set "updated_at" = '2026-09-09T00:00:00.000Z'
       where "owner_id" = ${OWNER_ID} and "source_id" in ('c', 'missing')`;
     const first = await repository.listResources({ ownerId: OWNER_ID, limit: 2, offset: 0 });
-    expect(first.items.map((item) => item.source.id)).toEqual(['a', 'b']);
+    expect(first.items.map((item) => item.source.id)).toEqual(['newest-created', 'a']);
+    expect(first.items[0]).toMatchObject({
+      sourceCreatedAt: '2026-01-04T00:00:00.000Z',
+      sourceUpdatedAt: null,
+    });
     expect(first.nextOffset).toBe(2);
     const second = await repository.listResources({
       ownerId: OWNER_ID,
       limit: 2,
       offset: first.nextOffset!,
     });
-    expect(second.items.map((item) => item.source.id)).toEqual(['c', 'missing']);
-    expect(second.nextOffset).toBeNull();
+    expect(second.items.map((item) => item.source.id)).toEqual(['b', 'middle-created']);
+    expect(second.nextOffset).toBe(first.items.length + second.items.length);
+    const third = await repository.listResources({
+      ownerId: OWNER_ID,
+      limit: 2,
+      offset: second.nextOffset!,
+    });
+    expect(third.items.map((item) => item.source.id)).toEqual(['c', 'missing']);
+    expect(third.nextOffset).toBeNull();
   });
 });
 
-test('source update ties remain stable across page boundaries', async () => {
+test('source update and creation ties remain stable across page boundaries', async () => {
   await withRecords(async ({ repository, service }) => {
     await service.upsert({
-      change: { clientName: null, message: 'Update source date' },
+      change: { clientName: null, message: 'Save playlist item' },
       ownerId: OWNER_ID,
       record: record({
-        id: 'c',
-        provider: 'github',
-        kind: 'pull-request',
-        updated: '2026-01-02T19:00:00-05:00',
+        id: 'created-tie',
+        provider: 'youtube',
+        kind: 'playlist-item',
+        created: '2026-01-02T19:00:00-05:00',
       }),
     });
     const list = (offset: number) =>
@@ -136,7 +157,7 @@ test('source update ties remain stable across page boundaries', async () => {
     const second = await list(first.nextOffset!);
     expect([...first.items, ...second.items].map((item) => item.source.id).sort()).toEqual([
       'a',
-      'c',
+      'created-tie',
     ]);
     expect(await list(0)).toEqual(first);
     expect(await list(1)).toEqual(second);
