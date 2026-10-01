@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 const TEST_TIMEOUT_MS = 60_000;
 
 test(
-  'detached uninstall retries only retained work explicitly rejected before commit',
+  'uninstall retains the host marker, recognizes absence and never replays a failed mutation',
   async () => {
     const root = await mkdtemp(join(tmpdir(), 'context-use-uninstall-'));
     try {
@@ -20,8 +20,8 @@ case "$*" in
   'plugins uninstall context-use --force')
     echo attempt >> "$ATTEMPTS_FILE"
     echo '[config] warnings: plugins.entries.active-memory: plugin disabled but config is present' >&2
-    if [ "$REMOVAL_CASE" = busy ] && [ "$(wc -l < "$ATTEMPTS_FILE" | tr -d ' ')" = 2 ]; then exit 0; fi
     case "$REMOVAL_CASE" in
+      removed) echo 'Uninstalled plugin "context-use".'; exit 0 ;;
       busy) echo 'Plugin memory-core still has active retained work; retry after the work finishes. Gateway generation 4: replacement not applied.' >&2 ;;
       uncertain) echo 'Plugin memory-core still has active retained work; connection lost' >&2 ;;
       failed) echo 'File cleanup failed after publication' >&2 ;;
@@ -37,6 +37,7 @@ esac
       const executableMode = 0o700;
       await chmod(command, executableMode);
       for (const scenario of [
+        'removed',
         'busy',
         'uncertain',
         'failed',
@@ -67,10 +68,13 @@ esac
           },
         );
         const code = await child.exited;
-        expect((await readFile(attempts, 'utf8')).trim().split('\n')).toHaveLength(
-          scenario === 'busy' ? 2 : 1,
+        expect((await readFile(attempts, 'utf8')).trim().split('\n')).toHaveLength(1);
+        const completed = ['removed', 'absent', 'untracked-absent'].includes(scenario);
+        expect(code === 0).toBe(completed);
+        const config = JSON.parse(await readFile(join(stateDir, 'openclaw.json'), 'utf8'));
+        expect(config.plugins.entries['context-use']).toEqual(
+          completed ? { enabled: false } : undefined,
         );
-        expect(code === 0).toBe(['busy', 'absent', 'untracked-absent'].includes(scenario));
       }
     } finally {
       await rm(root, { recursive: true, force: true });

@@ -169,7 +169,7 @@ esac
       expect(await child.exited).toBe(0);
       const config = JSON.parse(await readFile(configPath, 'utf8'));
       expect(config.plugins?.entries?.['memory-core']?.enabled).toBeUndefined();
-      expect(config.plugins?.entries?.['context-use']).toBeUndefined();
+      expect(config.plugins?.entries?.['context-use']).toEqual({ enabled: false });
       expect(existsSync(directory)).toBe(false);
       expect(await removalStatus(directory)).toBeUndefined();
       expect(existsSync(`${directory}.removal.json.lock`)).toBe(false);

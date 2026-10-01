@@ -212,7 +212,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
   assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
   assert(!existsSync(dirname(connectionFile)), 'Status recreated removed state');
-  assert(!(await configuration()).plugins.entries?.[PLUGIN_ID]);
+  assert.deepEqual((await configuration()).plugins.entries?.[PLUGIN_ID], { enabled: false });
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
   const pending = await Bun.file(connectionFile).json();
   console.log('Removed an unfinished installation through the npm helper and connected again.');
@@ -441,7 +441,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
   await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
   const afterRemoval = await configuration();
-  assert(!afterRemoval.plugins.entries?.[PLUGIN_ID], 'Native uninstall tombstone survived');
+  assert.deepEqual(afterRemoval.plugins.entries?.[PLUGIN_ID], { enabled: false });
   assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['web_search', 'read']);
   assert.equal(await Bun.file(join(workspace, 'AGENTS.md')).text(), editedAgents);
   assert.equal(
@@ -801,7 +801,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     env: invalidGatewayAuth,
   });
   const recovered = await configuration();
-  assert(!recovered.plugins.entries?.[PLUGIN_ID], 'Orphaned plugin settings survived cleanup');
+  assert.deepEqual(recovered.plugins.entries?.[PLUGIN_ID], { enabled: false });
   assert.notEqual(recovered.plugins.slots?.memory, PLUGIN_ID);
   assert(!existsSync(dirname(connectionFile)), 'Orphaned private state survived cleanup');
   assert(
