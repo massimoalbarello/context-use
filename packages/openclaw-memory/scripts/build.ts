@@ -10,6 +10,7 @@ import {
   SAVE_ATTACHMENT_TOOL,
   toolName,
 } from '../src/contract';
+import { SETUP_SKILL } from '../src/setup-skill';
 
 const EXECUTABLE_MODE = 0o755;
 const JSON_INDENT = 2;
@@ -53,6 +54,7 @@ if (!result.success) {
 await chmod(join(dist, 'setup.js'), EXECUTABLE_MODE);
 await chmod(join(dist, 'bootstrap.js'), EXECUTABLE_MODE);
 await copyFile(resolve(root, '../../LICENSE'), join(output, 'LICENSE'));
+await Bun.write(join(output, 'skills/context-use/SKILL.md'), SETUP_SKILL);
 const {
   name,
   description,
@@ -78,7 +80,7 @@ const publicOpenclaw = {
 };
 await Bun.write(
   join(output, 'package.json'),
-  `${JSON.stringify({ name, version: releaseVersion, description, type, license, bin: publicBin, openclaw: publicOpenclaw, peerDependencies, peerDependenciesMeta, engines, dependencies, repository, homepage, bugs, publishConfig, files: ['dist', 'openclaw.plugin.json', 'LICENSE'], exports: { './setup-prompt': './dist/setup-prompt.js' } }, null, JSON_INDENT)}\n`,
+  `${JSON.stringify({ name, version: releaseVersion, description, type, license, bin: publicBin, openclaw: publicOpenclaw, peerDependencies, peerDependenciesMeta, engines, dependencies, repository, homepage, bugs, publishConfig, files: ['dist', 'skills', 'openclaw.plugin.json', 'LICENSE'], exports: { './setup-prompt': './dist/setup-prompt.js' } }, null, JSON_INDENT)}\n`,
 );
 await Bun.write(
   join(output, 'openclaw.plugin.json'),
@@ -89,6 +91,7 @@ await Bun.write(
       description: 'Proactive personal memory in your Context Use instance',
       kind: 'memory',
       categories: ['memory', 'tools'],
+      skills: ['skills'],
       cliCommands: [
         {
           name: 'context-use',

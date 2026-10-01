@@ -151,7 +151,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const personalGroup = 'agent:main:telegram:group:-100123';
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
   const installCommand = `OPENCLAW_STATE_DIR=${quote(stateDir)} OPENCLAW_CONFIG_PATH=${quote(env.OPENCLAW_CONFIG_PATH)} PATH=${quote(env.PATH)} npx --yes ${quote(packageSpec)}`;
-  model.setup(`${installCommand} connect ${quote(app.origin)}`);
+  model.setup([`${installCommand} instructions`, `${installCommand} connect ${quote(app.origin)}`]);
   const setupPrompt = openclawSetupPrompt(app.origin).replaceAll(
     OPENCLAW_INSTALL_COMMAND,
     installCommand,
@@ -169,6 +169,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     '--json',
   ]);
   assert(model.observations.setupCalls > 1, 'The real agent did not execute installation');
+  assert(
+    model.observations.setupInstructions,
+    'The setup skill did not reach the agent before installation',
+  );
   console.log('Real OpenClaw agent installed the package and started authorization.');
 
   assert((await Bun.file(connectionFile).json()).oauth.pending?.url);
@@ -416,6 +420,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   const remote = await owner.page.request.get(`${app.origin}/api/pages`);
   assert(remote.ok(), 'Could not verify memories survived disconnect');
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
+  await command(['openclaw', 'plugins', 'disable', PLUGIN_ID]);
+  assert(
+    (await command(['npx', '--yes', packageSpec, 'instructions'])).includes('name: context-use'),
+    'The setup skill must remain readable when the plugin is disabled',
+  );
   await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
   const afterRemoval = await configuration();
   assert(!afterRemoval.plugins.entries?.[PLUGIN_ID], 'Native uninstall tombstone survived');
@@ -486,6 +495,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     stderr: Bun.file(join(directory, 'gateway-error.log')),
   });
   await waitGateway();
+  const skill = JSON.parse(await command(['openclaw', 'skills', 'info', 'context-use', '--json']));
+  assert(skill.eligible, 'The installed plugin management skill is not eligible');
+  assert(skill.modelVisible, 'The installed plugin management skill is hidden from the agent');
+  assert.equal(skill.source, 'openclaw-extra');
   model.background();
   const backgroundSession = `${personalGroup}:topic:6`;
   const attachmentFixtures = [

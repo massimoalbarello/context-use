@@ -29,6 +29,7 @@ export function startModel() {
     mainCalls: 0,
     removedCalls: 0,
     setupCalls: 0,
+    setupInstructions: false,
     backgroundCalls: 0,
     heldLearningCalls: 0,
     cancelledLearningCalls: 0,
@@ -37,7 +38,7 @@ export function startModel() {
   };
   let phase: 'setup' | 'learn' | 'recall' | 'background' | 'removed' = 'learn';
   let holdLearning = false;
-  let setupCommand = '';
+  let setupCommands: string[] = [];
   let setupStarted = false;
   let setupConfirmed = false;
   let setupSession: string | undefined;
@@ -56,7 +57,7 @@ export function startModel() {
       return {
         call: {
           name: 'exec',
-          arguments: { command: setupCommand, yieldMs: 120000, timeoutSeconds: 180 },
+          arguments: { command: setupCommands[0], yieldMs: 120000, timeoutSeconds: 180 },
         },
         answer: '',
       };
@@ -64,6 +65,13 @@ export function startModel() {
     const output = JSON.stringify(
       input.messages.filter((message) => message.role === 'tool').at(-1)?.content,
     );
+    if (output.includes('name: context-use')) {
+      assert(
+        output.includes('connect') && output.includes('reconnect') && output.includes('remove'),
+      );
+      observations.setupInstructions = true;
+      setupConfirmed = true;
+    }
     setupConfirmed ||=
       output.includes('Open this URL') ||
       output.includes('Context Use connected') ||
@@ -84,6 +92,13 @@ export function startModel() {
       };
     }
     assert(setupConfirmed, `Agent setup command did not complete: ${output}`);
+    setupCommands.shift();
+    if (setupCommands.length) {
+      setupStarted = false;
+      setupConfirmed = false;
+      setupSession = undefined;
+      return setupReply(input);
+    }
     return { answer: 'Plugin setup completed; follow the authorization instructions.' };
   }
   function recallReply(input: ModelInput): Reply {
@@ -460,9 +475,9 @@ export function startModel() {
     holdLearning: () => {
       holdLearning = true;
     },
-    setup: (command: string) => {
+    setup: (command: string | string[]) => {
       phase = 'setup';
-      setupCommand = command;
+      setupCommands = Array.isArray(command) ? [...command] : [command];
       setupStarted = false;
       setupConfirmed = false;
       setupSession = undefined;

@@ -8,10 +8,15 @@ import { ConnectionError } from './error';
 import { refreshGateway } from './gateway';
 import { checkHost, runSetupCommand } from './host-command';
 import { hostSdkAnchor } from './package-installation';
+import { SETUP_SKILL } from './setup-skill';
 import { SETUP_USAGE } from './usage';
 
 // Resolve the host SDK explicitly so the current npm helper can repair old or removed installs.
 async function main(args: string[]): Promise<void> {
+  if (args[0] === 'instructions') {
+    console.log(SETUP_SKILL);
+    return;
+  }
   if (!args[0] || args[0] === '--help') {
     console.log(SETUP_USAGE);
     return;
