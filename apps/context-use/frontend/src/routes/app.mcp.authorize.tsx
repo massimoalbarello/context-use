@@ -46,6 +46,7 @@ function McpAuthorizeRoute() {
   const search = Route.useSearch();
   const approval = useMutation({
     mutationFn: async (name: string) => {
+      await approveMcpClient({ clientId: search.client_id!, name });
       const { data, error } = await authClient.oauth2.consent({
         accept: true,
         scope: search.scope,
@@ -54,7 +55,6 @@ function McpAuthorizeRoute() {
       if (error) {
         throw new Error(error.message ?? 'Could not authorize this MCP client.');
       }
-      await approveMcpClient({ clientId: search.client_id!, name });
       redirectFromConsent(data);
     },
   });
