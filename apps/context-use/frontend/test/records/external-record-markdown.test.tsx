@@ -9,6 +9,49 @@ import {
 import { mockViewport } from '../support/viewport';
 
 describe('external record Markdown', () => {
+  test('previews a synced YouTube video with a source link and preserves playlist metadata', () => {
+    const html = renderToStaticMarkup(
+      <ContextRecordMarkdown
+        label="Video title"
+        markdown={`# Video title
+
+Video: https://www.youtube.com/watch?v=Ut3LOjKNJaE
+
+Channel: a16z
+
+Playlist: Technology
+
+Playlist URL: https://www.youtube.com/playlist?list=technology`}
+      />,
+    );
+    expect(html).toContain('src="https://www.youtube-nocookie.com/embed/Ut3LOjKNJaE"');
+    expect(html).toContain('title="YouTube video: Video title"');
+    expect(html).toContain('referrerPolicy="strict-origin-when-cross-origin"');
+    expect(html).toContain('href="https://www.youtube.com/watch?v=Ut3LOjKNJaE"');
+    expect(html).toContain('Watch on YouTube');
+    expect(html).toContain('Channel: a16z');
+    expect(html).toContain('Playlist: Technology');
+    expect(html.match(/<iframe/g)).toHaveLength(1);
+  });
+
+  test.each([
+    'Video: https://www.youtube.com.evil.test/watch?v=Ut3LOjKNJaE',
+    'Video: https://www.youtube.com@evil.test/watch?v=Ut3LOjKNJaE',
+    'Video: http://www.youtube.com/watch?v=Ut3LOjKNJaE',
+    'Video: https://www.youtube.com:444/watch?v=Ut3LOjKNJaE',
+    'Video: https://www.youtube.com/playlist?list=Ut3LOjKNJaE',
+    'Video: https://www.youtube.com/watch?v=invalid',
+    'Video: https://www.youtube.com/watch?v=Ut3LOjKNJaE%2Fextra',
+    'Video: not a URL',
+    'Discuss https://www.youtube.com/watch?v=Ut3LOjKNJaE',
+    '`Video: https://www.youtube.com/watch?v=Ut3LOjKNJaE`',
+    '<iframe src="https://www.youtube.com/embed/Ut3LOjKNJaE"></iframe>',
+  ])('does not embed unrelated, malformed, or untrusted video content: %s', (markdown) => {
+    const html = renderToStaticMarkup(<ContextRecordMarkdown label="Record" markdown={markdown} />);
+    expect(html).not.toContain('<iframe');
+    expect(html).not.toContain('youtube-nocookie.com');
+  });
+
   test('omits a repeated leading title while retaining distinct and later headings', () => {
     const html = renderToStaticMarkup(
       <ContextRecordMarkdown
