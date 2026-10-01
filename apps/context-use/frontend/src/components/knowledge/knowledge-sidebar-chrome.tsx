@@ -14,15 +14,17 @@ export function KnowledgeSidebarHeader() {
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center justify-between gap-3 p-3',
-        collapsed && 'absolute top-6 left-6 items-center justify-center p-0 md:top-7 md:left-7',
+        'flex shrink-0 items-center justify-between gap-3',
+        collapsed
+          ? 'absolute top-6.5 left-6 items-center justify-center md:top-7.5 md:left-7'
+          : 'px-3 pt-6.5 pb-4.5 md:pt-7.5',
       )}
     >
       <ContextUseBrand className={cn(collapsed && 'hidden')} />
       <Button
-        className={cn('size-10 shrink-0 [&_svg]:size-5', collapsed && 'size-11 shadow-lg')}
+        className="size-10 shrink-0 [&_svg]:size-5"
         type="button"
-        variant={collapsed ? 'secondary' : 'ghost'}
+        variant="muted"
         size="icon-lg"
         aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
         aria-expanded={!collapsed}
