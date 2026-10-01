@@ -302,6 +302,7 @@ test(
           '/app/map',
           '/app/syncs',
           '/app/syncs/github?tab=authorization',
+          '/app/syncs/granola?tab=authorization',
           '/api/syncs/managed',
           '/app/pages/new',
           '/app/entities/new',
@@ -329,6 +330,17 @@ test(
             syncs: [
               expect.objectContaining({ key: 'github.pull-requests', state: 'setup-required' }),
             ],
+          }),
+          expect.objectContaining({
+            id: 'granola',
+            name: 'Granola',
+            oauthApp: expect.objectContaining({
+              configured: false,
+              createAppUrl: null,
+              callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
+            }),
+            account: { name: null, status: 'disconnected' },
+            syncs: [expect.objectContaining({ key: 'granola.meetings', state: 'setup-required' })],
           }),
         ]);
         const syncsHead = await fetchDemo(

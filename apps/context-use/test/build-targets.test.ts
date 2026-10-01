@@ -63,7 +63,7 @@ test(
 );
 
 test(
-  'runtime bundles preserve target isolation and include only the GitHub provider',
+  'runtime bundles preserve target isolation and include only GitHub and Granola providers',
   async () => {
     const entries = ['backend/src/main.ts', 'demo/main.ts', '../landing/src/server.ts'];
     const child = Bun.spawn(
@@ -114,13 +114,13 @@ test(
     expect(
       instance.filter((path) => /node_modules\/.*\/(?:vite|postcss|tailwindcss)\//.test(path)),
     ).toEqual([]);
-    expect(catalogFiles).toEqual(['github.json']);
-    expect(catalogProviders).toEqual(['github']);
+    expect(catalogFiles.sort()).toEqual(['github.json', 'granola.json']);
+    expect(catalogProviders.sort()).toEqual(['github', 'granola']);
     const connectorProviders = instance.flatMap((path) => {
       const match = path.match(/\/open-connector\/src\/providers\/([^/]+)\//);
       return match ? [match[1]!] : [];
     });
-    expect([...new Set(connectorProviders)]).toEqual(['github']);
+    expect([...new Set(connectorProviders)].sort()).toEqual(['github', 'granola']);
     expect(instance.some((path) => path.endsWith('/lib/auth/better-auth.ts'))).toBe(true);
     expect(instance.filter((path) => /(^|\/)(demo|landing|fixtures)\//.test(path))).toEqual([]);
     expect(
