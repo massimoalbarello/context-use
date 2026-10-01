@@ -9,9 +9,9 @@ export const checkpointSchema = z.strictObject({
   // token, starting API position, and count of memberships already emitted. At
   // completion the count gates future polls against the directory's itemCount.
   // The position verifies token reuse and filters old items from the final page.
-  // Tokens stay opaque; rejection requires reset rather than archive replay.
+  // Tokens stay opaque; rejection pauses acquisition rather than replaying the archive.
   // New entries must be appended in API position order. Removal/reordering and
-  // edits outside the tail are not tracked; a detected size decrease requires reset.
+  // edits outside the tail are not tracked; a detected size decrease pauses acquisition.
   tails: z.record(
     z.string().min(1),
     z.strictObject({
@@ -30,7 +30,7 @@ export const checkpointSchema = z.strictObject({
   playlistTitle: z.string().nullable(),
   // Native continuation inside the active playlist; committed with the complete
   // page's records. Cleared when that playlist is exhausted, but the final page's
-  // request token survives in tails for the next poll. Expiry requires explicit reset.
+  // request token survives in tails for the next poll. Expiry pauses acquisition.
   itemPageToken: z.string().min(1).nullable(),
 });
 export type Checkpoint = z.infer<typeof checkpointSchema>;

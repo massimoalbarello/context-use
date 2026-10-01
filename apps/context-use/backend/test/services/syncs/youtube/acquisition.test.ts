@@ -231,25 +231,20 @@ test.each(['expired', 'rejected', 'shrunken'] as const)(
       await f.engine.tick();
       expect(f.saved).toMatchObject({
         checkpoint: committed,
-        errorCode: 'youtube_checkpoint_invalid_resync_required',
+        errorCode: 'youtube_checkpoint_invalid',
         status: 'disabled',
         enabled: false,
       });
       expect(source.itemRequests).toEqual(mode === 'shrunken' ? [] : [['a', 'opaque-hundred']]);
       expect(f.records).toHaveLength(archiveRecordCount);
+      // Restart must keep the acquisition paused and preserve its progress;
+      // Context Use does not expose a checkpoint reset or automatic backfill.
+      await f.restart();
       source.intercept = undefined;
-      await f.engine.api.setEnabled({ ...owner, id: f.saved.id, enabled: true });
-      await f.engine.api.resync({ ...owner, id: f.saved.id });
-      f.queue();
-      await f.finish();
-      expect(source.itemRequests).toContainEqual(['a', null]);
-      // An explicit resync intentionally republishes the archive; stable IDs
-      // let an upsert destination keep the original record identity.
-      const replayedCount = mode === 'shrunken' ? archiveRecordCount - 1 : archiveRecordCount + 1;
-      expect(f.records).toHaveLength(archiveRecordCount + replayedCount);
-      expect(new Set(f.records.map((record) => `${record.kind}:${record.id}`)).size).toBe(
-        mode === 'shrunken' ? archiveRecordCount : archiveRecordCount + 1,
-      );
+      await f.engine.tick();
+      expect(f.saved).toMatchObject({ checkpoint: committed, enabled: false, status: 'disabled' });
+      expect(f.records).toHaveLength(archiveRecordCount);
+      expect(source.itemRequests).toEqual(mode === 'shrunken' ? [] : [['a', 'opaque-hundred']]);
     } finally {
       await f.close();
     }
@@ -490,9 +485,7 @@ test.each(['shifted', 'gap', 'truncated-tail'] as const)(
       expect(f.engine.api.status(owner).queue.pendingRecords).toBe(0);
       expect(f.records).toHaveLength(archiveRecordCount);
       expect(f.saved.errorCode).toBe(
-        mode === 'truncated-tail'
-          ? 'execution_failed'
-          : 'youtube_checkpoint_invalid_resync_required',
+        mode === 'truncated-tail' ? 'execution_failed' : 'youtube_checkpoint_invalid',
       );
     } finally {
       await f.close();

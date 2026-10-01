@@ -150,13 +150,6 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
     });
     await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resume' });
     expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('syncing');
-    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'pause' });
-    await expect(
-      service.update({ actorId: 'other', key: githubPullRequests.definition.id, action: 'resync' }),
-    ).rejects.toThrow('Forbidden');
-    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resync' });
-    expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('syncing');
-    expect(runtime.api.syncs(scope)).toHaveLength(1);
     await expect(service.update({ ...actor, key: 'missing', action: 'pause' })).rejects.toThrow(
       'Sync not found.',
     );

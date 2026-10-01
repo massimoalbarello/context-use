@@ -10,9 +10,9 @@ export class ExpiredPageToken extends Error {
 }
 export class PlaylistNotFound extends Error {}
 // 410 pauses acquisition instead of retrying an unusable checkpoint forever.
-// The public code remains actionable when a host hides exception messages.
-export class ResetRequired extends SourceHttpError {
-  override readonly code = 'youtube_checkpoint_invalid_resync_required';
+// The diagnostic code survives hosts that hide exception messages.
+export class InvalidCheckpoint extends SourceHttpError {
+  override readonly code = 'youtube_checkpoint_invalid';
   constructor(message: string) {
     const gone = 410;
     super({ status: gone });
@@ -37,11 +37,11 @@ export async function request(input: { context: SyncContext; path: string; query
     .get({ path: input.path, query: input.query })
     .catch((error: unknown) => {
       // Connector's YouTube proxy withholds provider error bodies. A rejected
-      // saved item-page request cannot prove token expiry, so stop for explicit
-      // recovery rather than inventing a cursor or automatically replaying history.
+      // saved item-page request cannot prove token expiry, so pause acquisition
+      // rather than inventing a cursor or automatically replaying history.
       if (input.query.pageToken && rejectedRequestSchema.safeParse(error).success) {
-        throw new ResetRequired(
-          'YouTube rejected the saved item page. Resync explicitly to backfill again.',
+        throw new InvalidCheckpoint(
+          'YouTube rejected the saved item page. Syncing has been paused.',
         );
       }
       throw error;

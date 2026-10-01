@@ -1,10 +1,6 @@
 import { Button } from '@repo/ui/button';
 import { useState } from 'react';
-import type {
-  ManagedSyncAction,
-  OAuthAppCredentials,
-  SyncProvider,
-} from '../../queries/managed-syncs';
+import type { OAuthAppCredentials, SyncProvider } from '../../queries/managed-syncs';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -19,7 +15,7 @@ export function ProviderDetail(input: {
   onTabChange: (tab: SyncProviderTab) => void;
   onConnect: () => void;
   onSaveApp: (credentials: OAuthAppCredentials) => Promise<void>;
-  onAction: (input: { key: string; action: ManagedSyncAction }) => void;
+  onAction: (input: { key: string; action: 'pause' | 'resume' | 'run' }) => void;
   pending: boolean;
   error: Error | null;
   appError: Error | null;

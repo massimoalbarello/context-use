@@ -43,7 +43,7 @@ function auth(): Auth {
 test('management rejects unauthenticated and cross-origin mutations; OAuth completion remains owner-bound', async () => {
   const completed: string[] = [];
   const configured: string[] = [];
-  const backfills: Array<{ actorId: string; key: string; action: string }> = [];
+  const updates: Array<{ actorId: string; key: string; action: string }> = [];
   const services: ManagedSyncsServiceContract = {
     list: () => Promise.resolve([]),
     configureApp: ({ actorId }) => {
@@ -52,7 +52,7 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
     },
     connect: () => Promise.resolve({ authorizationUrl: null }),
     update: (input) => {
-      backfills.push(input);
+      updates.push(input);
       return Promise.resolve();
     },
     completeConnection: ({ actorId }) => {
@@ -133,33 +133,19 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   }
   expect(configured).toEqual([OWNER_USER_ID]);
 
-  const backfill = (input: { origin: string; cookie?: string }) =>
-    app.handle(
-      new Request('http://host/api/syncs/managed/youtube.playlists', {
-        method: 'POST',
-        headers: {
-          origin: input.origin,
-          ...(input.cookie ? { cookie: input.cookie } : {}),
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'resync',
-          actorId: 'untrusted',
-          changeMessage: 'Restarted backfill',
-        }),
-      }),
-    );
-  expect((await backfill({ origin: 'http://host' })).status).toBe(StatusMap.Unauthorized);
-  expect((await backfill({ origin: 'http://attacker', cookie: 'owner-session' })).status).toBe(
-    StatusMap.Forbidden,
+  const unsupported = await app.handle(
+    new Request('http://host/api/syncs/managed/youtube.playlists', {
+      method: 'POST',
+      headers: {
+        origin: 'http://host',
+        cookie: 'owner-session',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'resync', changeMessage: 'Unsupported sync action' }),
+    }),
   );
-  expect(backfills).toEqual([]);
-  expect((await backfill({ origin: 'http://host', cookie: 'owner-session' })).status).toBe(
-    StatusMap.OK,
-  );
-  expect(backfills).toEqual([
-    { actorId: OWNER_USER_ID, key: 'youtube.playlists', action: 'resync' },
-  ]);
+  expect(unsupported.status).toBe(StatusMap['Bad Request']);
+  expect(updates).toEqual([]);
 
   const callback =
     'http://host/api/open-sync/providers/github/return/connection_00000000-0000-0000-0000-000000000000';

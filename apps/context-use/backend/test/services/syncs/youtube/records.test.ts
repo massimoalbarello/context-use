@@ -122,15 +122,6 @@ test('YouTube stores only video memberships with playlist details and source cre
           (record) => record.source.id === `a-membership-${archiveCount}`,
         )!;
         expect(added.sourceCreatedAt).toBe(new Date(addedAt).toISOString());
-        await runtime.api.setEnabled({ ...resource, enabled: false });
-        const beforeBackfill = await list();
-        source.requests.length = 0;
-        await runtime.api.setEnabled({ ...resource, enabled: true });
-        await runtime.api.resync(resource);
-        runtime.api.runNow(resource);
-        await finish();
-        expect(await list()).toEqual(beforeBackfill);
-        expect(source.itemRequests).toContainEqual(['a', null]);
       } finally {
         await runtime.close();
       }

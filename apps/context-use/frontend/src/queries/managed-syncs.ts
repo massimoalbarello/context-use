@@ -6,9 +6,6 @@ export type SyncProvider = NonNullable<
   Awaited<ReturnType<typeof api.api.syncs.managed.get>>['data']
 >[number];
 export type ManagedSync = SyncProvider['syncs'][number];
-export type ManagedSyncAction = Parameters<
-  ReturnType<typeof api.api.syncs.managed>['post']
->[0]['action'];
 export const managedSyncsQueryKey = ['managed-syncs'] as const;
 const SYNCING_REFRESH_MS = 5000;
 const IDLE_REFRESH_MS = 60_000;
@@ -55,15 +52,15 @@ export async function connectSyncProvider(providerId: string) {
   }
   return data;
 }
-export async function updateManagedSync(input: { key: string; action: ManagedSyncAction }) {
+export async function updateManagedSync(input: {
+  key: string;
+  action: 'pause' | 'resume' | 'run';
+}) {
   const { error } = await api.api.syncs.managed({ key: input.key }).post({
     action: input.action,
-    changeMessage: {
-      pause: 'Paused a sync',
-      resume: 'Resumed a sync',
-      run: 'Requested a sync',
-      resync: 'Restarted a sync backfill',
-    }[input.action],
+    changeMessage: { pause: 'Paused a sync', resume: 'Resumed a sync', run: 'Requested a sync' }[
+      input.action
+    ],
   });
   if (error) {
     throw new Error(apiErrorMessage(error));

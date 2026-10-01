@@ -14,7 +14,7 @@ import {
   providerPlaylistItemSchema,
   providerPlaylistSchema,
 } from './records.ts';
-import { ExpiredPageToken, PlaylistNotFound, ResetRequired, request } from './request.ts';
+import { ExpiredPageToken, InvalidCheckpoint, PlaylistNotFound, request } from './request.ts';
 
 const channelsPath = '/youtube/v3/channels';
 const playlistsPath = '/youtube/v3/playlists';
@@ -81,8 +81,8 @@ async function readItems(input: { context: SyncContext; checkpoint: Checkpoint }
   }
   const tail = checkpoint.tails[playlistId];
   if (tail && page.pageInfo.totalResults < tail.itemCount) {
-    throw new ResetRequired(
-      'YouTube playlist is no longer append-only. Resync explicitly to backfill again.',
+    throw new InvalidCheckpoint(
+      'YouTube playlist is no longer append-only. Syncing has been paused.',
     );
   }
   const itemPageToken = nextPage({
@@ -97,8 +97,8 @@ async function readItems(input: { context: SyncContext; checkpoint: Checkpoint }
     : 0;
   for (const [index, item] of page.items.entries()) {
     if (item.snippet.position !== pageOffset + index) {
-      throw new ResetRequired(
-        'YouTube item positions no longer match saved progress. Resync explicitly to backfill again.',
+      throw new InvalidCheckpoint(
+        'YouTube item positions no longer match saved progress. Syncing has been paused.',
       );
     }
   }
@@ -159,8 +159,8 @@ async function readPlaylist(input: { context: SyncContext; checkpoint: Checkpoin
   }
   const tail = playlist ? checkpoint.tails[playlist.id] : undefined;
   if (playlist && tail && playlist.contentDetails.itemCount < tail.itemCount) {
-    throw new ResetRequired(
-      'YouTube playlist is no longer append-only. Resync explicitly to backfill again.',
+    throw new InvalidCheckpoint(
+      'YouTube playlist is no longer append-only. Syncing has been paused.',
     );
   }
   const changed = playlist && (!tail || playlist.contentDetails.itemCount > tail.itemCount);
@@ -180,9 +180,7 @@ function recover(input: { checkpoint: Checkpoint; error: unknown }): SyncStep {
   const { checkpoint, error } = input;
   if (error instanceof ExpiredPageToken) {
     if (error.path === itemsPath) {
-      throw new ResetRequired(
-        'YouTube item page token expired. Resync explicitly to backfill again.',
-      );
+      throw new InvalidCheckpoint('YouTube item page token expired. Syncing has been paused.');
     }
     if (error.path === playlistsPath && checkpoint.directoryPageToken) {
       // Directory discovery is small and must run each poll for new playlists.
