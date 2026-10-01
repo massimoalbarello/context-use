@@ -303,6 +303,7 @@ test(
           '/app/syncs',
           '/app/syncs/github?tab=authorization',
           '/app/syncs/granola?tab=authorization',
+          '/app/syncs/googlecalendar?tab=authorization',
           '/api/syncs/managed',
           '/app/pages/new',
           '/app/entities/new',
@@ -354,6 +355,22 @@ test(
               expect.objectContaining({
                 key: 'youtube.playlists',
                 kinds: ['playlist-item'],
+                state: 'setup-required',
+              }),
+            ],
+          }),
+          expect.objectContaining({
+            id: 'googlecalendar',
+            name: 'Google Calendar',
+            oauthApp: expect.objectContaining({
+              configured: false,
+              callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
+            }),
+            account: { name: null, status: 'disconnected' },
+            syncs: [
+              expect.objectContaining({
+                key: 'googlecalendar.events',
+                kinds: ['event'],
                 state: 'setup-required',
               }),
             ],
