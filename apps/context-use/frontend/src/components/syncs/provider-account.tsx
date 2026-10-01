@@ -13,7 +13,7 @@ export function ProviderAccount(input: {
     <section aria-label="Account" className="grid gap-5">
       <ResourceDetailHeading
         actions={
-          provider.oauthApp.configured &&
+          (provider.oauthApp.configured || provider.oauthApp.automaticRegistration) &&
           (provider.account.status === 'disconnected' ? (
             <Button size="lg" disabled={input.pending} onClick={input.onConnect}>
               Connect account
@@ -29,7 +29,9 @@ export function ProviderAccount(input: {
       </ResourceDetailHeading>
       {input.authorizationFailed && (
         <p role="alert" className="text-destructive text-sm">
-          Authorization did not finish. Check your OAuth app settings or try connecting again.
+          {provider.oauthApp.automaticRegistration
+            ? 'Authorization did not finish. Try connecting again.'
+            : 'Authorization did not finish. Check your OAuth app settings or try connecting again.'}
         </p>
       )}
       {provider.account.name && (
@@ -43,7 +45,7 @@ export function ProviderAccount(input: {
           Account access needs attention. Check your authorization on {provider.name}.
         </p>
       )}
-      {!provider.oauthApp.configured && (
+      {!provider.oauthApp.configured && !provider.oauthApp.automaticRegistration && (
         <p className="text-muted-foreground">Set up your OAuth app first.</p>
       )}
     </section>

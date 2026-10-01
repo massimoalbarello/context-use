@@ -42,6 +42,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@ilbertt/better-auth-bun-sql": "^0.4.0",
     "@ilbertt/bun-sqlgen": "^0.5.1",
+    "@modelcontextprotocol/client": "^2",
     "@modelcontextprotocol/server": "^2",
     "@ncdai/react-wheel-picker": "^1.2.3",
     "@repo/ui": "workspace:*",
@@ -76,7 +77,6 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.14.0",
-    "@modelcontextprotocol/client": "^2",
     "@octokit/graphql-schema": "15.26.1",
     "@repo/build-tools": "workspace:*",
     "@repo/typescript-config": "workspace:*",

@@ -41,10 +41,13 @@ export function ProviderDetail(input: {
         </TabsList>
         <TabsContent value="sync" className="pt-7">
           <div className="grid gap-8">
-            {!provider.oauthApp.configured || provider.account.status === 'disconnected' ? (
+            {(!provider.oauthApp.configured && !provider.oauthApp.automaticRegistration) ||
+            provider.account.status === 'disconnected' ? (
               <div className="grid justify-items-start gap-4">
                 <Button variant="outline" onClick={() => input.onTabChange('authorization')}>
-                  {provider.oauthApp.configured ? 'Connect account' : 'Set up OAuth app'}
+                  {provider.oauthApp.configured || provider.oauthApp.automaticRegistration
+                    ? 'Connect account'
+                    : 'Set up OAuth app'}
                 </Button>
               </div>
             ) : (
@@ -93,6 +96,9 @@ function OAuthAppPanel(input: {
 }) {
   const [editing, setEditing] = useState(false);
   const { provider } = input;
+  if (!provider.oauthApp.createAppUrl) {
+    return null;
+  }
   if (editing) {
     return (
       <OAuthAppSetup

@@ -29,7 +29,8 @@ export interface SyncProviderSummary {
   oauthApp: {
     configured: boolean;
     callbackUrl: string;
-    createAppUrl: string;
+    createAppUrl: string | null;
+    automaticRegistration: boolean;
   };
   account: { name: string | null; status: 'disconnected' | 'connected' | 'error' };
   syncs: ManagedSyncSummary[];

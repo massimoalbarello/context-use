@@ -12,7 +12,8 @@ export const ManagedSyncListSchema = t.Array(
     oauthApp: t.Object({
       configured: t.Boolean(),
       callbackUrl: t.String(),
-      createAppUrl: t.String(),
+      createAppUrl: t.Nullable(t.String()),
+      automaticRegistration: t.Boolean(),
     }),
     account: t.Object({
       name: t.Nullable(t.String()),
