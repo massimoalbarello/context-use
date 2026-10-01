@@ -26,6 +26,7 @@ function collectionResponse({ url, item }: { url: URL; item: unknown }) {
 
 async function renderResourceBrowser({
   path = '/app/pages',
+  unpublishedPage = false,
   entityPagesResponse,
   publicationResponse = (url) =>
     Response.json({
@@ -36,6 +37,7 @@ async function renderResourceBrowser({
     }),
 }: {
   path?: string;
+  unpublishedPage?: boolean;
   publicationResponse?: (url: URL) => Response | Promise<Response>;
   entityPagesResponse?: (input: { url: URL; page: KnowledgePage }) => Response;
 } = {}) {
@@ -77,13 +79,13 @@ async function renderResourceBrowser({
     source: { provider: 'notion', kind: 'note', id: 'source-record', url: null },
   };
   const page: KnowledgePage = {
-    publishedAt: null,
-    publishedRevisionNumber: null,
+    publishedAt: unpublishedPage ? timestamp.toISOString() : null,
+    publishedRevisionNumber: unpublishedPage ? 1 : null,
     readableId: 'launch',
     title: 'Launch plan',
     excerpt: 'Launch overview',
     temporalCoverage: null,
-    revisionNumber: 1,
+    revisionNumber: unpublishedPage ? 2 : 1,
     createdAt: timestamp,
     updatedAt: timestamp,
     markdown:
@@ -894,6 +896,35 @@ test('switching previews does not reuse visibility while status loads or fails, 
     );
     await user.click(retry);
     expect(await within(entity).findByText('Private')).toBeTruthy();
+  } finally {
+    app.dispose();
+  }
+});
+
+test('unpublished revision tag opens revisions from the collection and restores browsing', async () => {
+  const user = userEvent.setup();
+  const app = await renderResourceBrowser({ unpublishedPage: true });
+  try {
+    const tag = await screen.findByRole('link', { name: 'Unpublished revisions' });
+    expect(tag.getAttribute('href')).toBe('/app/pages/launch?view=revisions');
+    await user.click(tag);
+    await waitFor(() =>
+      expect(app.router.state.location.search).toMatchObject({
+        resource: 'page',
+        resourceId: 'launch',
+        expanded: true,
+        view: 'revisions',
+      }),
+    );
+    expect(app.router.state.location.pathname).toBe('/app/pages');
+    expect(await screen.findByRole('tab', { name: 'Revisions', selected: true })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
+    expect(await screen.findByRole('link', { name: 'Unpublished revisions' })).toBeTruthy();
+    await user.click(screen.getByRole('link', { name: 'Launch plan Launch overview' }));
+    expect(
+      await screen.findByRole('complementary', { name: 'Knowledge page preview' }),
+    ).toBeTruthy();
+    expect(app.router.state.location.search.view).toBeUndefined();
   } finally {
     app.dispose();
   }

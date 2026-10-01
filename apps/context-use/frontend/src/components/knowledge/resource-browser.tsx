@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { type ReactNode, useRef } from 'react';
 import { useNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import {
+  type ResourceSearch,
   type ResourceSelection,
   resourceSearch,
   selectedResource,
@@ -40,7 +41,7 @@ export function ResourceBrowser({
   const navigate = useNavigate({ from });
   const browsing = useRef<HTMLDivElement>(null);
   const origin = useRef<HTMLElement | null>(null);
-  function select(next: ResourceSelection) {
+  function select(next: ResourceSelection & Pick<ResourceSearch, 'view'>) {
     if (!selection) {
       origin.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -50,8 +51,9 @@ export function ResourceBrowser({
         ...previous,
         resource: next.kind,
         resourceId: next.readableId,
-        expanded: state.expanded || narrow || undefined,
-        view: undefined,
+        expanded:
+          state.expanded || narrow || (next.view != null && next.view !== 'preview') || undefined,
+        view: next.view,
       }),
       hash: next.fragment,
       resetScroll: false,

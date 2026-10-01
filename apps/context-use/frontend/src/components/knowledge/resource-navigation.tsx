@@ -1,12 +1,12 @@
 import { createContext, type MouseEvent, useContext } from 'react';
-import type { ResourceSelection } from '../../lib/resource-selection';
+import type { ResourceSearch, ResourceSelection } from '../../lib/resource-selection';
 
 export const ResourceNavigation = createContext<{
   selection?: ResourceSelection;
-  onSelect: (selection: ResourceSelection) => void;
+  onSelect: (selection: ResourceSelection & Pick<ResourceSearch, 'view'>) => void;
 } | null>(null);
 
-export function useResourceLink(selection: ResourceSelection) {
+export function useResourceLink(selection: ResourceSelection & Pick<ResourceSearch, 'view'>) {
   const navigation = useContext(ResourceNavigation);
   return {
     preload: navigation ? (false as const) : undefined,
