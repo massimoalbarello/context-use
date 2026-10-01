@@ -11,8 +11,7 @@ export const granolaProvider = {
   syncs: [
     {
       name: 'Meetings',
-      description:
-        'Notes from the last 30 days, saved as searchable records. New meetings and edits are checked automatically; saved records are kept after they leave this window.',
+      description: 'Notes from the last 30 days, saved as searchable records.',
       intervalMs: 900_000,
       registration: granolaMeetings,
     },
