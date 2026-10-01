@@ -907,6 +907,7 @@ test('unpublished revision tag opens revisions from the collection and restores 
   try {
     const tag = await screen.findByRole('link', { name: 'Unpublished revisions' });
     expect(tag.getAttribute('href')).toBe('/app/pages/launch?view=revisions');
+    expect(screen.queryByText('Public')).toBeNull();
     await user.click(tag);
     await waitFor(() =>
       expect(app.router.state.location.search).toMatchObject({

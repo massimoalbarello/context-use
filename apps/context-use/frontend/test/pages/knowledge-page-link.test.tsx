@@ -71,6 +71,8 @@ for (const state of [
       />,
     );
     expect(screen.queryByText('Unpublished revisions') !== null).toBe(state.warning);
-    expect(screen.queryByText('Public') !== null).toBe(state.publishedAt !== null);
+    expect(screen.queryByText('Public') !== null).toBe(
+      state.publishedAt !== null && !state.warning,
+    );
   });
 }

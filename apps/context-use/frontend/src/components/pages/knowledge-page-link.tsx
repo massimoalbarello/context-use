@@ -13,6 +13,15 @@ type KnowledgePageIdentity = KnowledgePageName &
   Pick<KnowledgePageSummary, 'excerpt' | 'temporalCoverage'> &
   Partial<Pick<KnowledgePageSummary, 'publishedAt' | 'publishedRevisionNumber' | 'revisionNumber'>>;
 
+function hasUnpublishedRevisions(page: KnowledgePageIdentity) {
+  return (
+    page.publishedAt != null &&
+    page.publishedRevisionNumber != null &&
+    page.revisionNumber != null &&
+    page.publishedRevisionNumber !== page.revisionNumber
+  );
+}
+
 type KnowledgePageLinkProps =
   | {
       page: KnowledgePageName;
@@ -69,16 +78,8 @@ export function KnowledgePageCardContent({
       </span>
       {publicationStatus !== undefined
         ? publicationStatus
-        : page.publishedAt != null && (
-            <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              {page.publishedRevisionNumber != null &&
-                page.revisionNumber != null &&
-                page.publishedRevisionNumber !== page.revisionNumber && (
-                  <UnpublishedRevisionsBadge />
-                )}
-              <PublicBadge />
-            </span>
-          )}
+        : page.publishedAt != null &&
+          (hasUnpublishedRevisions(page) ? <UnpublishedRevisionsBadge /> : <PublicBadge />)}
     </>
   );
 }
@@ -133,25 +134,21 @@ export function KnowledgePageLink({
       >
         <KnowledgePageCardContent page={page} fragment={fragment} publicationStatus={null} />
       </Link>
-      {page.publishedAt != null && (
-        <span className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
-          {page.publishedRevisionNumber != null &&
-            page.revisionNumber != null &&
-            page.publishedRevisionNumber !== page.revisionNumber && (
-              <Link
-                onClick={revisionsLink.onClick}
-                preload={revisionsLink.preload}
-                to="/app/pages/$id"
-                params={{ id: page.readableId }}
-                search={(previous) => ({ ...previous, view: 'revisions' })}
-                className="relative z-10 rounded-full hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
-              >
-                <UnpublishedRevisionsBadge />
-              </Link>
-            )}
+      {page.publishedAt != null &&
+        (hasUnpublishedRevisions(page) ? (
+          <Link
+            onClick={revisionsLink.onClick}
+            preload={revisionsLink.preload}
+            to="/app/pages/$id"
+            params={{ id: page.readableId }}
+            search={(previous) => ({ ...previous, view: 'revisions' })}
+            className="relative z-10 shrink-0 rounded-full hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
+          >
+            <UnpublishedRevisionsBadge />
+          </Link>
+        ) : (
           <PublicBadge />
-        </span>
-      )}
+        ))}
     </div>
   );
 }
