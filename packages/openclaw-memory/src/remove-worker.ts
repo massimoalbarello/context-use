@@ -25,7 +25,13 @@ try {
         step = 'clear remaining private data';
         await rm(directory, { recursive: true, force: true });
         step = 'refresh the gateway';
-        await refreshGateway();
+        try {
+          await refreshGateway();
+        } catch {
+          // The package and private state are already gone. Runtime activation can
+          // be retried with refresh; it must not leave a failed removal blocking connect.
+          console.warn('Local removal finished. Gateway refresh applies on its next start.');
+        }
       } catch (error) {
         throw new ConnectionError(
           error instanceof ConnectionError

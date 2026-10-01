@@ -178,7 +178,9 @@ export async function disconnect(directory: string): Promise<{ preserved: string
           reason: 'Context Use setup requests gateway refresh after cleanup',
         },
         // Removing only journal-owned settings can legitimately shrink a fresh config by over half.
-        writeOptions: { allowConfigSizeDrop: true },
+        // Restoration must also work after package files and their plugin schema
+        // have disappeared. The SDK still validates the core configuration.
+        writeOptions: { allowConfigSizeDrop: true, skipPluginValidation: true },
         mutate: (config) => {
           if (state) {
             preserved = restoreConfiguration({ config, state });

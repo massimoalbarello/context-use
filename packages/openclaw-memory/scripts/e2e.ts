@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownerBrowser } from '@repo/browser-testing/owner-browser';
 import metadata from '../package.json';
@@ -55,11 +55,17 @@ const gatewayPort = gatewayReservation.port!;
 // The setup/removal tests below require an offline gateway, not an HTTP 503 listener.
 await gatewayReservation.stop(true);
 
-async function command(input: string[] | { args: string[]; stdin: string }): Promise<string> {
-  const { args, stdin } = Array.isArray(input) ? { args: input, stdin: undefined } : input;
+async function command(
+  input: string[] | { args: string[]; stdin?: string; env?: NodeJS.ProcessEnv },
+): Promise<string> {
+  const {
+    args,
+    stdin,
+    env: overrides,
+  } = Array.isArray(input) ? { args: input, stdin: undefined, env: undefined } : input;
   const process = Bun.spawn(args, {
     cwd: directory,
-    env,
+    env: { ...env, ...overrides },
     stdin: stdin === undefined ? 'ignore' : new Blob([stdin]),
     stdout: 'pipe',
     stderr: 'pipe',
@@ -189,9 +195,17 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
   // A stale operation record must not mistake this live, unrelated process for its worker.
   await writeFile(`${dirname(connectionFile)}.removal.json`, JSON.stringify({ pid: process.pid }));
+  // npm exec can unpack a local tarball again on every invocation. Isolate its
+  // caches so this tests competing profile removals rather than npm extraction races.
   await Promise.all([
-    command(['npx', '--yes', packageSpec, 'remove', '--wait']),
-    command(['npx', '--yes', packageSpec, 'remove', '--wait']),
+    command({
+      args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
+      env: { npm_config_cache: join(directory, 'removal-first-npm-cache') },
+    }),
+    command({
+      args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
+      env: { npm_config_cache: join(directory, 'removal-second-npm-cache') },
+    }),
   ]);
   assert(!(await Bun.file(connectionFile).exists()), 'Cancelled setup retained credentials');
   assert(!existsSync(dirname(connectionFile)), 'Removal retained its private directory');
@@ -759,6 +773,46 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'Removal lease survived cleanup',
   );
   console.log('The npm helper refreshed the gateway after uninstall.');
+  // Recovery must also work for interrupted installs whose files were removed
+  // externally, even when this shell cannot authenticate to the running gateway.
+  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  const interruptedInventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
+  const interruptedPlugin = interruptedInventory.plugins.find(
+    (plugin: { id: string }) => plugin.id === PLUGIN_ID,
+  );
+  assert(interruptedPlugin, 'Unfinished reinstall did not install the package');
+  const packageRoot = await realpath(interruptedPlugin.rootDir);
+  const fixtureRoot = await realpath(directory);
+  const packagePath = relative(fixtureRoot, packageRoot);
+  assert(packagePath && !packagePath.startsWith('..') && !isAbsolute(packagePath));
+  await rm(packageRoot, { recursive: true, force: true });
+  const invalidGatewayAuth = {
+    OPENCLAW_GATEWAY_URL: `ws://127.0.0.1:${gatewayPort}`,
+    OPENCLAW_GATEWAY_TOKEN: 'invalid-removal-test-token',
+  };
+  await assert.rejects(
+    command({
+      args: ['openclaw', 'gateway', 'call', 'config.get', '--timeout', '3000', '--json'],
+      env: invalidGatewayAuth,
+    }),
+  );
+  await command({
+    args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
+    env: invalidGatewayAuth,
+  });
+  const recovered = await configuration();
+  assert(!recovered.plugins.entries?.[PLUGIN_ID], 'Orphaned plugin settings survived cleanup');
+  assert.notEqual(recovered.plugins.slots?.memory, PLUGIN_ID);
+  assert(!existsSync(dirname(connectionFile)), 'Orphaned private state survived cleanup');
+  assert(
+    !existsSync(`${dirname(connectionFile)}.removal.json`),
+    'Gateway authorization failure blocked removal',
+  );
+  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
+  assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
+  console.log(
+    'Recovered a partially deleted reinstall without gateway authorization, and repeated removal without leftovers.',
+  );
 } finally {
   try {
     await owner?.close();

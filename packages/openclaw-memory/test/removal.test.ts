@@ -2,10 +2,13 @@ import { expect, test } from 'bun:test';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { assertNotRemoving, removalStatus, runRemoval } from '../src/removal';
+import { writeState } from '../src/state';
+
+const WORKER_TEST_TIMEOUT_MS = 30_000;
 
 test('an unrelated live PID cannot block removal recovery', async () => {
   const root = await mkdtemp(join(tmpdir(), 'context-use-removal-'));
@@ -107,3 +110,73 @@ test('failed cleanup releases its lease and remains retryable without leaking up
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test(
+  'the removal worker restores local settings and releases reconnect even when gateway authorization fails',
+  async () => {
+    const root = await mkdtemp(join(tmpdir(), 'context-use-local-removal-'));
+    const directory = join(root, 'plugins', 'context-use');
+    const configPath = join(root, 'openclaw.json');
+    try {
+      const bin = join(root, 'bin');
+      await mkdir(bin);
+      const command = join(bin, 'openclaw');
+      await writeFile(
+        command,
+        `#!/bin/sh
+case "$*" in
+  'config file --json') echo '{"path":"/fixture/openclaw.json"}' ;;
+  *config.get*) echo '{"error":{"type":"gateway_auth_error","message":"token mismatch"}}'; exit 1 ;;
+  'plugins uninstall context-use --force') exit 0 ;;
+  *) exit 2 ;;
+esac
+`,
+      );
+      const executableMode = 0o700;
+      await chmod(command, executableMode);
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          plugins: {
+            entries: { 'memory-core': { enabled: false }, 'context-use': { enabled: false } },
+          },
+        }),
+      );
+      await writeState({
+        directory,
+        state: {
+          config: { agentId: 'main', serverUrl: 'https://memory.example/mcp' },
+          changes: [{ path: ['plugins', 'entries', 'memory-core', 'enabled'], applied: false }],
+          oauth: { tokens: { access_token: 'discard', token_type: 'Bearer' } },
+          tools: [],
+        },
+      });
+      await writeFile(join(directory, 'pending-evidence'), 'discard');
+      await writeFile(`${directory}.removal.json`, '{}');
+      const child = Bun.spawn(
+        [process.execPath, resolve(import.meta.dir, '../src/remove-worker.ts')],
+        {
+          env: {
+            ...process.env,
+            PATH: `${bin}:${process.env.PATH}`,
+            OPENCLAW_STATE_DIR: root,
+            OPENCLAW_CONFIG_PATH: configPath,
+          },
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      );
+      expect(await child.exited).toBe(0);
+      const config = JSON.parse(await readFile(configPath, 'utf8'));
+      expect(config.plugins?.entries?.['memory-core']?.enabled).toBeUndefined();
+      expect(config.plugins?.entries?.['context-use']).toBeUndefined();
+      expect(existsSync(directory)).toBe(false);
+      expect(await removalStatus(directory)).toBeUndefined();
+      expect(existsSync(`${directory}.removal.json.lock`)).toBe(false);
+      await expect(assertNotRemoving(directory)).resolves.toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+  WORKER_TEST_TIMEOUT_MS,
+);
