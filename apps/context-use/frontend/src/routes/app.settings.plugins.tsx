@@ -45,8 +45,7 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
 
         <div className="grid gap-3">
           <p className="text-muted-foreground text-sm">
-            Copy this prompt into OpenClaw. It includes your instance URL and tells OpenClaw where
-            to find the plugin’s setup instructions. You will authorize access in your browser.
+            Copy this prompt into OpenClaw. You will authorize access in your browser.
           </p>
           <CopyablePrompt
             ariaLabel="OpenClaw setup prompt"
@@ -56,8 +55,7 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
             value={openclawSetupPrompt(serverUrl)}
           />
           <p className="text-muted-foreground text-sm">
-            Later, ask OpenClaw to “Reauthorize Context Use” or “Remove Context Use”. To connect to
-            another instance, include its URL. Removal preserves your memories in Context Use.
+            If you need to reauthorize or remove the plugin, simply tell OpenClaw to do so.
           </p>
         </div>
       </section>

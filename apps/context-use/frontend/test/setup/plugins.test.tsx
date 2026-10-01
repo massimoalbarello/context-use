@@ -19,7 +19,7 @@ test('copies the instance URL and skill bootstrap without a dashboard lifecycle 
   expect(prompt).toContain(serverUrl);
   expect(prompt).toContain(`npx --yes ${OPENCLAW_PACKAGE} instructions`);
   expect(screen.getByRole('button', { name: 'Setup prompt copied' })).toBeTruthy();
-  expect(screen.getByText(/Reauthorize Context Use/).textContent).toContain('Remove Context Use');
+  expect(screen.getByText(/reauthorize or remove the plugin/)).toBeTruthy();
 });
 
 test('clipboard failure keeps the exact setup prompt available for manual copying', async () => {
