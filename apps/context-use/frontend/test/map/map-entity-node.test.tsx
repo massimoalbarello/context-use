@@ -136,6 +136,7 @@ test('Page hover temporarily emphasizes its members and preserves selection over
   const user = userEvent.setup();
   const pages: MapPage[] = entities.map(({ entity }) => ({
     publishedAt: null,
+    publishedRevisionNumber: null,
     readableId: `${entity.readableId}-biography`,
     title: `${entity.name} biography`,
     excerpt: entity.description,
@@ -193,6 +194,7 @@ test('Keyboard page focus emphasizes shared members and restores an unloaded sel
   const user = userEvent.setup();
   const page: MapPage = {
     publishedAt: null,
+    publishedRevisionNumber: null,
     readableId: 'pioneers',
     title: 'Computing pioneers',
     excerpt: 'Shared history.',

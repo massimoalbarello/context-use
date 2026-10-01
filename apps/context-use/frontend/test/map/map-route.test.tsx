@@ -53,6 +53,7 @@ test('Map previews entities without filtering pages and recovers from page failu
     pages: [
       {
         publishedAt: null,
+        publishedRevisionNumber: null,
         readableId: 'planning',
         title: 'Planning',
         excerpt: 'A planning page.',

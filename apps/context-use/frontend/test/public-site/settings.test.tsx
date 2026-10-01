@@ -34,6 +34,7 @@ test('settings select only published pages, confirm changes, and remove the home
   };
   const page: KnowledgePageSummary = {
     publishedAt: null,
+    publishedRevisionNumber: null,
     readableId: 'welcome',
     title: 'Welcome',
     excerpt: 'Start here',
