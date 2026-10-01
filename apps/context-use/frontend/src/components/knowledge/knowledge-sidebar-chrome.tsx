@@ -22,9 +22,9 @@ export function KnowledgeSidebarHeader() {
     >
       <ContextUseBrand className={cn(collapsed && 'hidden')} />
       <Button
-        className="size-10 shrink-0 bg-muted [&_svg]:size-5"
+        className="size-10 shrink-0 [&_svg]:size-5"
         type="button"
-        variant="ghost"
+        variant="muted"
         size="icon-lg"
         aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
         aria-expanded={!collapsed}
