@@ -9,7 +9,7 @@ import {
 import { mockViewport } from '../support/viewport';
 
 describe('external record Markdown', () => {
-  test('previews a synced YouTube video with a source link and preserves playlist metadata', () => {
+  test('previews a synced YouTube video and preserves playlist metadata without a duplicate source link', () => {
     const html = renderToStaticMarkup(
       <ContextRecordMarkdown
         label="Video title"
@@ -27,8 +27,8 @@ Playlist URL: https://www.youtube.com/playlist?list=technology`}
     expect(html).toContain('src="https://www.youtube-nocookie.com/embed/Ut3LOjKNJaE"');
     expect(html).toContain('title="YouTube video: Video title"');
     expect(html).toContain('referrerPolicy="strict-origin-when-cross-origin"');
-    expect(html).toContain('href="https://www.youtube.com/watch?v=Ut3LOjKNJaE"');
-    expect(html).toContain('Watch on YouTube');
+    expect(html).not.toContain('href="https://www.youtube.com/watch?v=Ut3LOjKNJaE"');
+    expect(html).not.toContain('Watch on YouTube');
     expect(html).toContain('Channel: a16z');
     expect(html).toContain('Playlist: Technology');
     expect(html.match(/<iframe/g)).toHaveLength(1);

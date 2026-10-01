@@ -14,7 +14,7 @@ export function externalRecordUrl(url: string): string {
   }
 }
 
-function youtubeRecordVideo(text: string) {
+function youtubeRecordVideoUrl(text: string) {
   if (!text.startsWith('Video: ')) {
     return null;
   }
@@ -29,10 +29,7 @@ function youtubeRecordVideo(text: string) {
     ) {
       return null;
     }
-    return {
-      watchUrl: url.href,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
-    };
+    return `https://www.youtube-nocookie.com/embed/${videoId}`;
   } catch {
     return null;
   }
@@ -95,22 +92,17 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
           h6: ({ children }) => <h6 className="mt-8 font-semibold text-xl">{children}</h6>,
           p: ({ children, node }) => {
             const text = node?.children.length === 1 ? node.children[0] : null;
-            const video = text?.type === 'text' ? youtubeRecordVideo(text.value) : null;
-            return video ? (
-              <div className="my-5">
-                <iframe
-                  className="aspect-video min-h-[200px] w-full rounded-lg"
-                  src={video.embedUrl}
-                  title={`YouTube video: ${label}`}
-                  loading="lazy"
-                  allow="encrypted-media; picture-in-picture; fullscreen"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-                <p className="mt-3 text-sm">
-                  <ContextRecordLink href={video.watchUrl}>Watch on YouTube</ContextRecordLink>
-                </p>
-              </div>
+            const videoUrl = text?.type === 'text' ? youtubeRecordVideoUrl(text.value) : null;
+            return videoUrl ? (
+              <iframe
+                className="my-5 aspect-video min-h-[200px] w-full rounded-lg"
+                src={videoUrl}
+                title={`YouTube video: ${label}`}
+                loading="lazy"
+                allow="encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
             ) : (
               <p className="my-5 text-[1.05rem] leading-8">{children}</p>
             );
