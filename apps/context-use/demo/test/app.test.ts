@@ -342,6 +342,22 @@ test(
             account: { name: null, status: 'disconnected' },
             syncs: [expect.objectContaining({ key: 'granola.meetings', state: 'setup-required' })],
           }),
+          expect.objectContaining({
+            id: 'youtube',
+            name: 'YouTube',
+            oauthApp: expect.objectContaining({
+              configured: false,
+              callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
+            }),
+            account: { name: null, status: 'disconnected' },
+            syncs: [
+              expect.objectContaining({
+                key: 'youtube.playlists',
+                kinds: ['playlist-item'],
+                state: 'setup-required',
+              }),
+            ],
+          }),
         ]);
         const syncsHead = await fetchDemo(
           new Request('http://demo.test/api/syncs/managed', { method: 'HEAD' }),
