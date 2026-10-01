@@ -44,7 +44,7 @@ async function store(input: { database: SQL; dataFolder: string }) {
     importAsset: unexpected,
     ownerId: OWNER_USER_ID,
     upsertRecord: (value) => records.upsert(value),
-    definitions: [definition],
+    sources: new Map([[definition.definition.id, 'github']]),
   });
   return {
     records,
@@ -336,7 +336,7 @@ test('partial publication and a lost acknowledgement replay after restart withou
       const receiver = localRecordDestination({
         importAsset: unexpected,
         ownerId: OWNER_USER_ID,
-        definitions: [definition],
+        sources: new Map([[definition.definition.id, 'github']]),
         upsertRecord: (value) => {
           if (failSecond && value.record.source.id === 'PR_two') {
             throw new Error('Storage unavailable');
@@ -475,7 +475,7 @@ test('deletes, malformed batches and cancellation cannot acknowledge dropped or 
       const cancelled = localRecordDestination({
         importAsset: unexpected,
         ownerId: OWNER_USER_ID,
-        definitions: [definition],
+        sources: new Map([[definition.definition.id, 'github']]),
         upsertRecord: async (value) => {
           const result = await host.records.upsert(value);
           abort.abort();

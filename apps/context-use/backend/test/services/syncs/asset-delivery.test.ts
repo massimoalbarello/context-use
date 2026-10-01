@@ -192,7 +192,7 @@ test('records use returned local asset IDs and link image-only and data-only att
       const host = assetHost(input);
       const destination = localRecordDestination({
         ownerId: assetScope.ownerId,
-        definitions: [assetDefinition],
+        sources: new Map([[assetDefinition.definition.id, 'fixture']]),
         importAsset: async (value) => {
           expect((await host.list()).items).toEqual([]);
           return host.assets.import({
@@ -454,7 +454,7 @@ test('publication rejects an archive race atomically and replay verifies the exi
       const target = importedAssetReadableId({ ...assetBundle(), asset: assetBundle().assets[0]! });
       const racing = localRecordDestination({
         ownerId: assetScope.ownerId,
-        definitions: [assetDefinition],
+        sources: new Map([[assetDefinition.definition.id, 'fixture']]),
         importAsset: (value) => host.assets.import(value),
         upsertRecord: async (value) => {
           expect(

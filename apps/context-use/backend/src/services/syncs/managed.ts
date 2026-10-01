@@ -102,12 +102,18 @@ export class ManagedSyncsService {
       before = page.nextCursor;
     }
   }
+  providerIdForService(service: string) {
+    return this.input.catalog.providerForService(service).id;
+  }
   async list(input: { actorId: string }): Promise<SyncProviderSummary[]> {
     const scope = this.scope(input.actorId);
     const configuredSyncs = this.input.sync.api.syncs(scope);
     return await Promise.all(
       this.input.catalog.providers.map(async (provider) => {
-        const status = await this.input.sync.providers.status({ ...scope, service: provider.id });
+        const status = await this.input.sync.providers.status({
+          ...scope,
+          service: provider.service,
+        });
         const oauth = status.setup.oauthClient;
         if (!oauth) {
           throw new BadRequestError('OAuth app setup is unavailable.');
@@ -186,7 +192,7 @@ export class ManagedSyncsService {
       try {
         await this.input.sync.providers.configure({
           ...scope,
-          service: provider.id,
+          service: provider.service,
           values: { clientId: input.clientId, clientSecret: input.clientSecret },
         });
       } catch {
@@ -205,13 +211,16 @@ export class ManagedSyncsService {
     return await this.serial(async () => {
       if (
         (await this.input.sync.providers.connections(scope)).some(
-          (connection) => connection.service === provider.id,
+          (connection) => connection.service === provider.service,
         )
       ) {
         await this.activate({ scope, provider });
         return { authorizationUrl: null };
       }
-      const status = await this.input.sync.providers.status({ ...scope, service: provider.id });
+      const status = await this.input.sync.providers.status({
+        ...scope,
+        service: provider.service,
+      });
       if (
         !status.setup.oauthClient?.configured &&
         !status.setup.oauthClient?.automaticRegistration
@@ -220,7 +229,7 @@ export class ManagedSyncsService {
       }
       return await this.input.sync.providers.start({
         ...scope,
-        service: provider.id,
+        service: provider.service,
         authorizationOptionIds: provider.oauth.authorizationOptionIds,
       });
     });
@@ -228,7 +237,7 @@ export class ManagedSyncsService {
   private async activate(input: { scope: Scope; provider: SyncProvider }) {
     const { scope, provider } = input;
     const connection = (await this.input.sync.providers.connections(scope)).find(
-      (item) => item.service === provider.id,
+      (item) => item.service === provider.service,
     );
     if (!connection) {
       throw new BadRequestError('Connect your account first.');
@@ -278,5 +287,5 @@ export class ManagedSyncsService {
 }
 export type ManagedSyncsServiceContract = Pick<
   ManagedSyncsService,
-  'list' | 'configureApp' | 'connect' | 'completeConnection' | 'update'
+  'providerIdForService' | 'list' | 'configureApp' | 'connect' | 'completeConnection' | 'update'
 >;

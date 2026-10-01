@@ -27,11 +27,11 @@ test('provider registrations share management and destination code while deliver
         storage: createLocalStorage(input),
       });
       const alpha = fixtureProvider('alpha');
-      const beta = fixtureProvider('beta');
+      const beta = { ...fixtureProvider('beta'), id: 'beta-mcp' };
       const catalog = new SyncCatalog([alpha, beta]);
       const destination = localRecordDestination({
         ownerId: OWNER_USER_ID,
-        definitions: catalog.definitions,
+        sources: catalog.recordSources,
         importAsset: unexpected,
         upsertRecord: (value) => records.upsert(value),
       });
@@ -54,7 +54,7 @@ test('provider registrations share management and destination code while deliver
       });
       const connections = catalog.providers.map((provider) => ({
         id: `${provider.id}-connection`,
-        service: provider.id,
+        service: provider.service,
         account: `${provider.id}-account`,
         status: 'active',
         authType: 'oauth2' as const,
@@ -103,7 +103,7 @@ test('provider registrations share management and destination code while deliver
           'not found',
         );
         await service.connect({ ...actor, providerId: 'alpha' });
-        await service.connect({ ...actor, providerId: 'beta' });
+        await service.connect({ ...actor, providerId: 'beta-mcp' });
         await service.completeConnection({ ...actor, providerId: 'alpha' });
         expect(runtime.api.syncs(scope)).toHaveLength(2);
         // Allow each provider to acquire records and drain its delivery queue.
@@ -114,7 +114,7 @@ test('provider registrations share management and destination code while deliver
         const listed = await service.list(actor);
         expect(listed[0]?.syncs[0]).toMatchObject({ key: 'alpha.events', state: 'error' });
         expect(listed[1]?.syncs[0]?.state).toBe('ready');
-        expect(listed[1]?.account.name).toBe('beta-account');
+        expect(listed[1]?.account.name).toBe('beta-mcp-account');
         await service.update({ ...actor, key: 'alpha.events', action: 'pause' });
         const paused = await service.list(actor);
         expect(paused[0]?.syncs[0]?.state).toBe('paused');
@@ -143,7 +143,7 @@ test('provider registrations share management and destination code while deliver
           });
           expect(resource).toMatchObject({
             source: { provider: provider.id, kind: 'event', id: 'event-one', url: null },
-            title: `${provider.id} event`,
+            title: `${provider.name} event`,
             body: '# Event\n\nMeeting notes.',
             sourceCreatedAt: now,
             sourceUpdatedAt: now,
@@ -162,5 +162,7 @@ test('provider registrations share management and destination code while deliver
 test('ambiguous provider and definition registrations are rejected', () => {
   const provider = fixtureProvider('example');
   expect(() => new SyncCatalog([provider, provider])).toThrow('Duplicate');
-  expect(() => new SyncCatalog([{ ...provider, id: 'different' }])).toThrow('registered provider');
+  expect(() => new SyncCatalog([{ ...provider, service: 'different' }])).toThrow(
+    'registered provider',
+  );
 });

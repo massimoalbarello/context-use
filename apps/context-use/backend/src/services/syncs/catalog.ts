@@ -9,6 +9,7 @@ export interface ContextSync {
 }
 export interface SyncProvider {
   id: string;
+  service: string;
   name: string;
   description: string;
   oauth: { createAppUrl: string | null; authorizationOptionIds?: string[] };
@@ -17,6 +18,7 @@ export interface SyncProvider {
 
 export class SyncCatalog {
   readonly definitions: SyncRegistration[] = [];
+  readonly recordSources = new Map<string, string>();
   constructor(readonly providers: readonly SyncProvider[]) {
     const identities = new Set<string>();
     for (const provider of providers) {
@@ -24,10 +26,11 @@ export class SyncCatalog {
       for (const sync of provider.syncs) {
         const definition = sync.registration.definition;
         this.unique({ identities, key: `definition:${definition.id}` });
-        if (definition.provider?.service !== provider.id) {
+        if (definition.provider?.service !== provider.service) {
           throw new Error('Sync definition must use its registered provider.');
         }
         this.definitions.push(sync.registration);
+        this.recordSources.set(definition.id, provider.id);
       }
     }
   }
@@ -39,6 +42,13 @@ export class SyncCatalog {
   }
   provider(id: string) {
     const provider = this.providers.find((item) => item.id === id);
+    if (!provider) {
+      throw new NotFoundError('Sync provider not found.');
+    }
+    return provider;
+  }
+  providerForService(service: string) {
+    const provider = this.providers.find((item) => item.service === service);
     if (!provider) {
       throw new NotFoundError('Sync provider not found.');
     }

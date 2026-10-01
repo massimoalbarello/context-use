@@ -5,7 +5,9 @@ import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-re
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import { createManagedSyncsController } from '#backend/routes/api/syncs/managed/controller.ts';
 import { createSyncCallbacks, syncProviderLocation } from '#backend/routes/sync-callbacks.ts';
+import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 import { unusedMcpProtection } from '../../support/mcp.ts';
 
 function auth(): Auth {
@@ -44,6 +46,7 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   const completed: string[] = [];
   const configured: string[] = [];
   const services: ManagedSyncsServiceContract = {
+    providerIdForService: (service) => service,
     list: () => Promise.resolve([]),
     configureApp: ({ actorId }) => {
       configured.push(actorId);
@@ -150,17 +153,26 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   ).toBe(StatusMap['Not Found']);
 });
 
-test.each(['connected', 'failed'] as const)(
-  'OAuth failure returns to the app authorization page when the provider returns %s',
-  async (outcome) => {
+test.each(
+  ['github', 'granola'].flatMap((service) =>
+    (['connected', 'failed'] as const).map((outcome) => ({
+      service,
+      providerId: new SyncCatalog(syncProviders).providerForService(service).id,
+      outcome,
+    })),
+  ),
+)(
+  'OAuth failure returns to $providerId authorization when $service returns $outcome',
+  async ({ service, providerId, outcome }) => {
     const completed: string[] = [];
     const services: ManagedSyncsServiceContract = {
+      providerIdForService: (value) => new SyncCatalog(syncProviders).providerForService(value).id,
       list: () => Promise.resolve([]),
       configureApp: () => Promise.resolve(),
       connect: () => Promise.resolve({ authorizationUrl: null }),
       update: () => Promise.resolve(),
-      completeConnection: ({ actorId }) => {
-        completed.push(actorId);
+      completeConnection: ({ actorId, providerId: completedProviderId }) => {
+        completed.push(`${actorId}:${completedProviderId}`);
         return Promise.reject(new Error('Connection completion failed'));
       },
     };
@@ -172,21 +184,20 @@ test.each(['connected', 'failed'] as const)(
           Promise.resolve(
             new Response(null, {
               status: 302,
-              headers: { location: syncProviderLocation({ providerId: 'github', outcome }) },
+              headers: { location: syncProviderLocation({ providerId, outcome }) },
             }),
           ),
       }),
     );
-    const callback =
-      'http://host/api/open-sync/providers/github/return/connection_00000000-0000-0000-0000-000000000000';
+    const callback = `http://host/api/open-sync/providers/${service}/return/connection_00000000-0000-0000-0000-000000000000`;
     const response = await app.handle(
       new Request(callback, { headers: { cookie: 'owner-session' } }),
     );
 
     expect(response.status).toBe(StatusMap.Found);
     expect(new URL(response.headers.get('location')!, callback).href).toBe(
-      'http://host/app/syncs/github?tab=authorization&authorization=failed',
+      `http://host/app/syncs/${providerId}?tab=authorization&authorization=failed`,
     );
-    expect(completed).toEqual(outcome === 'connected' ? [OWNER_USER_ID] : []);
+    expect(completed).toEqual(outcome === 'connected' ? [`${OWNER_USER_ID}:${providerId}`] : []);
   },
 );

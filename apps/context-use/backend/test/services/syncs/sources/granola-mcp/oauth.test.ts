@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { granolaClientRegistration } from '#backend/services/syncs/sources/granola/oauth.ts';
+import { granolaClientRegistration } from '#backend/services/syncs/sources/granola-mcp/oauth.ts';
 
 const issuer = 'https://mcp-auth.granola.ai';
 const resource = 'https://mcp.granola.ai/mcp';

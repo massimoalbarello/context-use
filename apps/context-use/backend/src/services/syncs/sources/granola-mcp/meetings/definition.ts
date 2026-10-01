@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { checkpointSchema, meetingSchema } from './models.ts';
 import { stepGranolaMeetings } from './step.ts';
 
-export const granolaMeetings = {
+export const granolaMcpMeetings = {
   definition: {
-    id: 'granola.meetings',
-    name: 'Granola meetings',
+    id: 'granola-mcp.meetings',
+    name: 'Granola MCP meetings',
     provider: { service: 'granola', actions: ['granola.list_meetings', 'granola.get_meetings'] },
     configSchema: { type: 'object', additionalProperties: false },
     checkpointSchema: JSON.parse(JSON.stringify(z.toJSONSchema(checkpointSchema))),

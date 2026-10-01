@@ -1,9 +1,10 @@
 import type { SyncProvider } from '../../catalog.ts';
-import { granolaMeetings } from './meetings/definition.ts';
+import { granolaMcpMeetings } from './meetings/definition.ts';
 
-export const granolaProvider = {
-  id: 'granola',
-  name: 'Granola',
+export const granolaMcpProvider = {
+  id: 'granola-mcp',
+  service: 'granola',
+  name: 'Granola MCP',
   description: 'Bring your meeting notes into Context Use.',
   oauth: {
     createAppUrl: null,
@@ -13,7 +14,7 @@ export const granolaProvider = {
       name: 'Meetings',
       description: 'Notes from the last 30 days.',
       intervalMs: 900_000,
-      registration: granolaMeetings,
+      registration: granolaMcpMeetings,
     },
   ],
 } satisfies SyncProvider;

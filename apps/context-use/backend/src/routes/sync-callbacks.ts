@@ -13,28 +13,26 @@ export function createSyncCallbacks(input: {
   return new Elysia()
     .get('/api/open-sync/oauth/callback', ({ request }) => input.fetch(request))
     .get(
-      '/api/open-sync/providers/:providerId/return/:id',
+      '/api/open-sync/providers/:service/return/:id',
       async ({ request, params }) => {
         const session = await input.auth.getSession({ headers: request.headers });
         if (session?.user.id !== OWNER_USER_ID) {
           throw new UnauthorizedError();
         }
+        const providerId = input.syncs.providerIdForService(params.service);
         const response = await input.fetch(request);
         if (
           response.headers.get('location') ===
-          syncProviderLocation({ providerId: params.providerId, outcome: 'connected' })
+          syncProviderLocation({ providerId, outcome: 'connected' })
         ) {
           try {
             await input.syncs.completeConnection({
               actorId: session.user.id,
-              providerId: params.providerId,
+              providerId,
             });
           } catch {
             return Response.redirect(
-              new URL(
-                syncProviderLocation({ providerId: params.providerId, outcome: 'failed' }),
-                request.url,
-              ),
+              new URL(syncProviderLocation({ providerId, outcome: 'failed' }), request.url),
             );
           }
         }
@@ -42,7 +40,7 @@ export function createSyncCallbacks(input: {
       },
       {
         params: t.Object({
-          providerId: t.String({ pattern: '^[a-z][a-z0-9-]{0,63}$' }),
+          service: t.String({ pattern: '^[a-z][a-z0-9-]{0,63}$' }),
           id: t.String({ pattern: '^connection_[a-f0-9-]{36}$' }),
         }),
       },

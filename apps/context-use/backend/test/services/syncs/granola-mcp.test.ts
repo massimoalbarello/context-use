@@ -8,8 +8,10 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
+import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
-import { granolaMeetings } from '#backend/services/syncs/sources/granola/meetings/definition.ts';
+import { granolaMcpMeetings } from '#backend/services/syncs/sources/granola-mcp/meetings/definition.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now } from './github-fixture.ts';
 
@@ -55,13 +57,13 @@ async function fixture({
       });
       const destination = localRecordDestination({
         ownerId: OWNER_USER_ID,
-        definitions: [granolaMeetings],
+        sources: new SyncCatalog(syncProviders).recordSources,
         importAsset: unexpected,
         upsertRecord: (value) => records.upsert(value),
       });
       const options = {
         databasePath: join(input.dataFolder, 'sync.db'),
-        definitions: [granolaMeetings],
+        definitions: [granolaMcpMeetings],
         destinationTypes: { local: destination },
         connector: { bind: async () => ({ get: unexpected, post: unexpected, action }) },
       };
@@ -69,7 +71,7 @@ async function fixture({
       try {
         const sync = await runtime.api.createSync({
           ...scope,
-          definition: 'granola.meetings',
+          definition: 'granola-mcp.meetings',
           connection: { id: 'granola-owner', service: 'granola' },
           destination: { type: 'local', input: {} },
           config: {},
@@ -120,7 +122,7 @@ test('Granola backfills every accessible meeting and only publishes changes acro
       ).toMatchObject({
         title: 'Planning 00',
         body: 'Date: 2026-09-19\n\nAttendees: Alice, Sam\n\n## Decisions\nShip **it**.',
-        source: { provider: 'granola', kind: 'meeting', id: '00' },
+        source: { provider: 'granola-mcp', kind: 'meeting', id: '00' },
         sourceCreatedAt: null,
         sourceUpdatedAt: null,
       });

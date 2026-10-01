@@ -55,6 +55,7 @@ export const unusedAssetFacesService: AssetFacesServiceContract = {
 };
 
 export const unusedManagedSyncsService: ManagedSyncsServiceContract = {
+  providerIdForService: unexpectedCall,
   list: unexpectedCall,
   configureApp: unexpectedCall,
   connect: unexpectedCall,
