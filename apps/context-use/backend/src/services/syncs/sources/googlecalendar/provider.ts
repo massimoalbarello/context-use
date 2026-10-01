@@ -9,8 +9,7 @@ export const googleCalendarProvider = {
   syncs: [
     {
       name: 'Calendar events',
-      description:
-        'Events from your readable calendars, including times, participants, locations, descriptions, recurring series and cancellations.',
+      description: 'Events from your calendars.',
       intervalMs: 900_000,
       registration: googleCalendarEvents,
     },
