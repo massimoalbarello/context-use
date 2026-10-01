@@ -176,7 +176,6 @@ export function registerLearning(input: {
   });
   registerLearningTools({ ...input, queue, connected, owns });
 
-  const canDispatch = () => connected() && !existsSync(removalFile(directory));
   const dispatchJob = async (db: LearningStore, job: LearningJob) => {
     await withConnection({
       directory,
@@ -197,7 +196,7 @@ export function registerLearning(input: {
       db.retry({ id: job.id, at: Date.now() + RETRY_MS });
       throw error;
     });
-    if (!canDispatch()) {
+    if (!connected()) {
       return;
     }
     const result = await api.runtime.subagent.run({
