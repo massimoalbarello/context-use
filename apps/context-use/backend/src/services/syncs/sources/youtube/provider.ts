@@ -9,8 +9,7 @@ export const youtubeProvider = {
   syncs: [
     {
       name: 'Playlist videos',
-      description:
-        'Saved videos with channel, saved time, and playlist details. Append new videos at the end; older edits and removals are not tracked. If saved progress expires, use Backfill again. Enable YouTube Data API v3 in your OAuth project.',
+      description: 'Videos saved to your playlists.',
       intervalMs: 900_000,
       registration: youtubePlaylists,
     },
