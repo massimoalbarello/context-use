@@ -45,12 +45,12 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
 
         <div className="grid gap-3">
           <p className="text-muted-foreground text-sm">
-            Copy this prompt into OpenClaw. You will authorize access in your browser.
+            You will authorize access in your browser.
           </p>
           <CopyablePrompt
             ariaLabel="OpenClaw setup prompt"
-            copyLabel="Copy setup prompt"
-            copiedLabel="Setup prompt copied"
+            copyLabel="Copy and paste into OpenClaw"
+            copiedLabel="Copied. Paste into OpenClaw"
             rows={4}
             value={openclawSetupPrompt(serverUrl)}
           />

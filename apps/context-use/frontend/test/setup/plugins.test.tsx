@@ -13,12 +13,12 @@ test('copies the instance URL and skill bootstrap without a dashboard lifecycle 
   expect(
     screen.getByRole('link', { name: 'memory plugin (opens in a new tab)' }).getAttribute('href'),
   ).toBe('https://www.npmjs.com/package/@context-use/openclaw-memory');
-  await user.click(screen.getByRole('button', { name: 'Copy setup prompt' }));
+  await user.click(screen.getByRole('button', { name: 'Copy and paste into OpenClaw' }));
   const prompt = await navigator.clipboard.readText();
   expect(prompt).toContain(`Install ${OPENCLAW_PACKAGE}`);
   expect(prompt).toContain(serverUrl);
   expect(prompt).toContain(`npx --yes ${OPENCLAW_PACKAGE} instructions`);
-  expect(screen.getByRole('button', { name: 'Setup prompt copied' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Copied. Paste into OpenClaw' })).toBeTruthy();
   expect(screen.getByText(/reauthorize or remove the plugin/)).toBeTruthy();
 });
 
@@ -28,7 +28,7 @@ test('clipboard failure keeps the exact setup prompt available for manual copyin
   navigator.clipboard.writeText = () => Promise.reject(new Error('Clipboard unavailable'));
   try {
     render(<PluginsSettings serverUrl="https://personal.context-use.com/mcp" />);
-    await user.click(screen.getByRole('button', { name: 'Copy setup prompt' }));
+    await user.click(screen.getByRole('button', { name: 'Copy and paste into OpenClaw' }));
     expect(screen.getByRole('alert').textContent).toContain('copy it manually');
     expect(
       (screen.getByRole('textbox', { name: 'OpenClaw setup prompt' }) as HTMLTextAreaElement).value,
