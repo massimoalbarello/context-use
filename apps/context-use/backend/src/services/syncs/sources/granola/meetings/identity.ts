@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-// Keep the document UUID as record identity across MCP and the public API's not_* IDs.
+// API migration: derive record IDs from web_url's document UUID, never the API's not_* ID.
+// Granola does not guarantee it equals the MCP ID; verify an overlapping real meeting first.
+// Keep provider granola, kind meeting, and the existing sync instance when backfilling history
+// (record uniqueness includes sync_id). Reset the acquisition checkpoint, not record revisions.
 export const meetingIdSchema = z.uuid().transform((id) => id.toLowerCase());
 
 export function meetingIdFromUrl(value: string): string {
