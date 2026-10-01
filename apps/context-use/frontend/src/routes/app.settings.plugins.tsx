@@ -1,9 +1,4 @@
-import {
-  OPENCLAW_NPM_URL,
-  OPENCLAW_REMOVAL_PROMPT,
-  openclawReconnectPrompt,
-  openclawSetupPrompt,
-} from '@context-use/openclaw-memory/setup-prompt';
+import { OPENCLAW_NPM_URL, openclawSetupPrompt } from '@context-use/openclaw-memory/setup-prompt';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { CopyablePrompt } from '../components/copyable-prompt';
@@ -48,55 +43,23 @@ export function PluginsSettings({ serverUrl }: { serverUrl: string }) {
           </p>
         </div>
 
-        <details className="grid gap-3">
-          <summary className="cursor-pointer text-sm">OpenClaw self-installation</summary>
-          <div className="mt-3 grid gap-3">
-            <p className="text-muted-foreground text-sm">
-              Copy this prompt into OpenClaw. It will handle setup and give you a link to authorize.
-            </p>
-            <CopyablePrompt
-              ariaLabel="OpenClaw setup prompt"
-              copyLabel="Copy setup prompt"
-              copiedLabel="Setup prompt copied"
-              rows={7}
-              value={openclawSetupPrompt(serverUrl)}
-            />
-          </div>
-        </details>
-
-        <details className="grid gap-3">
-          <summary className="cursor-pointer text-sm">Reauthorize the plugin</summary>
-          <div className="mt-3 grid gap-3">
-            <p className="text-muted-foreground text-sm">
-              Use this when authorization expires or you move to a different Context Use server.
-              OpenClaw will ask you to authorize a new MCP client for this server.
-            </p>
-            <CopyablePrompt
-              ariaLabel="OpenClaw reauthorization prompt"
-              copyLabel="Copy reauthorization prompt"
-              copiedLabel="Reauthorization prompt copied"
-              rows={5}
-              value={openclawReconnectPrompt(serverUrl)}
-            />
-          </div>
-        </details>
-
-        <details className="grid gap-3">
-          <summary className="cursor-pointer text-sm">Remove the plugin</summary>
-          <div className="mt-3 grid gap-3">
-            <p className="text-muted-foreground text-sm">
-              OpenClaw removes the plugin and restores its previous memory settings. Your memories
-              in Context Use are preserved.
-            </p>
-            <CopyablePrompt
-              ariaLabel="OpenClaw removal prompt"
-              copyLabel="Copy removal prompt"
-              copiedLabel="Removal prompt copied"
-              rows={4}
-              value={OPENCLAW_REMOVAL_PROMPT}
-            />
-          </div>
-        </details>
+        <div className="grid gap-3">
+          <p className="text-muted-foreground text-sm">
+            Copy this prompt into OpenClaw. It includes your instance URL and tells OpenClaw where
+            to find the plugin’s setup instructions. You will authorize access in your browser.
+          </p>
+          <CopyablePrompt
+            ariaLabel="OpenClaw setup prompt"
+            copyLabel="Copy setup prompt"
+            copiedLabel="Setup prompt copied"
+            rows={4}
+            value={openclawSetupPrompt(serverUrl)}
+          />
+          <p className="text-muted-foreground text-sm">
+            Later, ask OpenClaw to “Reauthorize Context Use” or “Remove Context Use”. To connect to
+            another instance, include its URL. Removal preserves your memories in Context Use.
+          </p>
+        </div>
       </section>
     </div>
   );
