@@ -62,4 +62,6 @@ test('paused syncs explain why they stopped and offer Resume without a disabled 
   expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
   await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Resume' }));
   expect(action).toHaveBeenCalledWith('resume');
+  await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Backfill again' }));
+  expect(action).toHaveBeenCalledWith('resync');
 });

@@ -1,7 +1,7 @@
 import { Button, buttonVariants } from '@repo/ui/button';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, Pause, Play, RefreshCw } from 'lucide-react';
-import type { ManagedSync } from '../../queries/managed-syncs';
+import type { ManagedSync, ManagedSyncAction } from '../../queries/managed-syncs';
 import { Badge } from '../ui/badge';
 
 const stateLabels = {
@@ -16,7 +16,7 @@ const MILLISECONDS_PER_MINUTE = 60_000;
 export function ManagedSyncCard(input: {
   sync: ManagedSync;
   pending: boolean;
-  onAction: (action: 'pause' | 'resume' | 'run') => void;
+  onAction: (action: ManagedSyncAction) => void;
 }) {
   const { sync } = input;
   const connected = sync.state !== 'setup-required' && sync.state !== 'disconnected';
@@ -84,6 +84,15 @@ export function ManagedSyncCard(input: {
               {sync.state === 'paused' ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
               {sync.state === 'paused' ? 'Resume' : 'Pause'}
             </Button>
+            {sync.state === 'paused' && (
+              <Button
+                variant="outline"
+                disabled={input.pending}
+                onClick={() => input.onAction('resync')}
+              >
+                Backfill again
+              </Button>
+            )}
           </div>
         </>
       )}

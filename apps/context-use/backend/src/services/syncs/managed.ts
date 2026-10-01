@@ -2,6 +2,7 @@ import type { OpenSyncRuntime } from '@context-use/open-sync';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { BadRequestError, ForbiddenError, NotFoundError } from '#backend/lib/errors.ts';
 import type {
+  ManagedSyncAction,
   ManagedSyncState,
   ManagedSyncSummary,
   SyncProviderSummary,
@@ -252,14 +253,18 @@ export class ManagedSyncsService {
     const provider = this.input.catalog.provider(input.providerId);
     await this.serial(() => this.activate({ scope, provider }));
   }
-  async update(input: { actorId: string; key: string; action: 'pause' | 'resume' | 'run' }) {
+  async update(input: { actorId: string; key: string; action: ManagedSyncAction }) {
     const scope = this.scope(input.actorId);
     const { sync } = this.input.catalog.sync(input.key);
     const configuredSync = this.configuredSync({ scope, sync });
     if (!configuredSync) {
       throw new NotFoundError('Connect your account first.');
     }
-    if (input.action === 'run') {
+    if (input.action === 'resync') {
+      await this.input.sync.api.setEnabled({ ...scope, id: configuredSync.id, enabled: true });
+      await this.input.sync.api.resync({ ...scope, id: configuredSync.id });
+      this.input.sync.api.runNow({ ...scope, id: configuredSync.id });
+    } else if (input.action === 'run') {
       if (!configuredSync.enabled) {
         throw new BadRequestError('Resume the sync first.');
       }

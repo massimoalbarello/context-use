@@ -54,5 +54,8 @@
     "bun": "1.4.0",
     "node": ">=22.14.0"
   },
-  "packageManager": "bun@1.4.0"
+  "packageManager": "bun@1.4.0",
+  "overrides": {
+    "@oomol-lab/open-connector": "1.7.0"
+  }
 }
