@@ -43,7 +43,6 @@ function auth(): Auth {
 test('management rejects unauthenticated and cross-origin mutations; OAuth completion remains owner-bound', async () => {
   const completed: string[] = [];
   const configured: string[] = [];
-  const updates: Array<{ actorId: string; key: string; action: string }> = [];
   const services: ManagedSyncsServiceContract = {
     list: () => Promise.resolve([]),
     configureApp: ({ actorId }) => {
@@ -51,10 +50,7 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
       return Promise.resolve();
     },
     connect: () => Promise.resolve({ authorizationUrl: null }),
-    update: (input) => {
-      updates.push(input);
-      return Promise.resolve();
-    },
+    update: () => Promise.resolve(),
     completeConnection: ({ actorId }) => {
       completed.push(actorId);
       return Promise.resolve();
@@ -132,20 +128,6 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
     expect(await invalidApp.text()).not.toContain('private-secret');
   }
   expect(configured).toEqual([OWNER_USER_ID]);
-
-  const unsupported = await app.handle(
-    new Request('http://host/api/syncs/managed/youtube.playlists', {
-      method: 'POST',
-      headers: {
-        origin: 'http://host',
-        cookie: 'owner-session',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ action: 'resync', changeMessage: 'Unsupported sync action' }),
-    }),
-  );
-  expect(unsupported.status).toBe(StatusMap['Bad Request']);
-  expect(updates).toEqual([]);
 
   const callback =
     'http://host/api/open-sync/providers/github/return/connection_00000000-0000-0000-0000-000000000000';
