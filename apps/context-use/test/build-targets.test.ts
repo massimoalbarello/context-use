@@ -114,23 +114,32 @@ test(
     expect(
       instance.filter((path) => /node_modules\/.*\/(?:vite|postcss|tailwindcss)\//.test(path)),
     ).toEqual([]);
-    expect(catalogFiles.sort()).toEqual(['github.json', 'granola.json', 'youtube.json']);
-    expect(catalogProviders.sort()).toEqual(['github', 'granola', 'youtube']);
+    expect(catalogFiles.sort()).toEqual([
+      'github.json',
+      'googlecalendar.json',
+      'granola.json',
+      'youtube.json',
+    ]);
+    expect(catalogProviders.sort()).toEqual(['github', 'googlecalendar', 'granola', 'youtube']);
     const connectorProviders = instance.flatMap((path) => {
       const match = path.match(/\/open-connector\/src\/providers\/([^/]+)\//);
       return match ? [match[1]!] : [];
     });
-    // YouTube's account validator imports the shared Google HTTP helper from
-    // googledrive; its provider catalog and executors must remain excluded.
+    // Google Calendar and YouTube share Google HTTP/identity helpers with
+    // googleads and googledrive; those providers' catalogs and executors stay excluded.
     expect([...new Set(connectorProviders)].sort()).toEqual([
       'github',
+      'googleads',
+      'googlecalendar',
       'googledrive',
       'granola',
       'youtube',
     ]);
-    expect(instance.some((path) => path.endsWith('/providers/googledrive/executors.js'))).toBe(
-      false,
-    );
+    for (const service of ['googleads', 'googledrive']) {
+      expect(instance.some((path) => path.endsWith(`/providers/${service}/executors.js`))).toBe(
+        false,
+      );
+    }
     expect(instance.some((path) => path.endsWith('/lib/auth/better-auth.ts'))).toBe(true);
     expect(instance.filter((path) => /(^|\/)(demo|landing|fixtures)\//.test(path))).toEqual([]);
     expect(
