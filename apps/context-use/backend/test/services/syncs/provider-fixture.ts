@@ -7,7 +7,6 @@ export function fixtureProvider(id: string): SyncProvider {
     id === 'alpha' ? { title: 'Opaque provider data', url: 'not a URL' } : {};
   return {
     id,
-    service: id,
     name: id,
     description: `Records from ${id}`,
     oauth: { createAppUrl: `https://${id}.example/apps`, authorizationOptionIds: ['read'] },

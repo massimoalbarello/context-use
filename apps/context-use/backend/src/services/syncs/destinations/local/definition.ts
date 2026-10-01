@@ -1,4 +1,5 @@
 import { assetKey } from '@context-use/open-sync/assets';
+import type { SyncRegistration } from '@context-use/open-sync/definition';
 import type { Deliverable, DeliveryResult, DestinationType } from '@context-use/open-sync/delivery';
 import type { AssetImport } from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
@@ -61,7 +62,7 @@ export function localRecordDestination(input: {
     sync: RecordSyncRevision;
     change: ChangeContext;
   }): Promise<RecordWriteResult>;
-  sources: ReadonlyMap<string, string>;
+  definitions: readonly SyncRegistration[];
 }): DestinationType {
   async function publish({
     deliverable,
@@ -143,10 +144,14 @@ export function localRecordDestination(input: {
     configSchema: { type: 'object', additionalProperties: false },
     async deliver({ deliverable, scope, signal }) {
       signal.throwIfAborted();
-      const provider = input.sources.get(deliverable.definition);
+      const registration = input.definitions.find(
+        ({ definition }) => definition.id === deliverable.definition,
+      );
+      const provider = registration?.definition.provider?.service;
       if (
         deliverable.ownerId !== scope.ownerId ||
         scope.ownerId !== input.ownerId ||
+        !registration ||
         !provider ||
         !deliverable.syncId
       ) {

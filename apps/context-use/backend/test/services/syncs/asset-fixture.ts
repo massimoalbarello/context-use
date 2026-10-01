@@ -105,7 +105,7 @@ export function assetHost(input: { database: SQL; dataFolder: string; storage?: 
   const records = new RecordsService({ records: new RecordsRepository(input.database), storage });
   const destination = localRecordDestination({
     ownerId: OWNER_USER_ID,
-    sources: new Map([[assetDefinition.definition.id, 'fixture']]),
+    definitions: [assetDefinition],
     importAsset: (value) => assets.import(value),
     upsertRecord: (value) => records.upsert(value),
   });

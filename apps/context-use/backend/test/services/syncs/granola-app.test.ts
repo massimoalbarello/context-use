@@ -8,7 +8,7 @@ import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
 import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 
-const actor = { actorId: OWNER_USER_ID, providerId: 'granola-mcp' };
+const actor = { actorId: OWNER_USER_ID, providerId: 'granola' };
 test('Granola connects without manual app setup and reuses registered credentials after restart', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'context-use-granola-app-'));
   let registrations = 0;
@@ -32,14 +32,14 @@ test('Granola connects without manual app setup and reuses registered credential
       const sync = await createOpenSync(options);
       try {
         const service = new ManagedSyncsService({ catalog: new SyncCatalog(syncProviders), sync });
-        const granola = (await service.list(actor)).find((item) => item.id === 'granola-mcp')!;
+        const granola = (await service.list(actor)).find((item) => item.id === 'granola')!;
         expect(granola.oauthApp).toMatchObject({ automaticRegistration: true, createAppUrl: null });
         expect(granola.syncs[0]?.state).toBe('disconnected');
         expect(granola.account.name).toBeNull();
         const before = registrations;
-        await expect(
-          service.connect({ actorId: 'other', providerId: 'granola-mcp' }),
-        ).rejects.toThrow('Forbidden');
+        await expect(service.connect({ actorId: 'other', providerId: 'granola' })).rejects.toThrow(
+          'Forbidden',
+        );
         expect(registrations).toBe(before);
         await expect(
           service.configureApp({ ...actor, clientId: 'client', clientSecret: 'secret' }),
@@ -49,8 +49,7 @@ test('Granola connects without manual app setup and reuses registered credential
         expect(authorization.searchParams.get('client_id')).toBe('synthetic-public-client');
         expect(authorization.searchParams.get('code_challenge_method')).toBe('S256');
         expect(
-          (await service.list(actor)).find((item) => item.id === 'granola-mcp')?.oauthApp
-            .configured,
+          (await service.list(actor)).find((item) => item.id === 'granola')?.oauthApp.configured,
         ).toBe(true);
         expect(registrations).toBe(1);
       } finally {

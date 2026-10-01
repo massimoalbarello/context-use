@@ -66,7 +66,7 @@ import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { granolaClientRegistration } from '#backend/services/syncs/sources/granola-mcp/oauth.ts';
+import { granolaClientRegistration } from '#backend/services/syncs/sources/granola/oauth.ts';
 import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -198,7 +198,7 @@ try {
     canConfigureProviders: (scope) =>
       Promise.resolve(scope.actorId === OWNER_USER_ID && scope.actorId === scope.ownerId),
     authorizationRedirect: ({ service, outcome }) =>
-      syncProviderLocation({ providerId: catalog.providerForService(service).id, outcome }),
+      syncProviderLocation({ providerId: service, outcome }),
     oauthClientRegistrations: { granola: granolaClientRegistration({ fetch }) },
     definitions: catalog.definitions,
     destinationTypes: {
@@ -206,7 +206,7 @@ try {
         upsertRecord: (input) => recordsService.upsert(input),
         importAsset: (input) => assetsService.import(input),
         ownerId: OWNER_USER_ID,
-        sources: catalog.recordSources,
+        definitions: catalog.definitions,
       }),
     },
   });

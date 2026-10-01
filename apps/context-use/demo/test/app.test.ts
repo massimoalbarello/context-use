@@ -302,7 +302,7 @@ test(
           '/app/map',
           '/app/syncs',
           '/app/syncs/github?tab=authorization',
-          '/app/syncs/granola-mcp?tab=authorization',
+          '/app/syncs/granola?tab=authorization',
           '/api/syncs/managed',
           '/app/pages/new',
           '/app/entities/new',
@@ -332,17 +332,15 @@ test(
             ],
           }),
           expect.objectContaining({
-            id: 'granola-mcp',
-            name: 'Granola MCP',
+            id: 'granola',
+            name: 'Granola',
             oauthApp: expect.objectContaining({
               configured: false,
               createAppUrl: null,
               callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
             }),
             account: { name: null, status: 'disconnected' },
-            syncs: [
-              expect.objectContaining({ key: 'granola-mcp.meetings', state: 'setup-required' }),
-            ],
+            syncs: [expect.objectContaining({ key: 'granola.meetings', state: 'setup-required' })],
           }),
         ]);
         const syncsHead = await fetchDemo(

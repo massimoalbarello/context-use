@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { meetingIdSchema } from './identity.ts';
 
 export const meetingSchema = z.strictObject({
   title: z.string().nullable(),
@@ -13,7 +14,7 @@ export const checkpointSchema = z.strictObject({});
 export const responseSchema = z.object({
   meetings: z.array(
     z.object({
-      id: z.string().min(1),
+      id: meetingIdSchema,
       title: z.string().nullable(),
       summary: z.string().optional(),
       date: z.string().optional(),

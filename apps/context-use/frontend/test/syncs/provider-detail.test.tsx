@@ -128,8 +128,8 @@ test('a connected account appears alongside the configured app', async () => {
 
 test('automatic Granola authorization offers account connection without an OAuth app form', async () => {
   const provider = providerFixture();
-  provider.id = 'granola-mcp';
-  provider.name = 'Granola MCP';
+  provider.id = 'granola';
+  provider.name = 'Granola';
   provider.oauthApp = { ...provider.oauthApp, createAppUrl: null, automaticRegistration: true };
   const connect = mock(() => {});
   const view = render(

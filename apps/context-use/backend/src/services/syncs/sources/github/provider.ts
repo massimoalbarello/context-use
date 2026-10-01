@@ -3,7 +3,6 @@ import { githubPullRequests } from './pull-requests/definition.ts';
 
 export const githubProvider = {
   id: 'github',
-  service: 'github',
   name: 'GitHub',
   description: 'Bring your authored pull requests into Context Use.',
   oauth: {
