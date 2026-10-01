@@ -7,7 +7,7 @@ export const OPENCLAW_REQUIREMENT = metadata.peerDependencies.openclaw;
 export const OPENCLAW_INSTALL_COMMAND = `npx --yes ${OPENCLAW_PACKAGE}`;
 
 export function openclawSetupPrompt(serverUrl: string): string {
-  return `Install ${OPENCLAW_PACKAGE} and connect it to ${serverUrl} as my sole durable personal memory. Keep my conversations separate.
+  return `Install ${OPENCLAW_PACKAGE} and connect it to ${serverUrl} as my sole durable personal memory.
 
 First run ${OPENCLAW_INSTALL_COMMAND} instructions and follow the setup skill it prints.`;
 }
