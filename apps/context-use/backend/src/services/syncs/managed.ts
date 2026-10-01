@@ -132,7 +132,7 @@ export class ManagedSyncsService {
             kinds: Object.keys(sync.registration.definition.kinds),
             intervalMs: sync.intervalMs,
             ...managedState({
-              configured: oauth.configured,
+              configured: oauth.configured || oauth.automaticRegistration === true,
               connected: Boolean(connection),
               connectionActive: bound?.status === 'active',
               configuredSync,
@@ -154,6 +154,7 @@ export class ManagedSyncsService {
           description: provider.description,
           oauthApp: {
             configured: oauth.configured,
+            automaticRegistration: oauth.automaticRegistration === true,
             callbackUrl: oauth.expectedRedirectUri,
             createAppUrl: provider.oauth.createAppUrl,
           },
@@ -178,6 +179,9 @@ export class ManagedSyncsService {
   }) {
     const scope = this.scope(input.actorId);
     const provider = this.input.catalog.provider(input.providerId);
+    if (!provider.oauth.createAppUrl) {
+      throw new BadRequestError('This provider registers its OAuth app automatically.');
+    }
     await this.serial(async () => {
       try {
         await this.input.sync.providers.configure({
@@ -208,7 +212,10 @@ export class ManagedSyncsService {
         return { authorizationUrl: null };
       }
       const status = await this.input.sync.providers.status({ ...scope, service: provider.id });
-      if (!status.setup.oauthClient?.configured) {
+      if (
+        !status.setup.oauthClient?.configured &&
+        !status.setup.oauthClient?.automaticRegistration
+      ) {
         throw new BadRequestError('Set up your OAuth app first.');
       }
       return await this.input.sync.providers.start({

@@ -125,3 +125,30 @@ test('a connected account appears alongside the configured app', async () => {
   expect(view.queryByRole('button', { name: 'Connect account' })).toBeNull();
   expect(view.queryByText('Not connected')).toBeNull();
 });
+
+test('automatic Granola authorization offers account connection without an OAuth app form', async () => {
+  const provider = providerFixture();
+  provider.id = 'granola';
+  provider.name = 'Granola';
+  provider.oauthApp = { ...provider.oauthApp, createAppUrl: null, automaticRegistration: true };
+  const connect = mock(() => {});
+  const view = render(
+    <ProviderDetail
+      provider={provider}
+      tab="authorization"
+      onTabChange={() => {}}
+      pending={false}
+      error={null}
+      appError={null}
+      authorizationFailed={false}
+      onAction={() => {}}
+      onConnect={connect}
+      onSaveApp={() => Promise.resolve()}
+    />,
+  );
+  expect(view.queryByRole('region', { name: 'OAuth app' })).toBeNull();
+  expect(view.queryByRole('button', { name: 'Set up OAuth app' })).toBeNull();
+  expect(view.queryByLabelText('Client ID')).toBeNull();
+  await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Connect account' }));
+  expect(connect).toHaveBeenCalledTimes(1);
+});

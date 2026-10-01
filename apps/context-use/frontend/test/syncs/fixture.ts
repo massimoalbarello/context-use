@@ -6,6 +6,7 @@ export function providerFixture(): SyncProvider {
     description: 'Bring your authored pull requests into Context Use.',
     oauthApp: {
       configured: false,
+      automaticRegistration: false,
       callbackUrl: 'https://context.example/api/open-sync/oauth/callback',
       createAppUrl: 'https://github.com/settings/applications/new',
     },

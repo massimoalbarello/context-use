@@ -25,7 +25,8 @@ function SyncsIndex() {
             params={{ providerId: provider.id }}
             search={{
               tab:
-                !provider.oauthApp.configured || provider.account.status === 'disconnected'
+                (!provider.oauthApp.configured && !provider.oauthApp.automaticRegistration) ||
+                provider.account.status === 'disconnected'
                   ? 'authorization'
                   : 'sync',
             }}
@@ -41,7 +42,7 @@ function SyncsIndex() {
             <p className="text-muted-foreground text-sm">{provider.description}</p>
             <div>
               <Badge variant="secondary">
-                {!provider.oauthApp.configured
+                {!provider.oauthApp.configured && !provider.oauthApp.automaticRegistration
                   ? 'App setup needed'
                   : provider.account.status === 'disconnected'
                     ? 'Account not connected'
