@@ -4,7 +4,7 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import { createManagedSyncsController } from '#backend/routes/api/syncs/managed/controller.ts';
-import { createSyncCallbacks } from '#backend/routes/sync-callbacks.ts';
+import { createSyncCallbacks, syncProviderLocation } from '#backend/routes/sync-callbacks.ts';
 import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 import { unusedMcpProtection } from '../../support/mcp.ts';
 
@@ -72,7 +72,9 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
           Promise.resolve(
             new Response(null, {
               status: 302,
-              headers: { location: '/syncs/github?tab=authorization&authorization=connected' },
+              headers: {
+                location: syncProviderLocation({ providerId: 'github', outcome: 'connected' }),
+              },
             }),
           ),
       }),
@@ -133,6 +135,9 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   expect(completed).toEqual([]);
   const result = await app.handle(new Request(callback, { headers: { cookie: 'owner-session' } }));
   expect(result.status).toBe(StatusMap.Found);
+  expect(result.headers.get('location')).toBe(
+    '/app/syncs/github?tab=authorization&authorization=connected',
+  );
   expect(completed).toEqual([OWNER_USER_ID]);
   expect(
     (
@@ -144,3 +149,44 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
     ).status,
   ).toBe(StatusMap['Not Found']);
 });
+
+test.each(['connected', 'failed'] as const)(
+  'OAuth failure returns to the app authorization page when the provider returns %s',
+  async (outcome) => {
+    const completed: string[] = [];
+    const services: ManagedSyncsServiceContract = {
+      list: () => Promise.resolve([]),
+      configureApp: () => Promise.resolve(),
+      connect: () => Promise.resolve({ authorizationUrl: null }),
+      update: () => Promise.resolve(),
+      completeConnection: ({ actorId }) => {
+        completed.push(actorId);
+        return Promise.reject(new Error('Connection completion failed'));
+      },
+    };
+    const app = new Elysia().use(
+      createSyncCallbacks({
+        auth: auth(),
+        syncs: services,
+        fetch: () =>
+          Promise.resolve(
+            new Response(null, {
+              status: 302,
+              headers: { location: syncProviderLocation({ providerId: 'github', outcome }) },
+            }),
+          ),
+      }),
+    );
+    const callback =
+      'http://host/api/open-sync/providers/github/return/connection_00000000-0000-0000-0000-000000000000';
+    const response = await app.handle(
+      new Request(callback, { headers: { cookie: 'owner-session' } }),
+    );
+
+    expect(response.status).toBe(StatusMap.Found);
+    expect(new URL(response.headers.get('location')!, callback).href).toBe(
+      'http://host/app/syncs/github?tab=authorization&authorization=failed',
+    );
+    expect(completed).toEqual(outcome === 'connected' ? [OWNER_USER_ID] : []);
+  },
+);

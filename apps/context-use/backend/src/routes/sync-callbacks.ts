@@ -53,5 +53,5 @@ export function syncProviderLocation(input: {
   providerId: string;
   outcome: 'connected' | 'failed';
 }) {
-  return `/syncs/${encodeURIComponent(input.providerId)}?tab=authorization&authorization=${input.outcome}`;
+  return `/app/syncs/${encodeURIComponent(input.providerId)}?tab=authorization&authorization=${input.outcome}`;
 }
