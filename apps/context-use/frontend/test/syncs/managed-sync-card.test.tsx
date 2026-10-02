@@ -37,6 +37,10 @@ test('sync controls use registered provider and kind with the shared half-hourly
   expect(view.getByRole('link', { name: 'View records' }).getAttribute('href')).toContain(
     'kind=event',
   );
+  await userEvent
+    .setup({ document })
+    .click(view.getByRole('button', { name: 'Reprocess history' }));
+  expect(action).toHaveBeenCalledWith('resync');
   await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Pause' }));
   expect(action).toHaveBeenCalledWith('pause');
 });
@@ -60,6 +64,36 @@ test('paused syncs explain why they stopped and offer Resume without a disabled 
   expect((await view.findByRole('status')).textContent).toBe(sync.message);
   expect(view.queryByText('Every 30 minutes')).toBeNull();
   expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
+  expect(view.queryByRole('button', { name: 'Reprocess history' })).toBeNull();
   await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Resume' }));
   expect(action).toHaveBeenCalledWith('resume');
 });
+
+test.each([
+  { state: 'syncing' as const, pending: false },
+  { state: 'ready' as const, pending: true },
+])(
+  'historical reprocessing is unavailable while work is pending: %j',
+  async ({ state, pending }) => {
+    const action = mock(() => {});
+    const root = createRootRoute({
+      component: () => (
+        <ManagedSyncCard
+          sync={{ ...providerFixture().syncs[0]!, state }}
+          pending={pending}
+          onAction={action}
+        />
+      ),
+    });
+    const router = createRouter({
+      routeTree: root,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+    await router.load();
+    const view = render(<RouterProvider router={router} />);
+    const button = await view.findByRole('button', { name: 'Reprocess history' });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.setup({ document }).click(button);
+    expect(action).not.toHaveBeenCalled();
+  },
+);
