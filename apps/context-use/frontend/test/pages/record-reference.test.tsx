@@ -22,7 +22,7 @@ const record: ContextRecordSummary = {
   title: 'Launch [decision]',
   sourceCreatedAt: null,
   sourceUpdatedAt: null,
-  occurredAt: null,
+  sourceOccurredAt: null,
   createdAt: new Date('2026-09-11'),
   updatedAt: new Date('2026-09-11'),
   source: { provider: 'github', kind: 'issue', id: '1', url: null },

@@ -57,7 +57,7 @@ export const eventSchema = z.strictObject({
   eventId: id,
   title: z.string(),
   status: providerEventSchema.shape.status,
-  occurredAt: RecordInputSchema.shape.occurredAt,
+  sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt,
   start: timeSchema.nullable(),
   end: timeSchema.nullable(),
   timeZone: z.string().nullable(),
@@ -180,7 +180,7 @@ function eventData(input: {
       event.summary ||
       (event.status === 'cancelled' ? 'Cancelled calendar event' : 'Untitled calendar event'),
     status: event.status,
-    occurredAt: occurrenceTime(event.start),
+    sourceOccurredAt: occurrenceTime(event.start),
     start: event.start ?? null,
     end: event.end ?? null,
     timeZone: input.timeZone ?? null,

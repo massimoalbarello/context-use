@@ -468,7 +468,7 @@ test('deletes, malformed batches and cancellation cannot acknowledge dropped or 
         bundle([record, { ...record, id: 'bad', preview: '   ' }]),
         bundle([
           record,
-          { ...record, id: 'bad', data: { ...record.data, occurredAt: 'not-a-date' } },
+          { ...record, id: 'bad', data: { ...record.data, sourceOccurredAt: 'not-a-date' } },
         ]),
         { ...valid, definition: 'unknown' },
       ]) {

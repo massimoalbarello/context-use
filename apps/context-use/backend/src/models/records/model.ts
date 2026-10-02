@@ -25,7 +25,7 @@ export const RecordInputSchema = z.strictObject({
   source: RecordSourceSchema,
   title: z.string().trim().min(1).max(MAX_RECORD_TITLE_LENGTH),
   body: z.string().max(MAX_RECORD_BODY_LENGTH),
-  occurredAt: z
+  sourceOccurredAt: z
     .union([TimestampSchema, z.iso.date()])
     .nullable()
     .default(null)
@@ -83,9 +83,9 @@ export function parseRecord(input: RecordInput): NativeRecord {
     value === null ? null : new Date(value).toISOString();
   return {
     ...record,
-    occurredAt: record.occurredAt?.includes('T')
-      ? new Date(record.occurredAt).toISOString()
-      : record.occurredAt,
+    sourceOccurredAt: record.sourceOccurredAt?.includes('T')
+      ? new Date(record.sourceOccurredAt).toISOString()
+      : record.sourceOccurredAt,
     sourceCreatedAt: timestamp(record.sourceCreatedAt),
     sourceUpdatedAt: timestamp(record.sourceUpdatedAt),
   };

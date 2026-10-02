@@ -60,7 +60,7 @@ test.each([
         url: 'https://example.com/pr/1',
       },
       sourceCreatedAt: NOW,
-      occurredAt: '2026-10-01T09:00:00+01:00',
+      sourceOccurredAt: '2026-10-01T09:00:00+01:00',
     });
     const result = await service.upsert({
       change: { clientName: null, message: 'Added source context' },
@@ -77,7 +77,7 @@ test.each([
         source_url: string;
         source_created_at: string;
         source_updated_at: string;
-        occurred_at: string;
+        source_occurred_at: string;
       }[]
     >`select * from "record" where "owner_id" = 'owner-a'`;
     expect(stored).toMatchObject({
@@ -85,7 +85,7 @@ test.each([
       source_url: input.source.url,
       source_created_at: NOW,
       source_updated_at: NOW,
-      occurred_at: '2026-10-01T08:00:00.000Z',
+      source_occurred_at: '2026-10-01T08:00:00.000Z',
       content_hash: new Bun.CryptoHasher('sha256').update(body).digest('hex'),
       size_bytes: Buffer.byteLength(body, 'utf8'),
     });
@@ -93,7 +93,7 @@ test.each([
     expect(await readFile(join(dataFolder, 'objects', stored!.storage_key), 'utf8')).toBe(body);
     expect(
       await service.findResource({ ownerId: 'owner-a', readableId: result.readableId }),
-    ).toMatchObject({ ...input, occurredAt: '2026-10-01T08:00:00.000Z' });
+    ).toMatchObject({ ...input, sourceOccurredAt: '2026-10-01T08:00:00.000Z' });
     const columns = await database<{ name: string }[]>`pragma table_info('record')`;
     expect(columns.map((column) => column.name)).not.toContain('body');
     const retrieval = createTestHypermediaRetrievalService({ database, storage });
@@ -104,7 +104,7 @@ test.each([
         record: {
           readableId: result.readableId,
           title: input.title,
-          occurredAt: '2026-10-01T08:00:00.000Z',
+          sourceOccurredAt: '2026-10-01T08:00:00.000Z',
         },
       },
     ]);
@@ -122,8 +122,8 @@ test.each([
     },
   },
   { sourceCreatedAt: NOW },
-  { occurredAt: NEXT },
-  { occurredAt: '2026-10-01' },
+  { sourceOccurredAt: NEXT },
+  { sourceOccurredAt: '2026-10-01' },
 ])('metadata-only changes require a newer version: %j', async (metadata) => {
   await withRecords(async ({ service }) => {
     const write = (value: RecordInput) =>
@@ -157,7 +157,7 @@ test('sync revisions preserve metadata-only changes and fence stale replays with
       });
     const original = record();
     const first = await write({ value: original, revision: 1 });
-    const updated = record({ occurredAt: '2026-10-01' });
+    const updated = record({ sourceOccurredAt: '2026-10-01' });
     expect((await write({ value: updated, revision: 1 })).state).toBe('conflict');
     expect((await write({ value: updated, revision: 2 })).state).toBe('updated');
     expect((await write({ value: updated, revision: latestRevision })).state).toBe('unchanged');
@@ -409,8 +409,8 @@ test('all callers validate the native schema, including local service calls', as
     for (const invalid of [
       record({ title: '' }),
       record({ sourceCreatedAt: 'not-a-date' }),
-      record({ occurredAt: 'not-a-date' }),
-      record({ occurredAt: '2026-10-01T09:00:00' }),
+      record({ sourceOccurredAt: 'not-a-date' }),
+      record({ sourceOccurredAt: '2026-10-01T09:00:00' }),
       { ...record(), participants: [] },
       record({ source: { provider: '', kind: 'note', id: '1' } }),
     ]) {

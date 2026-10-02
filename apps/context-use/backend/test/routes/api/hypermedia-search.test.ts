@@ -110,7 +110,7 @@ test.each([null, timestamp])(
             title: 'Meeting',
             sourceCreatedAt: timestamp,
             sourceUpdatedAt: null,
-            occurredAt: null,
+            sourceOccurredAt: null,
             ...dates,
             source: { provider: 'granola', kind: 'meeting', id: 'source-meeting', url: null },
           },

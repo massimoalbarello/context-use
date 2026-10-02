@@ -22,7 +22,7 @@ test('records use the shared retrieval pipeline, preserve relevance order, and k
         title: `Notes ${id}`,
         sourceCreatedAt: null,
         sourceUpdatedAt: null,
-        occurredAt: null,
+        sourceOccurredAt: null,
         createdAt: timestamp,
         updatedAt: timestamp,
         source: { provider: 'github', kind: 'issue', id: id, url: null },

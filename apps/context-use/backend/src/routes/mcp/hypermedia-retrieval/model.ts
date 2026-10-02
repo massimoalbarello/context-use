@@ -208,7 +208,7 @@ export function mcpHypermediaRetrievalResult(result: HypermediaRetrievalResult) 
       source: result.record.source,
       sourceCreatedAt: result.record.sourceCreatedAt,
       sourceUpdatedAt: result.record.sourceUpdatedAt,
-      occurredAt: result.record.occurredAt,
+      sourceOccurredAt: result.record.sourceOccurredAt,
       matchExcerpt: result.matchExcerpt,
     };
   }

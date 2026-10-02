@@ -41,13 +41,13 @@ const ids = [...Array(MEETING_COUNT).keys()].map(meetingId);
 const batches = [ids.slice(0, 10), ids.slice(10, SECOND_BATCH_END), ids.slice(SECOND_BATCH_END)];
 
 test.each([
-  { date: '2026-09-19', occurredAt: '2026-09-19' },
-  { date: '2026-09-19T09:00:00+01:00', occurredAt: '2026-09-19T09:00:00+01:00' },
-  { date: undefined, occurredAt: null },
-  { date: 'September 19', occurredAt: null },
-])('Granola preserves known occurrence precision for $date', ({ date, occurredAt }) => {
+  { date: '2026-09-19', sourceOccurredAt: '2026-09-19' },
+  { date: '2026-09-19T09:00:00+01:00', sourceOccurredAt: '2026-09-19T09:00:00+01:00' },
+  { date: undefined, sourceOccurredAt: null },
+  { date: 'September 19', sourceOccurredAt: null },
+])('Granola preserves known occurrence precision for $date', ({ date, sourceOccurredAt }) => {
   const record = granolaRecord({ id: ids[0]!, title: 'Planning', summary: '', date });
-  expect(record.data.occurredAt).toBe(occurredAt);
+  expect(record.data.sourceOccurredAt).toBe(sourceOccurredAt);
   expect(record.data.date).toBe(date ?? null);
 });
 
@@ -141,7 +141,7 @@ test('Granola backfills every accessible meeting and only publishes changes acro
         source: { provider: 'granola', kind: 'meeting', id: ids[0] },
         sourceCreatedAt: null,
         sourceUpdatedAt: null,
-        occurredAt: '2026-09-19',
+        sourceOccurredAt: '2026-09-19',
       });
       expect((await f.history()).items).toHaveLength(ids.length);
       await f.restart();
@@ -175,7 +175,7 @@ test('Granola backfills every accessible meeting and only publishes changes acro
       ).toMatchObject({ title: 'Untitled Granola meeting', body: '' });
       expect(
         (await f.records.findResource({ ownerId: OWNER_USER_ID, readableId: first.readableId }))!
-          .occurredAt,
+          .sourceOccurredAt,
       ).toBeNull();
       listing = [];
       await poll();

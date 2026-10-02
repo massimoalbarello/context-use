@@ -70,7 +70,7 @@ function recordSummaryFrom(
     },
     sourceCreatedAt: record.sourceCreatedAt,
     sourceUpdatedAt: record.sourceUpdatedAt,
-    occurredAt: record.occurredAt,
+    sourceOccurredAt: record.sourceOccurredAt,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };
@@ -95,7 +95,7 @@ function existingWriteState({
       current.title === record.title &&
       current.sourceUrl === record.source.url &&
       current.sourceCreatedAt === record.sourceCreatedAt &&
-      current.occurredAt === record.occurredAt &&
+      current.sourceOccurredAt === record.sourceOccurredAt &&
       current.sourceUpdatedAt === record.sourceUpdatedAt,
   );
   if (input.sync) {
@@ -214,15 +214,15 @@ async function publishRecord({
   const sync = input.sync ?? { syncId: '', revision: 0 };
   await db.WriteRecord`
     insert into "record" ("owner_id", "sync_id", "sync_revision", "readable_id", "provider", "kind", "source_id", "source_url", "title",
-      "source_created_at", "source_updated_at", "occurred_at", "deleted_at", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
+      "source_created_at", "source_updated_at", "source_occurred_at", "deleted_at", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
     values (${input.ownerId}, ${sync.syncId}, ${sync.revision}, ${readableId}, ${source.provider}, ${source.kind}, ${source.id}, ${record?.source.url ?? null},
-      ${record?.title ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt}, ${record?.occurredAt ?? null},
+      ${record?.title ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt}, ${record?.sourceOccurredAt ?? null},
       ${input.deletion ? input.receivedAt : null}, ${input.value?.storageKey ?? null}, ${input.value?.contentHash ?? null},
       ${input.value?.sizeBytes ?? null}, ${input.receivedAt}, ${input.receivedAt})
     on conflict ("owner_id", "sync_id", "provider", "kind", "source_id") do update set
       "sync_revision" = excluded."sync_revision", "source_url" = excluded."source_url", "title" = excluded."title",
       "source_created_at" = excluded."source_created_at", "source_updated_at" = excluded."source_updated_at",
-      "occurred_at" = excluded."occurred_at",
+      "source_occurred_at" = excluded."source_occurred_at",
       "deleted_at" = excluded."deleted_at", "storage_key" = excluded."storage_key", "content_hash" = excluded."content_hash",
       "size_bytes" = excluded."size_bytes", "updated_at" = excluded."updated_at"
   `;
@@ -264,7 +264,7 @@ async function writeRecord({
     /* @notNull syncRevision */
     select "readable_id" as "readableId", "title", "source_updated_at" as "sourceUpdatedAt",
       "source_url" as "sourceUrl", "source_created_at" as "sourceCreatedAt",
-      "occurred_at" as "occurredAt",
+      "source_occurred_at" as "sourceOccurredAt",
       "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision", "published_at" as "publishedAt"
     from "record" where "owner_id" = ${input.ownerId} and "provider" = ${source.provider}
       and "kind" = ${source.kind} and "source_id" = ${source.id} and "sync_id" = ${sync.syncId}
@@ -351,7 +351,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
           record."readable_id" as "readableId", record."title", record."provider", record."kind",
           record."source_id" as "sourceId", record."source_created_at" as "sourceCreatedAt",
           record."source_updated_at" as "sourceUpdatedAt",
-          record."occurred_at" as "occurredAt",
+          record."source_occurred_at" as "sourceOccurredAt",
           record."source_url" as "sourceUrl",
           record."created_at" as "createdAt", record."updated_at" as "updatedAt"
         from "record" record
@@ -404,7 +404,7 @@ export class RecordsRepository implements RecordsRepositoryContract {
         select record."public_id" as "publicId", record."published_at" as "publishedAt",
           record."title", record."provider", record."source_created_at" as "sourceCreatedAt",
           record."source_updated_at" as "sourceUpdatedAt",
-          record."occurred_at" as "occurredAt",
+          record."source_occurred_at" as "sourceOccurredAt",
           record."source_url" as "sourceUrl",
           record."readable_id" as "readableId", record."kind", record."source_id" as "sourceId",
           record."storage_key" as "storageKey", record."content_hash" as "contentHash",

@@ -9,7 +9,7 @@ export function granolaRecord(meeting: z.infer<typeof detailResponseSchema>['mee
     title: meeting.title,
     notes: meeting.summary,
     date: meeting.date ?? null,
-    occurredAt: RecordInputSchema.shape.occurredAt.catch(null).parse(meeting.date),
+    sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt.catch(null).parse(meeting.date),
     attendees: meeting.attendees ?? '',
   };
   return {

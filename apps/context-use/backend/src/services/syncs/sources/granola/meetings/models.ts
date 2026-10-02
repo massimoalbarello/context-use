@@ -6,7 +6,7 @@ export const meetingSchema = z.strictObject({
   title: z.string().nullable(),
   notes: z.string(),
   date: z.string().nullable(),
-  occurredAt: RecordInputSchema.shape.occurredAt,
+  sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt,
   attendees: z.string(),
 });
 // Empty by design: the OAuth action exposes one unpaginated last-30-days listing,

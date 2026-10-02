@@ -1,1 +1,1 @@
-alter table "record" add column "occurred_at" text;
+alter table "record" add column "source_occurred_at" text;

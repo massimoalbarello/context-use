@@ -20,7 +20,7 @@ test('Calendar event content preserves time zones, participants, HTML descriptio
     updatedAt: created,
     data: {
       title: 'Event one',
-      occurredAt: '2026-10-01T09:00:00+01:00',
+      sourceOccurredAt: '2026-10-01T09:00:00+01:00',
       start: { dateTime: '2026-10-01T09:00:00+01:00', timeZone: 'Europe/London' },
       participants: [{ email: 'guest@example.com', responseStatus: 'accepted' }],
       recurrence: ['RRULE:FREQ=WEEKLY'],
@@ -51,7 +51,7 @@ test('Cancelled exceptions and all-day events retain date semantics without inve
       recurringEventId: 'series',
       originalStartTime: { date: '2026-10-01' },
       start: null,
-      occurredAt: null,
+      sourceOccurredAt: null,
     },
     id: '["a","exception"]',
   });
@@ -67,7 +67,7 @@ test('Cancelled exceptions and all-day events retain date semantics without inve
     throw new Error('Expected event');
   }
   expect(allDay.content?.body).toContain('Start: 2026-10-01 (all day)');
-  expect(allDay.data.occurredAt).toBe('2026-10-01');
+  expect(allDay.data.sourceOccurredAt).toBe('2026-10-01');
   expect(allDay.content?.body).toContain(
     'End (exclusive for all-day events): 2026-10-02 (all day)',
   );
@@ -82,5 +82,5 @@ test('a moved recurring event uses its current start rather than its original st
       originalStartTime: { dateTime: '2026-09-24T09:00:00+01:00' },
     }),
   });
-  expect(record).toMatchObject({ data: { occurredAt: '2026-10-01T09:00:00+01:00' } });
+  expect(record).toMatchObject({ data: { sourceOccurredAt: '2026-10-01T09:00:00+01:00' } });
 });

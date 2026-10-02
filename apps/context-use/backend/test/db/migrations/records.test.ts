@@ -40,7 +40,7 @@ test('adding occurrence metadata preserves historical records without inferring 
     const before = database.query<Record<string, unknown>, []>('select * from "record"').get();
     database.exec(await Bun.file(OCCURRENCE_MIGRATION).text());
     expect(database.prepare('select * from "record"').all()).toEqual([
-      { ...before, occurred_at: null },
+      { ...before, source_occurred_at: null },
     ]);
   } finally {
     database.close();
