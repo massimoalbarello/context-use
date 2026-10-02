@@ -72,6 +72,7 @@ async function renderResourceBrowser({
     title: 'Research notes',
     sourceCreatedAt: null,
     sourceUpdatedAt: null,
+    sourceOccurredAt: null,
     createdAt: timestamp,
     updatedAt: timestamp,
     body: 'Research source content.',

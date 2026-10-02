@@ -93,11 +93,13 @@ test('Calendar saves complete event records, updates cancellations and does not 
           source: { provider: 'googlecalendar', kind: 'event', id: '["a","one"]' },
           sourceCreatedAt: new Date(created).toISOString(),
           sourceUpdatedAt: new Date(created).toISOString(),
+          sourceOccurredAt: '2026-10-01T08:00:00.000Z',
         });
         expect(saved!.body).toContain('Guest — guest@example.com (accepted)');
         expect(saved!.body).toContain('Location: Meeting room');
         expect(saved!.body).toContain('Description:\n\nDiscuss the plan');
         expect((await read(other.readableId))!.body).toContain('Start: 2026-10-01 (all day)');
+        expect((await read(other.readableId))!.sourceOccurredAt).toBe('2026-10-01');
         const history = () =>
           new HistoryRepository(input.database).list({
             ownerId: OWNER_USER_ID,
@@ -109,17 +111,24 @@ test('Calendar saves complete event records, updates cancellations and does not 
         await finish();
         expect(await history()).toEqual(originalHistory);
         source.delta = [
-          { ...event('one'), summary: 'Edited event' },
+          {
+            ...event('one'),
+            summary: 'Edited event',
+            start: { dateTime: '2026-10-03T10:00:00+02:00' },
+            end: { dateTime: '2026-10-03T11:00:00+02:00' },
+          },
           { id: 'two', status: 'cancelled' },
         ];
         runtime.api.runNow(resource);
         await finish();
         expect((await list()).items).toHaveLength(backfillCount);
         expect((await read(first.readableId))!.title).toBe('Edited event');
+        expect((await read(first.readableId))!.sourceOccurredAt).toBe('2026-10-03T08:00:00.000Z');
         const cancelled = (await list()).items.find(
           (record) => record.source.id === '["a","two"]',
         )!;
         expect((await read(cancelled.readableId))!.body).toContain('Status: cancelled');
+        expect((await read(cancelled.readableId))!.sourceOccurredAt).toBeNull();
         const editedHistory = await history();
         runtime.api.runNow(resource);
         await finish();

@@ -466,6 +466,10 @@ test('deletes, malformed batches and cancellation cannot acknowledge dropped or 
         bundle([record, { ...record, id: 'bad', content: undefined }]),
         bundle([record, { ...record, id: 'bad', preview: undefined }]),
         bundle([record, { ...record, id: 'bad', preview: '   ' }]),
+        bundle([
+          record,
+          { ...record, id: 'bad', data: { ...record.data, sourceOccurredAt: 'not-a-date' } },
+        ]),
         { ...valid, definition: 'unknown' },
       ]) {
         expect((await host.destination.deliver(delivery(invalid))).status).toBe('rejected');

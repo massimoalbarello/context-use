@@ -22,6 +22,9 @@ export const RecordSummarySchema = t.Object({
   }),
   sourceCreatedAt: t.Nullable(t.String({ format: 'date-time' })),
   sourceUpdatedAt: t.Nullable(t.String({ format: 'date-time' })),
+  sourceOccurredAt: t.Nullable(
+    t.Union([t.String({ format: 'date-time' }), t.String({ format: 'date' })]),
+  ),
   createdAt: t.Date(),
   updatedAt: t.Date(),
 });
@@ -67,6 +70,7 @@ export function recordSummaryResponse(record: RecordSummary) {
     source: record.source,
     sourceCreatedAt: record.sourceCreatedAt,
     sourceUpdatedAt: record.sourceUpdatedAt,
+    sourceOccurredAt: record.sourceOccurredAt,
     createdAt: new Date(record.createdAt),
     updatedAt: new Date(record.updatedAt),
   };

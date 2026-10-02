@@ -35,6 +35,7 @@ function deliveredRecords(input: {
       }),
       sourceCreatedAt: record.createdAt,
       sourceUpdatedAt: record.updatedAt,
+      sourceOccurredAt: record.data.sourceOccurredAt,
     });
     if (!parsed.success) {
       return null;

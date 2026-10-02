@@ -580,6 +580,7 @@ test('record search previews have exact owner-scoped read paths without imported
     title: 'Planning meeting',
     sourceCreatedAt: null,
     sourceUpdatedAt: null,
+    sourceOccurredAt: '2026-10-01T08:00:00.000Z',
     createdAt: NOW,
     updatedAt: NOW,
     source: { provider: 'calendar', kind: 'meeting', id: 'meeting-42', url: null },
@@ -643,6 +644,7 @@ test('record search previews have exact owner-scoped read paths without imported
             title: record.title,
             sourceCreatedAt: null,
             sourceUpdatedAt: null,
+            sourceOccurredAt: record.sourceOccurredAt,
             matchExcerpt: 'Meeting with Samantha.',
             source: record.source,
           },
@@ -666,6 +668,7 @@ test('record search previews have exact owner-scoped read paths without imported
       expect(read.isError).not.toBe(true);
       expect(read.structuredContent).toMatchObject({
         body: markdown,
+        sourceOccurredAt: record.sourceOccurredAt,
         source: { provider: 'calendar' },
         backlinks: [{ address: 'context-use://page/growth-playbook', readableId: page.readableId }],
       });

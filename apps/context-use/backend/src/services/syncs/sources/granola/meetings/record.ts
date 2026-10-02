@@ -1,5 +1,6 @@
 import type { SyncRecord } from '@context-use/open-sync/record';
 import type { z } from 'zod';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { meetingIdSchema } from './identity.ts';
 import type { detailResponseSchema } from './models.ts';
 
@@ -8,6 +9,7 @@ export function granolaRecord(meeting: z.infer<typeof detailResponseSchema>['mee
     title: meeting.title,
     notes: meeting.summary,
     date: meeting.date ?? null,
+    sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt.catch(null).parse(meeting.date),
     attendees: meeting.attendees ?? '',
   };
   return {
