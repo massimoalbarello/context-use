@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/complexity/useMaxParams: OpenClaw hooks use positional arguments. */
-import { existsSync } from 'node:fs';
+import { existsSync, unwatchFile, watchFile } from 'node:fs';
 import { join } from 'node:path';
 import type { OpenClawPluginApi } from 'openclaw/plugin-sdk/core';
 import { isIncognitoSessionKey, isSubagentSessionKey } from 'openclaw/plugin-sdk/routing';
@@ -30,6 +30,7 @@ const RETRY_MS = 300_000;
 const WAIT_MS = 1_000;
 const RUN_TIMEOUT_MS = 600_000;
 const LOCK_STALE_MS = 120_000;
+const REMOVAL_POLL_MS = 500;
 
 function learningPrompt(job: LearningJob): string {
   const task =
@@ -64,6 +65,7 @@ export function registerLearning(input: {
   let store: LearningStore | undefined;
   let timer: ReturnType<typeof setInterval> | undefined;
   let working: Promise<void> | undefined;
+  let runningSession: string | undefined;
   let stopped = false;
   const allowed = new Set([
     ...input.toolNames.filter((name) => !/_(archive_|create_asset_|update_asset)/.test(name)),
@@ -73,7 +75,8 @@ export function registerLearning(input: {
   const connected = () => {
     const state = readStateSync(directory);
     return Boolean(
-      state?.oauth.tokens &&
+      !existsSync(removalFile(directory)) &&
+        state?.oauth.tokens &&
         Boolean(input.connectionId) &&
         state.learningId === input.connectionId &&
         configMatches({ actual: state.config, expected: config }),
@@ -173,7 +176,6 @@ export function registerLearning(input: {
   });
   registerLearningTools({ ...input, queue, connected, owns });
 
-  const canDispatch = () => connected() && !existsSync(removalFile(directory));
   const dispatchJob = async (db: LearningStore, job: LearningJob) => {
     await withConnection({
       directory,
@@ -194,7 +196,7 @@ export function registerLearning(input: {
       db.retry({ id: job.id, at: Date.now() + RETRY_MS });
       throw error;
     });
-    if (!canDispatch()) {
+    if (!connected()) {
       return;
     }
     const result = await api.runtime.subagent.run({
@@ -208,6 +210,7 @@ export function registerLearning(input: {
       toolsAlsoAllow: [...allowed],
       idempotencyKey: job.id,
     });
+    runningSession = job.sessionKey;
     db.started({ id: job.id, runId: result.runId, now: Date.now() });
   };
   const processJob = async () => {
@@ -227,6 +230,7 @@ export function registerLearning(input: {
         await dispatchJob(db, job);
         return;
       }
+      runningSession = job.sessionKey;
       const result = await api.runtime.subagent.waitForRun({
         runId: job.runId,
         timeoutMs: WAIT_MS,
@@ -241,6 +245,7 @@ export function registerLearning(input: {
         sessionKey: job.sessionKey,
         deleteTranscript: true,
       });
+      runningSession = undefined;
       if (result.status === 'ok' && db.current()?.acknowledged) {
         await clearStagedAttachments({ directory, connectionId: input.connectionId, db, job });
         db.finish({ id: job.id, now: Date.now() });
@@ -261,25 +266,36 @@ export function registerLearning(input: {
         });
     }
   };
+  const cancelRun = async () => {
+    // Local cleanup may have already unlinked the database. Keep only the
+    // running session identity in memory so cancellation does not reopen evidence.
+    if (!runningSession && existsSync(join(directory, learningDatabase(input.connectionId)))) {
+      const job = queue().current();
+      runningSession = job?.runId ? job.sessionKey : undefined;
+    }
+    if (runningSession) {
+      await api.runtime.subagent.deleteSession({
+        sessionKey: runningSession,
+        deleteTranscript: true,
+      });
+      runningSession = undefined;
+    }
+  };
   let stopping: Promise<void> | undefined;
   const stop = () => {
+    if (stopped && !stopping && !store && !working && !runningSession) {
+      return Promise.resolve();
+    }
     stopping ??= (async () => {
       stopped = true;
+      unwatchFile(join(directory, 'connection.json'), onDisconnect);
       clearInterval(timer);
       timer = undefined;
       await working;
-      // Only explicit removal discards unfinished curation. Ordinary reloads retain it.
-      if (existsSync(removalFile(directory))) {
-        const db =
-          store ??
-          (existsSync(join(directory, learningDatabase(input.connectionId))) ? queue() : undefined);
-        const job = db?.current();
-        if (job?.runId) {
-          await api.runtime.subagent.deleteSession({
-            sessionKey: job.sessionKey,
-            deleteTranscript: true,
-          });
-        }
+      // Removal and revoked connections discard unfinished curation. Ordinary
+      // reloads retain it while the same connection remains authorized.
+      if (!connected()) {
+        await cancelRun();
       }
       store?.close();
       store = undefined;
@@ -287,6 +303,15 @@ export function registerLearning(input: {
       stopping = undefined;
     });
     return stopping;
+  };
+  const onDisconnect = () => {
+    void Promise.resolve()
+      .then(async () => {
+        if (!connected()) {
+          await stop();
+        }
+      })
+      .catch(report);
   };
   api.registerGatewayMethod(
     PREPARE_REMOVAL_METHOD,
@@ -316,7 +341,17 @@ export function registerLearning(input: {
       stopped = false;
       timer = setInterval(tick, POLL_MS);
       timer.unref();
-      tick();
+      // Observe the local request even when the gateway RPC cannot authenticate.
+      watchFile(
+        join(directory, 'connection.json'),
+        { interval: REMOVAL_POLL_MS, persistent: false },
+        onDisconnect,
+      );
+      if (!connected()) {
+        onDisconnect();
+      } else {
+        tick();
+      }
     },
     stop,
   });

@@ -3,10 +3,10 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
-const TEST_TIMEOUT_MS = 30_000;
+const TEST_TIMEOUT_MS = 60_000;
 
 test(
-  'detached uninstall retries only retained work explicitly rejected before commit',
+  'uninstall retains the host marker, recognizes absence and never replays a failed mutation',
   async () => {
     const root = await mkdtemp(join(tmpdir(), 'context-use-uninstall-'));
     try {
@@ -15,14 +15,19 @@ test(
         command,
         `#!/bin/sh
 case "$*" in
-  *'plugins list --json') echo '{"plugins":[{"id":"context-use","rootDir":"/fixture"}]}' ;;
+  *'plugins list --json')
+    if [ "$REMOVAL_CASE" = untracked-absent ]; then echo '{"plugins":[]}'; else echo '{"plugins":[{"id":"context-use","rootDir":"/fixture"}]}'; fi ;;
   'plugins uninstall context-use --force')
     echo attempt >> "$ATTEMPTS_FILE"
-    if [ "$REMOVAL_CASE" = busy ] && [ "$(wc -l < "$ATTEMPTS_FILE" | tr -d ' ')" = 2 ]; then exit 0; fi
+    echo '[config] warnings: plugins.entries.active-memory: plugin disabled but config is present' >&2
     case "$REMOVAL_CASE" in
+      removed) echo 'Uninstalled plugin "context-use".'; exit 0 ;;
       busy) echo 'Plugin memory-core still has active retained work; retry after the work finishes. Gateway generation 4: replacement not applied.' >&2 ;;
       uncertain) echo 'Plugin memory-core still has active retained work; connection lost' >&2 ;;
       failed) echo 'File cleanup failed after publication' >&2 ;;
+      absent) echo 'Plugin not found: context-use' >&2 ;;
+      other-absent) echo 'Plugin not found: another-plugin' >&2 ;;
+      untracked-absent|untracked-present) echo 'Plugin "context-use" is not associated with a tracked package install. Refresh the plugin registry, then reinstall the package or run openclaw doctor before retrying.' >&2 ;;
     esac
     exit 1 ;;
   *) exit 2 ;;
@@ -31,7 +36,16 @@ esac
       );
       const executableMode = 0o700;
       await chmod(command, executableMode);
-      for (const scenario of ['busy', 'uncertain', 'failed']) {
+      for (const scenario of [
+        'removed',
+        'busy',
+        'uncertain',
+        'failed',
+        'absent',
+        'other-absent',
+        'untracked-absent',
+        'untracked-present',
+      ]) {
         const attempts = join(root, `${scenario}.attempts`);
         const stateDir = join(root, scenario);
         const child = Bun.spawn(
@@ -54,10 +68,13 @@ esac
           },
         );
         const code = await child.exited;
-        expect((await readFile(attempts, 'utf8')).trim().split('\n')).toHaveLength(
-          scenario === 'busy' ? 2 : 1,
+        expect((await readFile(attempts, 'utf8')).trim().split('\n')).toHaveLength(1);
+        const completed = ['removed', 'absent', 'untracked-absent'].includes(scenario);
+        expect(code === 0).toBe(completed);
+        const config = JSON.parse(await readFile(join(stateDir, 'openclaw.json'), 'utf8'));
+        expect(config.plugins.entries['context-use']).toEqual(
+          completed ? { enabled: false } : undefined,
         );
-        expect(code === 0).toBe(scenario === 'busy');
       }
     } finally {
       await rm(root, { recursive: true, force: true });

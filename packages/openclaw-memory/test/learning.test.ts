@@ -35,7 +35,10 @@ const messages = [
 
 async function fixture() {
   const directory = await mkdtemp(join(tmpdir(), 'learning-hooks-'));
-  cleanups.push(() => rm(directory, { recursive: true, force: true }));
+  cleanups.push(async () => {
+    await rm(directory, { recursive: true, force: true });
+    await rm(removalFile(directory), { force: true });
+  });
   const state = {
     learningId: CONNECTION_ID,
     config,
@@ -50,6 +53,7 @@ async function fixture() {
   const hooks = new Map<string, unknown>();
   let prepareRemoval: Parameters<OpenClawPluginApi['registerGatewayMethod']>[1];
   let cleanupError = false;
+  let running = false;
   let service: OpenClawPluginService;
   type ToolFactory = (
     context: unknown,
@@ -87,7 +91,7 @@ async function fixture() {
           dispatched.push(params);
           return Promise.resolve({ runId: 'run-1' });
         },
-        waitForRun: () => Promise.resolve({ status: 'ok' }),
+        waitForRun: () => Promise.resolve({ status: running ? 'pending' : 'ok' }),
         getSessionMessages: ({ sessionKey }: { sessionKey: string }) => {
           transcriptReads.push(sessionKey);
           return Promise.resolve({ messages });
@@ -150,6 +154,10 @@ async function fixture() {
     directory,
     hook,
     cycle,
+    start: () => service.start(serviceContext),
+    holdRun: () => {
+      running = true;
+    },
     acknowledge,
     dispatched,
     deleted,
@@ -284,6 +292,8 @@ test('explicit removal cancels only its unfinished learning session and fences n
   await writeState({ directory: f.directory, state: f.state });
   expect((await f.prepareRemoval())?.ok).toBe(true);
   expect(f.deleted).toEqual([ownedSession]);
+  expect((await f.prepareRemoval())?.ok).toBe(true);
+  expect(f.deleted).toEqual([ownedSession]);
   await f.hook('agent_end', { messages: [{ role: 'user', content: 'Do not learn this' }] });
   expect(f.db.status().pending).toBe(1);
 });
@@ -299,4 +309,28 @@ test('failed session cancellation remains retryable and retains recovery evidenc
   f.failCleanup(false);
   expect((await f.prepareRemoval())?.ok).toBe(true);
   expect(f.deleted).toEqual([f.db.current()!.sessionKey]);
+});
+
+test('a local removal request cancels learning without a gateway RPC or further evidence capture', async () => {
+  const f = await fixture();
+  f.hook('before_reset', { messages });
+  await f.cycle();
+  const ownedSession = f.db.current()!.sessionKey;
+  f.holdRun();
+  await f.start();
+  await writeFile(removalFile(f.directory), '{}');
+  await f.hook('agent_end', { messages: [{ role: 'user', content: 'Discard this' }] });
+  expect(f.db.status().pending).toBe(1);
+  // The worker can finish local cleanup before the gateway's filesystem poll.
+  // The missing connection still fences the old runtime and cancels its run.
+  await rm(f.directory, { recursive: true, force: true });
+  await rm(removalFile(f.directory), { force: true });
+  const cancellationTimeoutMs = 3_000;
+  const pollIntervalMs = 50;
+  const deadline = Date.now() + cancellationTimeoutMs;
+  while (!f.deleted.includes(ownedSession) && Date.now() < deadline) {
+    await Bun.sleep(pollIntervalMs);
+  }
+  expect(f.deleted).toContain(ownedSession);
+  expect(f.dispatched).toHaveLength(1);
 });

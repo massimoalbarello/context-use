@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
 import { z } from 'zod';
 import { PREPARE_REMOVAL_METHOD } from './contract';
 import { ConnectionError } from './error';
@@ -13,6 +14,8 @@ const GatewayFailureSchema = z.object({
     reason: z.string().optional(),
   }),
 });
+const PROBE_ATTEMPTS = 3;
+const PROBE_RETRY_MS = 500;
 
 function gatewayFailure(error: unknown) {
   try {
@@ -23,30 +26,46 @@ function gatewayFailure(error: unknown) {
   }
 }
 
+async function gatewayConfiguration(): Promise<{ path: string } | undefined> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return z
+        .object({ path: z.string() })
+        .parse(
+          JSON.parse(
+            await openclaw(['gateway', 'call', 'config.get', '--timeout', '3000', '--json']),
+          ),
+        );
+    } catch (error) {
+      const failure = gatewayFailure(error);
+      if (
+        failure?.type === 'gateway_transport_error' &&
+        failure.reason?.startsWith('connect ECONNREFUSED ')
+      ) {
+        return undefined;
+      }
+      // A deferred host refresh can briefly close the socket or reject the probe.
+      // Retry only reads; never replay a cleanup or restart request with an uncertain result.
+      const transient =
+        failure?.type === 'gateway_transport_error' ||
+        (failure?.type === 'gateway_request_error' && failure.code === 'UNAVAILABLE');
+      if (!transient || attempt >= PROBE_ATTEMPTS) {
+        throw new ConnectionError(
+          'Could not verify this profile’s gateway. Resolve its connection or authorization error and retry.',
+        );
+      }
+      await setTimeout(PROBE_RETRY_MS);
+    }
+  }
+}
+
 async function hasMatchingGateway(): Promise<boolean> {
   const local = z
     .object({ path: z.string() })
     .parse(JSON.parse(await openclaw(['config', 'file', '--json'])));
-  let remote: { path: string };
-  try {
-    remote = z
-      .object({ path: z.string() })
-      .parse(
-        JSON.parse(
-          await openclaw(['gateway', 'call', 'config.get', '--timeout', '3000', '--json']),
-        ),
-      );
-  } catch (error) {
-    const failure = gatewayFailure(error);
-    if (
-      failure?.type === 'gateway_transport_error' &&
-      failure.reason?.startsWith('connect ECONNREFUSED ')
-    ) {
-      return false;
-    }
-    throw new ConnectionError(
-      'Could not verify this profile’s gateway. Resolve its connection or authorization error and retry.',
-    );
+  const remote = await gatewayConfiguration();
+  if (!remote) {
+    return false;
   }
   // config.get comes from the running gateway itself. Service-status output can
   // describe the account's default daemon even when this CLI uses isolated state.
@@ -59,7 +78,16 @@ async function hasMatchingGateway(): Promise<boolean> {
 }
 
 export async function prepareGatewayRemoval(): Promise<void> {
-  if (!(await hasMatchingGateway())) {
+  let matching: boolean;
+  try {
+    matching = await hasMatchingGateway();
+  } catch {
+    // Local removal must remain possible when gateway credentials are broken or
+    // this CLI points at another profile. Never send cleanup to an unverified host.
+    console.warn('Gateway cleanup could not be reached. Continuing local removal.');
+    return;
+  }
+  if (!matching) {
     return;
   }
   try {

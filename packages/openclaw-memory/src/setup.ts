@@ -128,7 +128,9 @@ async function main(args: string[]): Promise<void> {
         return;
       }
       await waitForRemoval(directory);
-      console.log('Context Use removed. Remote memories and conversation history are preserved.');
+      console.log(
+        'Context Use removed locally. Remote memories and conversation history are preserved. Start a fresh conversation to use the restored provider; run refresh if the gateway has not applied the settings yet.',
+      );
       return;
     }
     default:

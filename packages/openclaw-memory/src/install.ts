@@ -1,52 +1,61 @@
-import { setTimeout } from 'node:timers/promises';
 import { mutateConfigFile } from 'openclaw/plugin-sdk/config-mutation';
 import { PLUGIN_ID } from './contract';
 import { openclaw } from './host-command';
 import { installedPlugin } from './package-installation';
 
-const DRAIN_TIMEOUT_MS = 120_000;
-const DRAIN_RETRY_MS = 1_000;
-
-function retainedWorkRejection(error: unknown): boolean {
-  if (!error || typeof error !== 'object') {
+async function alreadyRemoved(error: unknown): Promise<boolean> {
+  if (!error || typeof error !== 'object' || !('stderr' in error)) {
     return false;
   }
-  const output = ['stdout', 'stderr']
-    .map((key) => (key in error ? String(error[key as keyof typeof error]) : ''))
-    .join('\n');
+  // Host configuration warnings can precede the actual uninstall result.
+  const messages = String(error.stderr).trim().split('\n');
+  if (messages.includes(`Plugin not found: ${PLUGIN_ID}`)) {
+    return true;
+  }
+  // Current hosts reject an untracked ID before producing a not-found result.
+  // An unmanaged package can produce the same rejection, so verify discovery too.
   return (
-    output.includes('still has active retained work') && output.includes('replacement not applied')
+    messages.some((message) =>
+      message.startsWith(`Plugin "${PLUGIN_ID}" is not associated with a tracked package install.`),
+    ) && !(await installedPlugin())
   );
 }
 
-export async function uninstall(): Promise<void> {
-  if (await installedPlugin()) {
-    // Older hosts reject retained foreground work before committing. Retry only that
-    // explicit non-commit result, from the detached remover, until the turn releases it.
-    const deadline = Date.now() + DRAIN_TIMEOUT_MS;
-    for (;;) {
-      try {
-        console.log(await openclaw(['plugins', 'uninstall', PLUGIN_ID, '--force']));
-        break;
-      } catch (error) {
-        if (Date.now() >= deadline || !retainedWorkRejection(error)) {
-          throw error;
-        }
-        await setTimeout(DRAIN_RETRY_MS);
-      }
-    }
-  }
-  // OpenClaw retains an enabled:false entry on uninstall. Remove our entry too.
+async function writeRemovalEntry(entry: { enabled: false } | undefined): Promise<void> {
   await mutateConfigFile({
     afterWrite: {
       mode: 'none',
       reason: 'Context Use setup requests gateway refresh after cleanup',
     },
-    writeOptions: { allowConfigSizeDrop: true },
+    // Repair only our entry when an orphan install points to a missing manifest.
+    // The SDK still validates the core configuration.
+    writeOptions: { allowConfigSizeDrop: true, skipPluginValidation: true },
     mutate: (config) => {
-      if (config.plugins?.entries) {
+      config.plugins ??= {};
+      config.plugins.entries ??= {};
+      if (entry) {
+        config.plugins.entries[PLUGIN_ID] = entry;
+      } else {
         delete config.plugins.entries[PLUGIN_ID];
       }
     },
   });
+}
+
+export async function uninstall(): Promise<void> {
+  // Even a disabled entry can fail validation while its tracked manifest is missing.
+  await writeRemovalEntry(undefined);
+  try {
+    // OpenClaw owns runtime draining, package files, install records and policy.
+    console.log(await openclaw(['plugins', 'uninstall', PLUGIN_ID, '--force']));
+  } catch (error) {
+    // Discovery excludes missing package files. Still ask the host to remove
+    // orphaned install records, and accept only its explicit absent result.
+    if (!(await alreadyRemoved(error))) {
+      throw error;
+    }
+  }
+  // Keep the host's explicit uninstall choice, including when already absent.
+  // Startup repair must not automatically reinstall a package the user removed.
+  await writeRemovalEntry({ enabled: false });
 }
