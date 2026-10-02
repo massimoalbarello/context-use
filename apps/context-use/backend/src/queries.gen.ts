@@ -557,6 +557,7 @@ export interface ISearchHypermediaResult {
     recordProvider: string | null;
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
+    occurredAt: string | null;
     recordKind: string | null;
     recordId: string | null;
     sourceUrl: string | null;
@@ -1198,6 +1199,7 @@ export interface IFindCurrentRecordResult {
     sourceUpdatedAt: string | null;
     sourceUrl: string | null;
     sourceCreatedAt: string | null;
+    occurredAt: string | null;
     contentHash: string | null;
     deletedAt: string | null;
     syncRevision: number;
@@ -1224,6 +1226,7 @@ export interface IListRecordResourcesResult {
     sourceId: string;
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
+    occurredAt: string | null;
     sourceUrl: string | null;
     createdAt: string;
     updatedAt: string;
@@ -1243,6 +1246,7 @@ export interface IFindRecordResourceResult {
     provider: string;
     sourceCreatedAt: string | null;
     sourceUpdatedAt: string | null;
+    occurredAt: string | null;
     sourceUrl: string | null;
     readableId: string;
     kind: string;

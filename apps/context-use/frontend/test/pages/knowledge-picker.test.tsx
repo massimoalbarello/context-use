@@ -163,6 +163,7 @@ test('mixed BM25 order and more than seven matches of one type are preserved wit
         title: 'Source decision',
         sourceCreatedAt: null,
         sourceUpdatedAt: null,
+        occurredAt: null,
         createdAt: timestamp,
         updatedAt: timestamp,
         source: { provider: 'github', kind: 'issue', id: '42', url: null },

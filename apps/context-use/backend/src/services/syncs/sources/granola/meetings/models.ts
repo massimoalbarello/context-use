@@ -1,10 +1,12 @@
 import { z } from 'zod';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { meetingIdSchema } from './identity.ts';
 
 export const meetingSchema = z.strictObject({
   title: z.string().nullable(),
   notes: z.string(),
   date: z.string().nullable(),
+  occurredAt: RecordInputSchema.shape.occurredAt,
   attendees: z.string(),
 });
 // Empty by design: the OAuth action exposes one unpaginated last-30-days listing,

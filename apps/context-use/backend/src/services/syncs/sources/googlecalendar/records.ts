@@ -1,6 +1,7 @@
 import type { SyncRecord } from '@context-use/open-sync/record';
 import TurndownService from 'turndown';
 import { z } from 'zod';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 
 const id = z.string().min(1);
 const timestamp = z.iso.datetime({ offset: true });
@@ -56,6 +57,7 @@ export const eventSchema = z.strictObject({
   eventId: id,
   title: z.string(),
   status: providerEventSchema.shape.status,
+  occurredAt: RecordInputSchema.shape.occurredAt,
   start: timeSchema.nullable(),
   end: timeSchema.nullable(),
   timeZone: z.string().nullable(),
@@ -79,6 +81,12 @@ function time(value: z.infer<typeof timeSchema> | null) {
     return 'Unavailable';
   }
   return 'date' in value ? `${value.date} (all day)` : value.dateTime;
+}
+function occurrenceTime(value: z.infer<typeof timeSchema> | undefined) {
+  if (!value) {
+    return null;
+  }
+  return 'date' in value ? value.date : value.dateTime;
 }
 function person(value: z.infer<typeof personSchema>) {
   return [value.displayName, value.email].filter(Boolean).join(' — ') || value.id || 'Unavailable';
@@ -172,6 +180,7 @@ function eventData(input: {
       event.summary ||
       (event.status === 'cancelled' ? 'Cancelled calendar event' : 'Untitled calendar event'),
     status: event.status,
+    occurredAt: occurrenceTime(event.start),
     start: event.start ?? null,
     end: event.end ?? null,
     timeZone: input.timeZone ?? null,

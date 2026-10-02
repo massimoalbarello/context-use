@@ -19,6 +19,7 @@ const record: ContextRecordSummary = {
   title: 'context-use #57: Describe records clearly',
   sourceCreatedAt: '2026-09-01T10:00:00Z',
   sourceUpdatedAt: null,
+  occurredAt: null,
   createdAt: new Date('2026-09-09T11:00:00.000Z'),
   updatedAt: new Date('2026-09-09T12:00:00.000Z'),
   source: { provider: 'github', kind: 'pull-request', id: '57', url: null },

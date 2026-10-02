@@ -53,6 +53,7 @@ export function registerRecordTools({
             body: record.body,
             sourceCreatedAt: record.sourceCreatedAt,
             sourceUpdatedAt: record.sourceUpdatedAt,
+            occurredAt: record.occurredAt,
             backlinks: record.backlinks.map(mcpKnowledgePageSummary),
           })
         : mcpToolError({ code: 'not_found', message: 'Record not found.' });

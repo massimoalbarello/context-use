@@ -83,6 +83,7 @@ async function renderRecord({ statusError = false }: { statusError?: boolean } =
             source: { provider: 'calendar', kind: 'meeting', id: 'source', url: null },
             sourceCreatedAt: null,
             sourceUpdatedAt: null,
+            occurredAt: null,
             createdAt: timestamp,
             updatedAt: timestamp,
             body: 'Source evidence.',
