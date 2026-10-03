@@ -10,7 +10,6 @@ export const googleCalendarProvider = {
     {
       name: 'Calendar events',
       description: 'Events from your calendars.',
-      intervalMs: 900_000,
       registration: googleCalendarEvents,
     },
   ],

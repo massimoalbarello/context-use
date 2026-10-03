@@ -91,7 +91,6 @@ async function fixture({
           connection: { id: 'granola-owner', service: 'granola' },
           destination: { type: 'local', input: {} },
           config: {},
-          intervalMs: 86_400_000,
         });
         await run({
           records,
@@ -383,7 +382,6 @@ test('replacing MCP with API records preserves existing record identity and adds
           connection: { id: 'granola-owner', service: 'granola' },
           destination: { type: 'local', input: {} },
           config: {},
-          intervalMs: 86_400_000,
         });
         const poll = async () => {
           runtime.api.runNow({ ...scope, id: sync.id });

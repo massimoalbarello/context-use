@@ -130,7 +130,6 @@ export class ManagedSyncsService {
             description: sync.description,
             provider: provider.id,
             kinds: Object.keys(sync.registration.definition.kinds),
-            intervalMs: sync.intervalMs,
             ...managedState({
               configured: oauth.configured || oauth.automaticRegistration === true,
               connected: Boolean(connection),
@@ -142,9 +141,6 @@ export class ManagedSyncsService {
             }),
             lastSyncedAt: lastSuccess?.completedAt
               ? new Date(lastSuccess.completedAt).toISOString()
-              : null,
-            nextSyncAt: configuredSync?.enabled
-              ? new Date(configuredSync.nextDueAt).toISOString()
               : null,
           };
         });
@@ -243,7 +239,6 @@ export class ManagedSyncsService {
         connection,
         config: {},
         destination: { type: LOCAL_RECORD_DESTINATION, input: {} },
-        intervalMs: sync.intervalMs,
       });
     }
   }

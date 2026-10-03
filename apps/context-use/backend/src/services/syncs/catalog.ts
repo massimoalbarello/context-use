@@ -4,7 +4,6 @@ import { NotFoundError } from '#backend/lib/errors.ts';
 export interface ContextSync {
   name: string;
   description: string;
-  intervalMs: number;
   registration: SyncRegistration;
 }
 export interface SyncProvider {

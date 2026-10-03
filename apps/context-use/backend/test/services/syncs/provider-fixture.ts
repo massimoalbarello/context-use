@@ -14,7 +14,6 @@ export function fixtureProvider(id: string): SyncProvider {
       {
         name: 'Events',
         description: 'Calendar events',
-        intervalMs: 60_000,
         registration: {
           definition: {
             id: `${id}.events`,

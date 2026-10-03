@@ -10,7 +10,6 @@ export const youtubeProvider = {
     {
       name: 'Playlist videos',
       description: 'Videos saved to your playlists.',
-      intervalMs: 900_000,
       registration: youtubePlaylists,
     },
   ],

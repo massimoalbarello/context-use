@@ -15,10 +15,8 @@ export interface ManagedSyncSummary {
   description: string;
   provider: string;
   kinds: string[];
-  intervalMs: number;
   state: ManagedSyncState;
   lastSyncedAt: string | null;
-  nextSyncAt: string | null;
   message: string;
 }
 

@@ -106,19 +106,24 @@ test('provider registrations share management and destination code while deliver
         await service.connect({ ...actor, providerId: 'beta' });
         await service.completeConnection({ ...actor, providerId: 'alpha' });
         expect(runtime.api.syncs(scope)).toHaveLength(2);
-        // Allow each provider to acquire records and drain its delivery queue.
-        for (const _provider of catalog.providers) {
-          await runtime.tick();
-          await runtime.tick();
+        await runtime.runDue();
+        for (const sync of runtime.api.syncs(scope)) {
+          expect(runtime.api.polls({ ...scope, id: sync.id }).polls).toHaveLength(1);
         }
         const listed = await service.list(actor);
         expect(listed[0]?.syncs[0]).toMatchObject({ key: 'alpha.events', state: 'error' });
         expect(listed[1]?.syncs[0]?.state).toBe('ready');
         expect(listed[1]?.account.name).toBe('beta-account');
         await service.update({ ...actor, key: 'alpha.events', action: 'pause' });
+        await runtime.runDue();
         const paused = await service.list(actor);
         expect(paused[0]?.syncs[0]?.state).toBe('paused');
         expect(paused[1]?.syncs[0]?.state).toBe('ready');
+        for (const sync of runtime.api.syncs(scope)) {
+          expect(runtime.api.polls({ ...scope, id: sync.id }).polls).toHaveLength(
+            sync.definition === 'alpha.events' ? 1 : 2,
+          );
+        }
         expect(catalog.definitions.map(({ definition }) => definition.provider?.service)).toEqual([
           'alpha',
           'beta',

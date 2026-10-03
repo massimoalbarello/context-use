@@ -145,7 +145,6 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
     await runtime.tick();
     expect((await service.list(actor))[0]?.syncs[0]).toMatchObject({
       state: 'paused',
-      nextSyncAt: null,
       message: 'Syncing paused after a provider error. Check your account access before resuming.',
     });
     await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resume' });
