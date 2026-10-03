@@ -1,5 +1,8 @@
 export const LOCAL_RECORD_DESTINATION = 'local-records';
 
+export const MANAGED_SYNC_ACTIONS = ['pause', 'resume', 'run', 'resync'] as const;
+export type ManagedSyncAction = (typeof MANAGED_SYNC_ACTIONS)[number];
+
 export const MANAGED_SYNC_STATES = [
   'setup-required',
   'disconnected',

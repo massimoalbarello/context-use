@@ -1,7 +1,7 @@
 import { Button, buttonVariants } from '@repo/ui/button';
 import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, Pause, Play, RefreshCw } from 'lucide-react';
-import type { ManagedSync } from '../../queries/managed-syncs';
+import { ArrowUpRight, History, Pause, Play, RefreshCw } from 'lucide-react';
+import type { ManagedSync, ManagedSyncAction } from '../../queries/managed-syncs';
 import { Badge } from '../ui/badge';
 
 const stateLabels = {
@@ -15,7 +15,7 @@ const stateLabels = {
 export function ManagedSyncCard(input: {
   sync: ManagedSync;
   pending: boolean;
-  onAction: (action: 'pause' | 'resume' | 'run') => void;
+  onAction: (action: ManagedSyncAction) => void;
 }) {
   const { sync } = input;
   const connected = sync.state !== 'setup-required' && sync.state !== 'disconnected';
@@ -64,14 +64,24 @@ export function ManagedSyncCard(input: {
               <ArrowUpRight aria-hidden="true" />
             </Link>
             {sync.state !== 'paused' && (
-              <Button
-                variant="outline"
-                disabled={input.pending || sync.state === 'syncing'}
-                onClick={() => input.onAction('run')}
-              >
-                <RefreshCw aria-hidden="true" />
-                Sync now
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  disabled={input.pending || sync.state === 'syncing'}
+                  onClick={() => input.onAction('run')}
+                >
+                  <RefreshCw aria-hidden="true" />
+                  Sync now
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={input.pending || sync.state === 'syncing'}
+                  onClick={() => input.onAction('resync')}
+                >
+                  <History aria-hidden="true" />
+                  Reprocess history
+                </Button>
+              </>
             )}
             <Button
               variant="ghost"
@@ -82,6 +92,11 @@ export function ManagedSyncCard(input: {
               {sync.state === 'paused' ? 'Resume' : 'Pause'}
             </Button>
           </div>
+          {sync.state !== 'paused' && (
+            <p className="text-muted-foreground text-sm">
+              Reprocess history fetches available source history again and updates saved records.
+            </p>
+          )}
         </>
       )}
     </section>
