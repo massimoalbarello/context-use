@@ -29,7 +29,6 @@ const SOURCE_RECORD_COUNT = 3;
 const HISTORY_AFTER_UPDATE = 3;
 const ISOLATED_SYNC_RECORD_COUNT = 4;
 const WITH_API_RECORD_COUNT = 5;
-const DAY_MS = 86_400_000;
 const HISTORY_AFTER_NEW_AND_EDITED = 5;
 function unexpected(): never {
   throw new Error('Unexpected operation');
@@ -124,7 +123,6 @@ test('npm engine immediately backfills native pages across restart, then polls o
           connection: { id: 'github-owner', service: 'github' },
           destination: { type: 'local', input: {} },
           config: {},
-          intervalMs: DAY_MS,
         });
         await runtime.tick();
         expect(runtime.api.status(scope).queue.pendingRecords).toBe(0);
@@ -245,7 +243,6 @@ test('incremental page failures and cursor expiry preserve the frozen scan throu
           connection: { id: 'github-owner', service: 'github' },
           destination: { type: 'local', input: {} },
           config: {},
-          intervalMs: DAY_MS,
         });
         await runtime.tick();
         const watermark = (completed.at(-1)!.checkpoint as JsonObject).watermark;

@@ -28,6 +28,12 @@ jobs:
           FACE_ENGINE_CACHE_HIT: ${{ steps.face-engine.outputs.cache-hit }}
         run: bun run build:instance
 
+      - name: Start sync scheduler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cron
+          sudo systemctl start cron
+
       - name: Verify compiled instance
         run: bun --filter @repo/context-use test:binary:instance
 

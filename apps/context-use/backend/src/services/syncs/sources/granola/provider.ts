@@ -12,7 +12,6 @@ export const granolaProvider = {
     {
       name: 'Meetings',
       description: 'Notes from the last 30 days.',
-      intervalMs: 900_000,
       registration: granolaMeetings,
     },
   ],

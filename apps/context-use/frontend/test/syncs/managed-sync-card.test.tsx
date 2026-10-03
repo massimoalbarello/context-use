@@ -12,13 +12,12 @@ import { ManagedSyncCard } from '../../src/components/syncs/managed-sync-card';
 import { providerFixture } from './fixture';
 
 afterEach(cleanup);
-test('sync controls use registered provider, kind, and schedule metadata', async () => {
+test('sync controls use registered provider and kind with the shared half-hourly schedule', async () => {
   const sync = {
     ...providerFixture().syncs[0]!,
     provider: 'calendar',
     kinds: ['event'],
     state: 'ready' as const,
-    intervalMs: 300_000,
   };
   const action = mock(() => {});
   const root = createRootRoute({
@@ -31,7 +30,7 @@ test('sync controls use registered provider, kind, and schedule metadata', async
   await router.load();
   const view = render(<RouterProvider router={router} />);
   expect(await view.findByText('Up to date')).toBeTruthy();
-  expect(view.getByText('Every 5 minutes')).toBeTruthy();
+  expect(view.getByText('Every 30 minutes')).toBeTruthy();
   expect(view.getByRole('link', { name: 'View records' }).getAttribute('href')).toContain(
     'provider=calendar',
   );
@@ -59,6 +58,7 @@ test('paused syncs explain why they stopped and offer Resume without a disabled 
   await router.load();
   const view = render(<RouterProvider router={router} />);
   expect((await view.findByRole('status')).textContent).toBe(sync.message);
+  expect(view.queryByText('Every 30 minutes')).toBeNull();
   expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
   await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Resume' }));
   expect(action).toHaveBeenCalledWith('resume');

@@ -65,7 +65,7 @@ test(
 test(
   'runtime bundles preserve target isolation and include only registered sync providers',
   async () => {
-    const entries = ['backend/src/main.ts', 'demo/main.ts', '../landing/src/server.ts'];
+    const entries = ['backend/src/entrypoint.ts', 'demo/main.ts', '../landing/src/server.ts'];
     const child = Bun.spawn(
       [
         process.execPath,
@@ -80,7 +80,7 @@ test(
       for (const entry of ${JSON.stringify(entries)}) {
         const options = entry !== '../landing/src/server.ts'
           ? { external: syncBuild.external, plugins: syncBuild.plugins } : {};
-        const result = await Bun.build({ entrypoints: [entry], ...options, target: 'bun', metafile: true });
+        const result = await Bun.build({ entrypoints: [entry], ...options, splitting: true, target: 'bun', metafile: true });
         if (!result.success) throw new AggregateError(result.logs);
         graphs[entry] = Object.keys(result.metafile.inputs);
       }
@@ -109,7 +109,7 @@ test(
       catalogFiles: string[];
       catalogProviders: string[];
     } = JSON.parse(output);
-    const instance = graphs['backend/src/main.ts']!;
+    const instance = graphs['backend/src/entrypoint.ts']!;
     expect(instance.some((path) => path.endsWith('/public/styles.gen.ts'))).toBe(true);
     expect(
       instance.filter((path) => /node_modules\/.*\/(?:vite|postcss|tailwindcss)\//.test(path)),

@@ -18,7 +18,7 @@ try {
   const result = await Bun.build({
     external: syncBuild.external,
     plugins: syncBuild.plugins,
-    entrypoints: [join(import.meta.dir, '../backend/src/main.ts')],
+    entrypoints: [join(import.meta.dir, '../backend/src/entrypoint.ts')],
     compile: {
       outfile: join(output, 'context-use'),
       execArgv: ['--smol'],
@@ -30,6 +30,7 @@ try {
         ...syncBuild.assets,
       ],
     },
+    splitting: true,
     bytecode: true,
     format: 'esm',
     naming: { asset: '[dir]/[name].[ext]' },

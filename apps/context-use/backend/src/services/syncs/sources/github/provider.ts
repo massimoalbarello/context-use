@@ -13,7 +13,6 @@ export const githubProvider = {
     {
       name: 'Pull requests',
       description: 'Pull requests you authored, saved as searchable records.',
-      intervalMs: 900_000,
       registration: githubPullRequests,
     },
   ],

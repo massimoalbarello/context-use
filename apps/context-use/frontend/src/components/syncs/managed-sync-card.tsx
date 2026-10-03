@@ -12,7 +12,6 @@ const stateLabels = {
   paused: 'Paused',
   error: 'Needs attention',
 } as const;
-const MILLISECONDS_PER_MINUTE = 60_000;
 export function ManagedSyncCard(input: {
   sync: ManagedSync;
   pending: boolean;
@@ -48,9 +47,7 @@ export function ManagedSyncCard(input: {
             <div>
               <dt className="text-muted-foreground text-xs">Schedule</dt>
               <dd className="mt-1 text-sm">
-                {sync.state === 'paused'
-                  ? 'Paused'
-                  : `Every ${sync.intervalMs / MILLISECONDS_PER_MINUTE} minutes`}
+                {sync.state === 'paused' ? 'Paused' : 'Every 30 minutes'}
               </dd>
             </div>
           </dl>

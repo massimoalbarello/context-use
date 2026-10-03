@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startBinary } from '@repo/build-tools/binary-check';
@@ -9,6 +9,7 @@ const OK = 200;
 const FOUND = 302;
 const UNAUTHORIZED = 401;
 const NOT_FOUND = 404;
+const CRON_TIMEOUT_MS = 10_000;
 
 test(
   'compiled instance migrates its own data and embeds only its dashboard assets',
@@ -25,6 +26,35 @@ test(
         },
       });
       expect((await binary.request({ path: '/api/health' })).status).toBe(OK);
+      // Invoke the OS job as a fresh process with no host configuration or inherited cwd.
+      const socket = join(directory, 'data/open-sync/sync.db.cron/worker.sock');
+      const cronDirectory = join(directory, 'cron-cwd');
+      await mkdir(cronDirectory);
+      const cron = Bun.spawn(
+        [
+          join(import.meta.dir, '../dist/context-use'),
+          `--cron-title=open-sync-${Buffer.from(socket).toString('base64url')}`,
+        ],
+        { cwd: cronDirectory, env: {}, stdout: 'pipe', stderr: 'pipe' },
+      );
+      const cronTimeout = setTimeout(() => cron.kill('SIGKILL'), CRON_TIMEOUT_MS);
+      try {
+        const [code, stdout, stderr] = await Promise.all([
+          cron.exited,
+          new Response(cron.stdout).text(),
+          new Response(cron.stderr).text(),
+        ]);
+        expect(code, stderr).toBe(0);
+        expect(stdout).toBe('');
+        expect(await readdir(cronDirectory)).toEqual([]);
+        expect((await binary.request({ path: '/api/health' })).status).toBe(OK);
+      } finally {
+        clearTimeout(cronTimeout);
+        if (cron.exitCode === null) {
+          cron.kill('SIGKILL');
+        }
+        await cron.exited;
+      }
       expect((await binary.request({ path: '/api/profile' })).status).toBe(UNAUTHORIZED);
       const entry = await binary.request({ path: '/', redirect: 'manual' });
       expect(entry.status).toBe(FOUND);

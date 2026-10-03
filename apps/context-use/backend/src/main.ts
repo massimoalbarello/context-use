@@ -250,6 +250,7 @@ try {
       facesDatabase?.close(),
     ]);
   });
+  await sync.start();
   const { server } = app.listen({
     port: env.PORT,
     hostname: '0.0.0.0',
@@ -259,7 +260,6 @@ try {
 
   logger.info(`listening on ${server!.url.origin}`);
   facesService.startProcessing();
-  sync.start();
   const stop = () => {
     void app.stop();
   };
