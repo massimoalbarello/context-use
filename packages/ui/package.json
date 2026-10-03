@@ -9,6 +9,7 @@
     "./context-use-links": "./src/components/brand/context-use-links.ts",
     "./button": "./src/components/ui/button.tsx",
     "./popover": "./src/components/ui/popover.tsx",
+    "./table": "./src/components/ui/table.tsx",
     "./class-names": "./src/lib/class-names.ts",
     "./theme.css": "./src/styles/minimal-neutral.css",
     "./logo.svg": "./src/assets/context-use.svg",

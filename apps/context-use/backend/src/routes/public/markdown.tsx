@@ -1,5 +1,5 @@
 import { InlineEntity } from '@repo/ui/inline-entity';
-import { MarkdownTable, MarkdownTableCell, MarkdownTableHeader } from '@repo/ui/markdown-table';
+import { markdownTableComponents } from '@repo/ui/markdown-table';
 import { ReadingLink } from '@repo/ui/reading-link';
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -47,9 +47,7 @@ export function PublicMarkdown({
       skipHtml
       remarkPlugins={[remarkTables, remarkAssetLayout]}
       components={{
-        table: MarkdownTable,
-        th: MarkdownTableHeader,
-        td: MarkdownTableCell,
+        ...markdownTableComponents,
         ...headings,
         a: ({ href, title, children }) => {
           const entity = href ? mentions[href] : undefined;

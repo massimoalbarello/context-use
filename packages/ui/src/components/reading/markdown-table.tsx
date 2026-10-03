@@ -1,17 +1,11 @@
 import type { ComponentProps } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 
-export function MarkdownTable({ children }: ComponentProps<'table'>) {
+function MarkdownTable({ children }: ComponentProps<'table'>) {
   return (
-    <section
-      className="my-5 max-w-full overflow-x-auto rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-      aria-label="Table"
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll wide tables.
-      tabIndex={0}
-    >
-      <table className="w-full border-collapse text-sm leading-6 [&_td]:min-w-32 [&_td]:border-border [&_td]:border-t [&_td]:px-4 [&_td]:py-3 [&_td]:align-top [&_th]:min-w-32 [&_th]:bg-muted/50 [&_th]:px-4 [&_th]:py-3 [&_th]:align-top [&_th]:font-semibold">
-        {children}
-      </table>
-    </section>
+    <div className="my-5 max-w-full rounded-lg border border-border">
+      <Table className="border-collapse leading-6">{children}</Table>
+    </div>
   );
 }
 
@@ -19,14 +13,34 @@ function alignment(value: unknown) {
   return value === 'right' ? 'text-right' : value === 'center' ? 'text-center' : 'text-left';
 }
 
-export function MarkdownTableHeader({ children, style }: ComponentProps<'th'>) {
+function MarkdownTableHeader({ children, style }: ComponentProps<'th'>) {
   return (
-    <th scope="col" className={alignment(style?.textAlign)}>
+    <TableHead
+      scope="col"
+      className={`min-w-32 whitespace-normal bg-muted/50 px-4 py-3 align-top font-semibold ${alignment(style?.textAlign)}`}
+    >
       {children}
-    </th>
+    </TableHead>
   );
 }
 
-export function MarkdownTableCell({ children, style }: ComponentProps<'td'>) {
-  return <td className={alignment(style?.textAlign)}>{children}</td>;
+function MarkdownTableCell({ children, style }: ComponentProps<'td'>) {
+  return (
+    <TableCell
+      className={`min-w-32 whitespace-normal px-4 py-3 align-top ${alignment(style?.textAlign)}`}
+    >
+      {children}
+    </TableCell>
+  );
 }
+
+export const markdownTableComponents = {
+  table: MarkdownTable,
+  thead: ({ children }: ComponentProps<'thead'>) => <TableHeader>{children}</TableHeader>,
+  tbody: ({ children }: ComponentProps<'tbody'>) => <TableBody>{children}</TableBody>,
+  tr: ({ children }: ComponentProps<'tr'>) => (
+    <TableRow className="hover:bg-transparent">{children}</TableRow>
+  ),
+  th: MarkdownTableHeader,
+  td: MarkdownTableCell,
+};

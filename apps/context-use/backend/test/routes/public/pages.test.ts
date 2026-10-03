@@ -11,9 +11,12 @@ test('public tables preserve cells, alignment and safe references in HTML and Ma
     const id = await publish({ readableId: page.readableId });
     const html = await (await request({ id })).text();
     expect(html).toContain('<table');
-    expect(html).toContain('<th scope="col" class="text-right">EUR</th>');
-    expect(html).toContain('<td class="text-center">30 June 2026</td>');
+    expect(html).toMatch(
+      /<th\b[^>]*class="[^"]*\btext-right\b[^"]*"[^>]*scope="col"[^>]*>EUR<\/th>/,
+    );
+    expect(html).toMatch(/<td\b[^>]*class="[^"]*\btext-center\b[^"]*"[^>]*>30 June 2026<\/td>/);
     expect(html).not.toContain('style="text-align:');
+    expect(html).not.toContain('node="');
     expect(html).toContain(`href="/public/pages/${target.pageId}"`);
     expect(html).toContain('<strong>Plan</strong>');
     expect(html).toContain('| regional');

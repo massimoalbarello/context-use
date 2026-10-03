@@ -1,5 +1,5 @@
 import { cn } from '@repo/ui/class-names';
-import { MarkdownTable, MarkdownTableCell, MarkdownTableHeader } from '@repo/ui/markdown-table';
+import { markdownTableComponents } from '@repo/ui/markdown-table';
 import { ReadingLink } from '@repo/ui/reading-link';
 import { createContext, isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, {
@@ -149,9 +149,7 @@ function MarkdownImage({
 }
 
 const markdownComponents: Components = {
-  table: MarkdownTable,
-  th: MarkdownTableHeader,
-  td: MarkdownTableCell,
+  ...markdownTableComponents,
   a: MarkdownLink,
   img: MarkdownImage,
   h1: ({ children }) => <h1 className="mb-7 font-semibold text-4xl tracking-tight">{children}</h1>,
