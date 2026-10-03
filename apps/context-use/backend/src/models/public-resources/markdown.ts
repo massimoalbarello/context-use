@@ -5,6 +5,10 @@ import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { internalReferenceFromLink } from '#backend/models/knowledge-pages/markdown.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
+import {
+  markdownTableOptions,
+  markdownTableSerialization,
+} from '#backend/models/markdown/tables.ts';
 import { ASSET_ADDRESS_PREFIX } from '#backend/models/readable-ids/addresses.ts';
 
 export interface PublicMarkdownTarget {
@@ -94,7 +98,7 @@ function projectPublicMarkdown({
   markdown: string;
   destination: (link: MarkdownLink) => string | null | undefined;
 }): string | null {
-  const tree = fromMarkdown(markdown);
+  const tree = fromMarkdown(markdown, markdownTableOptions);
   const replacements = new Map<Nodes, RootContent[]>();
   for (const link of markdownLinks(tree)) {
     const url = destination(link);
@@ -104,7 +108,7 @@ function projectPublicMarkdown({
     }
     replacements.set(link.node, projectLink({ link, url }));
   }
-  return toMarkdown(cleanTree({ node: tree, replacements })[0] as Root);
+  return toMarkdown(cleanTree({ node: tree, replacements })[0] as Root, markdownTableSerialization);
 }
 
 export function publicPageMarkdown({

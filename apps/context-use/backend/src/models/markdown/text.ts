@@ -1,4 +1,4 @@
-import type { Nodes, Root, Text } from 'mdast';
+import type { Nodes, Paragraph, Root, Table, Text } from 'mdast';
 import { toString as mdastToString } from 'mdast-util-to-string';
 import stripMarkdown from 'strip-markdown';
 
@@ -10,7 +10,18 @@ function imageAltText(node: Nodes): Text | undefined {
 }
 
 const strip = stripMarkdown({
-  remove: ['inlineCode', ['image', imageAltText], ['imageReference', imageAltText]],
+  remove: [
+    'inlineCode',
+    ['image', imageAltText],
+    ['imageReference', imageAltText],
+    [
+      'table',
+      (table: Table): Paragraph[] =>
+        table.children.flatMap((row) =>
+          row.children.map((cell) => ({ type: 'paragraph', children: cell.children })),
+        ),
+    ],
+  ],
 });
 
 /** Consumes a disposable tree, preserving visible prose, labels and block boundaries. */

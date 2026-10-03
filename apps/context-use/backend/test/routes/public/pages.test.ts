@@ -2,6 +2,30 @@ import { expect, test } from 'bun:test';
 import { StatusMap } from 'elysia';
 import { CHANGE, NOW, withPublicResources } from './fixture.ts';
 
+test('public tables preserve cells, alignment and safe references in HTML and Markdown', async () => {
+  await withPublicResources(async ({ targets, create, publish, request }) => {
+    const target = await targets();
+    const page = await create({
+      markdown: `# Payments\n\n| Item | EUR | Due |\n| :--- | ---: | :---: |\n| [**Plan**][plan] \\| regional | 1,672 | 30 June 2026 |\n| [Unsafe](javascript:alert%281%29) | 663 | 16 June 2026 |\n\n[plan]: context-use://page/${target.page.readableId}`,
+    });
+    const id = await publish({ readableId: page.readableId });
+    const html = await (await request({ id })).text();
+    expect(html).toContain('<table');
+    expect(html).toContain('<th scope="col" class="text-right">EUR</th>');
+    expect(html).toContain('<td class="text-center">30 June 2026</td>');
+    expect(html).not.toContain('style="text-align:');
+    expect(html).toContain(`href="/public/pages/${target.pageId}"`);
+    expect(html).toContain('<strong>Plan</strong>');
+    expect(html).toContain('| regional');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('context-use://');
+    const markdown = await (await request({ id, markdown: true })).text();
+    expect(markdown).toContain(`[**Plan**](/public/pages/${target.pageId}) \\| regional`);
+    expect(markdown).not.toContain('javascript:');
+    expect(markdown).not.toContain('context-use://');
+  });
+});
+
 test('HTML and Markdown expose only the exact approved revision and retained links until explicit replacement', async () => {
   await withPublicResources(
     async ({

@@ -24,6 +24,33 @@ afterEach(() => {
 });
 
 describe('knowledge page Markdown', () => {
+  test('renders aligned table cells, formatting and escaped pipes while retaining code examples', () => {
+    render(
+      <KnowledgePageMarkdown
+        markdown={
+          '# Payments\n\n| Item | EUR | Due |\n| :--- | ---: | :---: |\n| **IRPEF** \\| regional | 1,672 | 30 June 2026 |\n| IMU | 663 | 16 June 2026 |\n\n```md\n| Example | Value |\n| --- | --- |\n| Literal | 1 |\n```'
+        }
+      />,
+    );
+    const table = screen.getByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('row')
+        .map((row) => row.textContent),
+    ).toEqual(['ItemEURDue', 'IRPEF | regional1,67230 June 2026', 'IMU66316 June 2026']);
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Item', 'EUR', 'Due']);
+    expect(
+      within(table).getByRole('cell', { name: 'IRPEF | regional' }).querySelector('strong'),
+    ).toBeTruthy();
+    expect(within(table).getByRole('cell', { name: '1,672' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Table' }).tabIndex).toBe(0);
+    expect(screen.getByText(/\| Literal \| 1 \|/).closest('pre')).toBeTruthy();
+  });
+
   test('announces new tabs only for external destinations', async () => {
     const router = createRouter({
       routeTree: createRootRoute(),
