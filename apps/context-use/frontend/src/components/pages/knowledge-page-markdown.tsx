@@ -1,4 +1,5 @@
 import { cn } from '@repo/ui/class-names';
+import { markdownTableComponents } from '@repo/ui/markdown-table';
 import { ReadingLink } from '@repo/ui/reading-link';
 import { createContext, isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, {
@@ -8,6 +9,7 @@ import ReactMarkdown, {
 } from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
+import { remarkTables } from '#backend/models/markdown/tables.ts';
 import { internalLink } from '../../lib/internal-link';
 import type { AssetPreview } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
@@ -147,6 +149,7 @@ function MarkdownImage({
 }
 
 const markdownComponents: Components = {
+  ...markdownTableComponents,
   a: MarkdownLink,
   img: MarkdownImage,
   h1: ({ children }) => <h1 className="mb-7 font-semibold text-4xl tracking-tight">{children}</h1>,
@@ -223,7 +226,7 @@ export function KnowledgePageMarkdown({
     >
       <article className="py-3 md:py-5">
         <ReactMarkdown
-          remarkPlugins={[remarkAssetLayout]}
+          remarkPlugins={[remarkTables, remarkAssetLayout]}
           skipHtml
           urlTransform={(url) =>
             url.startsWith('context-use://') ? url : defaultUrlTransform(url)

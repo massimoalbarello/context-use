@@ -1,10 +1,12 @@
 import { InlineEntity } from '@repo/ui/inline-entity';
+import { markdownTableComponents } from '@repo/ui/markdown-table';
 import { ReadingLink } from '@repo/ui/reading-link';
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
+import { remarkTables } from '#backend/models/markdown/tables.ts';
 
 function headingText(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -43,8 +45,9 @@ export function PublicMarkdown({
   return (
     <ReactMarkdown
       skipHtml
-      remarkPlugins={[remarkAssetLayout]}
+      remarkPlugins={[remarkTables, remarkAssetLayout]}
       components={{
+        ...markdownTableComponents,
         ...headings,
         a: ({ href, title, children }) => {
           const entity = href ? mentions[href] : undefined;

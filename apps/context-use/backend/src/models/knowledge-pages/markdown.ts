@@ -8,6 +8,7 @@ import {
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
+import { markdownTableOptions } from '#backend/models/markdown/tables.ts';
 import { readableMarkdownText } from '#backend/models/markdown/text.ts';
 import { isReadableId } from '#backend/models/readable-ids/model.ts';
 
@@ -292,7 +293,7 @@ export function parseKnowledgePageMarkdown(markdown: string): {
   links: KnowledgePageLinkSet;
 } {
   validateMarkdownSize(markdown);
-  const tree = fromMarkdown(markdown);
+  const tree = fromMarkdown(markdown, markdownTableOptions);
   const { body, title } = validatePageShape(tree);
   const links = extractLinks(tree);
   const { excerpt, searchableText } = extractPageText(body);
