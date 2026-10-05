@@ -283,15 +283,6 @@ export interface IListActiveEntityMentioningPagesResult {
     updatedAt: string;
 }
 
-/** Result of query `FaceChangePerson`. */
-export interface IFaceChangePersonResult {
-    name: string;
-}
-
-/** Result of query `InsertFaceResourceChange`. */
-export interface IInsertFaceResourceChangeResult {
-}
-
 /** Result of query `ReadActivePortraitReference`. */
 export interface IReadActivePortraitReferenceResult {
     faceId: string;
@@ -402,10 +393,6 @@ export interface IReadPersonReferenceFaceResult {
 /** Result of query `FindFaceAnnotationTarget`. */
 export interface IFindFaceAnnotationTargetResult {
     id: string;
-    decision: string | null;
-    entityId: string | null;
-    name: string;
-    readableId: string;
 }
 
 /** Result of query `RetireCorrectedFaceReferences`. */
@@ -1302,8 +1289,6 @@ export interface Queries {
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
     RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
-    FaceChangePerson: IFaceChangePersonResult;
-    InsertFaceResourceChange: IInsertFaceResourceChangeResult;
     ReadActivePortraitReference: IReadActivePortraitReferenceResult;
     ReadFaceObservations: IReadFaceObservationsResult;
     ReadFaceAnalysis: IReadFaceAnalysisResult;

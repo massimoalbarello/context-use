@@ -299,11 +299,38 @@ test('createApp uses supplied dependencies without production bootstrap', async 
   }
 });
 
-function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
+function expectWriteMessage({
+  path,
+  method,
+  operation,
+}: {
+  path: string;
+  method: string;
+  operation: unknown;
+}) {
   type BodySchema = { required?: string[]; allOf?: BodySchema[] };
   const requiresChangeMessage = (schema: BodySchema): boolean =>
     schema.required?.includes('changeMessage') === true ||
     schema.allOf?.some(requiresChangeMessage) === true;
+  const contract = operation as {
+    requestBody?: { content?: Record<string, { schema?: BodySchema }> };
+  };
+  const mediaTypes = Object.values(contract.requestBody?.content ?? {});
+  const requiresMessage = !(
+    path.startsWith('/api/face-recognition/') ||
+    (path.startsWith('/api/assets/') && path.includes('/faces/'))
+  );
+  if (requiresMessage) {
+    expect(mediaTypes.length, `${method} ${path} must publish its change message`).toBeGreaterThan(
+      0,
+    );
+  }
+  for (const media of mediaTypes) {
+    expect(requiresChangeMessage(media.schema ?? {}), `${method} ${path}`).toBe(requiresMessage);
+  }
+}
+
+function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
   let mutationContracts = 0;
   for (const [path, operations] of Object.entries(paths)) {
     // Approval ceremonies carry the stored operation and assertion, not content edits.
@@ -318,17 +345,7 @@ function expectWriteMessages(paths: Record<string, Record<string, unknown>>) {
       if (!['post', 'put', 'patch', 'delete'].includes(method)) {
         continue;
       }
-      const contract = operation as {
-        requestBody?: { content?: Record<string, { schema?: BodySchema }> };
-      };
-      const mediaTypes = Object.values(contract.requestBody?.content ?? {});
-      expect(
-        mediaTypes.length,
-        `${method} ${path} must publish its change message`,
-      ).toBeGreaterThan(0);
-      for (const media of mediaTypes) {
-        expect(requiresChangeMessage(media.schema ?? {}), `${method} ${path}`).toBe(true);
-      }
+      expectWriteMessage({ path, method, operation });
       mutationContracts++;
     }
   }

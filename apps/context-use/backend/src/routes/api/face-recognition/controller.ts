@@ -3,7 +3,6 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import { assetSummaryResponse } from '#backend/routes/api/assets/summary-model.ts';
-import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import type { AssetFacesServiceContract } from '#backend/services/assets/faces.ts';
 import {
   FaceActionAcceptedSchema,
@@ -24,7 +23,6 @@ export function createFaceRecognitionController({
   faces: AssetFacesServiceContract;
 }) {
   return new Elysia()
-    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true })
     .get(
@@ -52,7 +50,6 @@ export function createFaceRecognitionController({
         return faceSettingsResponse(await faces.settings({ ownerId: user.id }));
       },
       {
-        changeMessage: true,
         body: UpdateFaceSettingsSchema,
         response: { 200: FaceSettingsSchema, 409: ErrorResponseSchema },
         detail: {
@@ -84,7 +81,6 @@ export function createFaceRecognitionController({
         return { accepted: true as const };
       },
       {
-        changeMessage: true,
         response: FaceActionAcceptedSchema,
       },
     )
@@ -95,7 +91,6 @@ export function createFaceRecognitionController({
         return { accepted: true as const };
       },
       {
-        changeMessage: true,
         response: FaceActionAcceptedSchema,
       },
     );

@@ -22,6 +22,7 @@ import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { FacesRepository } from '#backend/repositories/faces/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
+import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
@@ -30,13 +31,13 @@ import { AssetFacesService } from '#backend/services/assets/faces.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
+import { HistoryService } from '#backend/services/history/service.ts';
 import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
 import {
   unusedApiKeysService,
-  unusedHistoryService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicResourcesService,
@@ -191,7 +192,7 @@ async function fixture({ automatic = true } = {}) {
     publicSiteService: unusedPublicSiteService,
     publicationApprovalService: unusedPublicationApprovalService,
     publicResourcesService: unusedPublicResourcesService,
-    historyService: unusedHistoryService,
+    historyService: new HistoryService(new HistoryRepository(database)),
     managedSyncsService: unusedManagedSyncsService,
     syncFetch: unusedSyncFetch,
     auth,
@@ -226,9 +227,7 @@ async function fixture({ automatic = true } = {}) {
     dependencies,
     request(options: { path: string; method?: string; body?: unknown; owner?: string | null }) {
       const headers = new Headers();
-      const body = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method ?? 'GET')
-        ? { changeMessage: 'Updated test context', ...(options.body as object | undefined) }
-        : options.body;
+      const body = options.body;
       if (options.owner !== null) {
         headers.set('x-test-owner', options.owner ?? OWNER);
       }
@@ -341,7 +340,7 @@ test('a new portrait matches earlier unknown faces and exposes links in both dir
   const selected = await context.request({
     path: `/entities/${person.readableId}/image`,
     method: 'PUT',
-    body: { assetReadableId: portrait.readableId },
+    body: { assetReadableId: portrait.readableId, changeMessage: 'Selected a portrait' },
   });
   expect(selected.status).toBe(StatusMap.OK);
   const deadline = Date.now() + ANALYSIS_TEST_TIMEOUT_MS;
@@ -395,6 +394,92 @@ test('a new portrait matches earlier unknown faces and exposes links in both dir
   });
 });
 
+test('face review and processing stay out of history, while content edits remain recorded', async () => {
+  await using context = await fixture();
+  const photo = await context.upload('Photo to review');
+  const person = await context.person();
+  const input = { ownerId: OWNER, readableId: photo.readableId };
+  const face = (await context.faces.detail(input))!.faces[0]!;
+  const historyBefore = await (await context.request({ path: '/history' })).json();
+  expect(historyBefore.items).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        resourceType: 'asset',
+        readableId: photo.readableId,
+        action: 'created',
+      }),
+      expect.objectContaining({
+        resourceType: 'entity',
+        readableId: person.readableId,
+        action: 'created',
+      }),
+    ]),
+  );
+
+  for (const decision of ['person', 'unknown', 'dismissed', 'automatic'] as const) {
+    const response = await context.request({
+      path: `/assets/${photo.readableId}/faces/${face.readableId}/annotation`,
+      method: 'PUT',
+      body:
+        decision === 'person' ? { decision, entityReadableId: person.readableId } : { decision },
+    });
+    expect(response.status).toBe(StatusMap.OK);
+    expect((await context.faces.detail(input))!.faces[0]).toMatchObject({
+      decision,
+      entity:
+        decision === 'person' ? expect.objectContaining({ readableId: person.readableId }) : null,
+    });
+    expect((await context.assets.detail(input))!.depicts).toEqual(
+      decision === 'person'
+        ? [
+            expect.objectContaining({
+              source: 'confirmed',
+              entity: expect.objectContaining({ readableId: person.readableId }),
+            }),
+          ]
+        : [],
+    );
+    expect(await (await context.request({ path: '/history' })).json()).toEqual(historyBefore);
+  }
+
+  const analyzed = await context.request({
+    path: `/assets/${photo.readableId}/faces/analyze`,
+    method: 'POST',
+  });
+  expect(analyzed.status).toBe(StatusMap.OK);
+  await waitForState({ faces: context.faces, readableId: photo.readableId, state: 'ready' });
+  const settings = await context.request({
+    path: '/face-recognition/settings',
+    method: 'PUT',
+    body: {
+      threshold: HIGH_THRESHOLD,
+      rematch: true,
+      analysisVersion: context.analyzer.model.analysisVersion,
+    },
+  });
+  expect(settings.status).toBe(StatusMap.OK);
+  for (const path of ['/face-recognition/retry', '/face-recognition/model/check']) {
+    expect((await context.request({ path, method: 'POST' })).status).toBe(StatusMap.OK);
+  }
+  expect(await (await context.request({ path: '/history' })).json()).toEqual(historyBefore);
+
+  const renamed = await context.request({
+    path: `/assets/${photo.readableId}`,
+    method: 'PUT',
+    body: { name: 'Reviewed photo', changeMessage: 'Gave the image a clearer name' },
+  });
+  expect(renamed.status).toBe(StatusMap.OK);
+  const historyAfter = await (await context.request({ path: '/history' })).json();
+  expect(historyAfter.items[0]).toMatchObject({
+    resourceType: 'asset',
+    readableId: photo.readableId,
+    name: 'Reviewed photo',
+    action: 'updated',
+    message: 'Gave the image a clearer name',
+  });
+  expect(historyAfter.items.slice(1)).toEqual(historyBefore.items);
+});
+
 test('a confirmed face can become the same person’s portrait and match earlier unknown faces', async () => {
   await using context = await fixture();
   const photo = await context.upload('Earlier photo');
@@ -403,7 +488,6 @@ test('a confirmed face can become the same person’s portrait and match earlier
   const input = { ownerId: OWNER, readableId: portrait.readableId };
   const face = (await context.faces.detail(input))!.faces[0]!;
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'person',
@@ -447,7 +531,12 @@ test('changing an entity with an image to Person enrolls its portrait and matche
   const response = await context.request({
     path: `/entities/${person.readableId}`,
     method: 'PATCH',
-    body: { name: person.name, description: person.description, entityType: 'person' },
+    body: {
+      name: person.name,
+      description: person.description,
+      entityType: 'person',
+      changeMessage: 'Updated person details',
+    },
   });
   expect(response.status).toBe(StatusMap.OK);
   const analysis = await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId });
@@ -478,7 +567,6 @@ test('threshold saves affect subsequent matches; explicit re-matching preserves 
   expect((await context.faces.detail(input))!.faces[0]!.entity).toBeNull();
   for (const decision of ['person', 'unknown', 'dismissed'] as const) {
     await context.faces.annotate({
-      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: face.readableId,
       decision,
@@ -488,7 +576,6 @@ test('threshold saves affect subsequent matches; explicit re-matching preserves 
     expect((await context.faces.detail(input))!.faces[0]!.decision).toBe(decision);
   }
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'automatic',
@@ -541,7 +628,6 @@ test.each([
     const input = { ownerId: OWNER, readableId: photo.readableId };
     const original = (await context.faces.detail(input))!.faces[0]!;
     await context.faces.annotate({
-      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: original.readableId,
       decision: 'person',
@@ -636,7 +722,6 @@ test('reprocessing retains corrections when detections move or disappear, includ
     await Bun.sleep(1);
   }
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'person',
@@ -759,7 +844,6 @@ test('reviewing a face selects it in a group portrait; leaving it unknown does n
   const face = (await context.faces.detail({ ownerId: OWNER, readableId: portrait.readableId }))!
     .faces[0]!;
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: portrait.readableId,
     faceReadableId: face.readableId,
@@ -771,7 +855,6 @@ test('reviewing a face selects it in a group portrait; leaving it unknown does n
   const input = { ownerId: OWNER, readableId: photo.readableId };
   expect((await context.faces.detail(input))!.faces[0]!.entity?.readableId).toBe(person.readableId);
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: portrait.readableId,
     faceReadableId: face.readableId,
@@ -797,7 +880,6 @@ test.each(['unknown', 'dismissed', 'person'] as const)(
     const face = (await context.faces.detail(input))!.faces[0]!;
     const otherPerson = decision === 'person' ? await context.person('Bob') : null;
     await context.faces.annotate({
-      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: face.readableId,
       decision,
@@ -899,7 +981,6 @@ test('choosing a different person for a reused portrait retires its previous ref
     assetReadableId: portrait.readableId,
   });
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: portrait.readableId,
     faceReadableId: face.readableId,
@@ -940,7 +1021,6 @@ test('face corrections wait for a concurrent canonical writer without holding a 
   });
   await started.promise;
   const correction = context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ownerId: OWNER,
     readableId: photo.readableId,
     faceReadableId: face.readableId,
@@ -998,7 +1078,6 @@ test('a failed replacement portrait removes automatic links immediately while pr
   const faces = (await context.faces.detail(input))!.faces;
   expect((await context.assets.detail(input))!.depicts).toHaveLength(1);
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: faces[0]!.readableId,
     decision: 'person',
@@ -1039,7 +1118,6 @@ test('a failed replacement portrait removes automatic links immediately while pr
   });
   expect((await context.assets.detail(input))!.depicts).toHaveLength(1);
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: faces[0]!.readableId,
     decision: 'dismissed',
@@ -1059,7 +1137,6 @@ test('person type changes and resource archives hide stored links without erasin
   const input = { ownerId: OWNER, readableId: photo.readableId };
   const face = (await context.faces.detail(input))!.faces[0]!;
   await context.faces.annotate({
-    change: { clientName: null, message: 'Updated test context' },
     ...input,
     faceReadableId: face.readableId,
     decision: 'person',
@@ -1137,7 +1214,6 @@ test('face and portrait mutations roll back together with their link changes', a
   );
   await expect(
     context.faces.annotate({
-      change: { clientName: null, message: 'Updated test context' },
       ...input,
       faceReadableId: face.readableId,
       decision: 'unknown',
@@ -1465,7 +1541,7 @@ test.each(['no faces', 'failed analysis'] as const)(
     const selected = await context.request({
       path: `/entities/${person.readableId}/image`,
       method: 'PUT',
-      body: { assetReadableId: portrait.readableId },
+      body: { assetReadableId: portrait.readableId, changeMessage: 'Selected a portrait' },
     });
     expect(selected.status).toBe(StatusMap.OK);
     const response = await context.request({ path: `/entities/${person.readableId}/images` });

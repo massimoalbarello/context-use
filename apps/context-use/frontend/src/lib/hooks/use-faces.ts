@@ -9,7 +9,6 @@ import {
   retryFailedImages,
   saveFaceThreshold,
 } from '../../queries/faces';
-import { historyQueryKey } from '../../queries/history';
 
 function useFaceMutation<Input, Output>(mutationFn: (input: Input) => Promise<Output>) {
   const queryClient = useQueryClient();
@@ -17,7 +16,6 @@ function useFaceMutation<Input, Output>(mutationFn: (input: Input) => Promise<Ou
     mutationFn,
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: historyQueryKey }),
         queryClient.invalidateQueries({ queryKey: facesQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetsQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
