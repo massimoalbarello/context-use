@@ -1,5 +1,4 @@
 import { cn } from '@repo/ui/class-names';
-import { markdownTableComponents } from '@repo/ui/markdown-table';
 import { ReadingLink } from '@repo/ui/reading-link';
 import { createContext, isValidElement, type ReactNode, useContext } from 'react';
 import ReactMarkdown, {
@@ -18,6 +17,7 @@ import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown'
 import { EntityLink } from '../entities/entity-link';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
+import { markdownTableComponents } from './markdown-table';
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
 type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;

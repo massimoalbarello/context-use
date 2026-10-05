@@ -1,5 +1,5 @@
+import { cn } from '@repo/ui/class-names';
 import type * as React from 'react';
-import { cn } from '../../lib/class-names';
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
