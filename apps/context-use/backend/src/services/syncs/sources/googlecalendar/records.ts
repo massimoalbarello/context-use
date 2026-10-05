@@ -80,7 +80,20 @@ function time(value: z.infer<typeof timeSchema> | null) {
   if (!value) {
     return 'Unavailable';
   }
-  return 'date' in value ? `${value.date} (all day)` : value.dateTime;
+  if ('date' in value) {
+    const date = new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'medium',
+      timeZone: 'UTC',
+    }).format(new Date(`${value.date}T00:00:00Z`));
+    return `${date} (all day)`;
+  }
+  const offset = value.dateTime.match(/[+-]\d{2}:\d{2}$/)?.[0] ?? null;
+  const dateTime = new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: offset ?? 'UTC',
+  }).format(new Date(value.dateTime));
+  return `${dateTime} (${offset ? `UTC${offset}` : 'UTC'})`;
 }
 function occurrenceTime(value: z.infer<typeof timeSchema> | undefined) {
   if (!value) {
