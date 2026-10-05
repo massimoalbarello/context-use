@@ -35,6 +35,7 @@ import { Route as AppRecordsIndexRouteImport } from './routes/app.records.index'
 import { Route as AppRecordsIdRouteImport } from './routes/app.records.$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/app.settings.index'
 import { Route as AppSettingsApiKeysRouteImport } from './routes/app.settings.api-keys'
+import { Route as AppSettingsAppearanceRouteImport } from './routes/app.settings.appearance'
 import { Route as AppSettingsFacesRouteImport } from './routes/app.settings.faces'
 import { Route as AppSettingsPasskeysRouteImport } from './routes/app.settings.passkeys'
 import { Route as AppSettingsPluginsRouteImport } from './routes/app.settings.plugins'
@@ -173,6 +174,11 @@ const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
   path: '/api-keys',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsFacesRoute = AppSettingsFacesRouteImport.update({
   id: '/faces',
   path: '/faces',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/app/pages/new': typeof AppPagesNewRoute
   '/app/records/$id': typeof AppRecordsIdRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/faces': typeof AppSettingsFacesRoute
   '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
   '/app/settings/plugins': typeof AppSettingsPluginsRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/app/pages/new': typeof AppPagesNewRoute
   '/app/records/$id': typeof AppRecordsIdRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/faces': typeof AppSettingsFacesRoute
   '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
   '/app/settings/plugins': typeof AppSettingsPluginsRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/app/pages/new': typeof AppPagesNewRoute
   '/app/records/$id': typeof AppRecordsIdRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/faces': typeof AppSettingsFacesRoute
   '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
   '/app/settings/plugins': typeof AppSettingsPluginsRoute
@@ -333,6 +342,7 @@ export interface FileRouteTypes {
     | '/app/pages/new'
     | '/app/records/$id'
     | '/app/settings/api-keys'
+    | '/app/settings/appearance'
     | '/app/settings/faces'
     | '/app/settings/passkeys'
     | '/app/settings/plugins'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/app/pages/new'
     | '/app/records/$id'
     | '/app/settings/api-keys'
+    | '/app/settings/appearance'
     | '/app/settings/faces'
     | '/app/settings/passkeys'
     | '/app/settings/plugins'
@@ -396,6 +407,7 @@ export interface FileRouteTypes {
     | '/app/pages/new'
     | '/app/records/$id'
     | '/app/settings/api-keys'
+    | '/app/settings/appearance'
     | '/app/settings/faces'
     | '/app/settings/passkeys'
     | '/app/settings/plugins'
@@ -599,6 +611,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApiKeysRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/settings/appearance': {
+      id: '/app/settings/appearance'
+      path: '/appearance'
+      fullPath: '/app/settings/appearance'
+      preLoaderRoute: typeof AppSettingsAppearanceRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/settings/faces': {
       id: '/app/settings/faces'
       path: '/faces'
@@ -715,6 +734,7 @@ const AppRecordsRouteWithChildren = AppRecordsRoute._addFileChildren(
 
 interface AppSettingsRouteChildren {
   AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
+  AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
   AppSettingsFacesRoute: typeof AppSettingsFacesRoute
   AppSettingsPasskeysRoute: typeof AppSettingsPasskeysRoute
   AppSettingsPluginsRoute: typeof AppSettingsPluginsRoute
@@ -724,6 +744,7 @@ interface AppSettingsRouteChildren {
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
+  AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
   AppSettingsFacesRoute: AppSettingsFacesRoute,
   AppSettingsPasskeysRoute: AppSettingsPasskeysRoute,
   AppSettingsPluginsRoute: AppSettingsPluginsRoute,
