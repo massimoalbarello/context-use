@@ -269,7 +269,7 @@ function HomepagePicker({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <form.Subscribe selector={(state) => state.values.readableId}>
+        <form.Subscribe<string> selector={(state) => state.values.readableId}>
           {(readableId: string) => (
             <Button type="submit" disabled={!readableId || pending}>
               Set homepage
