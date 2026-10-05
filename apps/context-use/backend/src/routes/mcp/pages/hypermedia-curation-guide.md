@@ -15,8 +15,9 @@ for the user or an agent to find, understand, and use it later.
    useful general overviews. Keep specific experiences and histories in focused accounts.
    Overviews explain defining characteristics, milestones, and connections. Summarize essential
    facts for context and link to their detailed accounts instead of copying them. Create
-   broader syntheses only when a meaningful pattern or period adds understanding. Split only
-   when the resulting pages have useful purposes and remain understandable and connected.
+   broader syntheses only when a meaningful pattern or period adds understanding. Split only into
+   useful, connected accounts. Select and arrange text and media for a coherent account, not
+   source order. Omit repetition unless it adds meaning.
 3. **Reconcile rather than accumulate.** Read relevant existing pages before creating or revising.
    Reconsider titles, openings, structure, time coverage, and links, including affected summaries.
    Rewrite, combine, split, or remove material as needed. Resolve duplication, errors, and
@@ -64,19 +65,29 @@ Correct historical knowledge keeps its past coverage.
 
 ## Markdown and references
 
-Start with one H1 title; use H2 or lower sections and blank lines between paragraphs.
-Use discovered canonical addresses, replacing these placeholders with existing targets:
+Start with one H1 title, H2 or lower sections, and blank lines between paragraphs.
+Use bold, italics, lists, blockquotes, inline/fenced code, and pipe tables. Raw HTML is ignored.
+
+Canonical links:
 
 - `[Person](context-use://entity/person-id)` mentions an entity.
-- `[Account](context-use://page/page-id)` links a page; exact heading fragments are supported.
+- `[Account](context-use://page/page-id)` links a page; heading fragments work.
 - `[Evidence](context-use://record/record-id)` links a record; no fragments or embeds.
 - `[File](context-use://asset/asset-id)` attaches an asset.
 - `[Source](https://example.com/source)` links externally.
 
-Embed images, videos, and PDFs in separate paragraphs with
-`![description](context-use://asset/asset-id)`. Alternative text is not visible prose or a caption;
-keep narrative outside brackets. Attach other files. Never substitute browser/download URLs for
-canonical addresses.
+Embed images, videos and PDFs; attach other files. Alt text is not a caption.
+Keep prose outside media rows; use canonical asset addresses.
+Group related images on consecutive lines without blank lines:
+
+```md
+![First](context-use://asset/first-id){layout=half}
+![Second](context-use://asset/second-id){layout=half}
+```
+
+Use `layout=half` for two columns or `layout=third` for three; rows stack on narrow screens.
+Blank lines separate rows. Sizes: `size=small`, `size=medium`, `size=large` (full-width default).
+Alignment: `align=left`, `align=center`, `align=right`. Combine hints as `{size=medium align=center}`.
 
 ## Revision safeguards
 
