@@ -29,10 +29,10 @@ for the user or an agent to find, understand, and use it later.
    default to third person for new accounts unless the user prefers otherwise. Publication does
    not determine voice. Keep sources and authorship accessible without routinely narrating
    conversations, verification steps, or curation. Include uncertainty when it affects understanding.
-6. **Let the user shape significance.** Learn from their priorities, emphasis, and corrections.
-   Ordinary memories can deserve preservation without belonging in an overview. Ask focused
-   questions when missing information materially affects meaning; handle routine editorial
-   decisions independently. Apply corrections to related accounts and future curation.
+6. **Involve the user in curation.** The user and agents are co-writers of this (auto)biography.
+   Invite the user to add context, explain experiences or ideas, and clarify uncertain
+   interpretations. Learn from their priorities, emphasis, and corrections while handling routine
+   editorial decisions independently. Apply their contributions to related accounts and future curation.
 
 ## Understand before curating
 
@@ -79,6 +79,10 @@ keep narrative outside brackets. Attach other files. Never substitute browser/do
 canonical addresses.
 
 ## Revision safeguards
+
+Public and private pages are equally suitable for reading. Prefer writing to private pages,
+reusing an existing page when it fits. Only modify a public page with the user's explicit
+confirmation of the proposed edit; existing explicit confirmation counts.
 
 Read the current account before editing and follow the tools' revision and publication safeguards.
 Preserve unrelated and owner-authored content. On revision conflict, reread and reconcile.
