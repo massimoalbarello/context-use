@@ -90,3 +90,27 @@ for (const { path, fields } of cases) {
     expect(f.writes()).toBe(1);
   });
 }
+
+test('validating an action-only route does not restrict a later union body', async () => {
+  const f = fixture();
+  const action = await f.app.handle(
+    request({ path: '/action', fields: {}, message: 'Requested an action' }),
+  );
+  expect(action.status).toBe(StatusMap.OK);
+
+  const decisions: Record<string, string>[] = [
+    { decision: 'person', entityReadableId: 'alice' },
+    { decision: 'unknown' },
+  ];
+  for (const fields of decisions) {
+    const response = await f.app.handle(
+      request({ path: '/union', fields, message: 'Corrected face identification' }),
+    );
+    expect(response.status).toBe(StatusMap.OK);
+    expect(await response.json()).toEqual({
+      ...fields,
+      changeMessage: 'Corrected face identification',
+    });
+  }
+  expect(f.writes()).toBe(1 + decisions.length);
+});
