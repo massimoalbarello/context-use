@@ -33,6 +33,9 @@ test('Calendar event content preserves time zones, participants, HTML descriptio
   expect(record.content?.body).toContain('Discuss **the plan**');
   expect(record.content?.body).toContain('Location: Meeting room');
   expect(record.content?.body).toContain('Organizer: owner@example.com');
+  expect(record.content?.body).toContain('End: 2026-10-01T10:00:00+01:00');
+  expect(record.content?.body).not.toContain('inclusive');
+  expect(record.content?.body).not.toContain('exclusive');
 });
 
 test('Cancelled exceptions and all-day events retain date semantics without inventing times', () => {
@@ -55,6 +58,10 @@ test('Cancelled exceptions and all-day events retain date semantics without inve
     },
     id: '["a","exception"]',
   });
+  if (record.operation !== 'upsert') {
+    throw new Error('Expected event');
+  }
+  expect(record.content?.body).toContain('End: Unavailable');
   const allDay = eventRecord({
     calendarId: 'a',
     event: providerEventSchema.parse({
@@ -68,10 +75,32 @@ test('Cancelled exceptions and all-day events retain date semantics without inve
   }
   expect(allDay.content?.body).toContain('Start: 2026-10-01 (all day)');
   expect(allDay.data.sourceOccurredAt).toBe('2026-10-01');
-  expect(allDay.content?.body).toContain(
-    'End (exclusive for all-day events): 2026-10-02 (all day)',
-  );
+  expect(allDay.content?.body).toContain('End (inclusive): 2026-10-01 (all day)');
 });
+
+test.each([
+  { start: '2026-09-28', end: '2026-10-01', inclusiveEnd: '2026-09-30' },
+  { start: '2026-12-30', end: '2027-01-01', inclusiveEnd: '2026-12-31' },
+  { start: '2028-02-28', end: '2028-03-01', inclusiveEnd: '2028-02-29' },
+])(
+  'all-day range $start to $end displays its last included date',
+  ({ start, end, inclusiveEnd }) => {
+    const record = eventRecord({
+      calendarId: 'a',
+      event: providerEventSchema.parse({
+        ...event('one'),
+        start: { date: start },
+        end: { date: end },
+      }),
+    });
+    if (record.operation !== 'upsert') {
+      throw new Error('Expected event');
+    }
+    expect(record.content?.body).toContain(`Start: ${start} (all day)`);
+    expect(record.content?.body).toContain(`End (inclusive): ${inclusiveEnd} (all day)`);
+    expect(record.data.end).toEqual({ date: end });
+  },
+);
 
 test('a moved recurring event uses its current start rather than its original start', () => {
   const record = eventRecord({

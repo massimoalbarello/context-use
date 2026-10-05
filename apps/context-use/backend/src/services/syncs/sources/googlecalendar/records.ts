@@ -88,6 +88,14 @@ function occurrenceTime(value: z.infer<typeof timeSchema> | undefined) {
   }
   return 'date' in value ? value.date : value.dateTime;
 }
+function readableEnd(value: z.infer<typeof timeSchema> | null) {
+  if (value && 'date' in value) {
+    const end = new Date(`${value.date}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() - 1);
+    return `End (inclusive): ${time({ ...value, date: end.toISOString().slice(0, 10) })}`;
+  }
+  return `End: ${time(value)}`;
+}
 function person(value: z.infer<typeof personSchema>) {
   return [value.displayName, value.email].filter(Boolean).join(' — ') || value.id || 'Unavailable';
 }
@@ -121,7 +129,7 @@ function readableEvent(data: z.infer<typeof eventSchema>) {
     `# ${data.title}`,
     `Status: ${data.status}`,
     `Start: ${time(data.start)}`,
-    `End (exclusive for all-day events): ${time(data.end)}`,
+    readableEnd(data.end),
     data.timeZone ? `Calendar time zone: ${data.timeZone}` : '',
     `Calendar: ${data.calendarId}`,
     data.organizer ? `Organizer: ${person(data.organizer)}` : '',
