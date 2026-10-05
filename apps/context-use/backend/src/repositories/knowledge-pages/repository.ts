@@ -25,8 +25,20 @@ import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom } from '#backend/views/entities/entity-view.ts';
 import { recordChange } from '../record-change.ts';
 import { replaceSearchDocument } from '../search-index.ts';
+import { prunePageRevisions } from './revision-retention.ts';
 
 export interface KnowledgePagesRepositoryContract {
+  pendingRevisionBlobDeletions(input: {
+    ownerId: string;
+    pageId: string;
+    afterStorageKey: string;
+    limit: number;
+  }): Promise<string[]>;
+  completeRevisionBlobDeletion(input: {
+    ownerId: string;
+    pageId: string;
+    storageKey: string;
+  }): Promise<void>;
   revisionsByNumber(input: {
     ownerId: string;
     readableId: string;
@@ -71,6 +83,7 @@ export interface KnowledgePagesRepositoryContract {
     updatedAt: string;
   }): Promise<
     | { state: 'updated'; page: StoredKnowledgePage }
+    | { state: 'unchanged'; page: StoredKnowledgePage }
     | { state: 'not_found' }
     | { state: 'revision_conflict'; currentRevisionNumber: number }
     | { state: 'link_target_not_found'; target: string }
@@ -513,12 +526,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     updatedAt: string;
   }): Promise<
     | { state: 'updated'; page: StoredKnowledgePage }
+    | { state: 'unchanged'; page: StoredKnowledgePage }
     | { state: 'not_found' }
     | { state: 'revision_conflict'; currentRevisionNumber: number }
     | { state: 'link_target_not_found'; target: string }
   > {
     const temporal = temporalRevisionColumns(input.temporalCoverage);
-    return this.sql.begin(async (db) => {
+    return this.sql.begin('immediate', async (db) => {
       const current = await findCurrentKnowledgePage({
         db,
         ownerId: input.ownerId,
@@ -532,6 +546,18 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           state: 'revision_conflict' as const,
           currentRevisionNumber: current.revisionNumber,
         };
+      }
+      if (
+        current.contentHash === input.contentHash &&
+        current.temporalCoverage === temporal.expression
+      ) {
+        await prunePageRevisions({
+          db,
+          ownerId: input.ownerId,
+          pageId: current.id,
+          now: input.updatedAt,
+        });
+        return { state: 'unchanged' as const, page: current };
       }
       const resolved = await resolveLinks({
         db,
@@ -606,6 +632,12 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         pageRevisionNumber: revisionNumber,
         createdAt: input.updatedAt,
       });
+      await prunePageRevisions({
+        db,
+        ownerId: input.ownerId,
+        pageId: current.id,
+        now: input.updatedAt,
+      });
       return {
         state: 'updated' as const,
         page: {
@@ -622,6 +654,33 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         },
       };
     });
+  }
+
+  async pendingRevisionBlobDeletions(input: {
+    ownerId: string;
+    pageId: string;
+    afterStorageKey: string;
+    limit: number;
+  }): Promise<string[]> {
+    const rows = await this.sql.ListPendingPageRevisionBlobDeletions`
+      /* @notNull storageKey */
+      select "storage_key" as "storageKey" from "knowledge_page_revision_blob_deletion"
+      where "owner_id" = ${input.ownerId} and "page_id" = ${input.pageId}
+        and "storage_key" > ${input.afterStorageKey}
+      order by "storage_key" limit ${input.limit}
+    `;
+    return rows.map((row) => row.storageKey);
+  }
+
+  async completeRevisionBlobDeletion(input: {
+    ownerId: string;
+    pageId: string;
+    storageKey: string;
+  }): Promise<void> {
+    await this.sql`
+      delete from "knowledge_page_revision_blob_deletion"
+      where "owner_id" = ${input.ownerId} and "page_id" = ${input.pageId} and "storage_key" = ${input.storageKey}
+    `;
   }
 
   async list({
