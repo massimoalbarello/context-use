@@ -100,10 +100,7 @@ test('face boxes support keyboard review and dismissed detections can be restore
     await user.click(view.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(view.queryByRole('dialog')).toBeNull());
     expect(view.getByRole('button', { name: 'Review face: Unknown' })).toBeTruthy();
-    expect(decisions).toEqual([
-      { decision: 'dismissed', changeMessage: 'Corrected face identification in this image' },
-      { decision: 'unknown', changeMessage: 'Corrected face identification in this image' },
-    ]);
+    expect(decisions).toEqual([{ decision: 'dismissed' }, { decision: 'unknown' }]);
   } finally {
     dispose();
   }

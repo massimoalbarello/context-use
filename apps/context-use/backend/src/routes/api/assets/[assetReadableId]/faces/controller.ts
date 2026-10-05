@@ -3,7 +3,6 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
 import { AssetParamsSchema } from '#backend/routes/api/assets/model.ts';
-import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   AssetFacesSchema,
   assetFacesResponse,
@@ -20,7 +19,6 @@ export function createAssetFacesController({
   faces: AssetFacesServiceContract;
 }) {
   return new Elysia()
-    .use(changeMessagePlugin)
     .use(createAuthPlugin({ auth }))
     .guard({ auth: true })
     .get(
@@ -49,7 +47,6 @@ export function createAssetFacesController({
           : status(StatusMap['Not Found'], { error: 'Asset not found' });
       },
       {
-        changeMessage: true,
         params: AssetParamsSchema,
         response: { 200: AssetFacesSchema, 404: ErrorResponseSchema },
         detail: {
@@ -62,7 +59,6 @@ export function createAssetFacesController({
       '/assets/:assetReadableId/faces/:faceReadableId/annotation',
       async ({ params, body, user, status }) => {
         const updated = await faces.annotate({
-          change: { clientName: null, message: body.changeMessage },
           ownerId: user.id,
           readableId: params.assetReadableId,
           faceReadableId: params.faceReadableId,
@@ -77,7 +73,6 @@ export function createAssetFacesController({
         );
       },
       {
-        changeMessage: true,
         params: FaceParamsSchema,
         body: FaceAnnotationBodySchema,
         response: { 200: AssetFacesSchema, 404: ErrorResponseSchema },

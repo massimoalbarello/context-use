@@ -23,7 +23,7 @@ export type AnnotationInput = {
     | { decision: 'person'; entityReadableId: string }
     | { decision: 'automatic' | 'unknown' | 'dismissed' };
 };
-export type ThresholdInput = Omit<Parameters<typeof settingsApi.settings.put>[0], 'changeMessage'>;
+export type ThresholdInput = Parameters<typeof settingsApi.settings.put>[0];
 
 export function faceCropUrl(input: { assetReadableId: string; faceReadableId: string }): string {
   return `${applicationOrigin()}/api/assets/${encodeURIComponent(input.assetReadableId)}/faces/${encodeURIComponent(input.faceReadableId)}/crop`;
@@ -71,9 +71,7 @@ export function personImagesQueryOptions(readableId: string) {
   });
 }
 export async function analyzeAsset(readableId: string) {
-  const { data, error } = await assetFacesApi(readableId).analyze.post({
-    changeMessage: 'Requested face analysis for this image',
-  });
+  const { data, error } = await assetFacesApi(readableId).analyze.post();
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -82,20 +80,14 @@ export async function analyzeAsset(readableId: string) {
 export async function annotateFace(input: AnnotationInput) {
   const { data, error } = await assetFacesApi(input.assetReadableId)({
     faceReadableId: input.faceReadableId,
-  }).annotation.put({
-    ...input.body,
-    changeMessage: 'Corrected face identification in this image',
-  });
+  }).annotation.put(input.body);
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
   return data;
 }
 export async function saveFaceThreshold(input: ThresholdInput) {
-  const { data, error } = await settingsApi.settings.put({
-    ...input,
-    changeMessage: 'Updated face matching settings',
-  });
+  const { data, error } = await settingsApi.settings.put(input);
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
@@ -129,18 +121,14 @@ export function faceProcessingQueryOptions({
   });
 }
 export async function retryFailedImages() {
-  const { data, error } = await settingsApi.retry.post({
-    changeMessage: 'Retried image processing',
-  });
+  const { data, error } = await settingsApi.retry.post();
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
   return data;
 }
 export async function checkFaceModel() {
-  const { data, error } = await settingsApi.model.check.post({
-    changeMessage: 'Requested a face model check',
-  });
+  const { data, error } = await settingsApi.model.check.post();
   if (error) {
     throw new Error(apiErrorMessage(error));
   }
