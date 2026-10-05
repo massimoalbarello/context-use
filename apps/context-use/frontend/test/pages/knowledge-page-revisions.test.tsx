@@ -51,7 +51,13 @@ afterEach(() => {
   }
 });
 
-function setup(response: (url: URL) => Promise<Response>) {
+function setup({
+  response,
+  revisionsPage = page,
+}: {
+  response: (url: URL) => Promise<Response>;
+  revisionsPage?: Pick<KnowledgePage, 'readableId' | 'revisionNumber' | 'revisions'>;
+}) {
   const requests: URL[] = [];
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
@@ -70,7 +76,7 @@ function setup(response: (url: URL) => Promise<Response>) {
   });
   const result = render(
     <QueryClientProvider client={client}>
-      <KnowledgePageRevisions page={page} publication={null} />
+      <KnowledgePageRevisions page={revisionsPage} publication={null} />
     </QueryClientProvider>,
   );
   return { ...result, requests, user: userEvent.setup() };
@@ -85,9 +91,10 @@ test('revision history loads adjacent changes on expansion and preserves snapsho
     temporalCoverage: null,
     hunks: [{ oldStart: 1, oldLines: 0, newStart: 1, newLines: 1, lines: ['+Original text'] }],
   };
-  const { user, requests, container } = setup((url) =>
-    Promise.resolve(Response.json(url.searchParams.get('to') === '1' ? initial : changed)),
-  );
+  const { user, requests, container } = setup({
+    response: (url) =>
+      Promise.resolve(Response.json(url.searchParams.get('to') === '1' ? initial : changed)),
+  });
   expect(screen.getByText(/Created by Research agent/)).toBeTruthy();
   expect(screen.getByText(/Created by Alex Morgan/)).toBeTruthy();
   expect(await screen.findByText('Revision 1 → 2')).toBeTruthy();
@@ -112,21 +119,48 @@ test('revision history loads adjacent changes on expansion and preserves snapsho
   expect(requests).toHaveLength(2);
 });
 
+test('retained revision gaps compare the previous retained snapshot and the oldest shows full content', async () => {
+  const retained = {
+    ...page,
+    revisionNumber: 12,
+    revisions: [
+      { ...page.revisions[0]!, revisionNumber: 12 },
+      { ...page.revisions[1]!, revisionNumber: 3 },
+    ],
+  };
+  const { user, requests } = setup({
+    response: (url) =>
+      Promise.resolve(
+        Response.json({
+          ...changed,
+          from: Number(url.searchParams.get('from')),
+          to: Number(url.searchParams.get('to')),
+        }),
+      ),
+    revisionsPage: retained,
+  });
+  expect(await screen.findByText('Revision 3 → 12')).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Changes in revision 3' }));
+  expect(await screen.findByText('Full content')).toBeTruthy();
+  expect(requests.map((url) => url.search)).toEqual(['?from=3&to=12', '?from=0&to=3']);
+});
+
 test('failed comparisons can be retried and metadata-only changes remain visible', async () => {
   let fail = true;
-  const { user } = setup(() =>
-    Promise.resolve(
-      fail
-        ? Response.json({ error: 'Comparison unavailable' }, { status: 500 })
-        : Response.json({
-            ...changed,
-            additions: 0,
-            deletions: 0,
-            hunks: [],
-            temporalCoverage: { from: '2025', to: null },
-          } satisfies KnowledgePageDiff),
-    ),
-  );
+  const { user } = setup({
+    response: () =>
+      Promise.resolve(
+        fail
+          ? Response.json({ error: 'Comparison unavailable' }, { status: 500 })
+          : Response.json({
+              ...changed,
+              additions: 0,
+              deletions: 0,
+              hunks: [],
+              temporalCoverage: { from: '2025', to: null },
+            } satisfies KnowledgePageDiff),
+      ),
+  });
   expect(screen.getByRole('status').textContent).toBe('Loading changes…');
   expect((await screen.findByRole('alert')).textContent).toBe('Comparison unavailable');
   fail = false;

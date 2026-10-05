@@ -25,7 +25,7 @@ export function KnowledgePageRevisions({
         <Badge variant="secondary">{page.revisions.length}</Badge>
       </div>
       <ol className="grid max-w-4xl list-none gap-3 p-0">
-        {page.revisions.map((revision) => (
+        {Array.from(page.revisions.entries()).map(([index, revision]) => (
           <Collapsible.Root
             render={<li />}
             className="min-w-0 rounded-xl bg-muted/50 px-4 py-3"
@@ -83,6 +83,7 @@ export function KnowledgePageRevisions({
               <KnowledgePageRevisionComparison
                 readableId={page.readableId}
                 revisionNumber={revision.revisionNumber}
+                previousRevisionNumber={page.revisions[index + 1]?.revisionNumber ?? 0}
               />
             </Collapsible.Panel>
           </Collapsible.Root>

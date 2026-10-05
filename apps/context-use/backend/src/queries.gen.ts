@@ -602,6 +602,11 @@ export interface ICreateKnowledgePageResult {
     id: string;
 }
 
+/** Result of query `ListPendingPageRevisionBlobDeletions`. */
+export interface IListPendingPageRevisionBlobDeletionsResult {
+    storageKey: string;
+}
+
 /** Result of query `ListKnowledgePages`. */
 export interface IListKnowledgePagesResult {
     id: string;
@@ -1001,7 +1006,7 @@ export interface IDeleteExpiredPublicationApprovalsResult {
 
 /** Result of query `CreatePublicationApproval`. */
 export interface ICreatePublicationApprovalResult {
-    id: string;
+    id: string | null;
 }
 
 /** Result of query `ListPublicationCredentials`. */
@@ -1319,6 +1324,7 @@ export interface Queries {
     ResolvePageLink: IResolvePageLinkResult;
     ResolveAssetLink: IResolveAssetLinkResult;
     CreateKnowledgePage: ICreateKnowledgePageResult;
+    ListPendingPageRevisionBlobDeletions: IListPendingPageRevisionBlobDeletionsResult;
     ListKnowledgePages: IListKnowledgePagesResult;
     CountKnowledgePages: ICountKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
