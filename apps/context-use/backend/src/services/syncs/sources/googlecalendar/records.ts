@@ -88,12 +88,16 @@ function time(value: z.infer<typeof timeSchema> | null) {
     return `${date} (all day)`;
   }
   const offset = value.dateTime.match(/[+-]\d{2}:\d{2}$/)?.[0] ?? null;
-  const dateTime = new Intl.DateTimeFormat('en-GB', {
+  const instant = new Date(value.dateTime);
+  const date = new Intl.DateTimeFormat('en-GB', {
     dateStyle: 'medium',
+    timeZone: offset ?? 'UTC',
+  }).format(instant);
+  const clock = new Intl.DateTimeFormat('en-GB', {
     timeStyle: 'short',
     timeZone: offset ?? 'UTC',
-  }).format(new Date(value.dateTime));
-  return `${dateTime} (${offset ? `UTC${offset}` : 'UTC'})`;
+  }).format(instant);
+  return `${date} at ${clock} (${offset ? `UTC${offset}` : 'UTC'})`;
 }
 function occurrenceTime(value: z.infer<typeof timeSchema> | undefined) {
   if (!value) {
