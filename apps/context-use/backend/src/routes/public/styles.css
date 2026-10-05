@@ -3,6 +3,8 @@
 @import "@repo/ui/theme.css";
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 @source "../../../../../../packages/ui/src/components/reading";
+@source "../../../../frontend/src/components/pages/markdown-table.tsx";
+@source "../../../../frontend/src/components/ui/table.tsx";
 @source "./*.tsx";
 
 @layer base {

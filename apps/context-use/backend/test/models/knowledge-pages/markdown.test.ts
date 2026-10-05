@@ -12,6 +12,15 @@ import {
 const LONG_EXCERPT_REPEAT_COUNT = 12;
 
 describe('knowledge page Markdown', () => {
+  test('extracts readable table cells and references using the rendered table dialect', () => {
+    const parsed = parseKnowledgePageMarkdown(
+      '# Payments\n\n| Item | Due |\n| --- | --- |\n| [**Plan**][plan] \\| regional | 30 June |\n\n[plan]: context-use://page/plan',
+    );
+    expect(parsed.excerpt).toBe('Item Due Plan | regional 30 June');
+    expect(parsed.links.pageReferences).toEqual([{ readableId: 'plan', fragment: null }]);
+    expect(parsed.searchableText).toBe('');
+  });
+
   test('extracts visible text and labelled direct internal links', () => {
     const parsed = parseKnowledgePageMarkdown(`# A small connected idea
 
