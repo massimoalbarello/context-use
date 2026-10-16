@@ -24,7 +24,6 @@ import { createEntity, entitiesQueryKey, setEntityImage } from '../queries/entit
 import { facesQueryKey } from '../queries/faces';
 import { historyQueryKey } from '../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../queries/knowledge-suggestions';
-import { mapQueryKey } from '../queries/map';
 import { createProfile, profileQueryKey, profileQueryOptions } from '../queries/profile';
 
 const EMPTY_ENTITY: EntityFormValues = { name: '', description: '', entityType: null, image: null };
@@ -79,7 +78,6 @@ function NewEntityRoute() {
           assetsQueryKey,
           facesQueryKey,
           historyQueryKey,
-          mapQueryKey,
           knowledgeSuggestionsQueryKey,
           profileQueryKey,
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),

@@ -446,58 +446,6 @@ export interface IListResourceHistoryResult {
     available: unknown;
 }
 
-/** Result of query `ListHypermediaNeighborhoods`. */
-export interface IListHypermediaNeighborhoodsResult {
-    rowType: "anchor" | "neighbor" | "relationship";
-    sourceReadableId: string;
-    sharedPageCount: number;
-    position: number;
-    id: string;
-    readableId: string;
-    name: string;
-    description: string;
-    entityType: string | null;
-    publicId: string | null;
-    publishedAt: string | null;
-    isSelf: number;
-    imagePublicId: string | null;
-    imagePublishedAt: string | null;
-    imageId: string | null;
-    imageReadableId: string | null;
-    imageName: string | null;
-    imageMediaType: string | null;
-    imageExtension: string | null;
-    imageSizeBytes: number | null;
-    imageCreatedAt: string | null;
-    imageUpdatedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListHypermediaPages`. */
-export interface IListHypermediaPagesResult {
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    publicId: string | null;
-    publishedAt: string | null;
-    publishedRevisionNumber: number | null;
-    ongoingSort: number;
-    latestSort: unknown | null;
-    startSort: unknown | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListHypermediaPageEntities`. */
-export interface IListHypermediaPageEntitiesResult {
-    sourcePageReadableId: string;
-    readableId: string;
-}
-
 /** Result of query `SearchHypermedia`. */
 export interface ISearchHypermediaResult {
     total: number;
@@ -1308,9 +1256,6 @@ export interface Queries {
     ListPersonImages: IListPersonImagesResult;
     PingDatabase: IPingDatabaseResult;
     ListResourceHistory: IListResourceHistoryResult;
-    ListHypermediaNeighborhoods: IListHypermediaNeighborhoodsResult;
-    ListHypermediaPages: IListHypermediaPagesResult;
-    ListHypermediaPageEntities: IListHypermediaPageEntitiesResult;
     SearchHypermedia: ISearchHypermediaResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;

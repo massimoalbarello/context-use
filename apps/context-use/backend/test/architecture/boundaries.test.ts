@@ -9,7 +9,6 @@ const BACKEND = 'apps/context-use/backend';
 const SOURCE = `${BACKEND}/src/`;
 const CHECK_TIMEOUT_MS = 30_000;
 const REPOSITORY = '#backend/repositories/entities/repository.ts';
-const GRAPH = '#backend/repositories/hypermedia-graph/contract.ts';
 const DECLARATIONS = 'export class Implementation {}\nexport interface Contract {}\n';
 
 async function checkImports(files: Record<string, string>) {
@@ -209,32 +208,18 @@ test(
 );
 
 test(
-  'graph and retrieval repositories stay private to their owning services',
+  'retrieval repositories stay private to their owning service',
   async () => {
     const violations = await checkImports({
-      'src/repositories/hypermedia-graph/contract.ts': DECLARATIONS,
-      'src/repositories/hypermedia-graph/repository.ts':
-        "import type { Contract } from './contract.ts';",
       'src/repositories/hypermedia-retrieval/contract.ts': DECLARATIONS,
-      'src/services/hypermedia-graph/service.ts': `import type { Contract } from '${GRAPH}';`,
-      'src/main.ts': "import '#backend/repositories/hypermedia-graph/repository.ts';",
-      'src/views/reexport.ts': "export * from '../repositories/hypermedia-graph/repository.ts';",
-      'src/views/dynamic.ts':
-        "export const load = () => import('../repositories/hypermedia-graph/repository.ts');",
-      'src/services/entities/service.ts': `import type { Contract } from '${GRAPH}';`,
-      'src/services/hypermedia-retrieval/service.ts': `import type { Contract } from '${GRAPH}';`,
-      'src/services/hypermedia-graph/search.ts':
+      'src/services/hypermedia-retrieval/service.ts':
+        "import type { Contract } from '../../repositories/hypermedia-retrieval/contract.ts';",
+      'src/services/entities/search.ts':
         "import type { Contract } from '../../repositories/hypermedia-retrieval/contract.ts';",
     });
-    expect(violations.map(({ from, rule }) => [from, rule.name]).sort()).toEqual(
-      [
-        [`${SOURCE}services/entities/service.ts`, 'graph-repository-is-private'],
-        [`${SOURCE}services/hypermedia-graph/search.ts`, 'retrieval-service-owns-search'],
-        [`${SOURCE}services/hypermedia-retrieval/service.ts`, 'graph-repository-is-private'],
-        [`${SOURCE}views/dynamic.ts`, 'graph-repository-is-private'],
-        [`${SOURCE}views/reexport.ts`, 'graph-repository-is-private'],
-      ].sort(),
-    );
+    expect(violations.map(({ from, rule }) => [from, rule.name])).toEqual([
+      [`${SOURCE}services/entities/search.ts`, 'retrieval-service-owns-search'],
+    ]);
   },
   CHECK_TIMEOUT_MS,
 );

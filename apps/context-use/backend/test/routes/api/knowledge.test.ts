@@ -10,27 +10,20 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { ENTITY_TYPES, type Entity } from '#backend/models/entities/model.ts';
-import {
-  MAX_HYPERMEDIA_GRAPH_ANCHORS,
-  MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES,
-} from '#backend/models/hypermedia-graph/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#backend/models/readable-ids/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
 import { EntitiesRepository } from '#backend/repositories/entities/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
-import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
-import type { mapNeighborhoodsResponse } from '#backend/routes/api/map/model.ts';
 import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
 import { HistoryService } from '#backend/services/history/service.ts';
-import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
@@ -54,7 +47,6 @@ import {
 } from '../../support/mcp.ts';
 import { expectNoInternalResourceIds } from '../../support/public-api.ts';
 
-const DENSE_PAGE_REFERENCE_LIMIT = 122;
 const EXPECTED_ENTITY_COUNT = 4;
 const EXPECTED_PAGE_COUNT = 5;
 const EXPECTED_TEMPORAL_PAGE_COUNT = 3;
@@ -62,14 +54,6 @@ const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
-
-function mapNeighborhoodsPath({ anchors, limit }: { anchors: unknown[]; limit?: number }) {
-  const query = new URLSearchParams({ anchors: JSON.stringify(anchors) });
-  if (limit !== undefined) {
-    query.set('limit', String(limit));
-  }
-  return `/map/neighborhoods?${query}`;
-}
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -125,7 +109,7 @@ function jsonRequest({
   });
 }
 
-test('entity and page APIs maintain an owner-scoped hypermedia graph', async () => {
+test('entity and page APIs maintain owner-scoped knowledge and references', async () => {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-knowledge-test-'));
   const database = await createSqliteDatabase({ dataFolder });
 
@@ -172,9 +156,6 @@ test('entity and page APIs maintain an owner-scoped hypermedia graph', async () 
         pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
-      graphService: new HypermediaGraphService({
-        graph: new HypermediaGraphRepository(database),
-      }),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,
       mcpTransport: unusedMcpTransport,
@@ -619,210 +600,6 @@ Every observation changes the next action.`,
       jsonRequest({ method: 'GET', path: '/pages?interval=sometimes' }),
     );
     expect(invalidPageIntervalResponse.status).toBe(StatusMap['Bad Request']);
-
-    const anchors = [{ anchor: { readableId: 'test-owner' } }];
-    const firstNeighborhoodResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: mapNeighborhoodsPath({ anchors, limit: 1 }),
-      }),
-    );
-    expect(firstNeighborhoodResponse.status).toBe(StatusMap.OK);
-    const firstNeighborhood = (await firstNeighborhoodResponse.json()) as ReturnType<
-      typeof mapNeighborhoodsResponse
-    >;
-    expectNoInternalResourceIds(firstNeighborhood);
-    expect(firstNeighborhood.entities).toEqual(
-      expect.arrayContaining([expect.objectContaining({ readableId: 'test-owner', isSelf: true })]),
-    );
-    expect(firstNeighborhood.neighborhoods[0]!.neighbors).toEqual([
-      expect.objectContaining({ entity: { readableId: 'luca-bianchi' } }),
-    ]);
-    expect(firstNeighborhood.neighborhoods[0]!.nextCursor).toEqual(expect.any(String));
-    const remainingNeighborhoodResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: mapNeighborhoodsPath({
-          anchors: [{ ...anchors[0], cursor: firstNeighborhood.neighborhoods[0]!.nextCursor }],
-          limit: 1,
-        }),
-      }),
-    );
-    const remainingNeighborhood = (await remainingNeighborhoodResponse.json()) as ReturnType<
-      typeof mapNeighborhoodsResponse
-    >;
-    expect(remainingNeighborhoodResponse.status).toBe(StatusMap.OK);
-    expect(remainingNeighborhood.neighborhoods[0]!.neighbors[0]!.entity.readableId).toBe(
-      'temporal-subject',
-    );
-    expect(remainingNeighborhood.neighborhoods[0]!.nextCursor).toBeNull();
-    for (const query of [
-      { anchors: [] },
-      {
-        anchors: [...Array(MAX_HYPERMEDIA_GRAPH_ANCHORS + 1).keys()].map((index) => ({
-          anchor: { readableId: `anchor-${index}` },
-        })),
-      },
-      { anchors: [...anchors, ...anchors] },
-      { anchors, limit: 0 },
-      { anchors, limit: 25 },
-      { anchors, limit: 1.5 },
-      { anchors: ['test-owner'] },
-      { anchors: [{ ...anchors[0], cursor: 'not-a-cursor' }] },
-      { anchors: [{ ...anchors[0], cursor: Buffer.from('null').toString('base64url') }] },
-      ...[
-        [],
-        'cursor',
-        { version: 2, sharedPageCount: 1, readableId: 'topic' },
-        { version: 1, sharedPageCount: 0, readableId: 'topic' },
-        { version: 1, sharedPageCount: 1.5, readableId: 'topic' },
-        { version: 1, sharedPageCount: 1, readableId: 'INVALID' },
-      ].map((payload) => ({
-        anchors: [
-          { ...anchors[0], cursor: Buffer.from(JSON.stringify(payload)).toString('base64url') },
-        ],
-      })),
-    ]) {
-      expect(
-        (await app.handle(jsonRequest({ method: 'GET', path: mapNeighborhoodsPath(query) })))
-          .status,
-      ).toBe(StatusMap['Bad Request']);
-    }
-
-    for (const anchorsValue of ['[]', 'null', '{', '{}']) {
-      const query = new URLSearchParams({ anchors: anchorsValue });
-      expect(
-        (await app.handle(jsonRequest({ method: 'GET', path: `/map/neighborhoods?${query}` })))
-          .status,
-      ).toBe(StatusMap['Bad Request']);
-    }
-
-    for (const query of [
-      'limit=1.5',
-      'offset=0.5',
-      'offset=-1',
-      'visible=INVALID',
-      `visible=${[...Array(MAX_HYPERMEDIA_PAGE_FOCUS_ENTITIES + 1).keys()].map((index) => `topic-${index}`).join(',')}`,
-    ]) {
-      const response = await app.handle(
-        jsonRequest({ method: 'GET', path: `/map/pages?${query}` }),
-      );
-      expect(response.status).toBe(StatusMap['Bad Request']);
-      expect(await response.json()).toHaveProperty('error');
-    }
-
-    const withoutIntervalResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?limit=10',
-      }),
-    );
-    const withoutInterval = (await withoutIntervalResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-      nextOffset: number | null;
-      entityReferencesTruncated: boolean;
-    };
-    expect(withoutInterval.pages.map(({ readableId }) => readableId)).toEqual(['alpha-principles']);
-    expect(withoutInterval.nextOffset).toBeNull();
-    expect(withoutInterval.entityReferencesTruncated).toBe(false);
-
-    const withIntervalResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?time=2025&limit=10',
-      }),
-    );
-    expect(withIntervalResponse.status).toBe(StatusMap.OK);
-    const withInterval = (await withIntervalResponse.json()) as {
-      pages: Array<{ readableId: string; temporalCoverage: string | null }>;
-    };
-    expect(withInterval.pages.map(({ readableId }) => readableId)).toEqual([
-      'current-programme',
-      'operating-rhythm',
-      'growth-playbook',
-    ]);
-    expect(withInterval.pages.every(({ temporalCoverage }) => temporalCoverage !== null)).toBe(
-      true,
-    );
-
-    const invalidTimeResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?time=2025-13',
-      }),
-    );
-    expect(invalidTimeResponse.status).toBe(StatusMap['Bad Request']);
-
-    const filteredMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?time=2025&visible=temporal-subject&limit=2',
-      }),
-    );
-    expect(filteredMapResponse.status).toBe(StatusMap.OK);
-    const filteredMap = (await filteredMapResponse.json()) as {
-      pages: Array<{
-        readableId: string;
-        temporalCoverage: string | null;
-        entities: Array<{ readableId: string }>;
-      }>;
-      nextOffset: number | null;
-      entityReferencesTruncated: boolean;
-    };
-    expectNoInternalResourceIds(filteredMap);
-    expect(filteredMap.pages.map(({ readableId }) => readableId)).toEqual([
-      'current-programme',
-      'operating-rhythm',
-    ]);
-    expect(filteredMap.pages[0]?.temporalCoverage).not.toBeNull();
-    expect(filteredMap.pages[0]?.entities).toContainEqual({
-      readableId: 'temporal-subject',
-    });
-    expect(filteredMap.nextOffset).toBeNull();
-    expect(filteredMap.entityReferencesTruncated).toBe(false);
-
-    const remainingFilteredMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?time=2025&visible=temporal-subject&limit=2&offset=2',
-      }),
-    );
-    expect(remainingFilteredMapResponse.status).toBe(StatusMap.OK);
-    const remainingFilteredMap = (await remainingFilteredMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-      nextOffset: number | null;
-    };
-    expect(remainingFilteredMap.pages).toEqual([]);
-    expect(remainingFilteredMap.nextOffset).toBeNull();
-
-    const viewportMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?time=2025&visible=temporal-subject,test-owner,temporal-subject',
-      }),
-    );
-    const viewportMap = (await viewportMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-    };
-    expect(viewportMap.pages.map(({ readableId }) => readableId)).toEqual([
-      'current-programme',
-      'operating-rhythm',
-      'growth-playbook',
-    ]);
-
-    const rangedMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?visible=temporal-subject&time=2025-04',
-      }),
-    );
-    const rangedMap = (await rangedMapResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-    };
-    expect(rangedMap.pages.map(({ readableId }) => readableId)).toEqual([
-      'current-programme',
-      'operating-rhythm',
-    ]);
 
     const overlappingPagesResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?limit=2&offset=0&time=2025-04' }),
@@ -1401,52 +1178,6 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       await pagesRepository.find({ ownerId: 'someone-else', readableId: 'growth-playbook' }),
     ).toBeNull();
 
-    await database`
-      with recursive sequence("value") as (
-        select 1
-        union all
-        select "value" + 1 from sequence where "value" < 122
-      )
-      insert into "entity"
-        ("id", "owner_id", "readable_id", "name", "description", "created_at", "updated_at")
-      select 'dense-entity-id-' || "value", ${OWNER_USER_ID},
-        'dense-entity-' || printf('%03d', "value"),
-        'Dense entity ' || "value", 'Exercises bounded map page connections.',
-        ${timestamp}, ${timestamp}
-      from sequence
-    `;
-    await database`
-      insert into "knowledge_page_entity_mention"
-        ("owner_id", "source_revision_id", "target_entity_id")
-      select ${OWNER_USER_ID}, page."current_revision_id", entity."id"
-      from "knowledge_page" page
-      join "entity" entity
-        on entity."owner_id" = page."owner_id"
-       and entity."readable_id" like 'dense-entity-%'
-      where page."owner_id" = ${OWNER_USER_ID} and page."readable_id" = 'alpha-principles'
-    `;
-    const denseMapResponse = await app.handle(
-      jsonRequest({
-        method: 'GET',
-        path: '/map/pages?visible=temporal-subject,test-owner',
-      }),
-    );
-    const denseMap = (await denseMapResponse.json()) as {
-      pages: Array<{
-        readableId: string;
-        entities: Array<{ readableId: string }>;
-      }>;
-      nextOffset: number | null;
-      entityReferencesTruncated: boolean;
-    };
-    expect(denseMap.pages).toHaveLength(1);
-    expect(denseMap.pages[0]?.readableId).toBe('alpha-principles');
-    expect(denseMap.pages[0]?.entities).toContainEqual({ readableId: 'temporal-subject' });
-    expect(denseMap.pages[0]?.entities).toContainEqual({ readableId: 'test-owner' });
-    expect(denseMap.pages[0]?.entities).toHaveLength(DENSE_PAGE_REFERENCE_LIMIT);
-    expect(denseMap.nextOffset).toBeNull();
-    expect(denseMap.entityReferencesTruncated).toBe(true);
-
     const profileReadResponse = await app.handle(jsonRequest({ method: 'GET', path: '/profile' }));
     expect(profileReadResponse.status).toBe(StatusMap.OK);
     expectNoInternalResourceIds(await profileReadResponse.clone().json());
@@ -1454,7 +1185,7 @@ Revise the current knowledge instead of appending snapshots. Compare the [altern
       ((await profileReadResponse.json()) as { selfEntity: { readableId: string } }).selfEntity
         .readableId,
     ).toBe('test-owner');
-    // Exercise the HTTP type contract after the graph journey so its counts stay independent.
+    // Exercise the HTTP type contract after the knowledge journey so its counts stay independent.
     for (const entityType of [...ENTITY_TYPES, null]) {
       const name = `AAA typed fixture ${entityType ?? 'untyped'}`;
       const created = await app.handle(

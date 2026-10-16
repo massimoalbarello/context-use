@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { ResourcePreviewPanel } from '../../src/components/knowledge/resource-preview-panel';
 import type { ResourceSelection } from '../../src/lib/resource-selection';
 import { type KnowledgePagePreview, pagePreviewQueryOptions } from '../../src/queries/pages';
+import { publicationStatusQueryOptions } from '../../src/queries/publications';
 
 afterEach(cleanup);
 
@@ -27,6 +28,16 @@ async function renderInteractivePreview(onClose: () => void) {
     [initialSelection, 'Project brief'],
     [nextSelection, 'Delivery brief'],
   ] as const) {
+    queryClient.setQueryData(
+      publicationStatusQueryOptions({ resourceType: 'page', readableId: selection.readableId })
+        .queryKey,
+      () => ({
+        resourceType: 'page',
+        publicId: null,
+        publishedAt: null,
+        publishedRevisionNumber: null,
+      }),
+    );
     queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
       publishedAt: null,
       publishedRevisionNumber: null,
