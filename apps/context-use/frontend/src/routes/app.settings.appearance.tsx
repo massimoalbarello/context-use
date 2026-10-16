@@ -1,7 +1,13 @@
+import { Button } from '@repo/ui/button';
 import { createFileRoute } from '@tanstack/react-router';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group';
+
+const themeOptions = [
+  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+];
 
 export const Route = createFileRoute('/app/settings/appearance')({
   component: AppearanceSettings,
@@ -24,32 +30,25 @@ function AppearanceSettings() {
             Choose a theme or follow your system’s appearance. Your choice is saved in this browser.
           </p>
         </div>
-        <ToggleGroup
+        <fieldset
+          className="flex flex-wrap gap-1"
           aria-labelledby="theme-heading"
           aria-describedby="theme-description"
-          variant="outline"
-          spacing={0}
-          value={[theme]}
-          onValueChange={(values) => {
-            const selected = values[0];
-            if (selected) {
-              setTheme(selected);
-            }
-          }}
         >
-          <ToggleGroupItem value="system">
-            <Monitor aria-hidden="true" />
-            System
-          </ToggleGroupItem>
-          <ToggleGroupItem value="light">
-            <Sun aria-hidden="true" />
-            Light
-          </ToggleGroupItem>
-          <ToggleGroupItem value="dark">
-            <Moon aria-hidden="true" />
-            Dark
-          </ToggleGroupItem>
-        </ToggleGroup>
+          {themeOptions.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              variant={theme === option.value ? 'secondary' : 'ghost'}
+              size="sm"
+              aria-pressed={theme === option.value}
+              onClick={() => setTheme(option.value)}
+            >
+              <option.icon aria-hidden="true" />
+              {option.label}
+            </Button>
+          ))}
+        </fieldset>
       </section>
     </div>
   );

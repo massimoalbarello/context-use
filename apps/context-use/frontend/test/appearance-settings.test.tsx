@@ -51,6 +51,10 @@ test('the theme selector supports keyboard navigation and activation', async () 
   renderAppearance();
   await user.tab();
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'System' }));
-  await user.keyboard('{ArrowRight}{ArrowRight} ');
+  await user.tab();
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Light' }));
+  await user.tab();
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Dark' }));
+  await user.keyboard('{Enter}');
   expect(screen.getByRole('button', { name: 'Dark', pressed: true })).toBeTruthy();
 });
