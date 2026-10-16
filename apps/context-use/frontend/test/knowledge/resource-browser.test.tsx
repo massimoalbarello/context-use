@@ -180,24 +180,6 @@ async function renderResourceBrowser({
           );
         }
         const responses: Record<string, unknown> = {
-          '/api/map/neighborhoods': {
-            entities: [entity],
-            neighborhoods: [
-              {
-                anchor: { readableId: entity.readableId },
-                available: true,
-                neighbors: [],
-                nextCursor: null,
-              },
-            ],
-            relationships: [],
-            relationshipsTruncated: false,
-          },
-          '/api/map/pages': {
-            pages: [],
-            nextOffset: null,
-            entityReferencesTruncated: false,
-          },
           '/api/hypermedia/search': { results: [], totalMatches: 0 },
           '/api/pages': collectionResponse({ url, item: page }),
           '/api/entities': collectionResponse({ url, item: entity }),
@@ -262,6 +244,24 @@ async function renderResourceBrowser({
       fetch.mockRestore();
     },
   };
+}
+
+for (const path of ['/app', '/app/setup']) {
+  test(`owner entry ${path} opens Pages as the default workspace`, async () => {
+    const app = await renderResourceBrowser({ path });
+    try {
+      expect(await screen.findByRole('searchbox', { name: 'Search pages' })).toBeTruthy();
+      expect(app.router.state.location.pathname).toBe('/app/pages');
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Open sidebar' }));
+      const navigation = within(screen.getByRole('navigation', { name: 'Workspace' }));
+      expect(navigation.queryByRole('link', { name: 'Map' })).toBeNull();
+      expect(navigation.getByRole('link', { name: 'Pages' }).getAttribute('aria-current')).toBe(
+        'page',
+      );
+    } finally {
+      app.dispose();
+    }
+  });
 }
 
 test('resource navigation opens unselected collections with their own toolbar and preview', async () => {
@@ -627,27 +627,6 @@ for (const { link, kind, id } of [
     }
   });
 }
-
-test('expanded navigation from Map returns to Map with its original month', async () => {
-  const app = await renderResourceBrowser({
-    path: '/app/map?month=2007-08&resource=page&resourceId=launch&expanded=true',
-  });
-  try {
-    const user = userEvent.setup();
-    await user.click(await screen.findByRole('link', { name: 'Owner' }));
-    expect(await screen.findByRole('heading', { name: 'Owner' })).toBeTruthy();
-    expect(app.router.state.location.pathname).toBe('/app/map');
-    expect(app.router.state.location.search.expanded).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Back to browsing' }));
-    expect(await screen.findByRole('complementary', { name: 'Entity preview' })).toBeTruthy();
-    expect(screen.queryByRole('searchbox')).toBeNull();
-    expect(app.router.state.location.pathname).toBe('/app/map');
-    expect(app.router.state.location.search.month).toBe('2007-08');
-    expect(app.router.state.location.search.resourceId).toBe('owner');
-  } finally {
-    app.dispose();
-  }
-});
 
 for (const expanded of [false, true]) {
   test(`section links reveal asynchronously loaded content in ${expanded ? 'expanded detail' : 'preview'}`, async () => {
