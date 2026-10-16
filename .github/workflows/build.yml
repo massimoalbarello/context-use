@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -38,11 +39,11 @@ jobs:
         run: bun --filter @repo/context-use test:binary:instance
 
       - name: Prepare nibrun binary
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: cp apps/context-use/dist/context-use context-use
 
       - name: Upload nibrun binary
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v7
         with:
           name: nibrun-binary
@@ -80,3 +81,41 @@ jobs:
               --prerelease \
               --notes "Built from ${GITHUB_SHA}. This asset is replaced after every successful build on main."
           fi
+
+  deploy-nibrun:
+    name: deploy:nibrun
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.NIBRUN_APP_ID != ''
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: nibrun
+      url: ${{ vars.NIBRUN_APP_URL }}
+    concurrency:
+      group: nibrun-instance
+      cancel-in-progress: false
+    steps:
+      - name: Download tested instance binary
+        uses: actions/download-artifact@v8
+        with:
+          name: nibrun-binary
+
+      - name: Set up nibrun CLI
+        uses: nibrunhq/setup-cli@v1
+        with:
+          version: '2026.10.14-2'
+
+      - name: Deploy existing instance
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          NIBRUN_APP_ID: ${{ vars.NIBRUN_APP_ID }}
+        run: |
+          latest_sha=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq '.object.sha')
+          if [ "$latest_sha" != "$GITHUB_SHA" ]; then
+            echo "::notice::Skipping a build superseded on main."
+            exit 0
+          fi
+          nib run ./context-use --github-trusted-oidc --app-id "$NIBRUN_APP_ID"
