@@ -40,6 +40,55 @@ function auth(): Auth {
   };
 }
 
+test('historical reprocessing validates the action and uses the authenticated owner', async () => {
+  const updates: Parameters<ManagedSyncsServiceContract['update']>[0][] = [];
+  const services: ManagedSyncsServiceContract = {
+    list: () => Promise.resolve([]),
+    configureApp: () => Promise.resolve(),
+    connect: () => Promise.resolve({ authorizationUrl: null }),
+    completeConnection: () => Promise.resolve(),
+    update: (input) => {
+      updates.push(input);
+      return Promise.resolve();
+    },
+  };
+  const app = new Elysia({ prefix: '/api' })
+    .onError(elysiaErrorHandler)
+    .use(createManagedSyncsController({ auth: auth(), syncs: services }));
+  const reprocess = ({
+    cookie,
+    origin = 'http://host',
+    action = 'resync',
+  }: {
+    cookie?: string;
+    origin?: string;
+    action?: string;
+  }) =>
+    app.handle(
+      new Request('http://host/api/syncs/managed/github.pull-requests', {
+        method: 'POST',
+        headers: { origin, ...(cookie ? { cookie } : {}), 'content-type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          actorId: 'other',
+          changeMessage: 'Reprocess historical records',
+        }),
+      }),
+    );
+  expect((await reprocess({})).status).toBe(StatusMap.Unauthorized);
+  expect((await reprocess({ cookie: 'owner-session', origin: 'http://attacker' })).status).toBe(
+    StatusMap.Forbidden,
+  );
+  expect((await reprocess({ cookie: 'owner-session', action: 'replace-everything' })).status).toBe(
+    StatusMap['Bad Request'],
+  );
+  expect(updates).toEqual([]);
+  expect((await reprocess({ cookie: 'owner-session' })).status).toBe(StatusMap.OK);
+  expect(updates).toEqual([
+    { actorId: OWNER_USER_ID, key: 'github.pull-requests', action: 'resync' },
+  ]);
+});
+
 test('management rejects unauthenticated and cross-origin mutations; OAuth completion remains owner-bound', async () => {
   const completed: string[] = [];
   const configured: string[] = [];
