@@ -32,7 +32,7 @@ async function renderInteractivePreview(onClose: () => void) {
       publicationStatusQueryOptions({ resourceType: 'page', readableId: selection.readableId })
         .queryKey,
       () => ({
-        resourceType: 'page',
+        resourceType: 'page' as const,
         publicId: null,
         publishedAt: null,
         publishedRevisionNumber: null,
