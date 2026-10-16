@@ -103,7 +103,7 @@ jobs:
           name: nibrun-binary
 
       - name: Set up nibrun CLI
-        uses: nibrunhq/setup-cli@v1
+        uses: nibrunhq/setup-cli@v1.0.1
         with:
           version: '2026.10.14-2'
 
