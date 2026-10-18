@@ -10,7 +10,6 @@ import { createEntitiesController } from '#backend/routes/api/entities/controlle
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
 import { createHistoryController } from '#backend/routes/api/history/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
-import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createMcpClientsController } from '#backend/routes/api/mcp/clients/controller.ts';
 import { createOwnerRegistrationController } from '#backend/routes/api/owner-registration/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
@@ -30,7 +29,6 @@ import type { AssetsServiceContract } from '#backend/services/assets/service.ts'
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
 import type { HistoryServiceContract } from '#backend/services/history/service.ts';
-import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
@@ -56,7 +54,6 @@ export function createApiController({
   entitiesService,
   historyService,
   healthService,
-  graphService,
   retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
@@ -77,7 +74,6 @@ export function createApiController({
   entitiesService: EntitiesServiceContract;
   historyService: HistoryServiceContract;
   healthService: HealthServiceContract;
-  graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
@@ -109,7 +105,6 @@ export function createApiController({
     .use(createEntitiesController({ auth, entitiesService }))
     .use(createEntityReadableIdController({ auth, entitiesService }))
     .use(createHypermediaSearchController({ auth, retrievalService }))
-    .use(createMapController({ auth, graphService }))
     .use(createPublicSiteController({ auth, publicSiteService }))
     .use(createPublicationsController({ auth, publicationApprovalService }))
     .use(createPagesController({ auth, pagesService }))

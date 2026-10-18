@@ -15,7 +15,6 @@ import { Route as AppAssetsRouteImport } from './routes/app.assets'
 import { Route as AppEntitiesRouteImport } from './routes/app.entities'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppLoginRouteImport } from './routes/app.login'
-import { Route as AppMapRouteImport } from './routes/app.map'
 import { Route as AppPagesRouteImport } from './routes/app.pages'
 import { Route as AppRecordsRouteImport } from './routes/app.records'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
@@ -72,11 +71,6 @@ const AppHistoryRoute = AppHistoryRouteImport.update({
 const AppLoginRoute = AppLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMapRoute = AppMapRouteImport.update({
-  id: '/map',
-  path: '/map',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPagesRoute = AppPagesRouteImport.update({
@@ -222,7 +216,6 @@ export interface FileRoutesByFullPath {
   '/app/entities': typeof AppEntitiesRouteWithChildren
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
-  '/app/map': typeof AppMapRoute
   '/app/pages': typeof AppPagesRouteWithChildren
   '/app/records': typeof AppRecordsRouteWithChildren
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -255,7 +248,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
-  '/app/map': typeof AppMapRoute
   '/app/setup': typeof AppSetupRoute
   '/app': typeof AppIndexRoute
   '/app/assets/$id': typeof AppAssetsIdRoute
@@ -288,7 +280,6 @@ export interface FileRoutesById {
   '/app/entities': typeof AppEntitiesRouteWithChildren
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
-  '/app/map': typeof AppMapRoute
   '/app/pages': typeof AppPagesRouteWithChildren
   '/app/records': typeof AppRecordsRouteWithChildren
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -326,7 +317,6 @@ export interface FileRouteTypes {
     | '/app/entities'
     | '/app/history'
     | '/app/login'
-    | '/app/map'
     | '/app/pages'
     | '/app/records'
     | '/app/settings'
@@ -359,7 +349,6 @@ export interface FileRouteTypes {
   to:
     | '/app/history'
     | '/app/login'
-    | '/app/map'
     | '/app/setup'
     | '/app'
     | '/app/assets/$id'
@@ -391,7 +380,6 @@ export interface FileRouteTypes {
     | '/app/entities'
     | '/app/history'
     | '/app/login'
-    | '/app/map'
     | '/app/pages'
     | '/app/records'
     | '/app/settings'
@@ -469,13 +457,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/app/login'
       preLoaderRoute: typeof AppLoginRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/map': {
-      id: '/app/map'
-      path: '/map'
-      fullPath: '/app/map'
-      preLoaderRoute: typeof AppMapRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/pages': {
@@ -775,7 +756,6 @@ interface AppRouteChildren {
   AppEntitiesRoute: typeof AppEntitiesRouteWithChildren
   AppHistoryRoute: typeof AppHistoryRoute
   AppLoginRoute: typeof AppLoginRoute
-  AppMapRoute: typeof AppMapRoute
   AppPagesRoute: typeof AppPagesRouteWithChildren
   AppRecordsRoute: typeof AppRecordsRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
@@ -790,7 +770,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppEntitiesRoute: AppEntitiesRouteWithChildren,
   AppHistoryRoute: AppHistoryRoute,
   AppLoginRoute: AppLoginRoute,
-  AppMapRoute: AppMapRoute,
   AppPagesRoute: AppPagesRouteWithChildren,
   AppRecordsRoute: AppRecordsRouteWithChildren,
   AppSettingsRoute: AppSettingsRouteWithChildren,

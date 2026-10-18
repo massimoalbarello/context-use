@@ -13,7 +13,6 @@ import type { OwnerRegistrationServiceContract } from '#backend/services/owner-r
 import {
   unusedAssetFacesService,
   unusedHistoryService,
-  unusedHypermediaGraphService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicSiteService,
@@ -122,7 +121,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     frontendAssetsService,
     entitiesService,
     healthService,
-    graphService: unusedHypermediaGraphService,
     retrievalService: unusedHypermediaRetrievalService,
     mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
@@ -162,15 +160,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
 
   await expectPublicRouteBoundary(app);
   expect(sessionChecks).toBe(1);
-
-  const graphResponse = await app.handle(
-    new Request(
-      `http://localhost/api/map/neighborhoods?${new URLSearchParams({
-        anchors: JSON.stringify([{ anchor: { readableId: 'owner' } }]),
-      })}`,
-    ),
-  );
-  expect(graphResponse.status).toBe(StatusMap.Unauthorized);
 
   const now = new Date();
   session = {
@@ -255,15 +244,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       }
     >;
   };
-  const mapNeighborhoods = openApi.paths?.['/api/map/neighborhoods'];
-  expect(mapNeighborhoods?.get?.parameters).toContainEqual(
-    expect.objectContaining({ in: 'query', name: 'anchors', required: true }),
-  );
-  expect(mapNeighborhoods?.get?.requestBody).toBeUndefined();
-  expect(mapNeighborhoods?.post).toBeUndefined();
-  expect(openApi.paths?.['/api/map/pages']?.get).toBeDefined();
-  expect(openApi.paths?.['/api/hypermedia/neighborhoods']).toBeUndefined();
-  expect(openApi.paths?.['/api/hypermedia/pages']).toBeUndefined();
   expect(openApi.paths?.['/api/hypermedia/search']?.get).toBeDefined();
   expect(openApi.components?.securitySchemes?.[API_KEY_SECURITY_SCHEME]).toMatchObject({
     type: 'http',
@@ -392,7 +372,6 @@ async function expectPublicRouteBoundary(app: ReturnType<typeof createApp>) {
       '/app/settings/public-site',
       '/app/settings/unknown',
       '/app/login',
-      '/app/map',
       '/app/pages',
       '/app/assets',
       '/app/entities',
@@ -438,7 +417,6 @@ async function expectUnknownRouteBoundary({
       '/publicity',
       '/public-assets',
       '/pages',
-      '/map',
       '/login',
       '/pages/example/unknown',
       '/missing.js',

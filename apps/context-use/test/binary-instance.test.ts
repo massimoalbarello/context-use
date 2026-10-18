@@ -77,7 +77,7 @@ test(
       expect(llms).toContain('# Orchard Notes');
       expect(llms).toContain('(https://notes.example.org/public)');
       for (const path of [
-        '/app/map',
+        '/app/pages',
         '/app/pages/example',
         '/app/settings/api-keys',
         '/app/mcp/authorize',

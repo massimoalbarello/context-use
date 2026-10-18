@@ -19,7 +19,6 @@ import {
   entityQueryOptions,
 } from '../../src/queries/entities';
 import { knowledgeSuggestionsQueryKey } from '../../src/queries/knowledge-suggestions';
-import { mapQueryKey } from '../../src/queries/map';
 import {
   pageDetailsQueryKey,
   pagePreviewQueryOptions,
@@ -49,7 +48,6 @@ test('page archive removes its unavailable detail without refetching it', async 
   });
   queryClient.setQueryData<unknown>(entityPreviewQueryKey, { readableId: 'alex-morgan' });
   queryClient.setQueryData<unknown>(assetPreviewQueryKey, { readableId: 'quarterly-chart' });
-  queryClient.setQueryData(mapQueryKey, { pages: [] });
 
   const archivedDetailObserver = new QueryObserver(queryClient, {
     queryKey: archivedDetailQueryKey,
@@ -86,7 +84,6 @@ test('page archive removes its unavailable detail without refetching it', async 
   ).toBe(true);
   expect(queryClient.getQueryState(entityPreviewQueryKey)?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(assetPreviewQueryKey)?.isInvalidated).toBe(true);
-  expect(queryClient.getQueryState(mapQueryKey)?.isInvalidated).toBe(true);
 
   unsubscribe();
 });
@@ -103,7 +100,6 @@ test('asset archive removes its unavailable detail and refreshes asset discovery
   });
   queryClient.setQueryData(assetsListQueryKey, { items: [] });
   queryClient.setQueryData([...assetSuggestionsQueryKey, 'quarter'], []);
-  queryClient.setQueryData(mapQueryKey, { pages: [] });
 
   settleArchivedAssetQueries({
     queryClient,
@@ -117,7 +113,6 @@ test('asset archive removes its unavailable detail and refreshes asset discovery
   expect(queryClient.getQueryState([...assetSuggestionsQueryKey, 'quarter'])?.isInvalidated).toBe(
     true,
   );
-  expect(queryClient.getQueryState(mapQueryKey)?.isInvalidated).toBe(true);
 });
 
 test('entity archive refreshes only its active collections and pickers', () => {
@@ -131,7 +126,6 @@ test('entity archive refreshes only its active collections and pickers', () => {
   queryClient.setQueryData([...pageDetailsQueryKey, 'project-brief'], {
     readableId: 'project-brief',
   });
-  queryClient.setQueryData(mapQueryKey, { pages: [] });
 
   settleArchivedEntityQueries({
     queryClient,
@@ -148,7 +142,6 @@ test('entity archive refreshes only its active collections and pickers', () => {
   expect(queryClient.getQueryState([...pageDetailsQueryKey, 'project-brief'])?.isInvalidated).toBe(
     false,
   );
-  expect(queryClient.getQueryState(mapQueryKey)?.isInvalidated).toBe(true);
 });
 
 test('archive conflict keeps and refreshes the still-available detail', () => {

@@ -44,7 +44,6 @@
     "@ilbertt/bun-sqlgen": "^0.5.1",
     "@modelcontextprotocol/client": "^2",
     "@modelcontextprotocol/server": "^2",
-    "@ncdai/react-wheel-picker": "^1.2.3",
     "@repo/ui": "workspace:*",
     "@simplewebauthn/browser": "13.3.0",
     "@simplewebauthn/server": "13.3.3",

@@ -10,7 +10,6 @@ import {
 import { facesQueryKey } from '../../queries/faces';
 import { historyQueryKey } from '../../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
-import { mapQueryKey } from '../../queries/map';
 import { pagesQueryKey } from '../../queries/pages';
 import { profileQueryKey } from '../../queries/profile';
 
@@ -29,7 +28,6 @@ function useEntityImageMutation<TVariables>({
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
         queryClient.invalidateQueries({ queryKey: assetsQueryKey }),
-        queryClient.invalidateQueries({ queryKey: mapQueryKey }),
         queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey }),
         queryClient.invalidateQueries({ queryKey: profileQueryKey }),
       ]);

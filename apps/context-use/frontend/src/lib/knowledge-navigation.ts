@@ -1,5 +1,5 @@
 export type KnowledgeCollection = 'entities' | 'pages' | 'assets' | 'records';
-export const MAIN_KNOWLEDGE_PATH = '/app/map' as const;
+export const MAIN_KNOWLEDGE_PATH = '/app/pages' as const;
 
 export function knowledgeResourceFromPath(
   pathname: string,
