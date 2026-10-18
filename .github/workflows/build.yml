@@ -105,7 +105,7 @@ jobs:
       - name: Set up nibrun CLI
         uses: nibrunhq/setup-cli@v1.0.1
         with:
-          version: '2026.10.14-2'
+          version: 'latest'
 
       - name: Deploy existing instance
         env:
