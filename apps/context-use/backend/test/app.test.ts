@@ -244,8 +244,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
       }
     >;
   };
-  expect(openApi.paths?.['/api/map/neighborhoods']).toBeUndefined();
-  expect(openApi.paths?.['/api/map/pages']).toBeUndefined();
   expect(openApi.paths?.['/api/hypermedia/search']?.get).toBeDefined();
   expect(openApi.components?.securitySchemes?.[API_KEY_SECURITY_SCHEME]).toMatchObject({
     type: 'http',

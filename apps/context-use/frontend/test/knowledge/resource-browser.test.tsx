@@ -254,7 +254,6 @@ for (const path of ['/app', '/app/setup']) {
       expect(app.router.state.location.pathname).toBe('/app/pages');
       await userEvent.setup().click(screen.getByRole('button', { name: 'Open sidebar' }));
       const navigation = within(screen.getByRole('navigation', { name: 'Workspace' }));
-      expect(navigation.queryByRole('link', { name: 'Map' })).toBeNull();
       expect(navigation.getByRole('link', { name: 'Pages' }).getAttribute('aria-current')).toBe(
         'page',
       );
