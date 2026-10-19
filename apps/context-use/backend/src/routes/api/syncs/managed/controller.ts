@@ -75,6 +75,17 @@ export function createManagedSyncsController(input: {
       },
     )
     .post(
+      '/providers/:providerId/reauthorize',
+      ({ user, params }) =>
+        input.syncs.reauthorize({ actorId: user.id, providerId: params.providerId }),
+      {
+        changeMessage: true,
+        params: ProviderParamsSchema,
+        response: { [StatusMap.OK]: t.Object({ authorizationUrl: t.String() }) },
+        detail: { tags: ['Syncs'], summary: 'Reauthorize an existing account' },
+      },
+    )
+    .post(
       '/:key',
       async ({ user, body, params }) => {
         await input.syncs.update({ actorId: user.id, key: params.key, action: body.action });

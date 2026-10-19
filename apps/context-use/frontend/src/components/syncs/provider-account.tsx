@@ -7,6 +7,7 @@ export function ProviderAccount(input: {
   pending: boolean;
   authorizationFailed: boolean;
   onConnect: () => void;
+  onReauthorize: () => void;
 }) {
   const { provider } = input;
   return (
@@ -18,11 +19,23 @@ export function ProviderAccount(input: {
             <Button size="lg" disabled={input.pending} onClick={input.onConnect}>
               Connect account
             </Button>
-          ) : provider.syncs.some((sync) => sync.state === 'disconnected') ? (
-            <Button size="lg" disabled={input.pending} onClick={input.onConnect}>
-              Start sync
-            </Button>
-          ) : null)
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {provider.syncs.some((sync) => sync.state === 'disconnected') && (
+                <Button size="lg" disabled={input.pending} onClick={input.onConnect}>
+                  Start sync
+                </Button>
+              )}
+              <Button
+                size="lg"
+                variant="outline"
+                disabled={input.pending}
+                onClick={input.onReauthorize}
+              >
+                Reauthorize account
+              </Button>
+            </div>
+          ))
         }
       >
         Account

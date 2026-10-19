@@ -43,6 +43,7 @@ function auth(): Auth {
 test('management rejects unauthenticated and cross-origin mutations; OAuth completion remains owner-bound', async () => {
   const completed: string[] = [];
   const configured: string[] = [];
+  const reauthorized: { actorId: string; providerId: string }[] = [];
   const services: ManagedSyncsServiceContract = {
     list: () => Promise.resolve([]),
     configureApp: ({ actorId }) => {
@@ -50,6 +51,10 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
       return Promise.resolve();
     },
     connect: () => Promise.resolve({ authorizationUrl: null }),
+    reauthorize: (input) => {
+      reauthorized.push(input);
+      return Promise.resolve({ authorizationUrl: 'https://github.com/login/oauth/authorize' });
+    },
     update: () => Promise.resolve(),
     completeConnection: ({ actorId }) => {
       completed.push(actorId);
@@ -92,6 +97,28 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
     );
   expect((await post('http://attacker')).status).toBe(StatusMap.Forbidden);
   expect((await post('http://host')).status).toBe(StatusMap.OK);
+  const reauthorize = ({ origin, cookie }: { origin: string; cookie?: string }) =>
+    app.handle(
+      new Request('http://host/api/syncs/managed/providers/github/reauthorize', {
+        method: 'POST',
+        headers: { origin, ...(cookie ? { cookie } : {}), 'content-type': 'application/json' },
+        body: JSON.stringify({
+          actorId: 'untrusted-body-actor',
+          changeMessage: 'Reauthorize GitHub',
+        }),
+      }),
+    );
+  expect((await reauthorize({ origin: 'http://host' })).status).toBe(StatusMap.Unauthorized);
+  expect((await reauthorize({ origin: 'http://attacker', cookie: 'owner-session' })).status).toBe(
+    StatusMap.Forbidden,
+  );
+  expect(reauthorized).toEqual([]);
+  const renewed = await reauthorize({ origin: 'http://host', cookie: 'owner-session' });
+  expect(renewed.status).toBe(StatusMap.OK);
+  expect(await renewed.json()).toEqual({
+    authorizationUrl: 'https://github.com/login/oauth/authorize',
+  });
+  expect(reauthorized).toEqual([{ actorId: OWNER_USER_ID, providerId: 'github' }]);
   const saveApp = ({
     origin,
     cookie,
@@ -158,6 +185,8 @@ test.each(['connected', 'failed'] as const)(
       list: () => Promise.resolve([]),
       configureApp: () => Promise.resolve(),
       connect: () => Promise.resolve({ authorizationUrl: null }),
+      reauthorize: () =>
+        Promise.resolve({ authorizationUrl: 'https://github.com/login/oauth/authorize' }),
       update: () => Promise.resolve(),
       completeConnection: ({ actorId }) => {
         completed.push(actorId);
