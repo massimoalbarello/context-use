@@ -52,6 +52,7 @@ export const unusedManagedSyncsService: ManagedSyncsServiceContract = {
   list: unexpectedCall,
   configureApp: unexpectedCall,
   connect: unexpectedCall,
+  reauthorize: unexpectedCall,
   completeConnection: unexpectedCall,
   update: unexpectedCall,
 };

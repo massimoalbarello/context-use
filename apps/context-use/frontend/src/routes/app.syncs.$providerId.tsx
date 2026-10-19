@@ -6,6 +6,7 @@ import { SyncQueryState } from '../components/syncs/query-state';
 import {
   useConfigureOAuthApp,
   useConnectSyncProvider,
+  useReauthorizeSyncProvider,
   useUpdateManagedSync,
 } from '../lib/hooks/use-managed-syncs';
 import { managedSyncsQueryOptions } from '../queries/managed-syncs';
@@ -32,6 +33,7 @@ function SyncProviderRoute() {
     refetchInterval: tab === 'sync' ? managedSyncsQueryOptions.refetchInterval : false,
   });
   const connect = useConnectSyncProvider();
+  const reauthorize = useReauthorizeSyncProvider();
   const configure = useConfigureOAuthApp();
   const update = useUpdateManagedSync();
   const provider = query.data?.find((item) => item.id === providerId);
@@ -52,15 +54,23 @@ function SyncProviderRoute() {
           provider={provider}
           tab={tab}
           authorizationFailed={authorization === 'failed'}
-          pending={connect.isPending || configure.isPending || update.isPending}
-          error={connect.error ?? update.error}
+          pending={
+            connect.isPending || reauthorize.isPending || configure.isPending || update.isPending
+          }
+          error={connect.error ?? reauthorize.error ?? update.error}
           appError={configure.error}
           onTabChange={(value) => {
             void navigate({ search: { tab: value } });
           }}
           onConnect={() => {
             connect.reset();
+            reauthorize.reset();
             connect.mutate(provider.id);
+          }}
+          onReauthorize={() => {
+            connect.reset();
+            reauthorize.reset();
+            reauthorize.mutate(provider.id);
           }}
           onSaveApp={async (credentials) => {
             await configure.mutateAsync({ providerId: provider.id, credentials });

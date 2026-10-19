@@ -52,6 +52,15 @@ export async function connectSyncProvider(providerId: string) {
   }
   return data;
 }
+export async function reauthorizeSyncProvider(providerId: string) {
+  const { data, error } = await api.api.syncs.managed.providers({ providerId }).reauthorize.post({
+    changeMessage: 'Reauthorized a sync provider',
+  });
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
+  return data;
+}
 export async function updateManagedSync(input: {
   key: string;
   action: 'pause' | 'resume' | 'run';
