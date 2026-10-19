@@ -85,7 +85,7 @@ export function createManagedSyncsController(input: {
         params: t.Object({ key: t.String({ maxLength: 128 }) }),
         body: ActionBodySchema,
         response: { [StatusMap.OK]: t.Null() },
-        detail: { tags: ['Syncs'], summary: 'Pause, resume, or run a sync' },
+        detail: { tags: ['Syncs'], summary: 'Pause, resume, run, or reprocess a sync' },
       },
     );
 }
