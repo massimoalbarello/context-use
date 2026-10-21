@@ -150,6 +150,41 @@ async function authenticate({
   );
 }
 
+async function addPasskey({
+  app,
+  passkey,
+  origin,
+  sessionCookie,
+}: {
+  app: AuthApp;
+  passkey: ReturnType<typeof testPasskey>;
+  origin: string;
+  sessionCookie: string;
+}) {
+  const options = await app.handle(
+    new Request(`${origin}/api/auth/passkey/generate-register-options?name=Additional%20passkey`, {
+      headers: { origin, cookie: sessionCookie },
+    }),
+  );
+  expect(options.status).toBe(OK_STATUS);
+  const body = await options.json();
+  const verification = await app.handle(
+    new Request(`${origin}/api/auth/passkey/verify-registration`, {
+      method: 'POST',
+      headers: {
+        origin,
+        cookie: `${sessionCookie}; ${challengeCookie(options)}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        response: passkey.registration({ origin, challenge: body.challenge }),
+        name: 'Additional passkey',
+      }),
+    }),
+  );
+  expect(verification.status).toBe(OK_STATUS);
+}
+
 test('a passkey survives adding, replacing and removing a custom domain after signup', async () => {
   await withAuthTestDatabase({
     run: async (database) => {
@@ -200,6 +235,79 @@ test('signup on a custom domain produces a passkey that also signs in on the ori
       const passkey = testPasskey(NIBRUN_HOSTNAME);
       await register({ app, passkey, origin: CUSTOM_ORIGIN });
       expect((await authenticate({ app, passkey, origin: NIBRUN_ORIGIN })).status).toBe(OK_STATUS);
+    },
+  });
+});
+
+test('owners can remove additional passkeys but retain their final sign-in credential', async () => {
+  await withAuthTestDatabase({
+    run: async (database) => {
+      const app = authApp({ database, baseUrl: NIBRUN_ORIGIN, nibrunHostname: NIBRUN_HOSTNAME });
+      const primary = testPasskey(NIBRUN_HOSTNAME);
+      const additional = testPasskey(NIBRUN_HOSTNAME);
+      await register({ app, passkey: primary, origin: NIBRUN_ORIGIN });
+
+      const primarySignIn = await authenticate({ app, passkey: primary, origin: NIBRUN_ORIGIN });
+      expect(primarySignIn.status).toBe(OK_STATUS);
+      const sessionCookie = challengeCookie(primarySignIn);
+      await addPasskey({ app, passkey: additional, origin: NIBRUN_ORIGIN, sessionCookie });
+
+      // Every registered credential is independently valid for the same owner.
+      expect((await authenticate({ app, passkey: additional, origin: NIBRUN_ORIGIN })).status).toBe(
+        OK_STATUS,
+      );
+
+      const list = await app.handle(
+        new Request(`${NIBRUN_ORIGIN}/api/auth/passkey/list-user-passkeys`, {
+          headers: { cookie: sessionCookie },
+        }),
+      );
+      expect(list.status).toBe(OK_STATUS);
+      const passkeys = await list.json();
+      expect(passkeys).toHaveLength(2);
+      const removals = await Promise.all(
+        passkeys.map((passkey: { id: string }) =>
+          app.handle(
+            new Request(`${NIBRUN_ORIGIN}/api/auth/passkey/delete-passkey`, {
+              method: 'POST',
+              headers: { cookie: sessionCookie, 'content-type': 'application/json' },
+              body: JSON.stringify({ id: passkey.id }),
+            }),
+          ),
+        ),
+      );
+      expect(removals.map((response) => response.status).sort()).toEqual([
+        OK_STATUS,
+        StatusMap['Bad Request'],
+      ]);
+
+      const retainedPasskeys = await database<{ id: string; credentialID: string }[]>`
+        select "id", "credentialID" from "auth_passkey" where "userId" = ${OWNER_USER_ID}
+      `;
+      expect(retainedPasskeys).toHaveLength(1);
+      const retained = retainedPasskeys[0];
+      if (!retained) {
+        throw new Error('Expected a retained passkey.');
+      }
+      const retainedAuthenticator = retained.credentialID === primary.id ? primary : additional;
+      expect(
+        (await authenticate({ app, passkey: retainedAuthenticator, origin: NIBRUN_ORIGIN })).status,
+      ).toBe(OK_STATUS);
+
+      const finalRemoval = await app.handle(
+        new Request(`${NIBRUN_ORIGIN}/api/auth/passkey/delete-passkey`, {
+          method: 'POST',
+          headers: { cookie: sessionCookie, 'content-type': 'application/json' },
+          body: JSON.stringify({ id: retained.id }),
+        }),
+      );
+      expect(finalRemoval.status).toBe(StatusMap['Bad Request']);
+      expect(await finalRemoval.json()).toMatchObject({ code: 'last_passkey' });
+      expect(
+        await database<{ credentialID: string }[]>`
+          select "credentialID" from "auth_passkey" where "userId" = ${OWNER_USER_ID}
+        `,
+      ).toEqual([{ credentialID: retained.credentialID }]);
     },
   });
 });
