@@ -6,6 +6,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Session } from '../src/lib/auth';
 import { ownerRegistrationQueryOptions } from '../src/queries/owner-registration';
+import * as passkeyQueries from '../src/queries/passkeys';
 import { userPasskeysQueryOptions } from '../src/queries/passkeys';
 import { type KnowledgeProfile, profileQueryOptions } from '../src/queries/profile';
 import { sessionQueryOptions } from '../src/queries/session';
@@ -38,10 +39,14 @@ async function passkeyWorld({
   signedIn,
   path,
   passkeys = [],
+  addPasskey = () => Promise.resolve(),
+  updatePasskey = () => Promise.resolve(),
 }: {
   signedIn: boolean;
   path: string;
   passkeys?: Passkey[];
+  addPasskey?: typeof passkeyQueries.addPasskey;
+  updatePasskey?: typeof passkeyQueries.updatePasskey;
 }) {
   const now = new Date();
   const session: Session = {
@@ -81,7 +86,14 @@ async function passkeyWorld({
   client.setQueryData(sessionQueryOptions.queryKey, signedIn ? session : null);
   client.setQueryData(profileQueryOptions.queryKey, signedIn ? profile : null);
   client.setQueryData(ownerRegistrationQueryOptions.queryKey, { ownerRegistered: false });
-  client.setQueryData(userPasskeysQueryOptions.queryKey, passkeys);
+  client.setQueryData(userPasskeysQueryOptions.queryKey, [...passkeys]);
+  const authMocks = [
+    spyOn(passkeyQueries, 'addPasskey').mockImplementation(addPasskey),
+    spyOn(passkeyQueries, 'updatePasskey').mockImplementation(updatePasskey),
+    spyOn(userPasskeysQueryOptions, 'queryFn').mockImplementation(() =>
+      Promise.resolve([...passkeys]),
+    ),
+  ];
   const fetchImplementation = Object.assign(
     (input: RequestInfo | URL) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
@@ -115,12 +127,18 @@ async function passkeyWorld({
         cleanup();
         client.clear();
         fetch.mockRestore();
+        for (const mock of authMocks) {
+          mock.mockRestore();
+        }
       },
     };
   } catch (error) {
     cleanup();
     client.clear();
     fetch.mockRestore();
+    for (const mock of authMocks) {
+      mock.mockRestore();
+    }
     throw error;
   }
 }
@@ -204,7 +222,120 @@ test('passkey settings keep the final registered passkey available for sign-in',
   });
   try {
     await screen.findByText('Laptop passkey');
-    expect(screen.getByText('Add another passkey before removing this one.')).toBeTruthy();
+    expect(screen.queryByText('Add another passkey before removing this one.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rename' })).toBeTruthy();
+  } finally {
+    world.dispose();
+  }
+});
+
+test('passkey names edit in place, discard cancelled drafts, and refresh after saving', async () => {
+  const passkeys = [passkeyFixture({ id: 'passkey-1', name: 'Laptop', createdAt: '2026-10-21' })];
+  const world = await passkeyWorld({
+    signedIn: true,
+    path: '/app/settings/passkeys',
+    passkeys,
+    updatePasskey: (input) => {
+      expect(input).toEqual({ id: 'passkey-1', name: 'Work laptop' });
+      passkeys[0] = { ...passkeys[0]!, name: input.name };
+      return Promise.resolve();
+    },
+  });
+  try {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Rename' }));
+    expect(screen.queryByRole('button', { name: 'Rename' })).toBeNull();
+    const input = screen.getByRole('textbox', { name: 'Passkey name' });
+    expect(input.getAttribute('value')).toBe('Laptop');
+    await user.clear(input);
+    await user.type(input, 'Discard this');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByText('Laptop')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Rename' }));
+    const nextInput = screen.getByRole('textbox', { name: 'Passkey name' });
+    expect(nextInput.getAttribute('value')).toBe('Laptop');
+    await user.clear(nextInput);
+    await user.type(nextInput, '  Work laptop  ');
+    await user.click(screen.getByRole('button', { name: 'Save passkey' }));
+    await screen.findByText('Work laptop');
+    expect(screen.queryByRole('textbox', { name: 'Passkey name' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rename' })).toBeTruthy();
+  } finally {
+    world.dispose();
+  }
+});
+
+test('failed passkey renames retain the draft and allow a retry', async () => {
+  const passkeys = [passkeyFixture({ id: 'passkey-1', name: '', createdAt: '2026-10-21' })];
+  let attempts = 0;
+  const world = await passkeyWorld({
+    signedIn: true,
+    path: '/app/settings/passkeys',
+    passkeys,
+    updatePasskey: (input) => {
+      expect(input).toEqual({ id: 'passkey-1', name: 'Phone' });
+      attempts++;
+      if (attempts === 1) {
+        return Promise.reject(new Error('Could not save the name.'));
+      }
+      passkeys[0] = { ...passkeys[0]!, name: input.name };
+      return Promise.resolve();
+    },
+  });
+  try {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Rename' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    const input = screen.getByRole('textbox', { name: 'Passkey name' });
+    await user.clear(input);
+    await user.type(input, '   ');
+    await user.click(screen.getByRole('button', { name: 'Save passkey' }));
+    await screen.findByText('Enter a name for this passkey.');
+    expect(attempts).toBe(0);
+    await user.clear(input);
+    await user.type(input, 'Phone');
+    await user.click(screen.getByRole('button', { name: 'Save passkey' }));
+    await screen.findByText('Could not save the name.');
+    expect(input.getAttribute('value')).toBe('Phone');
+    await user.click(screen.getByRole('button', { name: 'Save passkey' }));
+    await screen.findByText('Phone');
+    expect(attempts).toBe(2);
+    expect(screen.queryByRole('alert')).toBeNull();
+  } finally {
+    world.dispose();
+  }
+});
+
+test('adding a passkey validates its name and refreshes the list after registration', async () => {
+  const passkeys: Passkey[] = [];
+  let registrations = 0;
+  const world = await passkeyWorld({
+    signedIn: true,
+    path: '/app/settings/passkeys',
+    passkeys,
+    addPasskey: (name) => {
+      expect(name).toBe('Phone');
+      registrations++;
+      passkeys.push(passkeyFixture({ id: 'passkey-1', name, createdAt: '2026-10-21' }));
+      return Promise.resolve();
+    },
+  });
+  try {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Add passkey' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Add passkey' }));
+    await screen.findByText('Enter a name for this passkey.');
+    expect(registrations).toBe(0);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('textbox', { name: 'Passkey name' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Add passkey' }));
+    await user.type(screen.getByRole('textbox', { name: 'Passkey name' }), '  Phone  ');
+    await user.click(screen.getByRole('button', { name: 'Add passkey' }));
+    await screen.findByText('Phone');
+    expect(registrations).toBe(1);
+    expect(screen.queryByRole('textbox', { name: 'Passkey name' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
   } finally {
     world.dispose();
