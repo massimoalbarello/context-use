@@ -2,6 +2,7 @@ import { getAuthenticatorName } from '@better-auth/passkey';
 import { Button } from '@repo/ui/button';
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { Plus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -41,22 +42,24 @@ function PasskeySettings() {
     mutationFn: deletePasskey,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userPasskeysQueryKey }),
   });
-  const pending = add.isPending || remove.isPending;
 
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-10 px-5 py-10 md:px-10 md:py-12">
-      <header className="flex flex-wrap items-center justify-between gap-4">
+      <header>
         <h1 className="font-semibold text-3xl tracking-tight">Passkeys</h1>
-        <Button type="button" size="lg" disabled={pending} onClick={() => add.mutate()}>
-          {add.isPending ? 'Adding…' : 'Add passkey'}
-        </Button>
       </header>
 
       <section className="grid gap-4" aria-labelledby="registered-passkeys-heading">
         <div className="grid gap-1">
-          <h2 id="registered-passkeys-heading" className="font-semibold text-xl">
-            Registered passkeys
-          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 id="registered-passkeys-heading" className="font-semibold text-xl">
+              Registered passkeys
+            </h2>
+            <Button type="button" size="lg" disabled={add.isPending} onClick={() => add.mutate()}>
+              <Plus data-icon="inline-start" aria-hidden="true" />
+              {add.isPending ? 'Adding…' : 'Add passkey'}
+            </Button>
+          </div>
           <p className="text-muted-foreground text-sm">
             Add a passkey on another device so you can use it to sign in to this Context Use
             instance.
@@ -90,7 +93,7 @@ function PasskeySettings() {
                                 type="button"
                                 variant="destructive"
                                 size="lg"
-                                disabled={pending}
+                                disabled={removing}
                               >
                                 {removing ? 'Removing…' : 'Remove'}
                               </Button>
@@ -105,7 +108,7 @@ function PasskeySettings() {
                             <AlertDialogFooter>
                               <AlertDialogClose
                                 render={
-                                  <Button variant="outline" disabled={pending}>
+                                  <Button variant="outline" disabled={removing}>
                                     Cancel
                                   </Button>
                                 }
@@ -114,7 +117,7 @@ function PasskeySettings() {
                                 render={
                                   <Button
                                     variant="destructive"
-                                    disabled={pending}
+                                    disabled={removing}
                                     onClick={() => remove.mutate(passkey.id)}
                                   >
                                     Remove passkey
