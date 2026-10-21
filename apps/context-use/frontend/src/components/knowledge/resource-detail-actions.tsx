@@ -1,7 +1,7 @@
 import { Button } from '@repo/ui/button';
 import type { ReactNode } from 'react';
 
-type ResourceName = 'entity' | 'page' | 'asset' | 'OAuth app';
+type ResourceName = 'entity' | 'page' | 'asset' | 'OAuth app' | 'passkey';
 
 type ResourceDetailActionsProps = { resource: ResourceName } & (
   | {
@@ -36,7 +36,7 @@ export function ResourceDetailActions(props: ResourceDetailActionsProps) {
     <>
       {props.publicationActions}
       <Button size="lg" type="button" onClick={props.onEdit}>
-        Edit {props.resource}
+        {props.resource === 'passkey' ? 'Rename' : `Edit ${props.resource}`}
       </Button>
       {props.children}
     </>

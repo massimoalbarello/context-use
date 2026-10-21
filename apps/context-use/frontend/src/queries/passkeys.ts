@@ -28,10 +28,17 @@ export const userPasskeysQueryOptions = queryOptions({
   },
 });
 
-export async function addPasskey(): Promise<void> {
-  const { error } = await authClient.passkey.addPasskey();
+export async function addPasskey(name: string): Promise<void> {
+  const { error } = await authClient.passkey.addPasskey({ name });
   if (error) {
     throw new Error(passkeyErrorMessage({ error, fallback: 'Could not add your passkey.' }));
+  }
+}
+
+export async function updatePasskey(input: { id: string; name: string }): Promise<void> {
+  const { error } = await authClient.passkey.updatePasskey(input);
+  if (error) {
+    throw new Error(passkeyErrorMessage({ error, fallback: 'Could not rename this passkey.' }));
   }
 }
 
