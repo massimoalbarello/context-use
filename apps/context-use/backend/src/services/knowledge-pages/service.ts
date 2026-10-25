@@ -1,3 +1,4 @@
+import { createLogger } from '#backend/lib/logger.ts';
 import type { StorageClient } from '#backend/lib/storage/storage.ts';
 import { readVerifiedText } from '#backend/lib/storage/verified-file.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
@@ -42,6 +43,7 @@ function contentHash(markdown: string): string {
 }
 
 export class KnowledgePagesService {
+  private readonly logger = createLogger('knowledge-pages');
   private readonly pages: KnowledgePagesRepositoryContract;
   private readonly storage: StorageClient;
 
@@ -309,13 +311,53 @@ export class KnowledgePagesService {
     }
     if (result.state !== 'updated') {
       await this.storage.delete(storageKey);
-      return result;
+      if (result.state !== 'unchanged') {
+        return result;
+      }
     }
+    await this.deletePrunedRevisionBlobs({ ownerId: input.ownerId, pageId: result.page.id });
     const page = await this.detail({ ownerId: input.ownerId, readableId: input.readableId });
     if (!page) {
       throw new Error('Updated knowledge page could not be read');
     }
     return { state: 'saved', page };
+  }
+
+  private async deletePrunedRevisionBlobs(input: {
+    ownerId: string;
+    pageId: string;
+  }): Promise<void> {
+    const batchSize = 100;
+    let afterStorageKey = '';
+    try {
+      while (true) {
+        const keys = await this.pages.pendingRevisionBlobDeletions({
+          ...input,
+          afterStorageKey,
+          limit: batchSize,
+        });
+        if (keys.length === 0) {
+          return;
+        }
+        for (const storageKey of keys) {
+          try {
+            if (await this.storage.exists(storageKey)) {
+              await this.storage.delete(storageKey);
+            }
+            await this.pages.completeRevisionBlobDeletion({ ...input, storageKey });
+          } catch {
+            this.logger.warn(
+              'Could not remove an obsolete page revision; cleanup will retry on the next save.',
+            );
+          }
+          afterStorageKey = storageKey;
+        }
+      }
+    } catch {
+      this.logger.warn(
+        'Could not read pending page revision deletions; cleanup will retry on the next save.',
+      );
+    }
   }
 
   archive(input: {

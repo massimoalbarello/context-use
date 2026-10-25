@@ -188,6 +188,12 @@ export class PublicationApprovalsRepository implements PublicationApprovalsRepos
           ${request.readableId}, ${request.action}, ${revisionNumber}, ${expectedState}, ${approval.expiresAt}
         from "auth_session" session
         where session."id" = ${sessionId} and session."userId" = ${request.ownerId} and session."expiresAt" > ${now}
+          and (${request.resourceType} != 'page' or ${request.action} != 'publish' or exists (
+            select 1 from "knowledge_page_revision" revision
+            join "knowledge_page" page on page."id" = revision."page_id" and page."owner_id" = revision."owner_id"
+            where page."owner_id" = ${request.ownerId} and page."readable_id" = ${request.readableId}
+              and page."archived_at" is null and revision."revision_number" = ${revisionNumber}
+          ))
         returning "id"
       `;
       return rows.length ? approval : null;
