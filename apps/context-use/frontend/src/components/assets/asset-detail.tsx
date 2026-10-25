@@ -13,6 +13,7 @@ import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
 import { EntityLink } from '../entities/entity-link';
 import { AssetFaces } from '../faces/asset-faces';
+import { ArchivedResourceDetail } from '../knowledge/archived-resource-detail';
 import { DetailHeader, DetailShell } from '../knowledge/detail-shell';
 import { ResourceArchiveAction } from '../knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
@@ -184,6 +185,20 @@ export function AssetDetail({ id, onArchived }: { id: string; onArchived: () => 
       <p className="p-8 text-muted-foreground text-sm" role="status">
         Loading asset…
       </p>
+    );
+  }
+  if (asset.archivedAt) {
+    return (
+      <ArchivedResourceDetail
+        resourceType="asset"
+        readableId={asset.readableId}
+        archivedAt={asset.archivedAt}
+        onUnarchived={onArchived}
+      >
+        <ResourceName>{asset.name}</ResourceName>
+        <AssetMedia asset={asset} className="max-h-[32rem] w-full rounded-lg object-contain" />
+        <AssetFileActions readableId={asset.readableId} includeArchived />
+      </ArchivedResourceDetail>
     );
   }
   return <AssetDetailContent key={asset.readableId} asset={asset} onArchived={onArchived} />;

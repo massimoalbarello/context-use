@@ -20,7 +20,12 @@ function requestUrl(input: Parameters<typeof globalThis.fetch>[0]) {
 }
 
 function collectionResponse({ url, item }: { url: URL; item: unknown }) {
-  const items = url.searchParams.get('visibility') === 'public' ? [] : [item];
+  const archived = !!(item && typeof item === 'object' && 'archivedAt' in item && item.archivedAt);
+  const items =
+    url.searchParams.get('visibility') === 'public' ||
+    (url.searchParams.get('status') === 'archived') !== archived
+      ? []
+      : [item];
   return { items, total: items.length, nextOffset: null };
 }
 
@@ -28,6 +33,7 @@ async function renderResourceBrowser({
   path = '/app/pages',
   unpublishedPage = false,
   entityPagesResponse,
+  archivedResource,
   publicationResponse = (url) =>
     Response.json({
       resourceType: url.pathname.split('/')[3],
@@ -37,12 +43,14 @@ async function renderResourceBrowser({
     }),
 }: {
   path?: string;
+  archivedResource?: 'entity' | 'page' | 'asset';
   unpublishedPage?: boolean;
   publicationResponse?: (url: URL) => Response | Promise<Response>;
   entityPagesResponse?: (input: { url: URL; page: KnowledgePage }) => Response;
 } = {}) {
   const timestamp = new Date('2026-01-01T00:00:00Z');
   const entity: EntityDetail = {
+    archivedAt: null,
     publishedAt: null,
     readableId: 'owner',
     name: 'Owner',
@@ -55,6 +63,7 @@ async function renderResourceBrowser({
     pages: [],
   };
   const asset: Asset = {
+    archivedAt: null,
     publishedAt: null,
     readableId: 'chart',
     name: 'Launch chart',
@@ -80,6 +89,7 @@ async function renderResourceBrowser({
     source: { provider: 'notion', kind: 'note', id: 'source-record', url: null },
   };
   const page: KnowledgePage = {
+    archivedAt: null,
     publishedAt: unpublishedPage ? timestamp.toISOString() : null,
     publishedRevisionNumber: unpublishedPage ? 1 : null,
     readableId: 'launch',
@@ -106,8 +116,13 @@ async function renderResourceBrowser({
     assetUsages: [],
     revisions: [],
   };
+  const archived = { entity, asset, page };
+  if (archivedResource) {
+    archived[archivedResource].archivedAt = timestamp;
+  }
   entity.pages = [
     {
+      archivedAt: null,
       publishedAt: null,
       publishedRevisionNumber: null,
       readableId: page.readableId,
@@ -147,70 +162,84 @@ async function renderResourceBrowser({
   const requests: URL[] = [];
   let failedResource = false;
   let pendingMilestones: Promise<void> | undefined;
+  function resourceResponse(url: URL) {
+    if (url.pathname.startsWith('/api/publications/')) {
+      return Promise.resolve(publicationResponse(url));
+    }
+    if (url.pathname === '/api/pages' && url.searchParams.has('entityReadableId')) {
+      return Promise.resolve(
+        entityPagesResponse?.({ url, page }) ??
+          Response.json(collectionResponse({ url, item: page })),
+      );
+    }
+    if (
+      url.pathname === '/api/pages/milestones' ||
+      url.pathname === '/api/pages/milestones/preview'
+    ) {
+      return (pendingMilestones ?? Promise.resolve()).then(() =>
+        Response.json({
+          ...page,
+          readableId: 'milestones',
+          title: 'Milestones',
+          markdown: '# Milestones\n\n## Delivery\n\nLaunch delivery details.',
+        }),
+      );
+    }
+    if (url.pathname === '/api/records/research' && failedResource) {
+      return Promise.resolve(
+        Response.json({ error: 'Record temporarily unavailable' }, { status: 503 }),
+      );
+    }
+    const responses: Record<string, unknown> = {
+      '/api/hypermedia/search': { results: [], totalMatches: 0 },
+      '/api/pages': collectionResponse({ url, item: page }),
+      '/api/entities': collectionResponse({ url, item: entity }),
+      '/api/assets': collectionResponse({ url, item: asset }),
+      '/api/records': {
+        items: [record],
+        filterOptions: { providers: ['notion'], kinds: ['note'] },
+        nextOffset: null,
+      },
+      '/api/pages/launch': page,
+      '/api/pages/launch/preview': page,
+      '/api/entities/owner': entity,
+      '/api/entities/owner/preview': {
+        archivedAt: entity.archivedAt,
+        name: entity.name,
+        description: entity.description,
+        image: entity.image,
+      },
+      '/api/assets/chart': asset,
+      '/api/assets/chart/preview': {
+        archivedAt: asset.archivedAt,
+        readableId: asset.readableId,
+        name: asset.name,
+        mediaType: asset.mediaType,
+        extension: asset.extension,
+        sizeBytes: asset.sizeBytes,
+      },
+      '/api/records/research': record,
+    };
+    if (responses[url.pathname]) {
+      return Promise.resolve(Response.json(responses[url.pathname]));
+    }
+    throw new Error(`Unexpected API request ${url.pathname}`);
+  }
   const fetch = spyOn(globalThis, 'fetch').mockImplementation(
     Object.assign(
       (input: Parameters<typeof globalThis.fetch>[0]) => {
         const url = requestUrl(input);
         requests.push(url);
-        if (url.pathname.startsWith('/api/publications/')) {
-          return Promise.resolve(publicationResponse(url));
-        }
-        if (url.pathname === '/api/pages' && url.searchParams.has('entityReadableId')) {
-          return Promise.resolve(
-            entityPagesResponse?.({ url, page }) ??
-              Response.json(collectionResponse({ url, item: page })),
+        if (url.pathname.endsWith('/unarchive')) {
+          const resource = Object.values(archived).find((resource) =>
+            url.pathname.includes(`/${resource.readableId}/`),
           );
+          if (resource) {
+            resource.archivedAt = null;
+          }
+          return Promise.resolve(new Response(null, { status: 204 }));
         }
-        if (
-          url.pathname === '/api/pages/milestones' ||
-          url.pathname === '/api/pages/milestones/preview'
-        ) {
-          return (pendingMilestones ?? Promise.resolve()).then(() =>
-            Response.json({
-              ...page,
-              readableId: 'milestones',
-              title: 'Milestones',
-              markdown: '# Milestones\n\n## Delivery\n\nLaunch delivery details.',
-            }),
-          );
-        }
-        if (url.pathname === '/api/records/research' && failedResource) {
-          return Promise.resolve(
-            Response.json({ error: 'Record temporarily unavailable' }, { status: 503 }),
-          );
-        }
-        const responses: Record<string, unknown> = {
-          '/api/hypermedia/search': { results: [], totalMatches: 0 },
-          '/api/pages': collectionResponse({ url, item: page }),
-          '/api/entities': collectionResponse({ url, item: entity }),
-          '/api/assets': collectionResponse({ url, item: asset }),
-          '/api/records': {
-            items: [record],
-            filterOptions: { providers: ['notion'], kinds: ['note'] },
-            nextOffset: null,
-          },
-          '/api/pages/launch': page,
-          '/api/pages/launch/preview': page,
-          '/api/entities/owner': entity,
-          '/api/entities/owner/preview': {
-            name: entity.name,
-            description: entity.description,
-            image: entity.image,
-          },
-          '/api/assets/chart': asset,
-          '/api/assets/chart/preview': {
-            readableId: asset.readableId,
-            name: asset.name,
-            mediaType: asset.mediaType,
-            extension: asset.extension,
-            sizeBytes: asset.sizeBytes,
-          },
-          '/api/records/research': record,
-        };
-        if (responses[url.pathname]) {
-          return Promise.resolve(Response.json(responses[url.pathname]));
-        }
-        throw new Error(`Unexpected API request ${url.pathname}`);
+        return resourceResponse(url);
       },
       { preconnect: globalThis.fetch.preconnect },
     ),
@@ -498,7 +527,7 @@ for (const { kind, id, name, edit, relationships } of [
         app.requests
           .filter((url) => url.pathname === path || url.pathname === `${path}/preview`)
           .map((url) => url.pathname + url.search),
-      ).toEqual([`${path}/preview`]);
+      ).toEqual([`${path}/preview?includeArchived=true`]);
       await user.click(screen.getByRole('button', { name: 'Expand' }));
       await screen.findByRole('button', { name: edit });
       expect(screen.getByText(relationships)).toBeTruthy();
@@ -507,7 +536,7 @@ for (const { kind, id, name, edit, relationships } of [
         app.requests
           .filter((url) => url.pathname === path || url.pathname === `${path}/preview`)
           .map((url) => url.pathname + url.search),
-      ).toEqual([`${path}/preview`, path]);
+      ).toEqual([`${path}/preview?includeArchived=true`, `${path}?includeArchived=true`]);
     } finally {
       app.dispose();
     }
@@ -905,6 +934,122 @@ test('unpublished revision tag opens revisions from the collection and restores 
       await screen.findByRole('complementary', { name: 'Knowledge page preview' }),
     ).toBeTruthy();
     expect(app.router.state.location.search.view).toBeUndefined();
+  } finally {
+    app.dispose();
+  }
+});
+
+for (const { kind, collection, title, id } of [
+  { kind: 'page', collection: 'pages', title: 'Launch plan', id: 'launch' },
+  { kind: 'entity', collection: 'entities', title: 'Owner', id: 'owner' },
+  { kind: 'asset', collection: 'assets', title: 'Launch chart', id: 'chart' },
+] as const) {
+  test(`${collection} can preview archived resources and unarchive only in full detail`, async () => {
+    const app = await renderResourceBrowser({
+      path: `/app/${collection}?status=archived&visibility=private`,
+      archivedResource: kind,
+    });
+    try {
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: `Filter ${collection}` }));
+      expect(screen.getByRole('tab', { name: 'Archived', selected: true })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'Private', selected: true })).toBeTruthy();
+      expect(app.router.state.location.search).toMatchObject({
+        status: 'archived',
+        visibility: 'private',
+      });
+      await user.keyboard('{Escape}');
+      await user.click(
+        within(
+          screen.getByRole('region', {
+            name:
+              collection === 'pages' ? 'Pages' : collection === 'entities' ? 'Entities' : 'Assets',
+          }),
+        ).getByRole('link', { name: new RegExp(title) }),
+      );
+      const preview = screen.getByRole('complementary', { name: /preview/ });
+      await within(preview).findByText('Archived');
+      expect(within(preview).queryByRole('button', { name: 'Unarchive' })).toBeNull();
+      await user.click(within(preview).getByRole('button', { name: 'Expand' }));
+      await screen.findByRole('button', { name: 'Unarchive' });
+      expect(screen.queryByRole('button', { name: `Edit ${kind}` })).toBeNull();
+      await user.click(screen.getByRole('button', { name: 'Unarchive' }));
+      await waitFor(() => expect(app.router.state.location.search.resourceId).toBeUndefined());
+      await screen.findByText(
+        `${kind === 'page' ? 'Page' : kind === 'entity' ? 'Entity' : 'Asset'} unarchived`,
+      );
+      expect(
+        app.requests.some((url) => url.pathname === `/api/${collection}/${id}/unarchive`),
+      ).toBe(true);
+      expect(
+        app.requests.some(
+          (url) =>
+            url.pathname === `/api/${collection}` && url.searchParams.get('status') === 'archived',
+        ),
+      ).toBe(true);
+      await user.click(screen.getByRole('button', { name: `View ${kind}` }));
+      await screen.findByRole('button', { name: `Edit ${kind}` });
+      expect(app.router.state.location.pathname).toBe(`/app/${collection}/${id}`);
+    } finally {
+      app.dispose();
+    }
+  });
+
+  test(`${collection} keeps archived and public filters selectable and shows no matches`, async () => {
+    const app = await renderResourceBrowser({
+      path: `/app/${collection}?status=archived&visibility=public`,
+      archivedResource: kind,
+    });
+    try {
+      const user = userEvent.setup();
+      expect(await screen.findByText(`No ${collection} match these filters.`)).toBeTruthy();
+      expect(app.router.state.location.search).toMatchObject({
+        status: 'archived',
+        visibility: 'public',
+      });
+      expect(
+        app.requests.some(
+          (url) =>
+            url.pathname === `/api/${collection}` &&
+            url.searchParams.get('status') === 'archived' &&
+            url.searchParams.get('visibility') === 'public',
+        ),
+      ).toBe(true);
+      await user.click(screen.getByRole('button', { name: `Filter ${collection}` }));
+      expect(screen.getByRole('tab', { name: 'Archived', selected: true })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'Public', selected: true })).toBeTruthy();
+      await user.click(screen.getByRole('tab', { name: 'Private' }));
+      await waitFor(() => expect(app.router.state.location.search.visibility).toBe('private'));
+      await within(
+        screen.getByRole('region', {
+          name: collection.charAt(0).toUpperCase() + collection.slice(1),
+        }),
+      ).findByRole('link', { name: new RegExp(title) });
+      expect(app.router.state.location.search.status).toBe('archived');
+      await user.click(screen.getByRole('tab', { name: 'Public' }));
+      expect(await screen.findByText(`No ${collection} match these filters.`)).toBeTruthy();
+      await user.click(screen.getByRole('tab', { name: 'Active' }));
+      await waitFor(() => expect(app.router.state.location.search.status).toBeUndefined());
+      expect(app.router.state.location.search.visibility).toBe('public');
+    } finally {
+      app.dispose();
+    }
+  });
+}
+
+test('changing status preserves visibility and page search criteria while clearing selection', async () => {
+  const app = await renderResourceBrowser({
+    path: '/app/pages?visibility=public&interval=with&resource=page&resourceId=launch',
+  });
+  try {
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Filter pages' }));
+    await user.click(screen.getByRole('tab', { name: 'Archived' }));
+    await waitFor(() => expect(app.router.state.location.search.status).toBe('archived'));
+    expect(app.router.state.location.search.visibility).toBe('public');
+    expect(app.router.state.location.search.interval).toBe('with');
+    expect(app.router.state.location.search.resourceId).toBeUndefined();
+    expect(screen.getByRole('tab', { name: 'Public', selected: true })).toBeTruthy();
   } finally {
     app.dispose();
   }

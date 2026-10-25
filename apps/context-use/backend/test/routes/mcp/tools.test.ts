@@ -57,6 +57,7 @@ function unexpectedCall(): never {
 }
 
 const entity: Entity = {
+  archivedAt: null,
   publicId: null,
   publishedAt: null,
   id: INTERNAL_ENTITY_ID,
@@ -71,6 +72,7 @@ const entity: Entity = {
 };
 
 const page: KnowledgePage = {
+  archivedAt: null,
   publicId: null,
   publishedAt: null,
   publishedRevisionNumber: null,
@@ -112,6 +114,7 @@ const unusedAssetsService: AssetsServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   updateName: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
   content: unexpectedCall,
 };
@@ -124,6 +127,7 @@ const unusedEntitiesService: EntitiesServiceContract = {
   update: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -135,6 +139,7 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 

@@ -39,6 +39,7 @@ async function renderInteractivePreview(onClose: () => void) {
       }),
     );
     queryClient.setQueryData(pagePreviewQueryOptions(selection.readableId).queryKey, {
+      archivedAt: null,
       publishedAt: null,
       publishedRevisionNumber: null,
       readableId: selection.readableId,

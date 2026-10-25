@@ -10,6 +10,7 @@ import type { KnowledgePage } from '../../queries/pages';
 import { publicationStatusQueryOptions } from '../../queries/publications';
 import { AssetLink } from '../assets/asset-link';
 import { EntityLink } from '../entities/entity-link';
+import { ArchivedResourceDetail } from '../knowledge/archived-resource-detail';
 import { DetailHeader, DetailShell } from '../knowledge/detail-shell';
 import { ResourceArchiveAction } from '../knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
@@ -168,6 +169,22 @@ export function KnowledgePageDetail({
       <p className="p-8 text-muted-foreground text-sm" role="status">
         Loading page…
       </p>
+    );
+  }
+  if (page.archivedAt) {
+    return (
+      <ArchivedResourceDetail
+        resourceType="page"
+        readableId={page.readableId}
+        archivedAt={page.archivedAt}
+        onUnarchived={onArchived}
+      >
+        <KnowledgePageMarkdown
+          markdown={page.markdown}
+          mentions={page.mentions}
+          recordReferences={page.recordReferences}
+        />
+      </ArchivedResourceDetail>
     );
   }
   return (

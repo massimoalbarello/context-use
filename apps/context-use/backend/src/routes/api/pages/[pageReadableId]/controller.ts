@@ -14,7 +14,9 @@ import {
 import {
   ResourceInUseResponseSchema,
   resourceInUseResponse,
+  UnarchiveBlockedSchema,
 } from '#backend/routes/api/resource-archiving/model.ts';
+import { ResourceReadQuerySchema } from '#backend/routes/api/resource-archiving/state-model.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import {
   KnowledgePageDiffQuerySchema,
@@ -96,10 +98,11 @@ export function createPageReadableIdController({
     )
     .get(
       '/pages/:pageReadableId/preview',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const page = await pagesService.preview({
           ownerId: user.id,
           readableId: params.pageReadableId,
+          includeArchived: query.includeArchived,
         });
         return page
           ? status(StatusMap.OK, knowledgePagePreviewResponse(page))
@@ -108,6 +111,7 @@ export function createPageReadableIdController({
       {
         detail: { tags: ['Pages'], summary: 'Read a knowledge page preview' },
         params: KnowledgePageParamsSchema,
+        query: ResourceReadQuerySchema,
         response: {
           [StatusMap.OK]: KnowledgePagePreviewSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
@@ -116,10 +120,11 @@ export function createPageReadableIdController({
     )
     .get(
       '/pages/:pageReadableId',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const page = await pagesService.detail({
           ownerId: user.id,
           readableId: params.pageReadableId,
+          includeArchived: query.includeArchived,
         });
         return page
           ? status(StatusMap.OK, knowledgePageResponse(page))
@@ -128,9 +133,39 @@ export function createPageReadableIdController({
       {
         detail: { tags: ['Pages'], summary: 'Read a knowledge page and its links' },
         params: KnowledgePageParamsSchema,
+        query: ResourceReadQuerySchema,
         response: {
           [StatusMap.OK]: KnowledgePageSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .put(
+      '/pages/:pageReadableId/unarchive',
+      async ({ body, params, user, status }) => {
+        const result = await pagesService.unarchive({
+          change: { clientName: null, message: body.changeMessage },
+          ownerId: user.id,
+          readableId: params.pageReadableId,
+        });
+        if (result.state === 'dependencies_archived') {
+          return status(StatusMap.Conflict, {
+            error: 'Unarchive these resources first.',
+            blockers: result.blockers,
+          });
+        }
+        return result.state === 'unarchived'
+          ? status(StatusMap['No Content'], undefined)
+          : status(StatusMap['Not Found'], { error: 'Page not found' });
+      },
+      {
+        changeMessage: true,
+        detail: { tags: ['Pages'], summary: 'Unarchive a page' },
+        params: KnowledgePageParamsSchema,
+        response: {
+          [StatusMap['No Content']]: t.Void(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: UnarchiveBlockedSchema,
         },
       },
     )

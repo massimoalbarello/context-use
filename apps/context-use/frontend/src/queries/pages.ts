@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { KnowledgePageIntervalFilter } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
+import type { ResourceStatus, UnarchiveResult } from '#backend/models/resource-archiving/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
@@ -14,6 +15,7 @@ export type KnowledgePageListFilters = {
   dateRange?: CalendarDateRange;
   query?: string;
   interval?: KnowledgePageIntervalFilter;
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
 };
 
@@ -141,11 +143,13 @@ async function pageSearchPage({
   limit,
   interval,
   time,
+  status,
   visibility,
 }: {
   query: string;
   limit?: number;
   interval?: KnowledgePageIntervalFilter;
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
   time?: string;
 }): Promise<KnowledgePagePage> {
@@ -155,6 +159,7 @@ async function pageSearchPage({
     limit,
     interval,
     time,
+    status,
     visibility,
   });
   return {
@@ -170,21 +175,28 @@ export function pagesQueryOptions({
   dateRange,
   query,
   interval,
+  status,
   visibility,
 }: KnowledgePageListFilters = {}) {
   return infiniteQueryOptions({
     queryKey: [
       ...pagesListQueryKey,
-      { dateRange: dateRange ?? null, query, interval, visibility: visibility ?? 'all' },
+      {
+        dateRange: dateRange ?? null,
+        query,
+        interval,
+        status: status ?? 'active',
+        visibility: visibility ?? 'all',
+      },
     ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const time = dateRange ? calendarDateRangeExpression(dateRange) : undefined;
       if (query?.trim()) {
-        return pageSearchPage({ query, interval, time, visibility });
+        return pageSearchPage({ query, interval, time, status, visibility });
       }
       const { data, error } = await api.api.pages.get({
-        query: { offset: pageParam, time, interval, visibility },
+        query: { status, offset: pageParam, time, interval, visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
@@ -216,7 +228,9 @@ export function pageQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...pageDetailsQueryKey, readableId],
     queryFn: async () => {
-      const { data, error } = await api.api.pages({ pageReadableId: readableId }).get();
+      const { data, error } = await api.api
+        .pages({ pageReadableId: readableId })
+        .get({ query: { includeArchived: true } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -229,7 +243,9 @@ export function pagePreviewQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...pagePreviewsQueryKey, readableId],
     queryFn: async () => {
-      const { data, error } = await api.api.pages({ pageReadableId: readableId }).preview.get();
+      const { data, error } = await api.api
+        .pages({ pageReadableId: readableId })
+        .preview.get({ query: { includeArchived: true } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -274,4 +290,21 @@ export async function archivePage({
     throw new Error(apiErrorMessage(error));
   }
   return { state: 'archived' };
+}
+
+export async function unarchivePage({
+  readableId,
+}: {
+  readableId: string;
+}): Promise<UnarchiveResult> {
+  const { error } = await api.api
+    .pages({ pageReadableId: readableId })
+    .unarchive.put({ changeMessage: 'Unarchived page from the dashboard' });
+  if (error) {
+    if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
+      return { state: 'dependencies_archived', blockers: error.value.blockers };
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { state: 'unarchived' };
 }

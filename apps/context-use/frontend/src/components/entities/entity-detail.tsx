@@ -14,6 +14,7 @@ import { EntityImageEditor } from '../entities/entity-image-editor';
 import { EntityAvatar } from '../entities/entity-link';
 import { EntityPageSections } from '../entities/entity-page-sections';
 import { PersonImages } from '../faces/person-faces';
+import { ArchivedResourceDetail } from '../knowledge/archived-resource-detail';
 import { DetailHeader, DetailShell } from '../knowledge/detail-shell';
 import { ResourceArchiveAction } from '../knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
@@ -43,6 +44,24 @@ export function EntityDetail({ id, onArchived }: { id: string; onArchived: () =>
       <p className="p-8 text-muted-foreground text-sm" role="status">
         Loading entity…
       </p>
+    );
+  }
+  if (entity.archivedAt) {
+    return (
+      <ArchivedResourceDetail
+        resourceType="entity"
+        readableId={entity.readableId}
+        archivedAt={entity.archivedAt}
+        onUnarchived={onArchived}
+      >
+        <div className="flex items-start gap-5">
+          <EntityAvatar entity={entity} className="size-24 text-3xl" />
+          <div>
+            <ResourceName>{entity.name}</ResourceName>
+            <p className="mt-3 text-muted-foreground">{entity.description}</p>
+          </div>
+        </div>
+      </ArchivedResourceDetail>
     );
   }
   return <EntityDetailContent key={entity.readableId} entity={entity} onArchived={onArchived} />;

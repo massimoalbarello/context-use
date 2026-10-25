@@ -452,6 +452,7 @@ test('assets are server-inspected, linked or assigned, and archived only when un
     );
     expect(previewDetailResponse.status).toBe(StatusMap.OK);
     expect(await previewDetailResponse.json()).toEqual({
+      archivedAt: null,
       readableId: 'quarterly-chart',
       name: 'Quarterly chart',
       mediaType: 'image/png',
@@ -741,5 +742,206 @@ test('asset caches revalidate metadata and authorization before returning bytes 
     expect(unavailable.status).toBe(StatusMap['Not Found']);
     expect(unavailable.headers.has('etag')).toBe(false);
     expect(unavailable.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
+
+test('owner archive browsing and unarchiving preserve content and require active dependencies', async () => {
+  await withAssetsApp(async ({ app, database }) => {
+    const request = ({ method, path, body }: { method: string; path: string; body?: unknown }) =>
+      app.handle(jsonRequest({ method, path, body }));
+    expect((await uploadChart(app)).uploadResponse.status).toBe(StatusMap.Created);
+    expect(
+      (
+        await request({
+          method: 'POST',
+          path: '/entities',
+          body: {
+            name: 'Recovery friend',
+            description: 'Keep this identity',
+            entityType: 'person',
+          },
+        })
+      ).status,
+    ).toBe(StatusMap.Created);
+    expect(
+      (
+        await request({
+          method: 'PUT',
+          path: '/entities/recovery-friend/image',
+          body: {
+            assetReadableId: 'quarterly-chart',
+          },
+        })
+      ).status,
+    ).toBe(StatusMap.OK);
+    expect(
+      (
+        await request({
+          method: 'POST',
+          path: '/pages',
+          body: { markdown: '# Recovery target\n\nPreserved target.' },
+        })
+      ).status,
+    ).toBe(StatusMap.Created);
+    const markdown =
+      '# Recovery note\n\n[Friend](context-use://entity/recovery-friend) and [target](context-use://page/recovery-target).\n\n![Chart](context-use://asset/quarterly-chart)';
+    expect(
+      (
+        await request({
+          method: 'POST',
+          path: '/pages',
+          body: { markdown, temporalCoverage: '2026-01' },
+        })
+      ).status,
+    ).toBe(StatusMap.Created);
+    const resourceTypes = { pages: 'knowledge_page', entities: 'entity', assets: 'asset' } as const;
+    const expectedCounts = { pages: 2, entities: 1, assets: 1 };
+    const resources = [
+      {
+        collection: 'pages',
+        id: 'recovery-note',
+        search: 'recovery',
+        repository: new KnowledgePagesRepository(database),
+      },
+      {
+        collection: 'entities',
+        id: 'recovery-friend',
+        search: 'friend',
+        repository: new EntitiesRepository(database),
+      },
+      {
+        collection: 'pages',
+        id: 'recovery-target',
+        search: 'target',
+        repository: new KnowledgePagesRepository(database),
+      },
+      {
+        collection: 'assets',
+        id: 'quarterly-chart',
+        search: 'chart',
+        repository: new AssetsRepository(database),
+      },
+    ] as const;
+    for (const resource of resources) {
+      expect(
+        (await request({ method: 'PUT', path: `/${resource.collection}/${resource.id}/archive` }))
+          .status,
+      ).toBe(StatusMap['No Content']);
+    }
+    for (const { collection, id, search, repository } of resources) {
+      expect((await request({ method: 'GET', path: `/${collection}/${id}` })).status).toBe(
+        StatusMap['Not Found'],
+      );
+      const preview = await request({
+        method: 'GET',
+        path: `/${collection}/${id}/preview?includeArchived=true`,
+      });
+      expect(preview.status).toBe(StatusMap.OK);
+      expect((await preview.json()).archivedAt).toBeString();
+      const detail = await request({
+        method: 'GET',
+        path: `/${collection}/${id}?includeArchived=true`,
+      });
+      expect(detail.status).toBe(StatusMap.OK);
+      expect((await detail.json()).publishedAt).toBeNull();
+      const list = await request({ method: 'GET', path: `/${collection}?status=archived` });
+      const body = await list.json();
+      expect(body.items.some((item: { readableId: string }) => item.readableId === id)).toBe(true);
+      expect(body.total).toBe(expectedCounts[collection]);
+      const publicArchives = await request({
+        method: 'GET',
+        path: `/${collection}?status=archived&visibility=public`,
+      });
+      expect(publicArchives.status).toBe(StatusMap.OK);
+      expect(await publicArchives.json()).toMatchObject({ items: [], total: 0 });
+      const type = resourceTypes[collection];
+      const activeSearch = await request({
+        method: 'GET',
+        path: `/hypermedia/search?query=${search}&resourceTypes=${type}`,
+      });
+      expect((await activeSearch.json()).results).toEqual([]);
+      const archivedSearch = await request({
+        method: 'GET',
+        path: `/hypermedia/search?query=${search}&resourceTypes=${type}&status=archived`,
+      });
+      expect((await archivedSearch.json()).results.length).toBeGreaterThan(0);
+      const publicArchivedSearch = await request({
+        method: 'GET',
+        path: `/hypermedia/search?query=${search}&resourceTypes=${type}&status=archived&visibility=public`,
+      });
+      expect(publicArchivedSearch.status).toBe(StatusMap.OK);
+      expect((await publicArchivedSearch.json()).results).toEqual([]);
+      // Explicit archived reads and mutations must retain owner scoping.
+      expect(
+        await repository.find({ ownerId: 'foreign-owner', readableId: id, includeArchived: true }),
+      ).toBeNull();
+      const foreignAttempt = {
+        ownerId: 'foreign-owner',
+        readableId: id,
+        change: { clientName: null, message: 'Must not restore' },
+        unarchivedAt: new Date().toISOString(),
+      };
+      expect(await repository.unarchive(foreignAttempt)).toEqual({ state: 'not_found' });
+      expect(
+        (await request({ method: 'PUT', path: `/${collection}/missing-resource/unarchive` }))
+          .status,
+      ).toBe(StatusMap['Not Found']);
+    }
+    expect((await request({ method: 'GET', path: '/assets/quarterly-chart/content' })).status).toBe(
+      StatusMap['Not Found'],
+    );
+    expect(
+      (
+        await request({
+          method: 'GET',
+          path: '/assets/quarterly-chart/content?includeArchived=true',
+        })
+      ).status,
+    ).toBe(StatusMap.OK);
+    const blockers = await request({ method: 'PUT', path: '/pages/recovery-note/unarchive' });
+    expect(blockers.status).toBe(StatusMap.Conflict);
+    expect(
+      (await blockers.json()).blockers
+        .map((item: { resourceType: string }) => item.resourceType)
+        .sort(),
+    ).toEqual(['asset', 'entity', 'page']);
+    expect(
+      (await request({ method: 'PUT', path: '/entities/recovery-friend/unarchive' })).status,
+    ).toBe(StatusMap.Conflict);
+    const stillArchived = await request({
+      method: 'GET',
+      path: '/pages/recovery-note?includeArchived=true',
+    });
+    expect((await stillArchived.json()).archivedAt).toBeString();
+    for (const { collection, id } of [...resources].reverse()) {
+      expect(
+        (await request({ method: 'PUT', path: `/${collection}/${id}/unarchive` })).status,
+      ).toBe(StatusMap['No Content']);
+      expect(
+        (await request({ method: 'PUT', path: `/${collection}/${id}/unarchive` })).status,
+      ).toBe(StatusMap['No Content']);
+      const restored = await request({ method: 'GET', path: `/${collection}/${id}` });
+      expect(restored.status).toBe(StatusMap.OK);
+      expect((await restored.json()).archivedAt).toBeNull();
+    }
+    const restored = await (await request({ method: 'GET', path: '/pages/recovery-note' })).json();
+    expect(restored.markdown).toBe(markdown);
+    expect(restored.revisionNumber).toBe(1);
+    expect(restored.temporalCoverage).toBe('2026-01');
+    expect(restored.mentions[0].readableId).toBe('recovery-friend');
+    expect(restored.references[0].page.readableId).toBe('recovery-target');
+    expect(restored.assetUsages[0].asset.readableId).toBe('quarterly-chart');
+    const changes = await database<
+      Array<{ action: string }>
+    >`select "action" from "resource_change" where "action" = 'unarchived'`;
+    expect(changes).toHaveLength(resources.length);
+    const search = await request({
+      method: 'GET',
+      path: '/hypermedia/search?query=recovery&resourceTypes=knowledge_page',
+    });
+    expect((await search.json()).results).toHaveLength(2);
+    expect(
+      (await (await request({ method: 'GET', path: '/pages?status=archived' })).json()).total,
+    ).toBe(0);
   });
 });

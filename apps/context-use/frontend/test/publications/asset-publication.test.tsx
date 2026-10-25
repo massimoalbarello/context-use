@@ -38,6 +38,7 @@ async function renderAsset({ statusError = false }: { statusError?: boolean } = 
   const device = authenticator(cleanups);
   const timestamp = new Date('2026-01-01');
   const asset: Asset = {
+    archivedAt: null,
     publishedAt: null,
     readableId: 'chart',
     name: 'Launch chart',

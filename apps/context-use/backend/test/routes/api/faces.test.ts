@@ -1193,6 +1193,28 @@ test('person type changes and resource archives hide stored links without erasin
   expect(
     (await context.assets.detail({ ownerId: OWNER, readableId: portrait.readableId }))!.depicts,
   ).toEqual([]);
+  expect(await context.reference(person)).toBeNull();
+  expect(
+    await context.entities.unarchive({
+      ownerId: OWNER,
+      readableId: person.readableId,
+      change: { clientName: null, message: 'Recover person archived by mistake' },
+    }),
+  ).toEqual({ state: 'unarchived' });
+  expect(await context.reference(person)).not.toBeNull();
+  expect(
+    await context.assets.unarchive({
+      ...input,
+      change: { clientName: null, message: 'Recover photo archived by mistake' },
+    }),
+  ).toEqual({ state: 'unarchived' });
+  expect((await context.assets.detail(input))!.depicts).toMatchObject([
+    { source: 'confirmed', entity: { readableId: person.readableId } },
+  ]);
+  expect((await context.faces.detail(input))!.faces[0]).toMatchObject({
+    decision: 'person',
+    entity: { readableId: person.readableId },
+  });
 });
 
 test('face and portrait mutations roll back together with their link changes', async () => {

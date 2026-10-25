@@ -74,6 +74,7 @@ const unusedEntitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -85,6 +86,7 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -399,6 +401,7 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
 
 test('raw upload endpoints enforce required headers and byte limits before one AssetsService call', async () => {
   const createdAsset: Asset = {
+    archivedAt: null,
     publicId: null,
     publishedAt: null,
     depicts: [],
@@ -431,6 +434,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
     list: unexpectedCall,
     detail: unexpectedCall,
     updateName: unexpectedCall,
+    unarchive: unexpectedCall,
     archive: unexpectedCall,
     content: unexpectedCall,
   };
@@ -554,6 +558,7 @@ test('raw upload endpoints enforce required headers and byte limits before one A
 
 test('asset updates return no echoed state and archive blockers expose only public usage coordinates', async () => {
   const asset: Asset = {
+    archivedAt: null,
     publicId: null,
     publishedAt: null,
     depicts: [],
@@ -569,6 +574,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
       {
         kind: 'page',
         page: {
+          archivedAt: null,
           publicId: null,
           publishedAt: null,
           publishedRevisionNumber: null,
@@ -600,6 +606,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
   };
   let archiveCalls = 0;
   const assetsService: AssetsServiceContract = {
+    unarchive: unexpectedCall,
     preview: unexpectedCall,
     faces: unusedAssetFacesService,
     create: unexpectedCall,

@@ -12,6 +12,7 @@ import {
   readableIdFrom,
   readableIdWithSuffix,
 } from '#backend/models/readable-ids/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import type { AssetsRepositoryContract } from '#backend/repositories/assets/repository.ts';
 import type { EntityRepositoryContract } from '#backend/repositories/entities/repository.ts';
 import type { KnowledgePagesRepositoryContract } from '#backend/repositories/knowledge-pages/repository.ts';
@@ -76,24 +77,27 @@ export class EntitiesService {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     entityType?: EntityTypeFilter;
   }) {
     return this.entities.list(input);
   }
 
-  preview(input: { ownerId: string; readableId: string }) {
+  preview(input: { ownerId: string; readableId: string; includeArchived?: boolean }) {
     return this.entities.find(input);
   }
 
   async detail({
     ownerId,
     readableId,
+    includeArchived,
   }: {
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<EntityDetail | null> {
-    const entity = await this.entities.find({ ownerId, readableId });
+    const entity = await this.entities.find({ ownerId, readableId, includeArchived });
     if (!entity) {
       return null;
     }
@@ -172,6 +176,17 @@ export class EntitiesService {
     return this.entities.removeImage({ ...input, updatedAt: new Date().toISOString() });
   }
 
+  async unarchive(input: { change: ChangeContext; ownerId: string; readableId: string }) {
+    const result = await this.entities.unarchive({
+      ...input,
+      unarchivedAt: new Date().toISOString(),
+    });
+    if (result.state === 'unarchived') {
+      await this.onPersonPortraitAvailable(input);
+    }
+    return result;
+  }
+
   archive(input: { change: ChangeContext; ownerId: string; readableId: string }) {
     return this.entities.archive({
       ownerId: input.ownerId,
@@ -184,5 +199,13 @@ export class EntitiesService {
 
 export type EntitiesServiceContract = Pick<
   EntitiesService,
-  'create' | 'list' | 'detail' | 'preview' | 'update' | 'setImage' | 'removeImage' | 'archive'
+  | 'create'
+  | 'list'
+  | 'detail'
+  | 'preview'
+  | 'update'
+  | 'setImage'
+  | 'removeImage'
+  | 'archive'
+  | 'unarchive'
 >;

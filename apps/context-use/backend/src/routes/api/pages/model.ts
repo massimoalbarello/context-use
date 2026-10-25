@@ -25,8 +25,13 @@ import {
   PublicationSchema,
   PublicationVisibilitySchema,
 } from '#backend/routes/api/publications/model.ts';
+import {
+  ArchivedAtSchema,
+  ResourceStatusSchema,
+} from '#backend/routes/api/resource-archiving/state-model.ts';
 
 export const KnowledgePageSummarySchema = t.Object({
+  archivedAt: ArchivedAtSchema,
   publishedAt: PublicationSchema.properties.publishedAt,
   publishedRevisionNumber: t.Nullable(t.Integer({ minimum: 1 })),
   readableId: ReadableIdSchema,
@@ -103,6 +108,7 @@ export const KnowledgePageListSchema = t.Object({
   ...PaginationMetadataSchema.properties,
 });
 export const KnowledgePageListQuerySchema = t.Object({
+  status: t.Optional(ResourceStatusSchema),
   entityReadableId: t.Optional(ReadableIdSchema),
   visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
@@ -117,6 +123,7 @@ export const KnowledgePageListQuerySchema = t.Object({
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {
+    archivedAt: page.archivedAt ? new Date(page.archivedAt) : null,
     publishedAt: page.publishedAt,
     publishedRevisionNumber: page.publishedRevisionNumber,
     readableId: page.readableId,

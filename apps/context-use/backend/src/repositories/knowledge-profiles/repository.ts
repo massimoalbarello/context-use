@@ -29,7 +29,13 @@ type CreatedProfileRow = Queries['CreateKnowledgeProfileEntity'];
 
 function createdProfileFrom(row: CreatedProfileRow): KnowledgeProfile {
   return {
-    selfEntity: { ...row, entityType: entityTypeFrom(row.entityType), isSelf: true, image: null },
+    selfEntity: {
+      ...row,
+      archivedAt: null,
+      entityType: entityTypeFrom(row.entityType),
+      isSelf: true,
+      image: null,
+    },
   };
 }
 
@@ -113,7 +119,7 @@ export class KnowledgeProfilesRepository implements KnowledgeProfilesRepositoryC
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."entity_type" as "entityType",
-        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt", entity."archived_at" as "archivedAt",
         1 as "isSelf", entity."created_at" as "createdAt",
         entity."updated_at" as "updatedAt",
         image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",

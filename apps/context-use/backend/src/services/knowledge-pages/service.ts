@@ -26,6 +26,7 @@ import {
   readableIdFrom,
   readableIdWithSuffix,
 } from '#backend/models/readable-ids/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import type { KnowledgePagesRepositoryContract } from '#backend/repositories/knowledge-pages/repository.ts';
 
 export type KnowledgePageMutationResult =
@@ -130,6 +131,7 @@ export class KnowledgePagesService {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
@@ -141,11 +143,13 @@ export class KnowledgePagesService {
   async detail({
     ownerId,
     readableId,
+    includeArchived,
   }: {
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<KnowledgePage | null> {
-    const detail = await this.pages.detail({ ownerId, readableId });
+    const detail = await this.pages.detail({ ownerId, readableId, includeArchived });
     if (!detail) {
       return null;
     }
@@ -160,11 +164,13 @@ export class KnowledgePagesService {
   async preview({
     ownerId,
     readableId,
+    includeArchived,
   }: {
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<KnowledgePagePreview | null> {
-    const preview = await this.pages.preview({ ownerId, readableId });
+    const preview = await this.pages.preview({ ownerId, readableId, includeArchived });
     if (!preview) {
       return null;
     }
@@ -318,6 +324,17 @@ export class KnowledgePagesService {
     return { state: 'saved', page };
   }
 
+  unarchive(input: {
+    change: ChangeContext;
+    ownerId: string;
+    readableId: string;
+  }): ReturnType<KnowledgePagesRepositoryContract['unarchive']> {
+    return this.pages.unarchive({
+      ...input,
+      unarchivedAt: new Date().toISOString(),
+    });
+  }
+
   archive(input: {
     change: ChangeContext;
     ownerId: string;
@@ -370,6 +387,7 @@ export class KnowledgePagesService {
 
   private summary(page: StoredKnowledgePage): KnowledgePageSummary {
     return {
+      archivedAt: page.archivedAt,
       publicId: page.publicId,
       publishedAt: page.publishedAt,
       publishedRevisionNumber: page.publishedRevisionNumber,
@@ -403,5 +421,13 @@ export class KnowledgePagesService {
 
 export type KnowledgePagesServiceContract = Pick<
   KnowledgePagesService,
-  'create' | 'list' | 'detail' | 'preview' | 'update' | 'archive' | 'diff' | 'revision'
+  | 'create'
+  | 'list'
+  | 'detail'
+  | 'preview'
+  | 'update'
+  | 'archive'
+  | 'unarchive'
+  | 'diff'
+  | 'revision'
 >;
