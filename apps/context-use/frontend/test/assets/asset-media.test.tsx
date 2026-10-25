@@ -42,7 +42,9 @@ test('text is visible and markup stays inert', async () => {
   try {
     expect(await view.findByText('<script>alert(1)</script> Checklist')).toBeTruthy();
     expect(view.container.querySelector('script')).toBeNull();
-    const bytes = await client.fetchQuery(assetDocumentQueryOptions(asset.readableId));
+    const bytes = await client.fetchQuery(
+      assetDocumentQueryOptions({ readableId: asset.readableId }),
+    );
     expect(bytes.buffer.resizable).toBe(false);
     expect(new TextDecoder().decode(bytes)).toBe('<script>alert(1)</script>\nChecklist');
     expect(view.getByRole('link', { name: 'Download' }).getAttribute('href')).toBe(

@@ -57,6 +57,7 @@ test.each([null, timestamp])(
           resourceType: 'entity',
           matchExcerpt: 'Researches retrieval.',
           entity: {
+            archivedAt: null,
             publicId: 'stable-public-handle',
             publishedAt,
             id: 'private-entity-id',
@@ -73,6 +74,7 @@ test.each([null, timestamp])(
           resourceType: 'knowledge_page',
           matchExcerpt: 'A sentence deep in the page.',
           knowledgePage: {
+            archivedAt: null,
             publicId: 'stable-public-handle',
             publishedAt,
             publishedRevisionNumber: null,
@@ -89,6 +91,7 @@ test.each([null, timestamp])(
           resourceType: 'asset',
           matchExcerpt: null,
           asset: {
+            archivedAt: null,
             publicId: 'stable-public-handle',
             publishedAt,
             id: 'private-asset-id',
@@ -165,6 +168,7 @@ test('HTTP search passes the authenticated owner and typed narrowing filters to 
         resourceTypes: ['knowledge_page', 'record'],
         limit: 7,
         filters: {
+          status: undefined,
           visibility: 'private',
           entity: { type: undefined },
           knowledgePage: { interval: 'with', temporalBounds: temporalBoundsFrom('2026') },

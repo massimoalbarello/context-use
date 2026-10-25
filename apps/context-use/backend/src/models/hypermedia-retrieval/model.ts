@@ -7,6 +7,7 @@ import type {
 import type { TemporalBounds } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { RecordSourceFilters, RecordSummary } from '#backend/models/records/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 
 export const HYPERMEDIA_RESOURCE_TYPES = ['entity', 'knowledge_page', 'asset', 'record'] as const;
 export const DEFAULT_HYPERMEDIA_SEARCH_LIMIT = 30;
@@ -45,6 +46,7 @@ export interface HypermediaRetrievalResults {
 }
 
 export interface HypermediaRetrievalFilters {
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
   /** When type is present, restrict retrieval to entities with the selected type. */
   entity?: { type?: EntityTypeFilter };

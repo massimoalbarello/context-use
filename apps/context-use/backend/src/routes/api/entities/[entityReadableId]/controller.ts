@@ -20,7 +20,9 @@ import {
 import {
   ResourceInUseResponseSchema,
   resourceInUseResponse,
+  UnarchiveBlockedSchema,
 } from '#backend/routes/api/resource-archiving/model.ts';
+import { ResourceReadQuerySchema } from '#backend/routes/api/resource-archiving/state-model.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 
 const EntityDetailSchema = t.Object({
@@ -48,10 +50,11 @@ export function createEntityReadableIdController({
     })
     .get(
       '/entities/:entityReadableId',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const entity = await entitiesService.detail({
           ownerId: user.id,
           readableId: params.entityReadableId,
+          includeArchived: query.includeArchived,
         });
         return entity
           ? status(StatusMap.OK, entityDetailResponse(entity))
@@ -60,6 +63,7 @@ export function createEntityReadableIdController({
       {
         detail: { tags: ['Entities'], summary: 'Read an entity and its knowledge pages' },
         params: EntityParamsSchema,
+        query: ResourceReadQuerySchema,
         response: {
           [StatusMap.OK]: EntityDetailSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
@@ -68,10 +72,11 @@ export function createEntityReadableIdController({
     )
     .get(
       '/entities/:entityReadableId/preview',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const entity = await entitiesService.preview({
           ownerId: user.id,
           readableId: params.entityReadableId,
+          includeArchived: query.includeArchived,
         });
         return entity
           ? status(StatusMap.OK, entityPreviewResponse(entity))
@@ -80,9 +85,39 @@ export function createEntityReadableIdController({
       {
         detail: { tags: ['Entities'], summary: 'Read an entity preview' },
         params: EntityParamsSchema,
+        query: ResourceReadQuerySchema,
         response: {
           [StatusMap.OK]: EntityPreviewSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
+        },
+      },
+    )
+    .put(
+      '/entities/:entityReadableId/unarchive',
+      async ({ body, params, user, status }) => {
+        const result = await entitiesService.unarchive({
+          change: { clientName: null, message: body.changeMessage },
+          ownerId: user.id,
+          readableId: params.entityReadableId,
+        });
+        if (result.state === 'dependencies_archived') {
+          return status(StatusMap.Conflict, {
+            error: 'Unarchive these resources first.',
+            blockers: result.blockers,
+          });
+        }
+        return result.state === 'unarchived'
+          ? status(StatusMap['No Content'], undefined)
+          : status(StatusMap['Not Found'], { error: 'Entity not found' });
+      },
+      {
+        changeMessage: true,
+        detail: { tags: ['Entities'], summary: 'Unarchive a entity' },
+        params: EntityParamsSchema,
+        response: {
+          [StatusMap['No Content']]: t.Void(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: UnarchiveBlockedSchema,
         },
       },
     )

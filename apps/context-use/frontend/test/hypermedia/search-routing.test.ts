@@ -90,6 +90,7 @@ test('typed search callers preserve pipeline order and nonliteral matches withou
       resourceType: 'entity',
       address: `context-use://entity/${name}`,
       entity: {
+        archivedAt: null,
         publishedAt: null,
         readableId: name,
         name,
@@ -182,6 +183,61 @@ test('collection visibility separates cached list and keyword results with the e
       }
     }
     expect(requests).toHaveLength(collectionCount * 2 * 2);
+  } finally {
+    client.clear();
+    fetch.mockRestore();
+  }
+});
+
+test('archive status separates collection and keyword caches and reaches both read paths', async () => {
+  const requests: URL[] = [];
+  const fetch = spyOn(globalThis, 'fetch').mockImplementation(
+    Object.assign(
+      (input: Parameters<typeof globalThis.fetch>[0]) => {
+        const url = new URL(input instanceof Request ? input.url : input);
+        requests.push(url);
+        return Promise.resolve(
+          Response.json(
+            url.pathname === '/api/hypermedia/search'
+              ? { results: [], totalMatches: 0, truncated: false }
+              : { items: [], total: 0, nextOffset: null },
+          ),
+        );
+      },
+      { preconnect: globalThis.fetch.preconnect },
+    ),
+  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  const queries = [undefined, 'recovery'];
+  const statuses = ['active', 'archived'] as const;
+  const collectionCount = 3;
+  const readsPerCollection = queries.length * statuses.length;
+  const readsPerStatus = collectionCount * queries.length;
+  try {
+    for (const query of queries) {
+      for (const status of statuses) {
+        await client.fetchInfiniteQuery(
+          entitiesQueryOptions({ query, status, entityType: 'person' }),
+        );
+        await client.fetchInfiniteQuery(pagesQueryOptions({ query, status, interval: 'with' }));
+        await client.fetchInfiniteQuery(assetsQueryOptions({ query, status }));
+      }
+    }
+    expect(requests).toHaveLength(collectionCount * readsPerCollection);
+    expect(requests.filter((url) => url.searchParams.get('status') === 'archived')).toHaveLength(
+      readsPerStatus,
+    );
+    expect(requests.filter((url) => url.pathname === '/api/hypermedia/search')).toHaveLength(
+      readsPerStatus,
+    );
+    expect(requests.filter((url) => url.searchParams.get('entityType') === 'person')).toHaveLength(
+      readsPerCollection,
+    );
+    expect(requests.filter((url) => url.searchParams.get('interval') === 'with')).toHaveLength(
+      readsPerCollection,
+    );
   } finally {
     client.clear();
     fetch.mockRestore();

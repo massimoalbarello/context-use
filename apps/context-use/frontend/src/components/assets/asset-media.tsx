@@ -17,6 +17,7 @@ const PdfPreview = lazy(async () => {
 });
 
 type PreviewableAsset = {
+  archivedAt?: Date | null;
   readableId: string;
   name: string;
   mediaType: string;
@@ -41,7 +42,10 @@ function AssetMediaContent({
   fallback?: ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
-  const contentUrl = assetContentUrl(asset.readableId);
+  const contentUrl = assetContentUrl({
+    readableId: asset.readableId,
+    includeArchived: !!asset.archivedAt,
+  });
   if (failed) {
     return fallback ?? <AssetPreviewFallback message="This file could not be previewed." />;
   }
@@ -99,7 +103,12 @@ function AssetMediaContent({
 }
 
 function DocumentPreview({ asset }: { asset: PreviewableAsset }) {
-  const content = useQuery(assetDocumentQueryOptions(asset.readableId));
+  const content = useQuery(
+    assetDocumentQueryOptions({
+      readableId: asset.readableId,
+      includeArchived: !!asset.archivedAt,
+    }),
+  );
   if (content.error) {
     return <AssetPreviewFallback message={content.error.message} />;
   }

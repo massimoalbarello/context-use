@@ -14,6 +14,7 @@ function entityHit(name: string): SearchResponse['results'][number] {
     resourceType: 'entity',
     address: `context-use://entity/${name}`,
     entity: {
+      archivedAt: null,
       publishedAt: null,
       readableId: name,
       name,
@@ -174,6 +175,7 @@ test('mixed BM25 order and more than seven matches of one type are preserved wit
       address: 'context-use://page/notes',
       matchExcerpt: 'Body evidence',
       knowledgePage: {
+        archivedAt: null,
         publishedAt: null,
         publishedRevisionNumber: null,
         readableId: 'notes',
@@ -190,6 +192,7 @@ test('mixed BM25 order and more than seven matches of one type are preserved wit
       address: 'context-use://asset/report',
       matchExcerpt: null,
       asset: {
+        archivedAt: null,
         publishedAt: null,
         readableId: 'report',
         name: 'Evidence report',

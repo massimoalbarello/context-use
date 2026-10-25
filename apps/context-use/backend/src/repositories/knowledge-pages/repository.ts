@@ -20,7 +20,11 @@ import type {
   TemporalBounds,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
-import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
+import type {
+  ArchiveResult,
+  ResourceStatus,
+  UnarchiveResult,
+} from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom } from '#backend/views/entities/entity-view.ts';
 import { recordChange } from '../record-change.ts';
@@ -79,6 +83,7 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
@@ -88,19 +93,29 @@ export interface KnowledgePagesRepositoryContract {
     ownerId: string;
     entityReadableId: string;
   }): Promise<KnowledgePageSummary[]>;
-  preview(input: { ownerId: string; readableId: string }): Promise<{
+  preview(input: { ownerId: string; readableId: string; includeArchived?: boolean }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
     recordReferences: KnowledgePageRecordReference[];
   } | null>;
-  find(input: { ownerId: string; readableId: string }): Promise<StoredKnowledgePage | null>;
+  find(input: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<StoredKnowledgePage | null>;
+  unarchive(input: {
+    ownerId: string;
+    readableId: string;
+    change: ChangeContext;
+    unarchivedAt: string;
+  }): Promise<UnarchiveResult>;
   archive(input: {
     ownerId: string;
     readableId: string;
     archivedAt: string;
     change: ChangeContext;
   }): Promise<ArchiveResult<KnowledgePageReference>>;
-  detail(input: { ownerId: string; readableId: string }): Promise<{
+  detail(input: { ownerId: string; readableId: string; includeArchived?: boolean }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
     references: KnowledgePageReference[];
@@ -211,7 +226,7 @@ async function findCurrentKnowledgePage({
       page."current_revision_id" as "currentRevisionId",
       revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
       revision."temporal_coverage" as "temporalCoverage",
-      page."public_id" as "publicId", page."published_at" as "publishedAt",
+      page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
       (select published_revision."revision_number" from "knowledge_page_revision" published_revision
         where published_revision."id" = page."published_revision_id"
           and published_revision."owner_id" = page."owner_id"
@@ -479,6 +494,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
           readableId: input.readableId,
           currentRevisionId: input.revisionId,
           revisionNumber: 1,
+          archivedAt: null,
           publicId: null,
           publishedAt: null,
           publishedRevisionNumber: null,
@@ -628,6 +644,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId,
     limit,
     offset,
+    status = 'active',
     visibility = 'all',
     interval,
     temporalBounds,
@@ -636,6 +653,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
@@ -648,7 +666,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = page."published_revision_id"
             and published_revision."owner_id" = page."owner_id"
@@ -657,7 +675,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       from "knowledge_page" page
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
-        and page."archived_at" is null
+        and (${status} = 'archived') = (page."archived_at" is not null)
         and (
           ${entityReadableId} is null or exists (
             select 1 from "knowledge_page_entity_mention" mention
@@ -697,7 +715,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       from "knowledge_page" page
       join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
       where page."owner_id" = ${ownerId}
-        and page."archived_at" is null
+        and (${status} = 'archived') = (page."archived_at" is not null)
         and (
           ${entityReadableId} is null or exists (
             select 1 from "knowledge_page_entity_mention" mention
@@ -749,7 +767,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = page."published_revision_id"
             and published_revision."owner_id" = page."owner_id"
@@ -817,9 +835,11 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
   async find({
     ownerId,
     readableId,
+    includeArchived = false,
   }: {
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<StoredKnowledgePage | null> {
     const rows = await this.sql.FindKnowledgePage`
       /* @notNull id ownerId readableId currentRevisionId revisionNumber title excerpt storageKey contentHash sizeBytes createdAt updatedAt */
@@ -827,7 +847,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         page."current_revision_id" as "currentRevisionId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = page."published_revision_id"
             and published_revision."owner_id" = page."owner_id"
@@ -841,17 +861,25 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
        and revision."page_id" = page."id"
        and revision."owner_id" = page."owner_id"
       where page."owner_id" = ${ownerId} and page."readable_id" = ${readableId}
-        and page."archived_at" is null
+        and (${includeArchived} or page."archived_at" is null)
     `;
     return rows[0] ? storedPageFrom(rows[0]) : null;
   }
 
-  async preview({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<{
+  async preview({
+    ownerId,
+    readableId,
+    includeArchived,
+  }: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
     recordReferences: KnowledgePageRecordReference[];
   } | null> {
-    const page = await this.find({ ownerId, readableId });
+    const page = await this.find({ ownerId, readableId, includeArchived });
     if (!page) {
       return null;
     }
@@ -860,6 +888,66 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       this.recordReferenceRows({ ownerId, sourceRevisionId: page.currentRevisionId }),
     ]);
     return { page, mentions, recordReferences };
+  }
+
+  unarchive(input: {
+    ownerId: string;
+    readableId: string;
+    change: ChangeContext;
+    unarchivedAt: string;
+  }): Promise<UnarchiveResult> {
+    return this.sql.begin('immediate', async (db) => {
+      const targets = await db.FindKnowledgePageUnarchiveTarget`
+        /* @notNull id name revisionId */
+        select resource."id", resource."archived_at" as "archivedAt", revision."title" as "name", resource."current_revision_id" as "revisionId"
+        from "knowledge_page" resource
+        join "knowledge_page_revision" revision on revision."id" = resource."current_revision_id" and revision."owner_id" = resource."owner_id"
+        where resource."owner_id" = ${input.ownerId} and resource."readable_id" = ${input.readableId}
+      `;
+      const target = targets[0];
+      if (!target) {
+        return { state: 'not_found' };
+      }
+      if (!target.archivedAt) {
+        return { state: 'unarchived' };
+      }
+      const blockers = await db.FindKnowledgePageUnarchiveBlockers`
+        /* @notNull resourceType readableId name */
+        /* @type resourceType 'entity' | 'page' | 'asset' */
+        select 'entity' as "resourceType", entity."readable_id" as "readableId", entity."name"
+        from "knowledge_page_entity_mention" mention
+        join "entity" entity on entity."id" = mention."target_entity_id" and entity."owner_id" = mention."owner_id"
+        where mention."owner_id" = ${input.ownerId} and mention."source_revision_id" = ${target.revisionId} and entity."archived_at" is not null
+        union
+        select 'page', page."readable_id", revision."title"
+        from "knowledge_page_reference" reference
+        join "knowledge_page" page on page."id" = reference."target_page_id" and page."owner_id" = reference."owner_id"
+        join "knowledge_page_revision" revision on revision."id" = page."current_revision_id" and revision."owner_id" = page."owner_id"
+        where reference."owner_id" = ${input.ownerId} and reference."source_revision_id" = ${target.revisionId}
+          and page."id" != ${target.id} and page."archived_at" is not null
+        union
+        select 'asset', asset."readable_id", asset."name"
+        from "knowledge_page_asset_usage" usage
+        join "asset" asset on asset."id" = usage."target_asset_id" and asset."owner_id" = usage."owner_id"
+        where usage."owner_id" = ${input.ownerId} and usage."source_revision_id" = ${target.revisionId} and asset."archived_at" is not null
+      `;
+      if (blockers.length) {
+        return { state: 'dependencies_archived', blockers };
+      }
+      await db`update "knowledge_page" set "archived_at" = null where "owner_id" = ${input.ownerId} and "id" = ${target.id}`;
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'page',
+        readableId: input.readableId,
+        name: target.name,
+        action: 'unarchived',
+        details: [],
+        createdAt: input.unarchivedAt,
+      });
+      return { state: 'unarchived' };
+    });
   }
 
   archive({
@@ -905,11 +993,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         set "archived_at" = ${archivedAt}
         where "owner_id" = ${ownerId} and "id" = ${target.id}
       `;
-      await db.RemoveKnowledgePageSearchDocument`
-        delete from "hypermedia_search_document"
-        where "owner_id" = ${ownerId} and "resource_type" = 'knowledge_page'
-          and "readable_id" = ${readableId}
-      `;
       if (previous) {
         await recordChange({
           db,
@@ -939,7 +1022,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."entity_type" as "entityType",
-        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt", entity."archived_at" as "archivedAt",
         profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
         image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
@@ -962,7 +1045,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows.map(entityFrom);
   }
 
-  async detail({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<{
+  async detail({
+    ownerId,
+    readableId,
+    includeArchived,
+  }: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
     references: KnowledgePageReference[];
@@ -971,7 +1062,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     assetUsages: KnowledgePageAssetUsage[];
     revisions: KnowledgePageRevisionSummary[];
   } | null> {
-    const page = await this.find({ ownerId, readableId });
+    const page = await this.find({ ownerId, readableId, includeArchived });
     if (!page) {
       return null;
     }
@@ -1019,7 +1110,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
         current_referring_revision."temporal_coverage" as "temporalCoverage",
-        referring_page."public_id" as "publicId", referring_page."published_at" as "publishedAt",
+        referring_page."public_id" as "publicId", referring_page."published_at" as "publishedAt", referring_page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = referring_page."published_revision_id"
             and published_revision."owner_id" = referring_page."owner_id"
@@ -1079,7 +1170,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = page."published_revision_id"
             and published_revision."owner_id" = page."owner_id"
@@ -1113,7 +1204,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       select page."id", page."readable_id" as "readableId",
         revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
         revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = page."published_revision_id"
             and published_revision."owner_id" = page."owner_id"
@@ -1149,7 +1240,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
       /* @type presentation 'embed' | 'attachment' */
       select asset."id", asset."readable_id" as "readableId", asset."name",
-        asset."public_id" as "publicId", asset."published_at" as "publishedAt",
+        asset."public_id" as "publicId", asset."published_at" as "publishedAt", asset."archived_at" as "archivedAt",
         asset."media_type" as "mediaType", asset."extension",
         asset."size_bytes" as "sizeBytes", asset."created_at" as "createdAt",
         asset."updated_at" as "updatedAt", usage."presentation"

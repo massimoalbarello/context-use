@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { EntityTypeFilter } from '#backend/models/entities/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
+import type { ResourceStatus, UnarchiveResult } from '#backend/models/resource-archiving/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { searchHypermedia } from './hypermedia-search';
@@ -39,17 +40,20 @@ export const entityPreviewsQueryKey = [...entitiesQueryKey, 'preview'] as const;
 async function entitySearchPage({
   query,
   entityType,
+  status,
   visibility,
   limit,
 }: {
   query: string;
   entityType?: EntityTypeFilter;
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
   limit?: number;
 }): Promise<EntityPage> {
   const result = await searchHypermedia({
     query,
     entityType,
+    status,
     visibility,
     resourceTypes: 'entity',
     limit,
@@ -64,10 +68,12 @@ async function entitySearchPage({
 export function entitiesQueryOptions({
   query,
   entityType,
+  status,
   visibility,
 }: {
   query?: string;
   entityType?: EntityTypeFilter;
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
 } = {}) {
   const normalizedQuery = query?.trim() || undefined;
@@ -77,16 +83,17 @@ export function entitiesQueryOptions({
       {
         query: normalizedQuery ?? null,
         entityType: entityType ?? 'all',
+        status: status ?? 'active',
         visibility: visibility ?? 'all',
       },
     ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (normalizedQuery) {
-        return entitySearchPage({ query: normalizedQuery, entityType, visibility });
+        return entitySearchPage({ query: normalizedQuery, entityType, status, visibility });
       }
       const { data, error } = await api.api.entities.get({
-        query: { offset: pageParam, entityType, visibility },
+        query: { status, offset: pageParam, entityType, visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
@@ -101,7 +108,9 @@ export function entityQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...entityDetailsQueryKey, readableId],
     queryFn: async () => {
-      const { data, error } = await api.api.entities({ entityReadableId: readableId }).get();
+      const { data, error } = await api.api
+        .entities({ entityReadableId: readableId })
+        .get({ query: { includeArchived: true } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -116,7 +125,7 @@ export function entityPreviewQueryOptions(readableId: string) {
     queryFn: async () => {
       const { data, error } = await api.api
         .entities({ entityReadableId: readableId })
-        .preview.get();
+        .preview.get({ query: { includeArchived: true } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -184,4 +193,21 @@ export async function archiveEntity({
     throw new Error(apiErrorMessage(error));
   }
   return { state: 'archived' };
+}
+
+export async function unarchiveEntity({
+  readableId,
+}: {
+  readableId: string;
+}): Promise<UnarchiveResult> {
+  const { error } = await api.api
+    .entities({ entityReadableId: readableId })
+    .unarchive.put({ changeMessage: 'Unarchived entity from the dashboard' });
+  if (error) {
+    if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
+      return { state: 'dependencies_archived', blockers: error.value.blockers };
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { state: 'unarchived' };
 }

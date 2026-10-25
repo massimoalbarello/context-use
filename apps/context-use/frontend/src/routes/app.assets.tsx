@@ -1,17 +1,23 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import { AssetList } from '../components/assets/asset-list';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter-popover';
+import { ResourceStatusFilter } from '../components/knowledge/resource-status-filter';
 import { PublicationVisibilityFilter } from '../components/publications/publication-visibility-filter';
 import { useAssets } from '../lib/hooks/use-assets';
-import { publicationVisibilityFromSearch } from '../lib/publication-visibility';
 import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
+import { resourceStatusSearch } from '../lib/resource-status';
 import { assetsQueryOptions } from '../queries/assets';
 
-export type AssetSearch = { q?: string; visibility?: PublicationVisibility };
+export type AssetSearch = {
+  q?: string;
+  status?: ResourceStatus;
+  visibility?: PublicationVisibility;
+};
 
 export function assetSearch(search: Record<string, unknown>): AssetSearch {
   return {
@@ -19,7 +25,7 @@ export function assetSearch(search: Record<string, unknown>): AssetSearch {
       typeof search.q === 'string'
         ? search.q.trim().slice(0, MAX_ASSET_NAME_LENGTH) || undefined
         : undefined,
-    visibility: publicationVisibilityFromSearch(search.visibility),
+    ...resourceStatusSearch(search),
   };
 }
 
@@ -33,7 +39,11 @@ export const Route = createFileRoute('/app/assets')({
     ...assetSearch(search),
     ...resourceSearch(search),
   }),
-  loaderDeps: ({ search }) => ({ query: search.q, visibility: search.visibility }),
+  loaderDeps: ({ search }) => ({
+    query: search.q,
+    status: search.status,
+    visibility: search.visibility,
+  }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureInfiniteQueryData(assetsQueryOptions(deps)),
   component: AssetsLayout,
@@ -61,10 +71,11 @@ function AssetFilterControl({ query }: { query: string }) {
 function AssetsLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
-  const { q = '', visibility } = search;
+  const { q = '', visibility, status } = search;
   const navigate = Route.useNavigate();
   const { assets, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useAssets({
     query: q,
+    status,
     visibility,
   });
   if (!profile) {
@@ -76,17 +87,36 @@ function AssetsLayout() {
       title="Assets"
       search={<AssetFilterControl query={q} />}
       filters={
-        <KnowledgeFilterPopover title="Filter assets" filtered={Boolean(visibility)}>
-          <PublicationVisibilityFilter
-            value={search.visibility}
-            onChange={(visibility) => {
+        <KnowledgeFilterPopover title="Filter assets" filtered={Boolean(visibility || status)}>
+          <ResourceStatusFilter
+            value={status}
+            onChange={(status) => {
               void navigate({
                 to: '/app/assets',
-                search: (previous) => ({ ...previous, visibility }),
+                search: (previous) => ({
+                  ...previous,
+                  status,
+                  visibility: undefined,
+                  resource: undefined,
+                  resourceId: undefined,
+                  expanded: undefined,
+                }),
                 replace: true,
               });
             }}
           />
+          {status !== 'archived' && (
+            <PublicationVisibilityFilter
+              value={search.visibility}
+              onChange={(visibility) => {
+                void navigate({
+                  to: '/app/assets',
+                  search: (previous) => ({ ...previous, visibility }),
+                  replace: true,
+                });
+              }}
+            />
+          )}
         </KnowledgeFilterPopover>
       }
       count={total}
@@ -98,7 +128,7 @@ function AssetsLayout() {
       isFetchingNextPage={isFetchingNextPage}
       loadMore={fetchNextPage}
     >
-      <AssetList assets={assets} filtered={Boolean(q || visibility)} />
+      <AssetList assets={assets} filtered={Boolean(q || visibility || status)} />
     </CollectionWorkspace>
   );
 }

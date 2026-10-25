@@ -4,7 +4,11 @@ import { type Page, pageFrom } from '#backend/lib/pagination.ts';
 import type { Asset, AssetSummary, AssetUsage, StoredAsset } from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
-import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
+import type {
+  ArchiveResult,
+  ResourceStatus,
+  UnarchiveResult,
+} from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityTypeFrom } from '#backend/views/entities/entity-view.ts';
 import { recordChange } from '../record-change.ts';
@@ -12,17 +16,26 @@ import { replaceSearchDocument } from '../search-index.ts';
 
 export interface AssetsRepositoryContract {
   create(
-    input: Omit<StoredAsset, 'publicId' | 'publishedAt'> & { change: ChangeContext },
+    input: Omit<StoredAsset, 'publicId' | 'publishedAt' | 'archivedAt'> & { change: ChangeContext },
   ): Promise<{ state: 'created'; asset: StoredAsset } | { state: 'readable_id_conflict' }>;
   list(input: {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     kind?: 'entity_image';
   }): Promise<Page<AssetSummary>>;
-  find(input: { ownerId: string; readableId: string }): Promise<StoredAsset | null>;
-  detail(input: { ownerId: string; readableId: string }): Promise<Asset | null>;
+  find(input: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<StoredAsset | null>;
+  detail(input: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<Asset | null>;
   updateName(input: {
     change: ChangeContext;
     ownerId: string;
@@ -30,6 +43,12 @@ export interface AssetsRepositoryContract {
     name: string;
     updatedAt: string;
   }): Promise<Asset | null>;
+  unarchive(input: {
+    ownerId: string;
+    readableId: string;
+    change: ChangeContext;
+    unarchivedAt: string;
+  }): Promise<UnarchiveResult>;
   archive(input: {
     change: ChangeContext;
     ownerId: string;
@@ -57,7 +76,9 @@ export class AssetsRepository implements AssetsRepositoryContract {
     this.sql = withTypes<Queries>(sql);
   }
 
-  create(input: Omit<StoredAsset, 'publicId' | 'publishedAt'> & { change: ChangeContext }) {
+  create(
+    input: Omit<StoredAsset, 'publicId' | 'publishedAt' | 'archivedAt'> & { change: ChangeContext },
+  ) {
     return this.sql.begin(async (db) => {
       const rows = await db.CreateAsset`
         /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
@@ -70,7 +91,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
            ${input.createdAt}, ${input.updatedAt})
         on conflict ("owner_id", "readable_id") do nothing
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
-          "public_id" as "publicId", "published_at" as "publishedAt",
+          "public_id" as "publicId", "published_at" as "publishedAt", "archived_at" as "archivedAt",
           "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
           "storage_key" as "storageKey", "content_hash" as "contentHash",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
@@ -105,24 +126,26 @@ export class AssetsRepository implements AssetsRepositoryContract {
     ownerId,
     limit,
     offset,
+    status = 'active',
     visibility = 'all',
     kind,
   }: {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     kind?: 'entity_image';
   }) {
     const normalizedKind = kind ?? null;
     const rowsPromise = this.sql.ListAssets`
       /* @notNull id readableId name mediaType sizeBytes createdAt updatedAt */
-      select "id", "readable_id" as "readableId", "name", "public_id" as "publicId", "published_at" as "publishedAt",
+      select "id", "readable_id" as "readableId", "name", "public_id" as "publicId", "published_at" as "publishedAt", "archived_at" as "archivedAt",
         "media_type" as "mediaType",
         "extension", "size_bytes" as "sizeBytes", "created_at" as "createdAt",
         "updated_at" as "updatedAt"
       from "asset"
-      where "owner_id" = ${ownerId} and "archived_at" is null
+      where "owner_id" = ${ownerId} and (${status} = 'archived') = ("archived_at" is not null)
         and (${visibility} = 'all' or (${visibility} = 'public') = (asset."published_at" is not null))
         and (${normalizedKind} is null or (
           "media_type" like 'image/%'
@@ -137,7 +160,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
     const countsPromise = this.sql.CountAssets`
       /* @notNull total */
       select count(*) as "total" from "asset"
-      where "owner_id" = ${ownerId} and "archived_at" is null
+      where "owner_id" = ${ownerId} and (${status} = 'archived') = ("archived_at" is not null)
         and (${visibility} = 'all' or (${visibility} = 'public') = (asset."published_at" is not null))
         and (${normalizedKind} is null or (
           "media_type" like 'image/%'
@@ -156,17 +179,25 @@ export class AssetsRepository implements AssetsRepositoryContract {
     });
   }
 
-  async find({ ownerId, readableId }: { ownerId: string; readableId: string }) {
+  async find({
+    ownerId,
+    readableId,
+    includeArchived = false,
+  }: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }) {
     const rows = await this.sql.FindAsset`
       /* @notNull id ownerId readableId name mediaType sizeBytes storageKey contentHash createdAt updatedAt */
       select "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
-        "public_id" as "publicId", "published_at" as "publishedAt",
+        "public_id" as "publicId", "published_at" as "publishedAt", "archived_at" as "archivedAt",
         "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
         "storage_key" as "storageKey", "content_hash" as "contentHash",
         "created_at" as "createdAt", "updated_at" as "updatedAt"
       from "asset"
       where "owner_id" = ${ownerId} and "readable_id" = ${readableId}
-        and "archived_at" is null
+        and (${includeArchived} or "archived_at" is null)
     `;
     return rows[0] ? storedAssetFrom(rows[0]) : null;
   }
@@ -174,11 +205,13 @@ export class AssetsRepository implements AssetsRepositoryContract {
   async detail({
     ownerId,
     readableId,
+    includeArchived,
   }: {
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<Asset | null> {
-    const asset = await this.find({ ownerId, readableId });
+    const asset = await this.find({ ownerId, readableId, includeArchived });
     if (!asset) {
       return null;
     }
@@ -210,7 +243,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
         where "owner_id" = ${input.ownerId} and "readable_id" = ${input.readableId}
           and "archived_at" is null
         returning "id", "owner_id" as "ownerId", "readable_id" as "readableId", "name",
-          "public_id" as "publicId", "published_at" as "publishedAt",
+          "public_id" as "publicId", "published_at" as "publishedAt", "archived_at" as "archivedAt",
           "media_type" as "mediaType", "extension", "size_bytes" as "sizeBytes",
           "storage_key" as "storageKey", "content_hash" as "contentHash",
           "created_at" as "createdAt", "updated_at" as "updatedAt"
@@ -252,6 +285,42 @@ export class AssetsRepository implements AssetsRepositoryContract {
     });
   }
 
+  unarchive(input: {
+    ownerId: string;
+    readableId: string;
+    change: ChangeContext;
+    unarchivedAt: string;
+  }): Promise<UnarchiveResult> {
+    return this.sql.begin('immediate', async (db) => {
+      const targets = await db.FindAssetUnarchiveTarget`
+        /* @notNull id name */
+        select resource."id", resource."name", resource."archived_at" as "archivedAt" from "asset" resource
+        where resource."owner_id" = ${input.ownerId} and resource."readable_id" = ${input.readableId}
+      `;
+      const target = targets[0];
+      if (!target) {
+        return { state: 'not_found' };
+      }
+      if (!target.archivedAt) {
+        return { state: 'unarchived' };
+      }
+
+      await db`update "asset" set "archived_at" = null where "owner_id" = ${input.ownerId} and "id" = ${target.id}`;
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'asset',
+        readableId: input.readableId,
+        name: target.name,
+        action: 'unarchived',
+        details: [],
+        createdAt: input.unarchivedAt,
+      });
+      return { state: 'unarchived' };
+    });
+  }
+
   archive(input: {
     change: ChangeContext;
     ownerId: string;
@@ -286,11 +355,6 @@ export class AssetsRepository implements AssetsRepositoryContract {
         update "asset" set "archived_at" = ${input.archivedAt}
         where "owner_id" = ${input.ownerId} and "id" = ${target.id}
       `;
-      await db.RemoveAssetSearchDocument`
-        delete from "hypermedia_search_document"
-        where "owner_id" = ${input.ownerId} and "resource_type" = 'asset'
-          and "readable_id" = ${input.readableId}
-      `;
       await recordChange({
         db,
         ownerId: input.ownerId,
@@ -321,7 +385,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @type source 'detected' | 'confirmed' */
       select entity."id", entity."readable_id" as "readableId", entity."name", entity."description",
         entity."entity_type" as "entityType",
-        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt", entity."archived_at" as "archivedAt",
         profile."self_entity_id" is not null as "isSelf",
         case when max(link."source" = 'confirmed') then 'confirmed' else 'detected' end as "source"
       from "asset_depicts_entity" link
@@ -367,7 +431,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       select page."id", page."readable_id" as "readableId", revision."title",
         revision."excerpt", revision."revision_number" as "revisionNumber",
         revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt",
+        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = page."published_revision_id"
             and published_revision."owner_id" = page."owner_id"
@@ -387,7 +451,7 @@ export class AssetsRepository implements AssetsRepositoryContract {
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."entity_type" as "entityType",
-        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt", entity."archived_at" as "archivedAt",
         profile."self_entity_id" is not null as "isSelf"
       from "entity" entity
       left join "knowledge_profile" profile

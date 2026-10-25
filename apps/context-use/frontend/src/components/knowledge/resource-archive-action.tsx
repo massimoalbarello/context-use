@@ -48,8 +48,8 @@ export function ResourceArchiveAction({
       <AlertDialogContent>
         <AlertDialogTitle>Archive this {resource}?</AlertDialogTitle>
         <AlertDialogDescription>
-          It will no longer be available in your workspace. Its stored content will be preserved,
-          but it cannot currently be restored.
+          It will no longer be available in your workspace. Its stored content will be preserved.
+          You can unarchive it from the Archived filter in its collection.
         </AlertDialogDescription>
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="outline">Cancel</Button>} />

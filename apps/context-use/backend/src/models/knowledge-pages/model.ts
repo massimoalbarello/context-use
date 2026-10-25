@@ -1,6 +1,7 @@
 import type { AssetPresentation, AssetSummary } from '#backend/models/assets/model.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
 import type { PagePublicationStatus } from '#backend/models/publications/model.ts';
+import type { ResourceArchiveState } from '#backend/models/resource-archiving/model.ts';
 
 export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
 export const MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH = 280;
@@ -9,7 +10,7 @@ export const KNOWLEDGE_PAGE_INTERVAL_FILTERS = ['with', 'without'] as const;
 
 export type KnowledgePageIntervalFilter = (typeof KNOWLEDGE_PAGE_INTERVAL_FILTERS)[number];
 
-export interface KnowledgePageSummary extends PagePublicationStatus {
+export interface KnowledgePageSummary extends PagePublicationStatus, ResourceArchiveState {
   id: string;
   readableId: string;
   title: string;

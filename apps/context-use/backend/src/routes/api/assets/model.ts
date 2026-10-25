@@ -19,6 +19,7 @@ import {
   pageSummaryResponse,
 } from '#backend/routes/api/pages/model.ts';
 import { PublicationVisibilitySchema } from '#backend/routes/api/publications/model.ts';
+import { ResourceStatusSchema } from '#backend/routes/api/resource-archiving/state-model.ts';
 
 export const KnowledgePageAssetUsageSchema = t.Object({
   kind: t.Literal('page'),
@@ -62,6 +63,7 @@ export const AssetSchema = t.Object({
 });
 
 export const AssetPreviewSchema = t.Pick(AssetSummarySchema, [
+  'archivedAt',
   'readableId',
   'name',
   'mediaType',
@@ -71,6 +73,7 @@ export const AssetPreviewSchema = t.Pick(AssetSummarySchema, [
 
 export function assetPreviewResponse(asset: AssetSummary) {
   return {
+    archivedAt: asset.archivedAt ? new Date(asset.archivedAt) : null,
     readableId: asset.readableId,
     name: asset.name,
     mediaType: asset.mediaType,
@@ -85,6 +88,7 @@ export const AssetListSchema = t.Object({
 });
 
 export const AssetListQuerySchema = t.Object({
+  status: t.Optional(ResourceStatusSchema),
   visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
   kind: t.Optional(t.Literal('entity_image')),
@@ -103,6 +107,7 @@ export const UpdateAssetBodySchema = t.Object({
 export const AssetParamsSchema = t.Object({ assetReadableId: ReadableIdSchema });
 
 export const AssetContentQuerySchema = t.Object({
+  includeArchived: t.Optional(t.Boolean()),
   download: t.Optional(t.Literal('true')),
 });
 

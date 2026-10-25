@@ -10,6 +10,7 @@ function renderPageFilters() {
   const onDateRangeApply = mock(() => undefined);
   render(
     <PageFilters
+      onStatusChange={() => undefined}
       onIntervalChange={onIntervalChange}
       onDateRangeApply={onDateRangeApply}
       onVisibilityChange={() => undefined}
@@ -47,6 +48,7 @@ test('Pages hides date filtering when pages without intervals are selected', asy
   const user = userEvent.setup();
   render(
     <PageFilters
+      onStatusChange={() => undefined}
       interval="without"
       onIntervalChange={() => undefined}
       onDateRangeApply={() => undefined}

@@ -683,6 +683,7 @@ Every observation changes the next action.`,
     );
     expect(temporalEntityPreviewResponse.status).toBe(StatusMap.OK);
     expect(await temporalEntityPreviewResponse.json()).toEqual({
+      archivedAt: null,
       name: 'Temporal subject',
       description: 'Subject used to verify related history.',
       image: null,

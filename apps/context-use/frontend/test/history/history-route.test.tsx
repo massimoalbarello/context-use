@@ -62,6 +62,7 @@ async function withHistory({
   };
   const profile: KnowledgeProfile = {
     selfEntity: {
+      archivedAt: null,
       publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
