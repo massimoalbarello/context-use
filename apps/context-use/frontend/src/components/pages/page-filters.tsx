@@ -32,9 +32,7 @@ export function PageFilters({
   return (
     <KnowledgeFilterPopover title="Filter pages" filtered={filtered}>
       <ResourceStatusFilter value={status} onChange={onStatusChange} />
-      {status !== 'archived' && (
-        <PublicationVisibilityFilter value={visibility} onChange={onVisibilityChange} />
-      )}
+      <PublicationVisibilityFilter value={visibility} onChange={onVisibilityChange} />
       <PageIntervalFilter
         value={interval ?? 'all'}
         onValueChange={(value) => onIntervalChange(value === 'all' ? undefined : value)}

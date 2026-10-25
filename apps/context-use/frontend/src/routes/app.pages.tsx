@@ -76,7 +76,6 @@ function PageFilterControl({ search }: { search: PageSearch }) {
           search: (previous) => ({
             ...previous,
             status,
-            visibility: undefined,
             resource: undefined,
             resourceId: undefined,
             expanded: undefined,

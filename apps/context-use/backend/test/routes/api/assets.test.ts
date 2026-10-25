@@ -848,6 +848,12 @@ test('owner archive browsing and unarchiving preserve content and require active
       const body = await list.json();
       expect(body.items.some((item: { readableId: string }) => item.readableId === id)).toBe(true);
       expect(body.total).toBe(expectedCounts[collection]);
+      const publicArchives = await request({
+        method: 'GET',
+        path: `/${collection}?status=archived&visibility=public`,
+      });
+      expect(publicArchives.status).toBe(StatusMap.OK);
+      expect(await publicArchives.json()).toMatchObject({ items: [], total: 0 });
       const type = resourceTypes[collection];
       const activeSearch = await request({
         method: 'GET',
@@ -859,6 +865,12 @@ test('owner archive browsing and unarchiving preserve content and require active
         path: `/hypermedia/search?query=${search}&resourceTypes=${type}&status=archived`,
       });
       expect((await archivedSearch.json()).results.length).toBeGreaterThan(0);
+      const publicArchivedSearch = await request({
+        method: 'GET',
+        path: `/hypermedia/search?query=${search}&resourceTypes=${type}&status=archived&visibility=public`,
+      });
+      expect(publicArchivedSearch.status).toBe(StatusMap.OK);
+      expect((await publicArchivedSearch.json()).results).toEqual([]);
       // Explicit archived reads and mutations must retain owner scoping.
       expect(
         await repository.find({ ownerId: 'foreign-owner', readableId: id, includeArchived: true }),

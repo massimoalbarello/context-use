@@ -68,7 +68,6 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
             search: (previous) => ({
               ...previous,
               status,
-              visibility: undefined,
               resource: undefined,
               resourceId: undefined,
               expanded: undefined,
@@ -77,12 +76,10 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
           });
         }}
       />
-      {search.status !== 'archived' && (
-        <PublicationVisibilityFilter
-          value={search.visibility}
-          onChange={(visibility) => onChange({ ...search, visibility })}
-        />
-      )}
+      <PublicationVisibilityFilter
+        value={search.visibility}
+        onChange={(visibility) => onChange({ ...search, visibility })}
+      />
       <div className="grid gap-1.5">
         <span className="font-medium text-xs">Type</span>
         <Select<EntityTypeFilter>

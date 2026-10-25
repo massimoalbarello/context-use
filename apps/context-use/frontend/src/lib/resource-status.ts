@@ -6,10 +6,8 @@ export function resourceStatusFromSearch(value: unknown): ResourceStatus | undef
 }
 
 export function resourceStatusSearch(search: Record<string, unknown>) {
-  const status = resourceStatusFromSearch(search.status);
   return {
-    status,
-    visibility:
-      status === 'archived' ? undefined : publicationVisibilityFromSearch(search.visibility),
+    status: resourceStatusFromSearch(search.status),
+    visibility: publicationVisibilityFromSearch(search.visibility),
   };
 }

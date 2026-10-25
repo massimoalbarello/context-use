@@ -96,7 +96,6 @@ function AssetsLayout() {
                 search: (previous) => ({
                   ...previous,
                   status,
-                  visibility: undefined,
                   resource: undefined,
                   resourceId: undefined,
                   expanded: undefined,
@@ -105,18 +104,16 @@ function AssetsLayout() {
               });
             }}
           />
-          {status !== 'archived' && (
-            <PublicationVisibilityFilter
-              value={search.visibility}
-              onChange={(visibility) => {
-                void navigate({
-                  to: '/app/assets',
-                  search: (previous) => ({ ...previous, visibility }),
-                  replace: true,
-                });
-              }}
-            />
-          )}
+          <PublicationVisibilityFilter
+            value={search.visibility}
+            onChange={(visibility) => {
+              void navigate({
+                to: '/app/assets',
+                search: (previous) => ({ ...previous, visibility }),
+                replace: true,
+              });
+            }}
+          />
         </KnowledgeFilterPopover>
       }
       count={total}

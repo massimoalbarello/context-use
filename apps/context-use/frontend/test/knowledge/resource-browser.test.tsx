@@ -946,16 +946,18 @@ for (const { kind, collection, title, id } of [
 ] as const) {
   test(`${collection} can preview archived resources and unarchive only in full detail`, async () => {
     const app = await renderResourceBrowser({
-      path: `/app/${collection}?status=archived&visibility=public`,
+      path: `/app/${collection}?status=archived&visibility=private`,
       archivedResource: kind,
     });
     try {
       const user = userEvent.setup();
       await user.click(screen.getByRole('button', { name: `Filter ${collection}` }));
       expect(screen.getByRole('tab', { name: 'Archived', selected: true })).toBeTruthy();
-      expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
-      expect(app.router.state.location.search).toMatchObject({ status: 'archived' });
-      expect(app.router.state.location.search.visibility).toBeUndefined();
+      expect(screen.getByRole('tab', { name: 'Private', selected: true })).toBeTruthy();
+      expect(app.router.state.location.search).toMatchObject({
+        status: 'archived',
+        visibility: 'private',
+      });
       await user.keyboard('{Escape}');
       await user.click(
         within(
@@ -992,9 +994,50 @@ for (const { kind, collection, title, id } of [
       app.dispose();
     }
   });
+
+  test(`${collection} keeps archived and public filters selectable and shows no matches`, async () => {
+    const app = await renderResourceBrowser({
+      path: `/app/${collection}?status=archived&visibility=public`,
+      archivedResource: kind,
+    });
+    try {
+      const user = userEvent.setup();
+      expect(await screen.findByText(`No ${collection} match these filters.`)).toBeTruthy();
+      expect(app.router.state.location.search).toMatchObject({
+        status: 'archived',
+        visibility: 'public',
+      });
+      expect(
+        app.requests.some(
+          (url) =>
+            url.pathname === `/api/${collection}` &&
+            url.searchParams.get('status') === 'archived' &&
+            url.searchParams.get('visibility') === 'public',
+        ),
+      ).toBe(true);
+      await user.click(screen.getByRole('button', { name: `Filter ${collection}` }));
+      expect(screen.getByRole('tab', { name: 'Archived', selected: true })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'Public', selected: true })).toBeTruthy();
+      await user.click(screen.getByRole('tab', { name: 'Private' }));
+      await waitFor(() => expect(app.router.state.location.search.visibility).toBe('private'));
+      await within(
+        screen.getByRole('region', {
+          name: collection.charAt(0).toUpperCase() + collection.slice(1),
+        }),
+      ).findByRole('link', { name: new RegExp(title) });
+      expect(app.router.state.location.search.status).toBe('archived');
+      await user.click(screen.getByRole('tab', { name: 'Public' }));
+      expect(await screen.findByText(`No ${collection} match these filters.`)).toBeTruthy();
+      await user.click(screen.getByRole('tab', { name: 'Active' }));
+      await waitFor(() => expect(app.router.state.location.search.status).toBeUndefined());
+      expect(app.router.state.location.search.visibility).toBe('public');
+    } finally {
+      app.dispose();
+    }
+  });
 }
 
-test('changing status clears public visibility and selection while retaining page search criteria', async () => {
+test('changing status preserves visibility and page search criteria while clearing selection', async () => {
   const app = await renderResourceBrowser({
     path: '/app/pages?visibility=public&interval=with&resource=page&resourceId=launch',
   });
@@ -1003,10 +1046,10 @@ test('changing status clears public visibility and selection while retaining pag
     await user.click(screen.getByRole('button', { name: 'Filter pages' }));
     await user.click(screen.getByRole('tab', { name: 'Archived' }));
     await waitFor(() => expect(app.router.state.location.search.status).toBe('archived'));
-    expect(app.router.state.location.search.visibility).toBeUndefined();
+    expect(app.router.state.location.search.visibility).toBe('public');
     expect(app.router.state.location.search.interval).toBe('with');
     expect(app.router.state.location.search.resourceId).toBeUndefined();
-    expect(screen.queryByRole('tablist', { name: 'Visibility' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Public', selected: true })).toBeTruthy();
   } finally {
     app.dispose();
   }

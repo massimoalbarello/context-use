@@ -219,13 +219,18 @@ test('archive status separates collection and keyword caches and reaches both re
     for (const query of queries) {
       for (const status of statuses) {
         await client.fetchInfiniteQuery(
-          entitiesQueryOptions({ query, status, entityType: 'person' }),
+          entitiesQueryOptions({ query, status, entityType: 'person', visibility: 'public' }),
         );
-        await client.fetchInfiniteQuery(pagesQueryOptions({ query, status, interval: 'with' }));
-        await client.fetchInfiniteQuery(assetsQueryOptions({ query, status }));
+        await client.fetchInfiniteQuery(
+          pagesQueryOptions({ query, status, interval: 'with', visibility: 'public' }),
+        );
+        await client.fetchInfiniteQuery(
+          assetsQueryOptions({ query, status, visibility: 'public' }),
+        );
       }
     }
     expect(requests).toHaveLength(collectionCount * readsPerCollection);
+    expect(requests.every((url) => url.searchParams.get('visibility') === 'public')).toBe(true);
     expect(requests.filter((url) => url.searchParams.get('status') === 'archived')).toHaveLength(
       readsPerStatus,
     );
