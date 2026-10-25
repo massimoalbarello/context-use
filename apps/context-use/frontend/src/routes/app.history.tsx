@@ -45,6 +45,7 @@ const resources = {
 const actions = {
   created: { label: 'Created', className: 'bg-diff-added/10 text-diff-added' },
   updated: { label: 'Updated', className: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300' },
+  unarchived: { label: 'Unarchived', className: 'bg-diff-added/10 text-diff-added' },
   archived: { label: 'Archived', className: 'bg-amber-500/10 text-amber-800 dark:text-amber-300' },
   deleted: { label: 'Deleted', className: 'bg-diff-removed/10 text-diff-removed' },
 };

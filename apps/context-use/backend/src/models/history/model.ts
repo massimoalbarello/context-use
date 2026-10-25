@@ -7,7 +7,7 @@ export type ResourceChange = {
   resourceType: 'entity' | 'page' | 'asset' | 'record';
   readableId: string;
   name: string;
-  action: 'created' | 'updated' | 'archived' | 'deleted';
+  action: 'created' | 'updated' | 'archived' | 'unarchived' | 'deleted';
   message: string;
   clientName: string | null;
   details: string[];

@@ -188,6 +188,16 @@ test('History shows summaries without previews and links pages to revisions', as
       Response.json({
         items: [
           entry({
+            sequence: 3,
+            resourceType: 'page',
+            readableId: 'restored-notes',
+            name: 'Restored project notes',
+            action: 'unarchived',
+            message: 'Unarchived page from the dashboard',
+            clientName: null,
+            details: [],
+          }),
+          entry({
             sequence: 2,
             resourceType: 'page',
             readableId: 'notes',
@@ -207,6 +217,8 @@ test('History shows summaries without previews and links pages to revisions', as
       expect(screen.getByText('by Research assistant')).toBeTruthy();
       expect(within(link.closest('li')!).queryByText(/^by\b/)).toBeNull();
       expect(screen.getByText('Clarified the next steps')).toBeTruthy();
+      expect(screen.getByText('Unarchived')).toBeTruthy();
+      expect(screen.getByText('Unarchived page from the dashboard')).toBeTruthy();
       expect(screen.queryByText('Content updated')).toBeNull();
       expect(screen.queryByText('Name: “Acme” → “Acme Incorporated”')).toBeNull();
       expect(screen.queryByRole('button', { name: 'View changes' })).toBeNull();
