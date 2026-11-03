@@ -15,7 +15,13 @@ import {
   prepareConfiguration,
   restoreConfiguration,
 } from './configuration';
-import { AUTHORIZATION_SCOPE, PLUGIN_ID, REQUEST_TIMEOUT_MS, serverUrl } from './contract';
+import {
+  AUTHORIZATION_SCOPE,
+  PLUGIN_ID,
+  type PluginConfig,
+  REQUEST_TIMEOUT_MS,
+  serverUrl,
+} from './contract';
 import { ConnectionError } from './error';
 import { attachmentDirectory, LearningStore, learningDatabase } from './learning-store';
 import { authorizationResponse, oauthProvider } from './oauth';
@@ -62,6 +68,18 @@ async function removeLearningData(input: {
   }
 }
 
+function preserveLearningProgress(input: {
+  directory: string;
+  config: PluginConfig;
+  connectionId?: string;
+}): void {
+  const { connectionId } = input;
+  if (connectionId && existsSync(join(input.directory, learningDatabase(connectionId)))) {
+    // Export receipts from a queue created before durable progress was introduced.
+    new LearningStore({ ...input, connectionId }).close();
+  }
+}
+
 export async function connect(input: {
   directory: string;
   instance: string;
@@ -86,6 +104,11 @@ export async function connect(input: {
       await installPackage();
       if (input.reauthorize || state.config.serverUrl !== config.serverUrl) {
         const previousLearningId = state.learningId;
+        preserveLearningProgress({
+          directory: input.directory,
+          config: state.config,
+          connectionId: previousLearningId,
+        });
         state.config = config;
         state.oauth = {};
         state.tools = [];
@@ -147,6 +170,11 @@ export async function finishAuthorization(input: {
       delete state.oauth.verifier;
       // A new authorization can belong to another person even when the OAuth client is reused.
       const previousLearningId = state.learningId;
+      preserveLearningProgress({
+        directory: input.directory,
+        config: state.config,
+        connectionId: previousLearningId,
+      });
       state.learningId = randomUUID();
       await writeState({ directory: input.directory, state });
       if (previousLearningId) {
@@ -187,6 +215,13 @@ export async function disconnect(directory: string): Promise<{ preserved: string
           }
         },
       });
+      if (state?.learningId) {
+        preserveLearningProgress({
+          directory,
+          config: state.config,
+          connectionId: state.learningId,
+        });
+      }
       await rm(directory, { recursive: true, force: true });
       return { preserved };
     },

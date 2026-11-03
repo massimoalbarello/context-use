@@ -34,10 +34,10 @@ const messages = [
 ];
 
 async function fixture() {
-  const directory = await mkdtemp(join(tmpdir(), 'learning-hooks-'));
+  const root = await mkdtemp(join(tmpdir(), 'learning-hooks-'));
+  const directory = join(root, 'connection');
   cleanups.push(async () => {
-    await rm(directory, { recursive: true, force: true });
-    await rm(removalFile(directory), { force: true });
+    await rm(root, { recursive: true, force: true });
   });
   const state = {
     learningId: CONNECTION_ID,
