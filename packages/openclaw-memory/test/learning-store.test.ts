@@ -2,22 +2,33 @@ import { afterEach, expect, test } from 'bun:test';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { attachmentsFromMessages, evidenceFromMessages } from '../src/learning-evidence';
-import { DREAM_INTERVAL_MS, LearningStore, learningDatabase } from '../src/learning-store';
+import {
+  DREAM_INTERVAL_MS,
+  LearningStore,
+  learningDatabase,
+  learningProgressDatabase,
+} from '../src/learning-store';
 
 const config = { agentId: 'main', serverUrl: 'https://memory.example/mcp' };
 const directories: string[] = [];
 const stores: LearningStore[] = [];
 const NOW = Date.parse('2030-06-20T10:00:00Z');
 async function fixture() {
-  const directory = await mkdtemp(join(tmpdir(), 'learning-test-'));
-  directories.push(directory);
-  const open = () => {
-    const db = new LearningStore({ directory, config, connectionId: 'owner' });
+  const root = await mkdtemp(join(tmpdir(), 'learning-test-'));
+  const directory = join(root, 'connection');
+  directories.push(root);
+  const open = (input: { connectionId?: string; config?: typeof config } = {}) => {
+    const db = new LearningStore({ directory, config, connectionId: 'owner', ...input });
     stores.push(db);
     return db;
   };
-  return { directory, open, db: open() };
+  const close = (db: LearningStore) => {
+    db.close();
+    stores.splice(stores.indexOf(db), 1);
+  };
+  return { directory, open, close, db: open() };
 }
 afterEach(async () => {
   for (const db of stores.splice(0)) {
@@ -243,4 +254,163 @@ test('attachment references survive reset and restart, scope uploads to the acti
   db.finish({ id: job.id, now: NOW });
   expect(reopened.attachments(job)).toEqual([]);
   expect(db.status().pending).toBe(0);
+});
+
+test('reauthorization and reinstall skip completed history, retry unfinished evidence, and learn new messages', async () => {
+  const { directory, db, open, close } = await fixture();
+  const source = 'chat:session-1';
+  const completed = [
+    ...evidenceFromMessages([{ role: 'user', content: 'I visited the museum.', timestamp: NOW }]),
+    ...attachmentsFromMessages([
+      { role: 'user', __openclaw: { media: [{ path: '/media/photo.png' }] } },
+    ]),
+  ];
+  db.capture({ source, evidence: completed, now: NOW });
+  const first = db.next({ agentId: 'main', now: NOW })!;
+  db.savedAttachment({
+    jobId: first.id,
+    key: completed[1]!.key,
+    asset: '{"address":"context-use://asset/museum"}',
+  });
+  db.acknowledge({ sessionKey: first.sessionKey });
+  db.finish({ id: first.id, now: NOW });
+  const unfinished = evidenceFromMessages([{ role: 'user', content: 'My next trip is to Bath.' }]);
+  db.capture({ source, evidence: unfinished, now: NOW + 1 });
+  const pending = db.next({ agentId: 'main', now: NOW + 1 })!;
+  db.started({ id: pending.id, runId: 'interrupted', now: NOW + 1 });
+  close(db);
+
+  for (const connectionId of ['reauthorized', 'reinstalled']) {
+    await rm(directory, { recursive: true, force: true });
+    const resumed = open({ connectionId });
+    resumed.capture({ source, evidence: completed, now: NOW + 2 });
+    expect(resumed.status().pending).toBe(0);
+    expect(resumed.next({ agentId: 'main', now: NOW + 2 })).toBeUndefined();
+    resumed.capture({ source, evidence: unfinished, now: NOW + 2 });
+    expect(resumed.status().pending).toBe(1);
+    expect(resumed.next({ agentId: 'main', now: NOW + 2 })?.evidence).toContain('Bath');
+    close(resumed);
+  }
+
+  const final = open({ connectionId: 'new-arrival' });
+  final.capture({
+    source,
+    evidence: evidenceFromMessages([{ role: 'user', content: 'The train is booked.' }]),
+    now: NOW + 2,
+  });
+  expect(final.status().pending).toBe(1);
+  const progressPath = learningProgressDatabase({ directory, config });
+  const receiptBytes = await readFile(progressPath);
+  expect(receiptBytes.includes(Buffer.from('museum.'))).toBe(false);
+  expect(receiptBytes.includes(Buffer.from('/media/photo.png'))).toBe(false);
+  const permissionsMask = 0o777;
+  const privateFileMode = 0o600;
+  expect((await stat(progressPath)).mode & permissionsMask).toBe(privateFileMode);
+});
+
+test('saved attachments and uncertain upload names survive authorization changes until curation completes', async () => {
+  const { directory, db, open, close } = await fixture();
+  const evidence = attachmentsFromMessages([
+    {
+      role: 'user',
+      __openclaw: { media: [{ path: '/media/photo.png' }, { path: '/media/guide.pdf' }] },
+    },
+  ]);
+  db.capture({ source: 'chat', evidence, now: NOW });
+  const job = db.next({ agentId: 'main', now: NOW })!;
+  const asset = '{"address":"context-use://asset/museum-photo"}';
+  db.savedAttachment({ jobId: job.id, key: evidence[0]!.key, asset });
+  db.prepareAttachmentUpload({ jobId: job.id, key: evidence[1]!.key, name: 'Museum guide' });
+  close(db);
+  await rm(directory, { recursive: true });
+
+  const resumed = open({ connectionId: 'reauthorized' });
+  resumed.capture({ source: 'chat', evidence, now: NOW + 1 });
+  const next = resumed.next({ agentId: 'main', now: NOW + 1 })!;
+  expect(resumed.attachments(next)[0]?.asset).toBe(asset);
+  expect(
+    resumed.prepareAttachmentUpload({ jobId: next.id, key: evidence[1]!.key, name: 'New name' }),
+  ).toBe('Museum guide');
+  resumed.clearAttachmentUploadName({ jobId: next.id, key: evidence[1]!.key });
+  close(resumed);
+  await rm(directory, { recursive: true });
+  const retried = open({ connectionId: 'retry' });
+  retried.capture({ source: 'chat', evidence, now: NOW + 2 });
+  const retry = retried.next({ agentId: 'main', now: NOW + 2 })!;
+  expect(
+    retried.prepareAttachmentUpload({ jobId: retry.id, key: evidence[1]!.key, name: 'New name' }),
+  ).toBe('New name');
+});
+
+test('durable progress is scoped to the instance, agent, and conversation', async () => {
+  const { db, open } = await fixture();
+  const evidence = evidenceFromMessages([{ role: 'user', content: 'Remember this plan.' }]);
+  db.capture({ source: 'chat', evidence, now: NOW });
+  const job = db.next({ agentId: 'main', now: NOW })!;
+  db.acknowledge({ sessionKey: job.sessionKey });
+  db.finish({ id: job.id, now: NOW });
+  for (const [connectionId, ownerConfig] of [
+    ['other-server', { ...config, serverUrl: 'https://other.example/mcp' }],
+    ['other-agent', { ...config, agentId: 'other' }],
+  ] as const) {
+    const other = open({ connectionId, config: ownerConfig });
+    other.capture({ source: 'chat', evidence, now: NOW });
+    expect(other.status().pending).toBe(1);
+  }
+  db.capture({ source: 'other-chat', evidence, now: NOW });
+  expect(db.status().pending).toBe(1);
+});
+
+test('existing queues export completed fingerprints and saved assets before their connection is deleted', async () => {
+  const { directory, db, open, close } = await fixture();
+  const completed = evidenceFromMessages([{ role: 'user', content: 'Already learned.' }]);
+  const attachments = attachmentsFromMessages([
+    { role: 'user', __openclaw: { media: [{ path: '/media/photo.png' }] } },
+  ]);
+  db.capture({ source: 'chat', evidence: [...completed, ...attachments], now: NOW });
+  close(db);
+  // Reproduce the previous release: completed rows and uploads exist only in the queue.
+  const legacy = new DatabaseSync(join(directory, learningDatabase('owner')));
+  try {
+    legacy.prepare('UPDATE evidence SET text = NULL WHERE fingerprint = ?').run(completed[0]!.key);
+    legacy
+      .prepare('UPDATE attachments SET asset = ?, uploadName = ?')
+      .run('{"address":"context-use://asset/photo"}', 'Exhibition photo');
+  } finally {
+    legacy.close();
+  }
+  close(open());
+  await rm(directory, { recursive: true });
+  const resumed = open({ connectionId: 'reauthorized' });
+  resumed.capture({ source: 'chat', evidence: [...completed, ...attachments], now: NOW + 1 });
+  expect(resumed.status().pending).toBe(1);
+  const job = resumed.next({ agentId: 'main', now: NOW + 1 })!;
+  expect(resumed.attachments(job)[0]?.asset).toBe('{"address":"context-use://asset/photo"}');
+});
+
+test('a failed receipt write rolls back completion and retains retryable evidence', async () => {
+  const { directory, db } = await fixture();
+  db.capture({
+    source: 'chat',
+    evidence: evidenceFromMessages([{ role: 'user', content: 'A new plan.' }]),
+    now: NOW,
+  });
+  const job = db.next({ agentId: 'main', now: NOW })!;
+  db.acknowledge({ sessionKey: job.sessionKey });
+  const progress = new DatabaseSync(learningProgressDatabase({ directory, config }));
+  try {
+    progress.exec(
+      "CREATE TRIGGER reject_completion BEFORE INSERT ON completed BEGIN SELECT RAISE(ABORT, 'receipt unavailable'); END",
+    );
+    expect(() => db.finish({ id: job.id, now: NOW })).toThrow('receipt unavailable');
+    expect(db.current()?.id).toBe(job.id);
+    expect(db.status().pending).toBe(1);
+    expect(progress.prepare('SELECT * FROM completed').all()).toEqual([]);
+    progress.exec('DROP TRIGGER reject_completion');
+    db.finish({ id: job.id, now: NOW });
+    expect(db.status().pending).toBe(0);
+    expect(progress.prepare('SELECT source FROM completed').all()).toEqual([{ source: 'chat' }]);
+  } finally {
+    progress.close();
+  }
 });

@@ -43,6 +43,9 @@ Run ${OPENCLAW_INSTALL_COMMAND} remove. It restores the plugin's configuration
 changes, clears local credentials, cancels unfinished learning, discards pending
 local evidence, and uninstalls the package. User edits, remote memories, and
 conversation history are preserved. It also works when setup was unfinished or disabled.
+Completed-learning fingerprints and saved-attachment references remain locally so reinstalling
+for the same instance and agent does not repeat completed work. These receipts contain no
+conversation text, attachment bytes, or credentials.
 
 Removal runs separately so the requesting turn can finish. End this turn once
 removal is queued. Do not poll in this turn, schedule retries, stop the gateway,

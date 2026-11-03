@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -19,6 +19,14 @@ export const attachmentDirectory = (connectionId: string) =>
 export const DREAM_INTERVAL_MS = 21_600_000;
 export const learningDatabase = (connectionId: string) =>
   `learning-${encodeURIComponent(connectionId)}.sqlite`;
+const learningProgressDirectory = (directory: string) => `${directory}.progress`;
+
+export function learningProgressDatabase(input: { directory: string; config: PluginConfig }) {
+  const scope = createHash('sha256')
+    .update(JSON.stringify([input.config.serverUrl, input.config.agentId]))
+    .digest('hex');
+  return join(learningProgressDirectory(input.directory), `${scope}.sqlite`);
+}
 
 export type LearningJob = {
   id: string;
@@ -32,7 +40,7 @@ export type LearningJob = {
   startedAt: number;
 };
 
-/** A temporary delivery queue, not an alternative personal memory store. */
+/** Temporary evidence with durable completion receipts, not an alternative personal memory store. */
 export class LearningStore {
   private readonly db: DatabaseSync;
 
@@ -73,19 +81,53 @@ export class LearningStore {
       this.db.close();
       throw new Error('Context Use learning queue belongs to a different connection.');
     }
+    // Receipts belong to the destination and agent, independently of OAuth credentials
+    // and the private connection directory removed during uninstall.
+    try {
+      mkdirSync(learningProgressDirectory(input.directory), {
+        recursive: true,
+        mode: PRIVATE_DIRECTORY_MODE,
+      });
+      const progressPath = learningProgressDatabase(input);
+      this.db.prepare('ATTACH DATABASE ? AS progress').run(progressPath);
+      chmodSync(progressPath, PRIVATE_FILE_MODE);
+      this.db.exec(`
+      CREATE TABLE IF NOT EXISTS progress.completed (
+        source TEXT NOT NULL, fingerprint TEXT NOT NULL, PRIMARY KEY (source, fingerprint)
+      );
+      CREATE TABLE IF NOT EXISTS progress.attachments (
+        source TEXT NOT NULL, key TEXT NOT NULL, asset TEXT, uploadName TEXT,
+        PRIMARY KEY (source, key)
+      );
+      INSERT OR IGNORE INTO progress.completed
+        SELECT source, fingerprint FROM evidence WHERE text IS NULL;
+      INSERT OR IGNORE INTO progress.attachments
+        SELECT source, key, asset, uploadName FROM attachments
+        WHERE asset IS NOT NULL OR uploadName IS NOT NULL;
+      `);
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
   }
 
   capture(input: { source: string; evidence: LearningEvidence[]; now: number }): void {
     this.transaction(() => {
       const insert = this.db.prepare(
-        'INSERT OR IGNORE INTO evidence(source, fingerprint, text, capturedAt) VALUES (?, ?, ?, ?)',
+        `INSERT OR IGNORE INTO evidence(source, fingerprint, text, capturedAt)
+        SELECT ?, ?, ?, ? WHERE NOT EXISTS (
+          SELECT 1 FROM progress.completed WHERE source = ? AND fingerprint = ?
+        )`,
       );
       for (const item of input.evidence) {
-        insert.run(input.source, item.key, item.text, input.now);
+        insert.run(input.source, item.key, item.text, input.now, input.source, item.key);
         if (item.attachment) {
           this.db
-            .prepare(`INSERT OR IGNORE INTO attachments(source, key, evidenceId, data)
-            SELECT source, fingerprint, id, ? FROM evidence WHERE source = ? AND fingerprint = ?`)
+            .prepare(`INSERT OR IGNORE INTO attachments(source, key, evidenceId, data, asset, uploadName)
+            SELECT e.source, e.fingerprint, e.id, ?, p.asset, p.uploadName
+            FROM evidence e LEFT JOIN progress.attachments p
+              ON p.source = e.source AND p.key = e.fingerprint
+            WHERE e.source = ? AND e.fingerprint = ? AND e.text IS NOT NULL`)
             .run(JSON.stringify(item.attachment), input.source, item.key);
         }
       }
@@ -209,30 +251,46 @@ export class LearningStore {
 
   prepareAttachmentUpload(input: { jobId: string; key: string; name: string }): string {
     const source = this.attachmentSource(input);
-    this.db
-      .prepare(
-        'UPDATE attachments SET uploadName = COALESCE(uploadName, ?) WHERE source = ? AND key = ?',
-      )
-      .run(input.name, source, input.key);
-    return (
+    return this.transaction(() => {
       this.db
-        .prepare('SELECT uploadName FROM attachments WHERE source = ? AND key = ?')
-        .get(source, input.key) as { uploadName: string }
-    ).uploadName;
+        .prepare(
+          'UPDATE attachments SET uploadName = COALESCE(uploadName, ?) WHERE source = ? AND key = ?',
+        )
+        .run(input.name, source, input.key);
+      this.preserveAttachment({ source, key: input.key });
+      return (
+        this.db
+          .prepare('SELECT uploadName FROM attachments WHERE source = ? AND key = ?')
+          .get(source, input.key) as { uploadName: string }
+      ).uploadName;
+    });
   }
 
   clearAttachmentUploadName(input: { jobId: string; key: string }): void {
     const source = this.attachmentSource(input);
-    this.db
-      .prepare('UPDATE attachments SET uploadName = NULL WHERE source = ? AND key = ?')
-      .run(source, input.key);
+    this.transaction(() => {
+      this.db
+        .prepare('UPDATE attachments SET uploadName = NULL WHERE source = ? AND key = ?')
+        .run(source, input.key);
+      this.preserveAttachment({ source, key: input.key });
+    });
   }
 
   savedAttachment(input: { jobId: string; key: string; asset: string }): void {
     const source = this.attachmentSource(input);
+    this.transaction(() => {
+      this.db
+        .prepare('UPDATE attachments SET asset = ? WHERE source = ? AND key = ?')
+        .run(input.asset, source, input.key);
+      this.preserveAttachment({ source, key: input.key });
+    });
+  }
+
+  private preserveAttachment(input: { source: string; key: string }): void {
     this.db
-      .prepare('UPDATE attachments SET asset = ? WHERE source = ? AND key = ?')
-      .run(input.asset, source, input.key);
+      .prepare(`INSERT OR REPLACE INTO progress.attachments
+        SELECT source, key, asset, uploadName FROM attachments WHERE source = ? AND key = ?`)
+      .run(input.source, input.key);
   }
 
   acknowledge(input: { sessionKey: string; omittedAttachments?: string[] }): void {
@@ -272,6 +330,10 @@ export class LearningStore {
         throw new Error('Learning must be acknowledged before removing its evidence.');
       }
       if (job.kind === 'learn') {
+        this.db
+          .prepare(`INSERT OR IGNORE INTO progress.completed
+            SELECT source, fingerprint FROM evidence WHERE source = ? AND id <= ?`)
+          .run(job.source, job.through);
         this.db
           .prepare('UPDATE evidence SET text = NULL WHERE source = ? AND id <= ?')
           .run(job.source, job.through);
