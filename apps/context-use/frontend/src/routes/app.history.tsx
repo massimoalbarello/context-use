@@ -142,15 +142,15 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
         </div>
         <ol
           aria-label={revisions.length > 0 ? 'Revisions that day' : 'Changes that day'}
-          className="mt-3 space-y-3 border-border border-l pl-4"
+          className="mt-3 space-y-3"
         >
           {(revisions.length > 0 ? revisions : [entry]).map((revision) => (
             <li
               key={revision.sequence}
               className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[auto_auto_1fr]"
             >
-              <HistoryActionBadge entry={revision} />
               <HistoryTime entry={revision} />
+              <HistoryActionBadge entry={revision} />
               <HistoryMessage entry={revision} />
             </li>
           ))}
