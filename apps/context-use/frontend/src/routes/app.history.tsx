@@ -1,12 +1,14 @@
+import { Collapsible } from '@base-ui/react/collapsible';
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, redirect } from '@tanstack/react-router';
-import { FileInput, FileText, History, Image, Users } from 'lucide-react';
+import { ChevronDown, FileInput, FileText, History, Image, Users } from 'lucide-react';
 import { InfiniteScrollTrigger } from '../components/knowledge/infinite-scroll-trigger';
 import { KnowledgeSidebar } from '../components/knowledge/knowledge-sidebar';
 import { KnowledgeWorkspace } from '../components/knowledge/knowledge-workspace';
 import { KnowledgeWorkspaceDetail } from '../components/knowledge/knowledge-workspace-detail';
+import { KnowledgePageRevisionComparison } from '../components/pages/knowledge-page-revision-comparison';
 import { Badge } from '../components/ui/badge';
 import {
   Select,
@@ -50,21 +52,74 @@ const actions = {
   deleted: { label: 'Deleted', className: 'bg-diff-removed/10 text-diff-removed' },
 };
 
-function HistoryItem({ entry }: { entry: HistoryEntry }) {
-  const resource = resources[entry.resourceType];
-  const action = actions[entry.action];
-  const Icon = resource.icon;
+type HistoryItemGroup = { entry: HistoryEntry; revisions: HistoryEntry[] };
+
+function groupDailyHistory(entries: HistoryEntry[]) {
+  const items: HistoryItemGroup[] = [];
+  const pages = new Map<string, HistoryItemGroup>();
+  for (const entry of entries) {
+    if (entry.resourceType !== 'page' || entry.pageRevisionNumber === null) {
+      items.push({ entry, revisions: [] });
+      continue;
+    }
+    const group = pages.get(entry.readableId);
+    if (group) {
+      group.revisions.push(entry);
+      continue;
+    }
+    const item = { entry, revisions: [entry] };
+    pages.set(entry.readableId, item);
+    items.push(item);
+  }
+  return items;
+}
+
+function HistoryTime({ entry, className }: { entry: HistoryEntry; className?: string }) {
   return (
-    <li className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4">
-      <Badge
-        className={cn(
-          'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
-          action.className,
-        )}
-      >
-        {action.label}
-      </Badge>
-      <div className="col-start-2 row-span-2 min-w-0 sm:row-span-1">
+    <time
+      className={cn('whitespace-nowrap text-muted-foreground text-xs tabular-nums', className)}
+      dateTime={entry.createdAt.toISOString()}
+    >
+      {entry.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    </time>
+  );
+}
+
+function HistoryMessage({ entry }: { entry: HistoryEntry }) {
+  return (
+    <div className="min-w-0">
+      <p className="break-words text-sm leading-6">{entry.message}</p>
+      {entry.clientName !== null && (
+        <p className="mt-0.5 text-muted-foreground text-xs">by {entry.clientName}</p>
+      )}
+    </div>
+  );
+}
+
+function HistoryItem({ entry, revisions }: HistoryItemGroup) {
+  const resource = resources[entry.resourceType];
+  const oldest = revisions.at(-1);
+  const action = actions[oldest?.action === 'created' ? 'created' : entry.action];
+  const Icon = resource.icon;
+  const from = oldest?.pageRevisionNumber;
+  const to = entry.pageRevisionNumber;
+  return (
+    <Collapsible.Root
+      render={<li />}
+      className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4"
+    >
+      <div className="flex flex-col items-start gap-1.5">
+        <Badge
+          className={cn(
+            'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
+            action.className,
+          )}
+        >
+          {action.label}
+        </Badge>
+        <HistoryTime entry={entry} className="sm:hidden" />
+      </div>
+      <div className="col-start-2 min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="break-words font-semibold text-sm leading-6">
             {entry.available ? (
@@ -84,19 +139,49 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
             <Icon className="size-3" aria-hidden="true" />
             {resource.label}
           </span>
+          {revisions.length > 1 && (
+            <span className="text-muted-foreground text-xs">{revisions.length} revisions</span>
+          )}
         </div>
-        <p className="break-words text-sm leading-6">{entry.message}</p>
-        {entry.clientName !== null && (
-          <p className="mt-0.5 text-muted-foreground text-xs">by {entry.clientName}</p>
+        {revisions.length > 1 ? (
+          <ol
+            aria-label="Revisions that day"
+            className="mt-3 space-y-3 border-border border-l pl-4"
+          >
+            {revisions.map((revision) => (
+              <li
+                key={revision.sequence}
+                className="grid gap-x-3 gap-y-0.5 sm:grid-cols-[auto_1fr]"
+              >
+                <HistoryTime entry={revision} className="pt-1" />
+                <HistoryMessage entry={revision} />
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <HistoryMessage entry={entry} />
+        )}
+        {entry.available && from != null && to != null && (
+          <Collapsible.Trigger
+            render={<Button variant="ghost" size="sm" />}
+            className="group mt-2"
+            aria-label={`Changes to ${entry.name} on ${entry.createdAt.toLocaleDateString([], { dateStyle: 'full' })}`}
+          >
+            Changes
+            <ChevronDown className="size-4 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none" />
+          </Collapsible.Trigger>
         )}
       </div>
-      <time
-        className="col-start-1 row-start-2 whitespace-nowrap text-muted-foreground text-xs tabular-nums sm:col-start-3 sm:row-start-1 sm:pt-1"
-        dateTime={entry.createdAt.toISOString()}
-      >
-        {entry.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </time>
-    </li>
+      <HistoryTime
+        entry={entry}
+        className="hidden sm:col-start-3 sm:row-start-1 sm:block sm:pt-1"
+      />
+      {entry.available && from != null && to != null && (
+        <Collapsible.Panel className="col-span-full min-w-0 pt-3 sm:col-span-2 sm:col-start-2">
+          <KnowledgePageRevisionComparison readableId={entry.readableId} from={from - 1} to={to} />
+        </Collapsible.Panel>
+      )}
+    </Collapsible.Root>
   );
 }
 
@@ -147,15 +232,10 @@ function HistoryRoute() {
   const { profile } = Route.useRouteContext();
   const { resourceType } = Route.useSearch();
   const query = useInfiniteQuery(historyQueryOptions(resourceType));
-  const days = new Map<string, { date: Date; entries: HistoryEntry[] }>();
-  for (const page of query.data?.pages ?? []) {
-    for (const entry of page.items) {
-      const key = entry.createdAt.toLocaleDateString();
-      const group = days.get(key) ?? { date: entry.createdAt, entries: [] };
-      group.entries.push(entry);
-      days.set(key, group);
-    }
-  }
+  const days = (query.data?.pages ?? []).flatMap((page) => {
+    const first = page.items[0];
+    return first ? [{ date: first.createdAt, items: groupDailyHistory(page.items) }] : [];
+  });
   if (!profile) {
     return null;
   }
@@ -188,13 +268,13 @@ function HistoryRoute() {
                   Retry
                 </Button>
               </div>
-            ) : days.size === 0 ? (
+            ) : days.length === 0 ? (
               <HistoryEmptyState filtered={Boolean(resourceType)} />
             ) : (
               <div className="space-y-8">
-                {Array.from(days, ([key, day]) => (
+                {days.map((day) => (
                   <section
-                    key={key}
+                    key={day.date.toLocaleDateString()}
                     aria-label={day.date.toLocaleDateString([], { dateStyle: 'full' })}
                   >
                     <h2 className="border-border border-b pb-3 font-semibold text-base tracking-tight">
@@ -210,8 +290,8 @@ function HistoryRoute() {
                       </time>
                     </h2>
                     <ol className="divide-y divide-border/60">
-                      {day.entries.map((entry) => (
-                        <HistoryItem key={entry.sequence} entry={entry} />
+                      {day.items.map((item) => (
+                        <HistoryItem key={item.entry.sequence} {...item} />
                       ))}
                     </ol>
                   </section>

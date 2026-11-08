@@ -5,16 +5,18 @@ import { RevisionDiff } from './revision-diff';
 
 export function KnowledgePageRevisionComparison({
   readableId,
-  revisionNumber,
+  from,
+  to,
 }: {
   readableId: string;
-  revisionNumber: number;
+  from: number;
+  to: number;
 }) {
   const comparison = useQuery(
     pageDiffQueryOptions({
       readableId,
-      from: revisionNumber - 1,
-      to: revisionNumber,
+      from,
+      to,
     }),
   );
   if (comparison.error) {
