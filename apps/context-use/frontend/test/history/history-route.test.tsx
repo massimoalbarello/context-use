@@ -260,7 +260,6 @@ test('History combines complete daily page revisions across API pages and links 
           .getAllByRole('heading', { level: 3 })
           .map((heading) => heading.textContent),
       ).toEqual(['Newest page', 'Project notes', 'Unrelated entity', 'Restored notes']);
-      expect(within(row).getByText('3 revisions')).toBeTruthy();
       const messages = within(row).getByRole('list', { name: 'Revisions that day' });
       const revisions = within(messages).getAllByRole('listitem');
       for (const revision of revisions) {
@@ -341,7 +340,6 @@ test('History preserves creation and unavailable revisions in one daily item wit
       ).getAllByRole('listitem');
       expect(within(revisions[0]!).getByText('Updated')).toBeTruthy();
       expect(within(revisions[1]!).getByText('Created')).toBeTruthy();
-      expect(within(row).getByText('2 revisions')).toBeTruthy();
       expect(within(row).getByText('Created the notes')).toBeTruthy();
       expect(within(row).getByText('Revised the notes')).toBeTruthy();
       expect(screen.getByText('Archived the notes')).toBeTruthy();
@@ -414,7 +412,6 @@ test('History retries a failed continuation before exposing a partial daily grou
       expect(screen.queryByRole('button', { name: /^Changes to/ })).toBeNull();
       await user.click(screen.getByRole('button', { name: 'Retry' }));
       const row = (await screen.findByRole('link', { name: 'Daily notes' })).closest('li')!;
-      expect(within(row).getByText('2 revisions')).toBeTruthy();
       expect(within(row).getByText('First edit')).toBeTruthy();
       expect(within(row).getByText('Latest edit')).toBeTruthy();
       expect(screen.queryByRole('button', { name: /^Changes/ })).toBeNull();

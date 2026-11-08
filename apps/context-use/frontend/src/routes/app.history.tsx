@@ -136,9 +136,6 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
             )}
           </h3>
           <span className="text-muted-foreground text-xs">{resource.label}</span>
-          {revisions.length > 1 && (
-            <span className="text-muted-foreground text-xs">{revisions.length} revisions</span>
-          )}
         </div>
         <ol
           aria-label={revisions.length > 0 ? 'Revisions that day' : 'Changes that day'}
