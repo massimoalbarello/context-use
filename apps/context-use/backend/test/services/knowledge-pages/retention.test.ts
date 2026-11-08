@@ -137,7 +137,7 @@ async function setup() {
   }
 }
 
-test('saves retain the last five, the inclusive 24-hour window, publication and valid approval, scoped to one page and owner', async () => {
+test('saves retain the last ten, the inclusive 24-hour window, publication and valid approval, scoped to one page and owner', async () => {
   const context = await setup();
   try {
     for (let index = 0; index < HISTORY_COUNT; index++) {
@@ -180,14 +180,14 @@ test('saves retain the last five, the inclusive 24-hour window, publication and 
     `;
     await context.db`
       update "knowledge_page_revision" set "created_at" = ${CUTOFF}
-      where "owner_id" = ${OWNER} and "page_id" = ${current.id} and "revision_number" = 9
+      where "owner_id" = ${OWNER} and "page_id" = ${current.id} and "revision_number" = 5
     `;
     await context.db`
       update "knowledge_page_revision" set "created_at" = '2026-10-03T12:00:00.001Z'
-      where "owner_id" = ${OWNER} and "page_id" = ${current.id} and "revision_number" = 10
+      where "owner_id" = ${OWNER} and "page_id" = ${current.id} and "revision_number" = 6
     `;
     expect((await context.saveAt()).revisionNumber).toBe(NEXT_REVISION);
-    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 10, 9, 3, 2]);
+    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 3, 2]);
     expect(await context.retained({ ownerId: 'owner-b', readableId: 'notes' })).toHaveLength(
       HISTORY_COUNT,
     );
@@ -216,7 +216,7 @@ test('saves retain the last five, the inclusive 24-hour window, publication and 
     ).not.toBeNull();
     expect(await context.publications.prepare(request)).not.toBeNull();
     await context.saveAt({ now: EXPIRES });
-    expect(await context.retained()).toEqual([17, 16, 15, 14, 13, 2]);
+    expect(await context.retained()).toEqual([17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 2]);
     const withdrawal = { ...context.identity, resourceType: 'page', action: 'unpublish' } as const;
     const prepared = (await context.publications.prepare(withdrawal))!;
     await context.publications.execute({
@@ -225,7 +225,7 @@ test('saves retain the last five, the inclusive 24-hour window, publication and 
       publishedAt: EXPIRES,
     });
     await context.saveAt({ now: EXPIRES });
-    expect(await context.retained()).toEqual([18, 17, 16, 15, 14]);
+    expect(await context.retained()).toEqual([18, 17, 16, 15, 14, 13, 12, 11, 10, 9]);
   } finally {
     await context.dispose();
   }
@@ -240,10 +240,10 @@ test('replacing the public revision releases its old protection on the next save
     await context.publish(1);
     await context.db`update "knowledge_page_revision" set "created_at" = ${OLD}`;
     await context.saveAt();
-    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 1]);
+    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 1]);
     await context.publish(NEXT_REVISION);
     await context.saveAt();
-    expect(await context.retained()).toEqual([17, 16, 15, 14, 13]);
+    expect(await context.retained()).toEqual([17, 16, 15, 14, 13, 12, 11, 10, 9, 8]);
   } finally {
     await context.dispose();
   }
@@ -271,7 +271,7 @@ test('a protected approval can publish after pruning, and consumption does not r
       now: NOW,
     }))!;
     await context.saveAt();
-    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 1]);
+    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 1]);
     const credential = {
       id: 'passkey',
       credentialId: 'credential',
@@ -309,7 +309,7 @@ test('a protected approval can publish after pruning, and consumption does not r
       publishedAt: NOW,
     });
     await context.saveAt();
-    expect(await context.retained()).toEqual([17, 16, 15, 14, 13]);
+    expect(await context.retained()).toEqual([17, 16, 15, 14, 13, 12, 11, 10, 9, 8]);
     // An already prepared review cannot acquire protection after its content has been pruned.
     expect(
       await context.approvals.create({
@@ -348,7 +348,7 @@ test('expired sessions do not pin old revisions even when their approval has not
     await context.db`update "auth_session" set "expiresAt" = ${NOW} where "id" = ${OWNER}`;
     await context.db`update "knowledge_page_revision" set "created_at" = ${OLD}`;
     await context.saveAt();
-    expect(await context.retained()).toEqual([16, 15, 14, 13, 12]);
+    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 11, 10, 9, 8, 7]);
   } finally {
     await context.dispose();
   }
@@ -389,7 +389,7 @@ test('file deletion failure survives restart and an identical save retries clean
       state: 'saved',
       page: { revisionNumber: NEXT_REVISION },
     });
-    expect(await context.retained()).toEqual([16, 15, 14, 13, 12]);
+    expect(await context.retained()).toEqual([16, 15, 14, 13, 12, 11, 10, 9, 8, 7]);
     expect(await context.pending({ pageId: current.id })).toEqual([old.storageKey]);
     expect(await context.storage.exists(old.storageKey)).toBe(true);
     const restarted = new KnowledgePagesService({
@@ -404,7 +404,7 @@ test('file deletion failure survives restart and an identical save retries clean
     expect(await context.db`select "sequence" from "resource_change"`).toHaveLength(NEXT_REVISION);
     const retained = await context.pages.revisionsByNumber({
       ...context.identity,
-      revisionNumbers: [12, 13, 14, 15, 16],
+      revisionNumbers: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     });
     for (const revision of retained) {
       expect(await context.storage.exists(revision.storageKey)).toBe(true);

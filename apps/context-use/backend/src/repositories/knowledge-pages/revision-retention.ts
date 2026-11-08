@@ -17,7 +17,11 @@ export async function prunePageRevisions({
   now: string;
 }): Promise<void> {
   const cutoff = new Date(new Date(now).getTime() - PAGE_REVISION_RETENTION_MS).toISOString();
+  // Prune only on saves, keeping the union of the latest revisions and the inclusive time window.
+  // Current publication and valid pending approvals protect extra revisions until that use ends.
   // Publication, approval creation, and this save share the database write lock.
+  // Queue file paths in the same transaction as row deletion: storage cannot commit with SQLite.
+  // The queue survives crashes and failed file deletions; a later save retries cleanup after commit.
   await db`
     insert into "knowledge_page_revision_blob_deletion" ("storage_key", "owner_id", "page_id")
     select revision."storage_key", revision."owner_id", revision."page_id"
