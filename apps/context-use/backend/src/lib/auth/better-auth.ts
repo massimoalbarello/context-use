@@ -1,6 +1,7 @@
 import type { CimdOptions } from '@better-auth/cimd';
 import { cimd } from '@better-auth/cimd';
 import { mcp, requireMcpAuth } from '@better-auth/mcp';
+import { getOAuthProviderState } from '@better-auth/oauth-provider';
 import { passkey } from '@better-auth/passkey';
 import { bunSqlAdapter } from '@ilbertt/better-auth-bun-sql';
 import { type BetterAuthOptions, betterAuth } from 'better-auth';
@@ -18,6 +19,8 @@ import {
   ownerRegistrationUser,
 } from '#backend/lib/auth/owner-registration.ts';
 import { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
+import { mcpClientAuthorizationId } from '#backend/models/mcp-client-authorizations/authorization-id.ts';
+import { MCP_CODE_CHALLENGE_PATTERN } from '#backend/models/mcp-client-authorizations/model.ts';
 
 export const AUTH_ROUTE_PATH = '/auth';
 export const MCP_ROUTE_PATH = '/mcp';
@@ -60,7 +63,31 @@ function ownerRegistrationApiError(error: unknown): never {
 type McpAuthorizationIdResolver = (input: {
   ownerId: string;
   oauthClientId: string;
+  clientAuthorizationId: string;
 }) => Promise<string | null>;
+
+async function mcpAuthorizationRequest(ownerId: string) {
+  const state = await getOAuthProviderState();
+  const query = new URLSearchParams(state?.query);
+  const oauthClientId = query.get('client_id');
+  const codeChallenge = query.get('code_challenge');
+  if (
+    !oauthClientId ||
+    !codeChallenge ||
+    !MCP_CODE_CHALLENGE_PATTERN.test(codeChallenge) ||
+    query.get('code_challenge_method') !== 'S256'
+  ) {
+    throw new APIError('BAD_REQUEST', {
+      error: 'invalid_request',
+      error_description: 'An MCP authorization requires an S256 PKCE challenge.',
+    });
+  }
+  return {
+    ownerId,
+    oauthClientId,
+    clientAuthorizationId: mcpClientAuthorizationId({ ownerId, oauthClientId, codeChallenge }),
+  };
+}
 
 export function createAuthOptions({
   database,
@@ -200,20 +227,45 @@ export function createAuthOptions({
         extensions: [
           {
             claims: {
-              accessToken: async ({ user, client }) => {
+              accessToken: async ({ user, client, referenceId }) => {
                 const authorizationId =
                   user &&
+                  referenceId &&
                   (await getMcpAuthorizationId({
                     ownerId: user.id,
                     oauthClientId: client.clientId,
+                    clientAuthorizationId: referenceId,
                   }));
-                return { mcp_authorization_id: authorizationId ?? null };
+                if (!authorizationId) {
+                  throw new APIError('BAD_REQUEST', {
+                    error: 'invalid_grant',
+                    error_description: 'The MCP client authorization is missing or revoked.',
+                  });
+                }
+                return { mcp_authorization_id: authorizationId };
               },
             },
           },
         ],
         loginPage: '/app/login',
         consentPage: '/app/mcp/authorize',
+        postLogin: {
+          page: '/app/mcp/authorize',
+          shouldRedirect: async ({ user }) =>
+            !(await getMcpAuthorizationId(await mcpAuthorizationRequest(user.id))),
+          consentReferenceId: async ({ user }) => {
+            const authorizationId = await getMcpAuthorizationId(
+              await mcpAuthorizationRequest(user.id),
+            );
+            if (!authorizationId) {
+              throw new APIError('FORBIDDEN', {
+                error: 'access_denied',
+                error_description: 'Approve and name this MCP client before granting access.',
+              });
+            }
+            return authorizationId;
+          },
+        },
         scopes: [MCP_SCOPE, 'offline_access'],
         accessTokenExpiresIn: ACCESS_TOKEN_LIFETIME_SECONDS,
         // Rotation renews this finite provider window. Ten years preserves the product contract

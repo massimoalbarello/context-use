@@ -38,7 +38,11 @@ export function mcpAuthorizationClientQueryOptions(clientId: string) {
   });
 }
 
-export async function approveMcpClient(input: { clientId: string; name: string }) {
+export async function approveMcpClient(input: {
+  clientId: string;
+  codeChallenge: string;
+  name: string;
+}) {
   const { data, error } = await api.api.mcp.clients.post({
     ...input,
     changeMessage: 'Authorized an MCP client',

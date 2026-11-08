@@ -33,6 +33,8 @@ const HTTP_NO_CONTENT = 204;
 const HTTP_OK = 200;
 const HTTP_SERVICE_UNAVAILABLE = 503;
 const HTTP_UNAUTHORIZED = 401;
+const CODE_VERIFIER = 'oauth-test-code-verifier-with-more-than-forty-three-characters';
+const CODE_CHALLENGE = createHash('sha256').update(CODE_VERIFIER).digest('base64url');
 
 type OAuthTestUrls = {
   origin: string;
@@ -145,13 +147,16 @@ async function authorizeClient({
   sessionHeaders,
   clientId,
   urls,
+  verifier = CODE_VERIFIER,
+  approve,
 }: {
   handler: (request: Request) => Promise<Response>;
   sessionHeaders: Headers;
   clientId: string;
   urls: OAuthTestUrls;
+  verifier?: string;
+  approve?: (codeChallenge: string) => Promise<void>;
 }): Promise<string> {
-  const verifier = 'oauth-test-code-verifier-with-more-than-forty-three-characters';
   const challenge = createHash('sha256').update(verifier).digest('base64url');
   const authorizeUrl = new URL(`${urls.authBase}/oauth2/authorize`);
   authorizeUrl.search = new URLSearchParams({
@@ -172,6 +177,8 @@ async function authorizeClient({
   expect(authorization.status).toBe(HTTP_FOUND);
   const approvalLocation = authorization.headers.get('location');
   expect(approvalLocation).toStartWith('/app/mcp/authorize?');
+
+  await approve?.(challenge);
 
   const oauthQuery = new URL(approvalLocation!, urls.origin).search.slice(1);
   const consent = await handler(
@@ -259,6 +266,211 @@ async function expectRevokedCredentials({
 }
 
 describe('MCP OAuth foundation', () => {
+  for (const registration of ['cimd', 'dcr'] as const) {
+    test(`separates approvals, attribution and revocation for instances sharing a ${registration} client`, async () => {
+      await withAuthTestDatabase({
+        run: async (database) => {
+          let oauthHandler: (request: Request) => Promise<Response> = async () =>
+            new Response(null, { status: HTTP_SERVICE_UNAVAILABLE });
+          const server = Bun.serve({
+            hostname: '127.0.0.1',
+            port: 0,
+            fetch: (request) => oauthHandler(request),
+          });
+          const origin = server.url.origin;
+          const urls = {
+            origin,
+            authBase: `${origin}/api/auth`,
+            mcpResource: `${origin}/mcp`,
+          };
+          const clientAuthorizations = new McpClientAuthorizationsService(
+            new McpClientAuthorizationsRepository(database),
+          );
+          const authInput = {
+            database,
+            baseUrl: new URL(origin),
+            secret: TEST_SECRET,
+            getMcpAuthorizationId: async (
+              input: Parameters<typeof clientAuthorizations.authenticate>[0],
+            ) => (await clientAuthorizations.authenticate(input))?.clientAuthorizationId ?? null,
+            fetchClientMetadataResource: async () =>
+              Response.json({
+                client_id: 'https://codex.example/client.json',
+                client_name: 'Codex',
+                redirect_uris: [CALLBACK_URL],
+                token_endpoint_auth_method: 'none',
+                grant_types: ['authorization_code', 'refresh_token'],
+                response_types: ['code'],
+              }),
+          };
+          const options = createAuthOptions(authInput);
+          const oauth = betterAuth({
+            ...options,
+            plugins: [...options.plugins, testUtils()],
+          });
+          oauthHandler = (request) => oauth.handler(request);
+          try {
+            const context = (await oauth.$context) as unknown as TestAuthContext;
+            await context.test.saveUser(
+              context.test.createUser({ id: OWNER_USER_ID, emailVerified: true }),
+            );
+            const { headers: sessionHeaders } = await context.test.login({ userId: OWNER_USER_ID });
+            const clientId =
+              registration === 'cimd'
+                ? 'https://codex.example/client.json'
+                : (await registerClient({ handler: oauth.handler, name: 'Codex', urls })).client_id;
+            const connect = async ({ name, verifier }: { name: string; verifier: string }) => {
+              let authorizationId = '';
+              const tokens = JSON.parse(
+                await authorizeClient({
+                  handler: oauth.handler,
+                  sessionHeaders,
+                  clientId,
+                  urls,
+                  verifier,
+                  approve: async (codeChallenge) => {
+                    const approval = await clientAuthorizations.approve({
+                      actorId: OWNER_USER_ID,
+                      clientId,
+                      codeChallenge,
+                      name,
+                    });
+                    expect(approval.state).toBe('approved');
+                    if (approval.state !== 'approved') {
+                      throw new Error('Expected client approval');
+                    }
+                    authorizationId = approval.clientAuthorization.id;
+                  },
+                }),
+              ) as OAuthTokenResponse;
+              expect(decodeJwt(tokens.access_token).mcp_authorization_id).toBe(authorizationId);
+              return { tokens, authorizationId };
+            };
+            const personal = await connect({
+              name: 'Personal Codex',
+              verifier: `${CODE_VERIFIER}-personal`,
+            });
+            const work = await connect({
+              name: 'Granola Codex',
+              verifier: `${CODE_VERIFIER}-granola`,
+            });
+            expect(work.authorizationId).not.toBe(personal.authorizationId);
+            expect(
+              await clientAuthorizations.authenticate({
+                ownerId: OWNER_USER_ID,
+                oauthClientId: 'another-oauth-client',
+                clientAuthorizationId: personal.authorizationId,
+              }),
+            ).toBeNull();
+            const listed = await clientAuthorizations.list({ actorId: OWNER_USER_ID });
+            expect(listed).toMatchObject({
+              state: 'found',
+              clientAuthorizations: expect.arrayContaining([
+                expect.objectContaining({ id: personal.authorizationId, name: 'Personal Codex' }),
+                expect.objectContaining({ id: work.authorizationId, name: 'Granola Codex' }),
+              ]),
+            });
+            const resourceAuth = createAuth(authInput);
+            const mcpApp = createMcpController({
+              auth: resourceAuth,
+              clientAuthorizationsService: clientAuthorizations,
+              transport: {
+                ...unusedMcpTransport,
+                fetch: async ({ principal }) => Response.json(principal),
+              },
+            });
+            const access = (token: string) =>
+              mcpApp.handle(
+                new Request(urls.mcpResource, {
+                  method: 'POST',
+                  headers: { authorization: `Bearer ${token}` },
+                }),
+              );
+            for (const [instance, name] of [
+              [personal, 'Personal Codex'],
+              [work, 'Granola Codex'],
+            ] as const) {
+              expect(await (await access(instance.tokens.access_token)).json()).toMatchObject({
+                clientAuthorizationId: instance.authorizationId,
+                clientAuthorizationName: name,
+              });
+            }
+            const rotatedWork = await responseJson<OAuthTokenResponse>(
+              await refreshClient({
+                handler: resourceAuth.handler,
+                clientId,
+                refreshToken: work.tokens.refresh_token,
+                urls,
+              }),
+            );
+            expect(decodeJwt(rotatedWork.access_token).mcp_authorization_id).toBe(
+              work.authorizationId,
+            );
+            expect(
+              await clientAuthorizations.archive({
+                actorId: OWNER_USER_ID,
+                clientAuthorizationId: work.authorizationId,
+              }),
+            ).toEqual({ state: 'archived' });
+            await expectRevokedCredentials({
+              tokens: [work.tokens, rotatedWork],
+              access,
+              handler: oauth.handler,
+              clientId,
+              urls,
+            });
+            const refreshedPersonal = await responseJson<OAuthTokenResponse>(
+              await refreshClient({
+                handler: resourceAuth.handler,
+                clientId,
+                refreshToken: personal.tokens.refresh_token,
+                urls,
+              }),
+            );
+            expect(decodeJwt(refreshedPersonal.access_token).mcp_authorization_id).toBe(
+              personal.authorizationId,
+            );
+            expect((await access(personal.tokens.access_token)).status).toBe(HTTP_OK);
+            expect((await access(refreshedPersonal.access_token)).status).toBe(HTTP_OK);
+            const consents = await database<{ referenceId: string }[]>`
+              select "referenceId" from "auth_oauthConsent" where "clientId" = ${clientId}
+            `;
+            expect(consents).toEqual([{ referenceId: personal.authorizationId }]);
+
+            await expect(
+              authorizeClient({
+                handler: oauth.handler,
+                sessionHeaders,
+                clientId,
+                urls,
+                verifier: `${CODE_VERIFIER}-unapproved`,
+              }),
+            ).rejects.toThrow('403');
+            const reconnectedWork = await connect({
+              name: 'Granola Codex',
+              verifier: `${CODE_VERIFIER}-new-granola`,
+            });
+            expect(reconnectedWork.authorizationId).not.toBe(work.authorizationId);
+            expect((await access(reconnectedWork.tokens.access_token)).status).toBe(HTTP_OK);
+            expect((await access(rotatedWork.access_token)).status).toBe(HTTP_UNAUTHORIZED);
+            expect(
+              await clientAuthorizations.approve({
+                actorId: OWNER_USER_ID,
+                clientId,
+                codeChallenge: createHash('sha256')
+                  .update(`${CODE_VERIFIER}-granola`)
+                  .digest('base64url'),
+                name: 'Replay revoked approval',
+              }),
+            ).toEqual({ state: 'invalid' });
+          } finally {
+            await server.stop(true);
+          }
+        },
+      });
+    });
+  }
+
   test('preserves OAuth resource and revocation boundaries across restarts and reauthorization', async () => {
     await withAuthTestDatabase({
       run: async (database) => {
@@ -338,6 +550,7 @@ describe('MCP OAuth foundation', () => {
           const approval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: client.client_id,
+            codeChallenge: CODE_CHALLENGE,
             name: 'My coding agent',
           });
           expect(approval.state).toBe('approved');
@@ -480,6 +693,7 @@ describe('MCP OAuth foundation', () => {
           const archivedApproval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: archivedClient.client_id,
+            codeChallenge: CODE_CHALLENGE,
             name: 'Another coding agent',
           });
           expect(archivedApproval.state).toBe('approved');
@@ -564,9 +778,11 @@ describe('MCP OAuth foundation', () => {
           expect((await access(rotated.access_token)).status).toBe(HTTP_UNAUTHORIZED);
           expect((await access(refreshed.access_token)).status).toBe(HTTP_NO_CONTENT);
 
+          const reauthorizationVerifier = `${CODE_VERIFIER}-reauthorization`;
           const newApproval = await clientAuthorizations.approve({
             actorId: OWNER_USER_ID,
             clientId: archivedClient.client_id,
+            codeChallenge: createHash('sha256').update(reauthorizationVerifier).digest('base64url'),
             name: 'Another coding agent',
           });
           expect(newApproval.state).toBe('approved');
@@ -576,6 +792,7 @@ describe('MCP OAuth foundation', () => {
               sessionHeaders,
               clientId: archivedClient.client_id,
               urls,
+              verifier: reauthorizationVerifier,
             }),
           ) as OAuthTokenResponse;
           expect((await access(newTokens.access_token)).status).toBe(HTTP_NO_CONTENT);

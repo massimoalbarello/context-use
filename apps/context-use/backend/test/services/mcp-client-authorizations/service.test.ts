@@ -21,7 +21,12 @@ test('MCP client authorization management rejects every non-owner actor before p
     await service.authorizationClient({ actorId: 'another-user', clientId: 'client' }),
   ).toEqual({ state: 'forbidden' });
   expect(
-    await service.approve({ actorId: 'another-user', clientId: 'client', name: 'Agent' }),
+    await service.approve({
+      actorId: 'another-user',
+      clientId: 'client',
+      codeChallenge: 'unused',
+      name: 'Agent',
+    }),
   ).toEqual({ state: 'forbidden' });
   expect(await service.list({ actorId: 'another-user' })).toEqual({ state: 'forbidden' });
   expect(
@@ -38,7 +43,11 @@ test('MCP client authorization management rejects every non-owner actor before p
     }),
   ).toEqual({ state: 'forbidden' });
   expect(
-    await service.authenticate({ ownerId: 'another-user', oauthClientId: 'client' }),
+    await service.authenticate({
+      ownerId: 'another-user',
+      oauthClientId: 'client',
+      clientAuthorizationId: 'authorization',
+    }),
   ).toBeNull();
   expect(repositoryCalls).toBe(0);
 });

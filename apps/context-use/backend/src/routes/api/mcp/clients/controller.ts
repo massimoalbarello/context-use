@@ -67,7 +67,9 @@ export function createMcpClientsController({
           return status(StatusMap.Forbidden, { error: 'Forbidden' });
         }
         if (result.state === 'invalid') {
-          return status(StatusMap['Bad Request'], { error: 'Invalid client name' });
+          return status(StatusMap['Bad Request'], {
+            error: 'Invalid client authorization. Start a new connection and choose a valid name.',
+          });
         }
         if (result.state === 'not_found') {
           return status(StatusMap['Not Found'], { error: 'OAuth client not found' });

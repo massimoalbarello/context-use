@@ -835,20 +835,8 @@ export interface IFindMcpOAuthClientResult {
     name: string | null;
 }
 
-/** Result of query `FindActiveMcpClientAuthorization`. */
-export interface IFindActiveMcpClientAuthorizationResult {
-    id: string;
-    ownerId: string;
-    name: string;
-    oauthClientId: string;
-    verifiedClientId: string | null;
-    createdAt: string;
-    updatedAt: string;
-    archivedAt: string | null;
-}
-
-/** Result of query `FindActiveMcpClientAuthorizationById`. */
-export interface IFindActiveMcpClientAuthorizationByIdResult {
+/** Result of query `FindMcpClientAuthorizationById`. */
+export interface IFindMcpClientAuthorizationByIdResult {
     id: string;
     ownerId: string;
     name: string;
@@ -1340,8 +1328,7 @@ export interface Queries {
     CreateKnowledgeProfileEntity: ICreateKnowledgeProfileEntityResult;
     FindKnowledgeProfile: IFindKnowledgeProfileResult;
     FindMcpOAuthClient: IFindMcpOAuthClientResult;
-    FindActiveMcpClientAuthorization: IFindActiveMcpClientAuthorizationResult;
-    FindActiveMcpClientAuthorizationById: IFindActiveMcpClientAuthorizationByIdResult;
+    FindMcpClientAuthorizationById: IFindMcpClientAuthorizationByIdResult;
     ListMcpClientAuthorizations: IListMcpClientAuthorizationsResult;
     RenameActiveMcpClientAuthorization: IRenameActiveMcpClientAuthorizationResult;
     ReadOwnerRegistrationState: IReadOwnerRegistrationStateResult;

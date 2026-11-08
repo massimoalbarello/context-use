@@ -16,7 +16,9 @@ export interface McpClientAuthorizationsRepositoryContract {
     verifiedClientId: string | null;
     now: string;
   }): Promise<
-    { state: 'approved'; clientAuthorization: McpClientAuthorization } | { state: 'name_conflict' }
+    | { state: 'approved'; clientAuthorization: McpClientAuthorization }
+    | { state: 'name_conflict' }
+    | { state: 'invalid' }
   >;
   list(input: { ownerId: string }): Promise<McpClientAuthorization[]>;
   rename(input: {
@@ -37,6 +39,7 @@ export interface McpClientAuthorizationsRepositoryContract {
   activePrincipal(input: {
     ownerId: string;
     oauthClientId: string;
+    clientAuthorizationId: string;
   }): Promise<McpClientAuthorization | null>;
 }
 
@@ -72,36 +75,7 @@ export class McpClientAuthorizationsRepository
     };
   }
 
-  private async activeForOAuthClient({
-    db,
-    ownerId,
-    oauthClientId,
-  }: {
-    db: TypedSQL<Queries>;
-    ownerId: string;
-    oauthClientId: string;
-  }): Promise<McpClientAuthorization | null> {
-    const rows = await db.FindActiveMcpClientAuthorization`
-      /* @notNull id ownerId name oauthClientId createdAt updatedAt */
-      select
-        "id",
-        "owner_id" as "ownerId",
-        "name",
-        "oauth_client_id" as "oauthClientId",
-        "verified_client_id" as "verifiedClientId",
-        "created_at" as "createdAt",
-        "updated_at" as "updatedAt",
-        "archived_at" as "archivedAt"
-      from "mcp_client_authorization"
-      where "owner_id" = ${ownerId}
-        and "oauth_client_id" = ${oauthClientId}
-        and "archived_at" is null
-      limit 1
-    `;
-    return rows[0] ?? null;
-  }
-
-  private async activeById({
+  private async byId({
     db,
     ownerId,
     clientAuthorizationId,
@@ -110,7 +84,7 @@ export class McpClientAuthorizationsRepository
     ownerId: string;
     clientAuthorizationId: string;
   }): Promise<McpClientAuthorization | null> {
-    const rows = await db.FindActiveMcpClientAuthorizationById`
+    const rows = await db.FindMcpClientAuthorizationById`
       /* @notNull id ownerId name oauthClientId createdAt updatedAt */
       select
         "id",
@@ -124,7 +98,6 @@ export class McpClientAuthorizationsRepository
       from "mcp_client_authorization"
       where "id" = ${clientAuthorizationId}
         and "owner_id" = ${ownerId}
-        and "archived_at" is null
       limit 1
     `;
     return rows[0] ?? null;
@@ -138,15 +111,20 @@ export class McpClientAuthorizationsRepository
     verifiedClientId: string | null;
     now: string;
   }): Promise<
-    { state: 'approved'; clientAuthorization: McpClientAuthorization } | { state: 'name_conflict' }
+    | { state: 'approved'; clientAuthorization: McpClientAuthorization }
+    | { state: 'name_conflict' }
+    | { state: 'invalid' }
   > {
     return await this.sql.begin(async (tx) => {
-      const existing = await this.activeForOAuthClient({
+      const existing = await this.byId({
         db: tx,
         ownerId: input.ownerId,
-        oauthClientId: input.oauthClientId,
+        clientAuthorizationId: input.id,
       });
       if (existing) {
+        if (existing.archivedAt !== null || existing.oauthClientId !== input.oauthClientId) {
+          return { state: 'invalid' as const };
+        }
         const renamed = await tx`
           update or ignore "mcp_client_authorization"
           set "name" = ${input.name}, "updated_at" = ${input.now}
@@ -238,8 +216,10 @@ export class McpClientAuthorizationsRepository
       if (clientAuthorization) {
         return { state: 'renamed' as const, clientAuthorization };
       }
-      const active = await this.activeById({ db: tx, ...input });
-      return active ? { state: 'name_conflict' as const } : { state: 'not_found' as const };
+      const existing = await this.byId({ db: tx, ...input });
+      return existing?.archivedAt === null
+        ? { state: 'name_conflict' as const }
+        : { state: 'not_found' as const };
     });
   }
 
@@ -249,12 +229,12 @@ export class McpClientAuthorizationsRepository
     archivedAt: string;
   }): Promise<boolean> {
     return await this.sql.begin(async (tx) => {
-      const clientAuthorization = await this.activeById({
+      const clientAuthorization = await this.byId({
         db: tx,
         ownerId: input.ownerId,
         clientAuthorizationId: input.clientAuthorizationId,
       });
-      if (!clientAuthorization) {
+      if (!clientAuthorization || clientAuthorization.archivedAt !== null) {
         return false;
       }
 
@@ -267,16 +247,19 @@ export class McpClientAuthorizationsRepository
         delete from "auth_oauthAccessToken"
         where "clientId" = ${clientAuthorization.oauthClientId}
           and "userId" = ${input.ownerId}
+          and "referenceId" = ${input.clientAuthorizationId}
       `;
       await tx`
         delete from "auth_oauthRefreshToken"
         where "clientId" = ${clientAuthorization.oauthClientId}
           and "userId" = ${input.ownerId}
+          and "referenceId" = ${input.clientAuthorizationId}
       `;
       await tx`
         delete from "auth_oauthConsent"
         where "clientId" = ${clientAuthorization.oauthClientId}
           and "userId" = ${input.ownerId}
+          and "referenceId" = ${input.clientAuthorizationId}
       `;
       return true;
     });
@@ -285,7 +268,11 @@ export class McpClientAuthorizationsRepository
   async activePrincipal(input: {
     ownerId: string;
     oauthClientId: string;
+    clientAuthorizationId: string;
   }): Promise<McpClientAuthorization | null> {
-    return await this.activeForOAuthClient({ db: this.sql, ...input });
+    const authorization = await this.byId({ db: this.sql, ...input });
+    return authorization?.archivedAt === null && authorization.oauthClientId === input.oauthClientId
+      ? authorization
+      : null;
   }
 }

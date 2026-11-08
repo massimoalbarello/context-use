@@ -38,6 +38,7 @@ export function createMcpController({
       const principal = await clientAuthorizationsService.authenticate({
         ownerId: token.ownerId,
         oauthClientId: token.oauthClientId,
+        clientAuthorizationId: token.clientAuthorizationId,
       });
       if (!principal || principal.clientAuthorizationId !== token.clientAuthorizationId) {
         return unauthorizedClientResponse(token.resource);

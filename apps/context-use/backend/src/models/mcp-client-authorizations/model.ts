@@ -1,4 +1,5 @@
 export const MAX_MCP_CLIENT_NAME_LENGTH = 80;
+export const MCP_CODE_CHALLENGE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 export type McpClientAuthorization = {
   id: string;

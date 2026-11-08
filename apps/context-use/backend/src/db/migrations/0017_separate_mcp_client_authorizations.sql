@@ -1,0 +1,1 @@
+drop index "mcp_client_authorization_active_oauth_client_uidx";

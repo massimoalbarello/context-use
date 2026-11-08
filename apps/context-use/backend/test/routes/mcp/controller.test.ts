@@ -99,7 +99,11 @@ test('the authenticated owner and stable client authorization identity reach the
   const clientAuthorizationsService = {
     ...unusedMcpClientAuthorizationsService,
     authenticate: (input) => {
-      expect(input).toEqual({ ownerId: principal.ownerId, oauthClientId: 'oauth-client' });
+      expect(input).toEqual({
+        ownerId: principal.ownerId,
+        oauthClientId: 'oauth-client',
+        clientAuthorizationId: principal.clientAuthorizationId,
+      });
       return Promise.resolve(principal);
     },
   } satisfies McpClientAuthorizationsServiceContract;
