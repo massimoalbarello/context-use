@@ -80,13 +80,38 @@ function time(value: z.infer<typeof timeSchema> | null) {
   if (!value) {
     return 'Unavailable';
   }
-  return 'date' in value ? `${value.date} (all day)` : value.dateTime;
+  if ('date' in value) {
+    const date = new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'medium',
+      timeZone: 'UTC',
+    }).format(new Date(`${value.date}T00:00:00Z`));
+    return `${date} (all day)`;
+  }
+  const offset = value.dateTime.match(/[+-]\d{2}:\d{2}$/)?.[0] ?? null;
+  const instant = new Date(value.dateTime);
+  const date = new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeZone: offset ?? 'UTC',
+  }).format(instant);
+  const clock = new Intl.DateTimeFormat('en-GB', {
+    timeStyle: 'short',
+    timeZone: offset ?? 'UTC',
+  }).format(instant);
+  return `${date} at ${clock} (${offset ? `UTC${offset}` : 'UTC'})`;
 }
 function occurrenceTime(value: z.infer<typeof timeSchema> | undefined) {
   if (!value) {
     return null;
   }
   return 'date' in value ? value.date : value.dateTime;
+}
+function readableEnd(value: z.infer<typeof timeSchema> | null) {
+  if (value && 'date' in value) {
+    const end = new Date(`${value.date}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() - 1);
+    return `End (inclusive): ${time({ ...value, date: end.toISOString().slice(0, 10) })}`;
+  }
+  return `End: ${time(value)}`;
 }
 function person(value: z.infer<typeof personSchema>) {
   return [value.displayName, value.email].filter(Boolean).join(' — ') || value.id || 'Unavailable';
@@ -121,7 +146,7 @@ function readableEvent(data: z.infer<typeof eventSchema>) {
     `# ${data.title}`,
     `Status: ${data.status}`,
     `Start: ${time(data.start)}`,
-    `End (exclusive for all-day events): ${time(data.end)}`,
+    readableEnd(data.end),
     data.timeZone ? `Calendar time zone: ${data.timeZone}` : '',
     `Calendar: ${data.calendarId}`,
     data.organizer ? `Organizer: ${person(data.organizer)}` : '',

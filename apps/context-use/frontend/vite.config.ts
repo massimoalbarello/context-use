@@ -13,6 +13,11 @@ const require = createRequire(import.meta.url);
 const pdfjsDirectory = dirname(
   createRequire(require.resolve('react-pdf/package.json')).resolve('pdfjs-dist/package.json'),
 );
+const pdfjsLegacyEntry = normalizePath(
+  createRequire(require.resolve('react-pdf/package.json')).resolve(
+    'pdfjs-dist/legacy/build/pdf.mjs',
+  ),
+);
 
 const BACKEND_ORIGIN = `http://localhost:${process.env.PORT || DEFAULT_BACKEND_PORT}`;
 const MCP_TRANSPORT_PROXY_CONTEXT = '^/mcp/?(?:\\?.*)?$';
@@ -22,6 +27,11 @@ const PUBLIC_RESOURCES_PROXY_CONTEXT = '^/public(?!/assets/[^/]+/preview/?(?:\\?
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
+  resolve: {
+    // PDF.js's default build depends on Map.prototype.getOrInsertComputed, which WebKit does not
+    // implement. The legacy build includes the compatibility polyfill; keep its worker in sync.
+    alias: [{ find: /^pdfjs-dist$/, replacement: pdfjsLegacyEntry }],
+  },
   build: {
     outDir: fileURLToPath(new URL('../dist/instance/public', import.meta.url)),
     emptyOutDir: true,
@@ -51,7 +61,7 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: normalizePath(join(pdfjsDirectory, 'build/pdf.worker.min.mjs')),
+          src: normalizePath(join(pdfjsDirectory, 'legacy/build/pdf.worker.min.mjs')),
           dest: 'pdfjs',
           rename: { stripBase: true },
         },

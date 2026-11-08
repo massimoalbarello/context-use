@@ -1,5 +1,6 @@
 import { t } from 'elysia';
 import type { KnowledgePageReference } from '#backend/models/knowledge-pages/model.ts';
+import { ReadableIdSchema } from '#backend/routes/api/model.ts';
 import {
   KnowledgePageReferenceSchema,
   pageSummaryResponse,
@@ -19,3 +20,14 @@ export function resourceInUseResponse(blockers: KnowledgePageReference[]) {
     })),
   };
 }
+
+export const UnarchiveBlockedSchema = t.Object({
+  error: t.String(),
+  blockers: t.Array(
+    t.Object({
+      resourceType: t.UnionEnum(['entity', 'page', 'asset']),
+      readableId: ReadableIdSchema,
+      name: t.String(),
+    }),
+  ),
+});

@@ -76,6 +76,7 @@ async function renderPage({
 } = {}) {
   const timestamp = new Date('2026-01-01');
   const page: KnowledgePage = {
+    archivedAt: null,
     publishedAt: null,
     publishedRevisionNumber: null,
     readableId: 'notes',

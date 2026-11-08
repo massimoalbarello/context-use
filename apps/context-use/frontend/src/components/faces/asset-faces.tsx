@@ -36,7 +36,7 @@ export function AssetFaces({
       <div className="flex justify-center rounded-lg bg-background">
         <div className="relative max-w-full">
           <img
-            src={assetContentUrl(asset.readableId)}
+            src={assetContentUrl({ readableId: asset.readableId })}
             alt={asset.name}
             className="block max-h-[32rem] max-w-full rounded-lg object-contain"
           />

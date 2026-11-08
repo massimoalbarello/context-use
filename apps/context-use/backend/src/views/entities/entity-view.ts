@@ -41,6 +41,7 @@ export function entityFrom(row: EntityRow): Entity {
       imageCreatedAt &&
       imageUpdatedAt
         ? {
+            archivedAt: null,
             publicId: imagePublicId,
             publishedAt: imagePublishedAt,
             id: imageId,

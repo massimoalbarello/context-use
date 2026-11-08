@@ -22,7 +22,6 @@ import { BACKEND_ENVIRONMENT } from '#backend/lib/runtime-config.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
-import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.ts';
 import { LOCAL_RECORD_DESTINATION } from '#backend/models/syncs/managed.ts';
 import { ApiKeysRepository } from '#backend/repositories/api-keys/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
@@ -31,7 +30,6 @@ import { FacesRepository } from '#backend/repositories/faces/repository.ts';
 import { FrontendAssetsRepository } from '#backend/repositories/frontend-assets/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
-import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { HypermediaRetrievalRepository } from '#backend/repositories/hypermedia-retrieval/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
@@ -52,7 +50,6 @@ import { EntitiesService } from '#backend/services/entities/service.ts';
 import { FrontendAssetsService } from '#backend/services/frontend-assets/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
 import { HistoryService } from '#backend/services/history/service.ts';
-import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { HypermediaRetrievalService } from '#backend/services/hypermedia-retrieval/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
@@ -102,8 +99,6 @@ try {
     database: retrievalDatabase,
     storage,
   });
-  const graphRepository = new HypermediaGraphRepository(retrievalDatabase);
-  const graphService = new HypermediaGraphService({ graph: graphRepository });
   const retrievalService = new HypermediaRetrievalService({
     retrieval: retrievalRepository,
   });
@@ -224,7 +219,6 @@ try {
     frontendAssetsService,
     entitiesService,
     healthService,
-    graphService,
     retrievalService,
     mcpClientAuthorizationsService,
     mcpServerUrl: mcpServerUrl({ baseUrl: env.BASE_URL }),
@@ -254,8 +248,7 @@ try {
   const { server } = app.listen({
     port: env.PORT,
     hostname: '0.0.0.0',
-    maxRequestBodySize:
-      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES) + REQUEST_BODY_OVERHEAD_BYTES,
+    maxRequestBodySize: MAX_ASSET_BYTES + REQUEST_BODY_OVERHEAD_BYTES,
   });
 
   logger.info(`listening on ${server!.url.origin}`);

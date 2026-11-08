@@ -10,7 +10,6 @@ import { createFaceRecognitionController } from '#backend/routes/api/face-recogn
 import { createHealthController } from '#backend/routes/api/health/controller.ts';
 import { createHistoryController } from '#backend/routes/api/history/controller.ts';
 import { createHypermediaSearchController } from '#backend/routes/api/hypermedia/search/controller.ts';
-import { createMapController } from '#backend/routes/api/map/controller.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import { createKnowledgeProfileController } from '#backend/routes/api/profile/controller.ts';
@@ -52,7 +51,6 @@ function publicReadResponse({
 function isWorkspacePath(path: string): boolean {
   return (
     path === '/app' ||
-    path === '/app/map' ||
     path === '/app/history' ||
     path === '/app/syncs' ||
     /^\/app\/syncs\/[a-z][a-z0-9-]{0,63}$/.test(path) ||
@@ -90,7 +88,6 @@ export function createDemoApp({
     .use(createEntityReadableIdController(dependencies))
     .use(createEntityImagesController(faceDependencies))
     .use(createFaceRecognitionController(faceDependencies))
-    .use(createMapController(dependencies))
     .use(createHypermediaSearchController(dependencies))
     .use(createPagesController(dependencies))
     .use(createPageReadableIdController(dependencies))
@@ -116,7 +113,10 @@ export function createDemoApp({
     }
     let response: ReturnType<Response['clone']>;
     if (path === '/') {
-      response = new Response(null, { status: StatusMap.Found, headers: { location: '/app/map' } });
+      response = new Response(null, {
+        status: StatusMap.Found,
+        headers: { location: '/app/pages' },
+      });
     } else if (path === '/api/auth/get-session') {
       response = Response.json(await auth.getSession({ headers: request.headers }));
     } else if (path.startsWith('/api/')) {

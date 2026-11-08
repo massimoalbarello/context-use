@@ -115,16 +115,6 @@ export default {
       to: { path: `${backend}(db/client|lib/env|lib/storage/client)\\.ts$` },
     },
     {
-      name: 'graph-repository-is-private',
-      severity: 'error',
-      comment: 'Graph queries must enter through HypermediaGraphService.',
-      from: {
-        path: backend,
-        pathNot: `${backend}(main\\.ts$|services/hypermedia-graph/|repositories/hypermedia-graph/)`,
-      },
-      to: { path: `${backend}repositories/hypermedia-graph/` },
-    },
-    {
       name: 'retrieval-service-owns-search',
       severity: 'error',
       comment: 'Search must enter through HypermediaRetrievalService.',

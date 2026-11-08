@@ -21,6 +21,10 @@ import {
   PublicationSchema,
   PublicationVisibilitySchema,
 } from '#backend/routes/api/publications/model.ts';
+import {
+  ArchivedAtSchema,
+  ResourceStatusSchema,
+} from '#backend/routes/api/resource-archiving/state-model.ts';
 
 export const EntityTypeSchema = t.UnionEnum(ENTITY_TYPES, {
   description: ENTITY_TYPE_DESCRIPTION,
@@ -29,6 +33,7 @@ export const EntityTypeSchema = t.UnionEnum(ENTITY_TYPES, {
 export const EntityTypeFilterSchema = t.UnionEnum(ENTITY_TYPE_FILTERS, { default: undefined });
 
 export const EntitySchema = t.Object({
+  archivedAt: ArchivedAtSchema,
   publishedAt: PublicationSchema.properties.publishedAt,
   readableId: ReadableIdSchema,
   name: t.String(),
@@ -49,6 +54,7 @@ export const EntityReferenceSchema = t.Object({
 });
 
 export const EntityPreviewSchema = t.Object({
+  archivedAt: ArchivedAtSchema,
   name: EntitySchema.properties.name,
   description: EntitySchema.properties.description,
   image: t.Nullable(t.Pick(AssetSummarySchema, ['readableId'])),
@@ -56,6 +62,7 @@ export const EntityPreviewSchema = t.Object({
 
 export function entityPreviewResponse(entity: Entity) {
   return {
+    archivedAt: entity.archivedAt ? new Date(entity.archivedAt) : null,
     name: entity.name,
     description: entity.description,
     image: entity.image ? { readableId: entity.image.readableId } : null,
@@ -89,6 +96,7 @@ export const SetEntityImageBodySchema = t.Object({
 });
 export const EntityParamsSchema = t.Object({ entityReadableId: ReadableIdSchema });
 export const EntityListQuerySchema = t.Object({
+  status: t.Optional(ResourceStatusSchema),
   visibility: t.Optional(PublicationVisibilitySchema),
   entityType: t.Optional(EntityTypeFilterSchema),
   ...PaginationQuerySchema.properties,
@@ -100,6 +108,7 @@ export const EntityListSchema = t.Object({
 
 export function entityResponse(entity: Entity) {
   return {
+    archivedAt: entity.archivedAt ? new Date(entity.archivedAt) : null,
     publishedAt: entity.publishedAt,
     readableId: entity.readableId,
     name: entity.name,

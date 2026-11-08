@@ -3,6 +3,7 @@ import {
   configureOAuthApp,
   connectSyncProvider,
   managedSyncsQueryKey,
+  reauthorizeSyncProvider,
   updateManagedSync,
 } from '../../queries/managed-syncs';
 
@@ -18,9 +19,15 @@ export function useConfigureOAuthApp() {
 }
 
 export function useConnectSyncProvider() {
+  return useProviderAuthorization(connectSyncProvider);
+}
+export function useReauthorizeSyncProvider() {
+  return useProviderAuthorization(reauthorizeSyncProvider);
+}
+function useProviderAuthorization(mutationFn: typeof connectSyncProvider) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: connectSyncProvider,
+    mutationFn,
     gcTime: 0,
     onSuccess: async (result) => {
       if (result.authorizationUrl) {

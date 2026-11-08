@@ -33,6 +33,7 @@ import {
   RecordSummarySchema,
   recordSummaryResponse,
 } from '#backend/routes/api/records/model.ts';
+import { ResourceStatusSchema } from '#backend/routes/api/resource-archiving/state-model.ts';
 
 const RecordFilterValueSchema = t.Optional(
   t.String({
@@ -43,6 +44,7 @@ const RecordFilterValueSchema = t.Optional(
 );
 
 export const HypermediaSearchQuerySchema = t.Object({
+  status: t.Optional(ResourceStatusSchema),
   visibility: t.Optional(PublicationVisibilitySchema),
   entityType: t.Optional(EntityTypeFilterSchema),
   query: t.String({ minLength: 1, maxLength: MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH, pattern: '\\S' }),

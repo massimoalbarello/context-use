@@ -14,6 +14,7 @@ import { routeTree } from '../../src/routeTree.gen';
 async function creationWorld({ onboarding = false, failImage = false, failUpload = false } = {}) {
   const timestamp = new Date('2026-01-01');
   const asset: AssetSummary = {
+    archivedAt: null,
     publishedAt: null,
     readableId: 'portrait',
     name: 'Portrait',
@@ -24,6 +25,7 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
     updatedAt: timestamp,
   };
   const entity: EntityDetail = {
+    archivedAt: null,
     publishedAt: null,
     readableId: 'alice',
     name: 'Alice',

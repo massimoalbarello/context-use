@@ -7,6 +7,7 @@ import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
 import { PublicBadge } from '../publications/publication-appearance';
+import { Badge } from '../ui/badge';
 
 const BYTES_PER_KIBIBYTE = 1024;
 const KIBIBYTES_PER_MEBIBYTE = 1024;
@@ -17,7 +18,7 @@ type AssetIdentity = Pick<
   AssetSummary,
   'readableId' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
 > &
-  Partial<Pick<AssetSummary, 'publishedAt'>>;
+  Partial<Pick<AssetSummary, 'archivedAt' | 'publishedAt'>>;
 
 type AssetLinkProps =
   | { asset: AssetName; presentation: 'inline'; active?: never; children?: ReactNode }
@@ -39,7 +40,14 @@ export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
     <>
       <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-muted-foreground">
         {embeddable ? (
-          <img className="size-full object-cover" src={assetContentUrl(asset.readableId)} alt="" />
+          <img
+            className="size-full object-cover"
+            src={assetContentUrl({
+              readableId: asset.readableId,
+              includeArchived: !!asset.archivedAt,
+            })}
+            alt=""
+          />
         ) : (
           <File className="size-5 stroke-[1.4]" aria-hidden="true" />
         )}
@@ -50,7 +58,11 @@ export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
           {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
         </small>
       </span>
-      {asset.publishedAt != null && <PublicBadge />}
+      {asset.archivedAt ? (
+        <Badge variant="secondary">Archived</Badge>
+      ) : (
+        asset.publishedAt != null && <PublicBadge />
+      )}
     </>
   );
 }

@@ -1,6 +1,7 @@
 import type { AssetSummary } from '#backend/models/assets/model.ts';
 import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationStatus } from '#backend/models/publications/model.ts';
+import type { ResourceArchiveState } from '#backend/models/resource-archiving/model.ts';
 
 export const MAX_ENTITY_NAME_LENGTH = 160;
 export const MIN_ENTITY_DESCRIPTION_LENGTH = 1;
@@ -29,7 +30,7 @@ export const ENTITY_TYPE_FILTER_LABELS: Record<EntityTypeFilter, string> = {
 export const ENTITY_TYPE_DESCRIPTION =
   'Person: a specific individual. Organization: an identifiable collective, including companies, restaurants, institutions, and named teams. Location: a specific geographic referent, such as a building, address, city, or region. Leave untyped when unsupported or uncertain. Assign from contextual evidence, not a name alone. Events are temporal pages mentioning entities. The self entity is always a Person; its type cannot be changed or cleared.';
 
-export interface Entity extends PublicationStatus {
+export interface Entity extends PublicationStatus, ResourceArchiveState {
   id: string;
   readableId: string;
   name: string;

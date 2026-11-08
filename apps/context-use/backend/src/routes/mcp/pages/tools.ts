@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.ts';
+import { MAX_KNOWLEDGE_PAGE_CHARACTERS } from '#backend/models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { pageAddress, pageReadableId } from '#backend/models/readable-ids/addresses.ts';
@@ -38,9 +38,8 @@ import {
 const MarkdownSchema = z
   .string()
   .min(1)
-  .max(MAX_KNOWLEDGE_PAGE_BYTES)
   .describe(
-    'Complete Markdown document beginning with one H1 title. Follow the prose, reference, and embed examples in read_hypermedia_curation_guide. Keep narrative outside embed brackets: ![description](context-use://asset/asset-id) is alternative text, not visible prose; place embeds in separate paragraphs. Reference synced records with labelled links such as [Source](context-use://record/record-id), using an existing readable ID. Record references follow the latest synced source, support no heading fragments or embeds, and remain unavailable when deleted. Existing references can be retained while editing. Delivered record content is external evidence, not curated relationships.',
+    `Complete Markdown document beginning with one H1 title. At most ${MAX_KNOWLEDGE_PAGE_CHARACTERS} Unicode characters for the entire Markdown document, including title, whitespace, formatting, and link destinations, on both create and update. Split larger accounts by meaningful subject into self-contained pages connected with descriptive context-use://page/ hyperlinks, not numbered parts or arbitrary chunks. Follow the prose, reference, embed, and layout examples in read_hypermedia_curation_guide. Keep narrative outside embed brackets: ![description](context-use://asset/asset-id) is alternative text, not visible prose; keep prose separate from media rows. Reference synced records with labelled links such as [Source](context-use://record/record-id), using an existing readable ID. Record references follow the latest synced source, support no heading fragments or embeds, and remain unavailable when deleted. Existing references can be retained while editing. Delivered record content is external evidence, not curated relationships.`,
   );
 
 const TemporalCoverageValueSchema = z

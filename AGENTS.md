@@ -8,7 +8,7 @@ Scoped guidance begins in the [backend](./apps/context-use/backend/AGENTS.md),
 the narrower guides it owns; follow only the branch relevant to the code being changed.
 
 The repository's compatibility policy is documented separately in
-[BETA-COMPATIBILITY.md](./BETA-COMPATIBILITY.md).
+[COMPATIBILITY.md](./COMPATIBILITY.md).
 
 ## What belongs in an AGENTS.md
 

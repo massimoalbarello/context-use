@@ -23,7 +23,6 @@ import { EntitiesRepository } from '#backend/repositories/entities/repository.ts
 import { FacesRepository } from '#backend/repositories/faces/repository.ts';
 import { HealthRepository } from '#backend/repositories/health/repository.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
-import { HypermediaGraphRepository } from '#backend/repositories/hypermedia-graph/repository.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { KnowledgeProfilesRepository } from '#backend/repositories/knowledge-profiles/repository.ts';
 import { OwnerRegistrationRepository } from '#backend/repositories/owner-registration/repository.ts';
@@ -32,7 +31,6 @@ import { AssetsService } from '#backend/services/assets/service.ts';
 import { EntitiesService } from '#backend/services/entities/service.ts';
 import { HealthService } from '#backend/services/health/service.ts';
 import { HistoryService } from '#backend/services/history/service.ts';
-import { HypermediaGraphService } from '#backend/services/hypermedia-graph/service.ts';
 import { KnowledgePagesService } from '#backend/services/knowledge-pages/service.ts';
 import { KnowledgeProfilesService } from '#backend/services/knowledge-profiles/service.ts';
 import { OwnerRegistrationService } from '#backend/services/owner-registration/service.ts';
@@ -201,7 +199,6 @@ async function fixture({ automatic = true } = {}) {
     assetTransferCapabilities: unusedAssetTransferCapabilities,
     frontendAssetsService: { routes: () => new Map(), fallback: () => null },
     healthService: new HealthService(new HealthRepository(database)),
-    graphService: new HypermediaGraphService({ graph: new HypermediaGraphRepository(database) }),
     retrievalService: createTestHypermediaRetrievalService({ database, storage }),
     mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
     mcpServerUrl: testMcpServerUrl,
@@ -1196,6 +1193,28 @@ test('person type changes and resource archives hide stored links without erasin
   expect(
     (await context.assets.detail({ ownerId: OWNER, readableId: portrait.readableId }))!.depicts,
   ).toEqual([]);
+  expect(await context.reference(person)).toBeNull();
+  expect(
+    await context.entities.unarchive({
+      ownerId: OWNER,
+      readableId: person.readableId,
+      change: { clientName: null, message: 'Recover person archived by mistake' },
+    }),
+  ).toEqual({ state: 'unarchived' });
+  expect(await context.reference(person)).not.toBeNull();
+  expect(
+    await context.assets.unarchive({
+      ...input,
+      change: { clientName: null, message: 'Recover photo archived by mistake' },
+    }),
+  ).toEqual({ state: 'unarchived' });
+  expect((await context.assets.detail(input))!.depicts).toMatchObject([
+    { source: 'confirmed', entity: { readableId: person.readableId } },
+  ]);
+  expect((await context.faces.detail(input))!.faces[0]).toMatchObject({
+    decision: 'person',
+    entity: { readableId: person.readableId },
+  });
 });
 
 test('face and portrait mutations roll back together with their link changes', async () => {

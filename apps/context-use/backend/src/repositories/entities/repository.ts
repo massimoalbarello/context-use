@@ -10,7 +10,11 @@ import {
 import { type ChangeContext, changedText } from '#backend/models/history/model.ts';
 import type { KnowledgePageReference } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
-import type { ArchiveResult } from '#backend/models/resource-archiving/model.ts';
+import type {
+  ArchiveResult,
+  ResourceStatus,
+  UnarchiveResult,
+} from '#backend/models/resource-archiving/model.ts';
 import type { Queries } from '#backend/queries.gen.ts';
 import { entityFrom, entityTypeFrom } from '#backend/views/entities/entity-view.ts';
 import { retireInvalidPortraitReference } from '../faces/portrait-links.ts';
@@ -38,10 +42,15 @@ export interface EntityRepositoryContract {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     entityType?: EntityTypeFilter;
   }): Promise<Page<Entity>>;
-  find(input: { ownerId: string; readableId: string }): Promise<Entity | null>;
+  find(input: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<Entity | null>;
   update(input: {
     ownerId: string;
     readableId: string;
@@ -64,6 +73,12 @@ export interface EntityRepositoryContract {
     updatedAt: string;
     change: ChangeContext;
   }): Promise<Entity | null>;
+  unarchive(input: {
+    ownerId: string;
+    readableId: string;
+    change: ChangeContext;
+    unarchivedAt: string;
+  }): Promise<UnarchiveResult>;
   archive(input: {
     ownerId: string;
     readableId: string;
@@ -130,6 +145,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
         state: 'created' as const,
         entity: {
           ...entity,
+          archivedAt: null,
           entityType: entityTypeFrom(entity.entityType),
           isSelf: Boolean(entity.isSelf),
           image: null,
@@ -142,12 +158,14 @@ export class EntitiesRepository implements EntityRepositoryContract {
     ownerId,
     limit,
     offset,
+    status = 'active',
     visibility = 'all',
     entityType = 'all',
   }: {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     entityType?: EntityTypeFilter;
   }) {
@@ -156,7 +174,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."entity_type" as "entityType",
-        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt", entity."archived_at" as "archivedAt",
         profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
         image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
@@ -173,7 +191,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
        and image."id" = entity."image_asset_id"
        and image."archived_at" is null
       where entity."owner_id" = ${ownerId}
-        and entity."archived_at" is null
+        and (${status} = 'archived') = (entity."archived_at" is not null)
         and (${visibility} = 'all' or (${visibility} = 'public') = (entity."published_at" is not null))
         and (${entityType} = 'all' or entity."entity_type" = ${entityType}
           or (${entityType} = 'untyped' and entity."entity_type" is null))
@@ -183,7 +201,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
     const countsPromise = this.sql.CountEntities`
       /* @notNull total */
       select count(*) as "total" from "entity"
-      where "owner_id" = ${ownerId} and "archived_at" is null
+      where "owner_id" = ${ownerId} and (${status} = 'archived') = ("archived_at" is not null)
         and (${visibility} = 'all' or (${visibility} = 'public') = (entity."published_at" is not null))
         and (${entityType} = 'all' or "entity_type" = ${entityType}
           or (${entityType} = 'untyped' and "entity_type" is null))
@@ -196,25 +214,35 @@ export class EntitiesRepository implements EntityRepositoryContract {
     });
   }
 
-  find({ ownerId, readableId }: { ownerId: string; readableId: string }): Promise<Entity | null> {
-    return this.findWith({ db: this.sql, ownerId, readableId });
+  find({
+    ownerId,
+    readableId,
+    includeArchived,
+  }: {
+    ownerId: string;
+    readableId: string;
+    includeArchived?: boolean;
+  }): Promise<Entity | null> {
+    return this.findWith({ db: this.sql, ownerId, readableId, includeArchived });
   }
 
   private async findWith({
     db,
     ownerId,
     readableId,
+    includeArchived = false,
   }: {
     db: TypedSQL<Queries>;
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<Entity | null> {
     const rows = await db.FindEntity`
       /* @notNull id readableId name description createdAt updatedAt */
       /* @type isSelf number */
       select entity."id", entity."readable_id" as "readableId", entity."name",
         entity."description", entity."entity_type" as "entityType",
-        entity."public_id" as "publicId", entity."published_at" as "publishedAt",
+        entity."public_id" as "publicId", entity."published_at" as "publishedAt", entity."archived_at" as "archivedAt",
         profile."self_entity_id" is not null as "isSelf",
         entity."created_at" as "createdAt", entity."updated_at" as "updatedAt",
         image."public_id" as "imagePublicId", image."published_at" as "imagePublishedAt",
@@ -229,7 +257,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
         on image."owner_id" = entity."owner_id" and image."id" = entity."image_asset_id"
        and image."archived_at" is null
       where entity."owner_id" = ${ownerId} and entity."readable_id" = ${readableId}
-        and entity."archived_at" is null
+        and (${includeArchived} or entity."archived_at" is null)
     `;
     return rows[0] ? entityFrom(rows[0]) : null;
   }
@@ -430,6 +458,50 @@ export class EntitiesRepository implements EntityRepositoryContract {
     });
   }
 
+  unarchive(input: {
+    ownerId: string;
+    readableId: string;
+    change: ChangeContext;
+    unarchivedAt: string;
+  }): Promise<UnarchiveResult> {
+    return this.sql.begin('immediate', async (db) => {
+      const targets = await db.FindEntityUnarchiveTarget`
+        /* @notNull id name */
+        select resource."id", resource."name", resource."archived_at" as "archivedAt", resource."image_asset_id" as "imageAssetId" from "entity" resource
+        where resource."owner_id" = ${input.ownerId} and resource."readable_id" = ${input.readableId}
+      `;
+      const target = targets[0];
+      if (!target) {
+        return { state: 'not_found' };
+      }
+      if (!target.archivedAt) {
+        return { state: 'unarchived' };
+      }
+      const blockers = await db.FindEntityUnarchiveBlockers`
+        /* @notNull resourceType readableId name */
+        /* @type resourceType 'asset' */
+        select 'asset' as "resourceType", "readable_id" as "readableId", "name" from "asset"
+        where "owner_id" = ${input.ownerId} and "id" = ${target.imageAssetId} and "archived_at" is not null
+      `;
+      if (blockers.length) {
+        return { state: 'dependencies_archived', blockers };
+      }
+      await db`update "entity" set "archived_at" = null where "owner_id" = ${input.ownerId} and "id" = ${target.id}`;
+      await recordChange({
+        db,
+        ownerId: input.ownerId,
+        change: input.change,
+        resourceType: 'entity',
+        readableId: input.readableId,
+        name: target.name,
+        action: 'unarchived',
+        details: [],
+        createdAt: input.unarchivedAt,
+      });
+      return { state: 'unarchived' };
+    });
+  }
+
   archive({
     ownerId,
     readableId,
@@ -480,11 +552,6 @@ export class EntitiesRepository implements EntityRepositoryContract {
         where "owner_id" = ${ownerId} and "id" = ${target.id}
       `;
       await retireInvalidPortraitReference({ db, ownerId, entityId: target.id });
-      await db.RemoveEntitySearchDocument`
-        delete from "hypermedia_search_document"
-        where "owner_id" = ${ownerId} and "resource_type" = 'entity'
-          and "readable_id" = ${readableId}
-      `;
       if (previous) {
         await recordChange({
           db,
@@ -517,7 +584,7 @@ export class EntitiesRepository implements EntityRepositoryContract {
         current_referring_revision."revision_number" as "revisionNumber",
         current_referring_revision."title", current_referring_revision."excerpt",
         current_referring_revision."temporal_coverage" as "temporalCoverage",
-        referring_page."public_id" as "publicId", referring_page."published_at" as "publishedAt",
+        referring_page."public_id" as "publicId", referring_page."published_at" as "publishedAt", referring_page."archived_at" as "archivedAt",
         (select published_revision."revision_number" from "knowledge_page_revision" published_revision
           where published_revision."id" = referring_page."published_revision_id"
             and published_revision."owner_id" = referring_page."owner_id"

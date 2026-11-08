@@ -1,8 +1,10 @@
 import type { KnowledgePageIntervalFilter } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import type { CalendarDateRange } from '../../lib/temporal-coverage';
 import { DateRangeFilter } from '../knowledge/date-range-filter';
 import { KnowledgeFilterPopover } from '../knowledge/knowledge-filter-popover';
+import { ResourceStatusFilter } from '../knowledge/resource-status-filter';
 import { PublicationVisibilityFilter } from '../publications/publication-visibility-filter';
 import { PageIntervalFilter } from './page-interval-filter';
 
@@ -10,21 +12,26 @@ export function PageFilters({
   interval,
   dateRange,
   visibility,
+  status,
+  onStatusChange,
   onIntervalChange,
   onDateRangeApply,
   onVisibilityChange,
 }: {
   interval?: KnowledgePageIntervalFilter;
   dateRange?: CalendarDateRange;
+  status?: ResourceStatus;
+  onStatusChange: (status?: ResourceStatus) => void;
   visibility?: PublicationVisibility;
   onIntervalChange: (interval?: KnowledgePageIntervalFilter) => void;
   onDateRangeApply: (dateRange?: CalendarDateRange) => void;
   onVisibilityChange: (visibility?: PublicationVisibility) => void;
 }) {
-  const filtered = Boolean(interval || dateRange || visibility);
+  const filtered = Boolean(interval || dateRange || visibility || status);
 
   return (
     <KnowledgeFilterPopover title="Filter pages" filtered={filtered}>
+      <ResourceStatusFilter value={status} onChange={onStatusChange} />
       <PublicationVisibilityFilter value={visibility} onChange={onVisibilityChange} />
       <PageIntervalFilter
         value={interval ?? 'all'}

@@ -19,7 +19,7 @@ type EntityIdentity = Pick<
   EntitySummary,
   'readableId' | 'name' | 'description' | 'entityType' | 'isSelf'
 > &
-  Partial<Pick<EntitySummary, 'publishedAt'>> & {
+  Partial<Pick<EntitySummary, 'archivedAt' | 'publishedAt'>> & {
     image?: EntitySummary['image'];
   };
 
@@ -54,7 +54,9 @@ export function EntityAvatar({
       className={cn('font-semibold text-xs uppercase', className)}
       aria-hidden="true"
     >
-      {entity.image && <AvatarImage src={assetContentUrl(entity.image.readableId)} alt="" />}
+      {entity.image && (
+        <AvatarImage src={assetContentUrl({ readableId: entity.image.readableId })} alt="" />
+      )}
       <AvatarFallback>{entityInitial(entity.name)}</AvatarFallback>
     </Avatar>
   );
@@ -78,7 +80,11 @@ export function EntityCardContent({ entity }: { entity: EntityIdentity }) {
           {entity.description}
         </small>
       </span>
-      {entity.publishedAt != null && <PublicBadge />}
+      {entity.archivedAt ? (
+        <Badge variant="secondary">Archived</Badge>
+      ) : (
+        entity.publishedAt != null && <PublicBadge />
+      )}
     </>
   );
 }

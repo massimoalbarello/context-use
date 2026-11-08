@@ -4,7 +4,7 @@ import { mcp, requireMcpAuth } from '@better-auth/mcp';
 import { passkey } from '@better-auth/passkey';
 import { bunSqlAdapter } from '@ilbertt/better-auth-bun-sql';
 import { type BetterAuthOptions, betterAuth } from 'better-auth';
-import { APIError, getAuthoritativeSessionFromCtx } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from 'better-auth/api';
 import { jwt } from 'better-auth/plugins';
 import type { SQL } from 'bun';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -34,6 +34,14 @@ const REFRESH_TOKEN_RETRY_SECONDS = 30;
 const BETTER_AUTH_API_BASE_PATH = `${API_PATH}${AUTH_ROUTE_PATH}`;
 const BETTER_AUTH_TABLES_PREFIX = 'auth_';
 const PASSKEY_RELYING_PARTY_NAME = 'Context Use';
+const PASSKEY_DELETE_PATH = '/passkey/delete-passkey';
+
+function passkeyIdForDeletion(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null || !('id' in body) || typeof body.id !== 'string') {
+    return null;
+  }
+  return body.id;
+}
 
 function ownerRegistrationApiError(error: unknown): never {
   if (!(error instanceof OwnerRegistrationError)) {
@@ -79,6 +87,51 @@ export function createAuthOptions({
     trustedOrigins,
     basePath: BETTER_AUTH_API_BASE_PATH,
     secret,
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== PASSKEY_DELETE_PATH || !ctx.request || ctx.request.method !== 'POST') {
+          return;
+        }
+        const session = await getAuthoritativeSessionFromCtx(ctx);
+        if (!session) {
+          return;
+        }
+
+        const passkeyId = passkeyIdForDeletion(ctx.body);
+        if (!passkeyId) {
+          return;
+        }
+
+        // A conditional delete makes the retained-credential invariant hold even when two
+        // passkey removals reach this instance concurrently.
+        const deleted = await database<{ id: string }[]>`
+          delete from "auth_passkey"
+          where "id" = ${passkeyId}
+            and "userId" = ${session.user.id}
+            and (
+              select count(*)
+              from "auth_passkey"
+              where "userId" = ${session.user.id}
+            ) > 1
+          returning "id"
+        `;
+        if (deleted.length > 0) {
+          return { status: true };
+        }
+
+        const remaining = await database<{ id: string }[]>`
+          select "id"
+          from "auth_passkey"
+          where "id" = ${passkeyId} and "userId" = ${session.user.id}
+        `;
+        if (remaining.length > 0) {
+          throw APIError.from('BAD_REQUEST', {
+            code: 'last_passkey',
+            message: 'Add another passkey before removing this one.',
+          });
+        }
+      }),
+    },
     plugins: [
       jwt(),
       passkey({

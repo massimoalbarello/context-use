@@ -3,7 +3,6 @@ import { entitiesQueryKey, type UpdateEntityVariables, updateEntity } from '../.
 import { facesQueryKey } from '../../queries/faces';
 import { historyQueryKey } from '../../queries/history';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
-import { mapQueryKey } from '../../queries/map';
 import { pagesQueryKey } from '../../queries/pages';
 import { profileQueryKey } from '../../queries/profile';
 
@@ -17,7 +16,6 @@ export function useUpdateEntity(): UseMutationResult<void, Error, UpdateEntityVa
         queryClient.invalidateQueries({ queryKey: historyQueryKey }),
         queryClient.invalidateQueries({ queryKey: facesQueryKey }),
         queryClient.invalidateQueries({ queryKey: entitiesQueryKey }),
-        queryClient.invalidateQueries({ queryKey: mapQueryKey }),
         queryClient.invalidateQueries({ queryKey: knowledgeSuggestionsQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
         queryClient.invalidateQueries({ queryKey: profileQueryKey }),

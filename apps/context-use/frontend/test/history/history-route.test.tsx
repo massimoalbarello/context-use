@@ -62,6 +62,7 @@ async function withHistory({
   };
   const profile: KnowledgeProfile = {
     selfEntity: {
+      archivedAt: null,
       publishedAt: null,
       readableId: 'owner',
       name: 'Owner',
@@ -117,7 +118,19 @@ test('History preserves daily groups across pages, retries older changes, and ke
     read: (url) => {
       if (!url.searchParams.has('cursor')) {
         return Response.json({
-          items: [entry({ sequence: 3 })],
+          items: [
+            entry({ sequence: 3 }),
+            entry({
+              sequence: 2,
+              name: 'Removed record',
+              resourceType: 'record',
+              action: 'deleted',
+              message: 'Deleted record',
+              clientName: null,
+              available: false,
+            }),
+            entry({ sequence: 1, createdAt: new Date('2026-09-20T12:00:00Z') }),
+          ],
           nextCursor: 'older',
         } satisfies HistoryPage);
       }
@@ -126,16 +139,7 @@ test('History preserves daily groups across pages, retries older changes, and ke
         return Response.json({ error: 'Temporary failure' }, { status: 500 });
       }
       return Response.json({
-        items: [
-          entry({
-            sequence: 2,
-            name: 'Removed record',
-            resourceType: 'record',
-            action: 'deleted',
-            available: false,
-          }),
-          entry({ sequence: 1, createdAt: new Date('2026-09-20T12:00:00Z') }),
-        ],
+        items: [],
         nextCursor: null,
       } satisfies HistoryPage);
     },
@@ -145,11 +149,11 @@ test('History preserves daily groups across pages, retries older changes, and ke
       expect(screen.getByText('by Research assistant')).toBeTruthy();
       await user.click(screen.getByRole('button', { name: 'Load more' }));
       await user.click(await screen.findByRole('button', { name: 'Retry' }));
-      await screen.findByText('Removed record');
+      await screen.findByRole('link', { name: 'Person 1' });
       const headings = screen.getAllByRole('heading', { level: 2 });
       expect(headings).toHaveLength(2);
       const lists = within(screen.getByRole('main'))
-        .getAllByRole('list')
+        .getAllByRole('list', { name: '' })
         .filter((list) => list.tagName === 'OL');
       expect(lists).toHaveLength(2);
       expect(
@@ -160,6 +164,187 @@ test('History preserves daily groups across pages, retries older changes, and ke
       expect(screen.queryByRole('link', { name: 'Removed record' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
       expect(olderRequests).toBe(2);
+    },
+  });
+});
+
+test('History combines complete daily page revisions across API pages and links to the Revisions tab', async () => {
+  const user = userEvent.setup();
+  const requests: string[] = [];
+  const revision = (
+    overrides: Partial<HistoryEntry> & { sequence: number; pageRevisionNumber: number },
+  ) =>
+    entry({
+      resourceType: 'page',
+      readableId: 'notes',
+      name: 'Project notes',
+      message: `Change ${overrides.pageRevisionNumber}`,
+      clientName: `Assistant ${overrides.pageRevisionNumber}`,
+      ...overrides,
+    });
+  await withHistory({
+    read: (url) => {
+      requests.push(url.pathname + url.search);
+      if (!url.searchParams.has('cursor')) {
+        return Response.json({
+          items: [
+            entry({
+              sequence: 9,
+              resourceType: 'page',
+              readableId: 'new-page',
+              name: 'Newest page',
+              action: 'created',
+              message: 'Created a page',
+              pageRevisionNumber: 1,
+              createdAt: new Date('2026-09-21T23:10:00'),
+            }),
+            revision({
+              sequence: 8,
+              pageRevisionNumber: 6,
+              createdAt: new Date('2026-09-21T22:50:00'),
+            }),
+            entry({
+              sequence: 7,
+              readableId: 'notes',
+              name: 'Unrelated entity',
+              createdAt: new Date('2026-09-21T22:40:00'),
+            }),
+            revision({
+              sequence: 6,
+              pageRevisionNumber: 5,
+              clientName: null,
+              createdAt: new Date('2026-09-21T10:00:00'),
+            }),
+          ],
+          nextCursor: 'same-day',
+        } satisfies HistoryPage);
+      }
+      expect(url.searchParams.get('cursor')).toBe('same-day');
+      return Response.json({
+        items: [
+          revision({
+            sequence: 5,
+            pageRevisionNumber: 4,
+            createdAt: new Date('2026-09-21T00:01:00'),
+          }),
+          entry({
+            sequence: 4,
+            resourceType: 'page',
+            readableId: 'notes',
+            name: 'Restored notes',
+            action: 'unarchived',
+            message: 'Restored the page',
+            createdAt: new Date('2026-09-21T00:00:30'),
+          }),
+          revision({
+            sequence: 3,
+            pageRevisionNumber: 3,
+            createdAt: new Date('2026-09-20T23:59:00'),
+          }),
+          revision({
+            sequence: 2,
+            pageRevisionNumber: 2,
+            createdAt: new Date('2026-09-20T23:58:00'),
+          }),
+        ],
+        nextCursor: null,
+      } satisfies HistoryPage);
+    },
+    run: async () => {
+      const link = await screen.findByRole('link', { name: 'Project notes' });
+      expect(requests).toEqual(['/api/history', '/api/history?cursor=same-day']);
+      const row = link.closest('li')!;
+      const dayList = row.parentElement!;
+      expect(
+        within(dayList)
+          .getAllByRole('heading', { level: 3 })
+          .map((heading) => heading.textContent),
+      ).toEqual(['Newest page', 'Project notes', 'Unrelated entity', 'Restored notes']);
+      const messages = within(row).getByRole('list', { name: 'Revisions that day' });
+      const revisions = within(messages).getAllByRole('listitem');
+      for (const revision of revisions) {
+        expect(within(revision).getByText('Updated')).toBeTruthy();
+      }
+      expect(revisions.map((item) => item.querySelector('p')?.textContent)).toEqual([
+        'Change 6',
+        'Change 5',
+        'Change 4',
+      ]);
+      expect(revisions.map((item) => item.querySelector('time')?.dateTime)).toEqual([
+        new Date('2026-09-21T22:50:00').toISOString(),
+        new Date('2026-09-21T10:00:00').toISOString(),
+        new Date('2026-09-21T00:01:00').toISOString(),
+      ]);
+      expect(within(revisions[0]!).getByText('by Assistant 6')).toBeTruthy();
+      expect(within(revisions[1]!).queryByText(/^by\b/)).toBeNull();
+      expect(within(revisions[2]!).getByText('by Assistant 4')).toBeTruthy();
+      expect(link.getAttribute('href')).toBe('/app/pages/notes?view=revisions');
+      expect(screen.queryByRole('button', { name: /^Changes/ })).toBeNull();
+      const single = screen.getByRole('link', { name: 'Newest page' }).closest('li')!;
+      const singleRevisions = within(single).getByRole('list', { name: 'Revisions that day' });
+      const singleRevision = within(singleRevisions).getAllByRole('listitem');
+      expect(singleRevision).toHaveLength(1);
+      expect(within(singleRevision[0]!).getByText('Created')).toBeTruthy();
+      expect(within(singleRevision[0]!).getByText('Created a page')).toBeTruthy();
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      await screen.findByText('Change 3');
+      expect(screen.getAllByRole('link', { name: 'Project notes' })).toHaveLength(2);
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+      expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+      expect(requests.filter((path) => path.startsWith('/api/history'))).toHaveLength(2);
+    },
+  });
+});
+
+test('History preserves creation and unavailable revisions in one daily item without offering an unavailable diff', async () => {
+  await withHistory({
+    read: () =>
+      Response.json({
+        items: [
+          entry({
+            sequence: 3,
+            resourceType: 'page',
+            readableId: 'removed',
+            name: 'Deleted notes',
+            pageRevisionNumber: 2,
+            message: 'Revised the notes',
+            available: false,
+          }),
+          entry({
+            sequence: 2,
+            resourceType: 'page',
+            readableId: 'removed',
+            name: 'Original title',
+            pageRevisionNumber: 1,
+            action: 'created',
+            message: 'Created the notes',
+            available: false,
+          }),
+          entry({
+            sequence: 1,
+            resourceType: 'page',
+            readableId: 'removed',
+            name: 'Archived notes',
+            action: 'archived',
+            message: 'Archived the notes',
+            available: false,
+          }),
+        ],
+        nextCursor: null,
+      } satisfies HistoryPage),
+    run: async () => {
+      const title = await screen.findByRole('heading', { name: 'Deleted notes', level: 3 });
+      const row = title.closest('li')!;
+      const revisions = within(
+        within(row).getByRole('list', { name: 'Revisions that day' }),
+      ).getAllByRole('listitem');
+      expect(within(revisions[0]!).getByText('Updated')).toBeTruthy();
+      expect(within(revisions[1]!).getByText('Created')).toBeTruthy();
+      expect(within(row).getByText('Created the notes')).toBeTruthy();
+      expect(within(row).getByText('Revised the notes')).toBeTruthy();
+      expect(screen.getByText('Archived the notes')).toBeTruthy();
+      expect(screen.queryByRole('link', { name: 'Deleted notes' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Changes to/ })).toBeNull();
     },
   });
 });
@@ -182,11 +367,74 @@ test('History shows a recoverable initial error and an intentional empty state',
   });
 });
 
+test('History retries a failed continuation before exposing a partial daily group', async () => {
+  const user = userEvent.setup();
+  let continuations = 0;
+  await withHistory({
+    read: (url) => {
+      if (!url.searchParams.has('cursor')) {
+        return Response.json({
+          items: [
+            entry({
+              sequence: 2,
+              resourceType: 'page',
+              readableId: 'notes',
+              name: 'Daily notes',
+              pageRevisionNumber: 2,
+              message: 'Latest edit',
+            }),
+          ],
+          nextCursor: 'mid-day',
+        } satisfies HistoryPage);
+      }
+      expect(url.searchParams.get('cursor')).toBe('mid-day');
+      if (++continuations === 1) {
+        return Response.json({ error: 'Temporary failure' }, { status: 500 });
+      }
+      return Response.json({
+        items: [
+          entry({
+            sequence: 1,
+            resourceType: 'page',
+            readableId: 'notes',
+            name: 'Daily notes',
+            pageRevisionNumber: 1,
+            action: 'created',
+            message: 'First edit',
+          }),
+        ],
+        nextCursor: null,
+      } satisfies HistoryPage);
+    },
+    run: async () => {
+      await screen.findByRole('alert');
+      expect(screen.queryByRole('link', { name: 'Daily notes' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Changes to/ })).toBeNull();
+      await user.click(screen.getByRole('button', { name: 'Retry' }));
+      const row = (await screen.findByRole('link', { name: 'Daily notes' })).closest('li')!;
+      expect(within(row).getByText('First edit')).toBeTruthy();
+      expect(within(row).getByText('Latest edit')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /^Changes/ })).toBeNull();
+      expect(continuations).toBe(2);
+    },
+  });
+});
+
 test('History shows summaries without previews and links pages to revisions', async () => {
   await withHistory({
     read: () =>
       Response.json({
         items: [
+          entry({
+            sequence: 3,
+            resourceType: 'page',
+            readableId: 'restored-notes',
+            name: 'Restored project notes',
+            action: 'unarchived',
+            message: 'Unarchived page from the dashboard',
+            clientName: null,
+            details: [],
+          }),
           entry({
             sequence: 2,
             resourceType: 'page',
@@ -207,6 +455,8 @@ test('History shows summaries without previews and links pages to revisions', as
       expect(screen.getByText('by Research assistant')).toBeTruthy();
       expect(within(link.closest('li')!).queryByText(/^by\b/)).toBeNull();
       expect(screen.getByText('Clarified the next steps')).toBeTruthy();
+      expect(screen.getByText('Unarchived')).toBeTruthy();
+      expect(screen.getByText('Unarchived page from the dashboard')).toBeTruthy();
       expect(screen.queryByText('Content updated')).toBeNull();
       expect(screen.queryByText('Name: “Acme” → “Acme Incorporated”')).toBeNull();
       expect(screen.queryByRole('button', { name: 'View changes' })).toBeNull();
@@ -231,13 +481,21 @@ test('History filters from the URL, paginates within the filter, and restores it
       if (type === 'page') {
         const older = url.searchParams.has('cursor');
         return Response.json({
-          items: [
-            entry({
-              sequence: older ? 1 : 2,
-              resourceType: 'page',
-              name: older ? 'Older page' : 'Newest page',
-            }),
-          ],
+          items: older
+            ? []
+            : [
+                entry({
+                  sequence: 2,
+                  resourceType: 'page',
+                  name: 'Newest page',
+                }),
+                entry({
+                  sequence: 1,
+                  resourceType: 'page',
+                  name: 'Older page',
+                  createdAt: new Date('2026-09-20T12:00:00Z'),
+                }),
+              ],
           nextCursor: older ? null : 'older-pages',
         } satisfies HistoryPage);
       }

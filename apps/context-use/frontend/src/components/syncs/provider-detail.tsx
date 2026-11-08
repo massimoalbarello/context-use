@@ -14,6 +14,7 @@ export function ProviderDetail(input: {
   tab: SyncProviderTab;
   onTabChange: (tab: SyncProviderTab) => void;
   onConnect: () => void;
+  onReauthorize: () => void;
   onSaveApp: (credentials: OAuthAppCredentials) => Promise<void>;
   onAction: (input: { key: string; action: 'pause' | 'resume' | 'run' }) => void;
   pending: boolean;
@@ -75,6 +76,7 @@ export function ProviderDetail(input: {
               pending={input.pending}
               authorizationFailed={input.authorizationFailed}
               onConnect={input.onConnect}
+              onReauthorize={input.onReauthorize}
             />
           </div>
         </TabsContent>

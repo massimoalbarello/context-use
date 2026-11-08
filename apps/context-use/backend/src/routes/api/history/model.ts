@@ -24,6 +24,7 @@ export const HistoryPageSchema = t.Object({
         t.Literal('created'),
         t.Literal('updated'),
         t.Literal('archived'),
+        t.Literal('unarchived'),
         t.Literal('deleted'),
       ]),
       message: t.String(),

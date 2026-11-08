@@ -3,7 +3,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { SKIP, visit } from 'unist-util-visit';
 import {
   type KnowledgePageLinkSet,
-  MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_KNOWLEDGE_PAGE_CHARACTERS,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
@@ -62,15 +62,6 @@ function claimsInternalScheme(value: string | null | undefined): boolean {
 function rejectHiddenInternalAddress(value: string | null | undefined): void {
   if (claimsInternalScheme(value)) {
     throw new InvalidKnowledgePageMarkdownError(LABELLED_INTERNAL_LINK_MESSAGE);
-  }
-}
-
-function validateMarkdownSize(markdown: string): void {
-  const sizeBytes = Buffer.byteLength(markdown, 'utf8');
-  if (sizeBytes === 0 || sizeBytes > MAX_KNOWLEDGE_PAGE_BYTES) {
-    throw new InvalidKnowledgePageMarkdownError(
-      `Knowledge pages must be between 1 and ${MAX_KNOWLEDGE_PAGE_BYTES} bytes.`,
-    );
   }
 }
 
@@ -286,13 +277,23 @@ function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
   };
 }
 
+/** Validate new revisions without imposing the write limit on historical reads or indexing. */
+export function parseKnowledgePageWriteMarkdown(markdown: string) {
+  const characterCount = [...markdown].length;
+  if (characterCount > MAX_KNOWLEDGE_PAGE_CHARACTERS) {
+    throw new InvalidKnowledgePageMarkdownError(
+      `Knowledge pages must contain at most ${MAX_KNOWLEDGE_PAGE_CHARACTERS} Unicode characters in the complete Markdown document, including the title, whitespace, formatting, and link destinations; this write contains ${characterCount}. Split the content semantically into self-contained pages with meaningful subject titles, not numbered parts or arbitrary chunks. Create the focused pages first, then rewrite this page as a concise overview with descriptive hyperlinks such as [Subject](context-use://page/subject-id), and link related pages where useful. Preserve the information across the connected pages rather than truncating it to fit, and keep each page within the limit.`,
+    );
+  }
+  return parseKnowledgePageMarkdown(markdown);
+}
+
 export function parseKnowledgePageMarkdown(markdown: string): {
   title: string;
   excerpt: string;
   searchableText: string;
   links: KnowledgePageLinkSet;
 } {
-  validateMarkdownSize(markdown);
   const tree = fromMarkdown(markdown, markdownTableOptions);
   const { body, title } = validatePageShape(tree);
   const links = extractLinks(tree);

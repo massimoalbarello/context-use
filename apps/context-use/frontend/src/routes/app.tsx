@@ -86,7 +86,7 @@ function NotFoundRoute() {
               to={MAIN_KNOWLEDGE_PATH}
               replace
             >
-              Back to Map
+              Back to Pages
             </Link>
           ) : (
             <Link className={buttonVariants({ size: 'lg', className: 'mt-7' })} to="/app/login">

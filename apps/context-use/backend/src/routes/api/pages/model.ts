@@ -7,7 +7,6 @@ import {
   type KnowledgePageReference,
   type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
-  MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
@@ -25,8 +24,13 @@ import {
   PublicationSchema,
   PublicationVisibilitySchema,
 } from '#backend/routes/api/publications/model.ts';
+import {
+  ArchivedAtSchema,
+  ResourceStatusSchema,
+} from '#backend/routes/api/resource-archiving/state-model.ts';
 
 export const KnowledgePageSummarySchema = t.Object({
+  archivedAt: ArchivedAtSchema,
   publishedAt: PublicationSchema.properties.publishedAt,
   publishedRevisionNumber: t.Nullable(t.Integer({ minimum: 1 })),
   readableId: ReadableIdSchema,
@@ -86,14 +90,14 @@ export const KnowledgePagePreviewSchema = t.Object({
 });
 
 export const CreateKnowledgePageBodySchema = t.Object({
-  markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
+  markdown: t.String({ minLength: 1 }),
   temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
   allowDuplicate: t.Optional(t.Boolean()),
 });
 
 export const UpdateKnowledgePageBodySchema = t.Object({
   expectedRevisionNumber: t.Integer({ minimum: 1 }),
-  markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
+  markdown: t.String({ minLength: 1 }),
   temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
 });
 
@@ -103,6 +107,7 @@ export const KnowledgePageListSchema = t.Object({
   ...PaginationMetadataSchema.properties,
 });
 export const KnowledgePageListQuerySchema = t.Object({
+  status: t.Optional(ResourceStatusSchema),
   entityReadableId: t.Optional(ReadableIdSchema),
   visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
@@ -117,6 +122,7 @@ export const KnowledgePageListQuerySchema = t.Object({
 
 export function pageSummaryResponse(page: KnowledgePageSummary) {
   return {
+    archivedAt: page.archivedAt ? new Date(page.archivedAt) : null,
     publishedAt: page.publishedAt,
     publishedRevisionNumber: page.publishedRevisionNumber,
     readableId: page.readableId,

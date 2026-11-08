@@ -125,7 +125,7 @@ test(
         connections.push(browser);
         const page = await ownedPage({ browser, session });
         pages.push(page);
-        expect(page.url()).toBe(`${session.appUrl}/app/map`);
+        expect(page.url()).toBe(`${session.appUrl}/app/pages`);
         // A real DOM interaction verifies that each seeded browser owns a usable app.
         await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
         await page.getByRole('link', { name: 'Pages', exact: true }).click();

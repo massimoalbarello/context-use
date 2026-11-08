@@ -6,12 +6,18 @@ import type { KnowledgePageSummary } from '../../queries/pages';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
 import { PublicBadge, UnpublishedRevisionsBadge } from '../publications/publication-appearance';
+import { Badge } from '../ui/badge';
 import { TemporalCoverageLabel } from './temporal-coverage-label';
 
 type KnowledgePageName = Pick<KnowledgePageSummary, 'readableId' | 'title'>;
 type KnowledgePageIdentity = KnowledgePageName &
   Pick<KnowledgePageSummary, 'excerpt' | 'temporalCoverage'> &
-  Partial<Pick<KnowledgePageSummary, 'publishedAt' | 'publishedRevisionNumber' | 'revisionNumber'>>;
+  Partial<
+    Pick<
+      KnowledgePageSummary,
+      'archivedAt' | 'publishedAt' | 'publishedRevisionNumber' | 'revisionNumber'
+    >
+  >;
 
 function hasUnpublishedRevisions(page: KnowledgePageIdentity) {
   return (
@@ -76,6 +82,7 @@ export function KnowledgePageCardContent({
           </small>
         )}
       </span>
+      {page.archivedAt && <Badge variant="secondary">Archived</Badge>}
       {publicationStatus !== undefined
         ? publicationStatus
         : page.publishedAt != null &&

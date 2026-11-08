@@ -98,7 +98,7 @@ test('Calendar saves complete event records, updates cancellations and does not 
         expect(saved!.body).toContain('Guest — guest@example.com (accepted)');
         expect(saved!.body).toContain('Location: Meeting room');
         expect(saved!.body).toContain('Description:\n\nDiscuss the plan');
-        expect((await read(other.readableId))!.body).toContain('Start: 2026-10-01 (all day)');
+        expect((await read(other.readableId))!.body).toContain('Start: 1 Oct 2026 (all day)');
         expect((await read(other.readableId))!.sourceOccurredAt).toBe('2026-10-01');
         const history = () =>
           new HistoryRepository(input.database).list({

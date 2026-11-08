@@ -1,14 +1,6 @@
 import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
-import {
-  FileInput,
-  FileText,
-  History,
-  Image,
-  Map as MapIcon,
-  RefreshCw,
-  Users,
-} from 'lucide-react';
+import { FileInput, FileText, History, Image, RefreshCw, Users } from 'lucide-react';
 import { Fragment } from 'react';
 import { isNarrowWorkspace } from '../../lib/hooks/use-narrow-workspace';
 import type { KnowledgeProfile } from '../../queries/profile';
@@ -16,7 +8,6 @@ import { KnowledgeSidebarFooter, KnowledgeSidebarHeader } from './knowledge-side
 import { useKnowledgeWorkspace } from './knowledge-workspace';
 
 const destinations = [
-  { to: '/app/map', label: 'Map', icon: MapIcon },
   { to: '/app/history', label: 'History', icon: History },
   { to: '/app/syncs', label: 'Syncs', icon: RefreshCw },
   { to: '/app/entities', label: 'Entities', icon: Users },

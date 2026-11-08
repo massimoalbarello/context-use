@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/client';
@@ -12,9 +12,11 @@ import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
 import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
-import type {
-  KnowledgePage,
-  KnowledgePageReference,
+import { parseKnowledgePageMarkdown } from '#backend/models/knowledge-pages/markdown.ts';
+import {
+  type KnowledgePage,
+  type KnowledgePageReference,
+  MAX_KNOWLEDGE_PAGE_CHARACTERS,
 } from '#backend/models/knowledge-pages/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
@@ -57,6 +59,7 @@ function unexpectedCall(): never {
 }
 
 const entity: Entity = {
+  archivedAt: null,
   publicId: null,
   publishedAt: null,
   id: INTERNAL_ENTITY_ID,
@@ -71,6 +74,7 @@ const entity: Entity = {
 };
 
 const page: KnowledgePage = {
+  archivedAt: null,
   publicId: null,
   publishedAt: null,
   publishedRevisionNumber: null,
@@ -112,6 +116,7 @@ const unusedAssetsService: AssetsServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   updateName: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
   content: unexpectedCall,
 };
@@ -124,6 +129,7 @@ const unusedEntitiesService: EntitiesServiceContract = {
   update: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -135,6 +141,7 @@ const unusedPagesService: KnowledgePagesServiceContract = {
   preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -1289,6 +1296,122 @@ async function seedMcpAuthorization(database: SQL): Promise<void> {
        ${NOW}, ${NOW})
   `;
 }
+
+test('page writes reject oversized Markdown and preserve legacy pages until a compliant rewrite', async () => {
+  const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-page-write-limit-'));
+  const database = await createSqliteDatabase({ dataFolder });
+  try {
+    await runMigrations({ db: database });
+    await seedMcpAuthorization(database);
+    const pages = new KnowledgePagesRepository(database);
+    const storageFolder = join(dataFolder, 'objects');
+    const storage = new LocalStorage(storageFolder);
+    const pagesService = new KnowledgePagesService({ pages, storage });
+    const legacyMarkdown = `# Legacy account\n\n${'x'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS)}`;
+    const parsed = parseKnowledgePageMarkdown(legacyMarkdown);
+    await storage.write('legacy.md', new Blob([legacyMarkdown]));
+    expect(
+      (
+        await pages.create({
+          ...parsed,
+          pageId: Bun.randomUUIDv7(),
+          revisionId: Bun.randomUUIDv7(),
+          ownerId: OWNER_USER_ID,
+          readableId: 'legacy-account',
+          temporalCoverage: null,
+          storageKey: 'legacy.md',
+          contentHash: new Bun.CryptoHasher('sha256').update(legacyMarkdown).digest('hex'),
+          sizeBytes: Buffer.byteLength(legacyMarkdown),
+          actor: { kind: 'owner' },
+          message: 'Account predating the write limit',
+          createdAt: NOW,
+        })
+      ).state,
+    ).toBe('created');
+    const before = await pagesService.detail({
+      ownerId: OWNER_USER_ID,
+      readableId: 'legacy-account',
+    });
+    await withMcpClient({
+      actor: { ...principal, ownerId: OWNER_USER_ID },
+      pagesService,
+      run: async (client) => {
+        const guide_version = await readHypermediaCurationGuideVersion(client);
+        const address = 'context-use://page/legacy-account';
+        const read = await client.callTool({ name: 'read_knowledge_page', arguments: { address } });
+        expect(read.isError).not.toBe(true);
+        expect(read.structuredContent).toMatchObject({ markdown: legacyMarkdown });
+        for (const name of ['create_knowledge_page', 'update_knowledge_page']) {
+          const result = await client.callTool({
+            name,
+            arguments: {
+              guide_version,
+              changeMessage: 'Attempt an oversized revision',
+              markdown: legacyMarkdown,
+              ...(name === 'update_knowledge_page' ? { address, expectedRevisionNumber: 1 } : {}),
+            },
+          });
+          expect(result.isError).toBe(true);
+          expect(errorCode(result)).toBe('invalid_markdown');
+          const message = (result.structuredContent as { error: { message: string } }).error
+            .message;
+          expect(message).toContain(`at most ${MAX_KNOWLEDGE_PAGE_CHARACTERS}`);
+          expect(message).toContain('self-contained pages with meaningful subject titles');
+          expect(message).toContain('not numbered parts or arbitrary chunks');
+          expect(message).toContain('[Subject](context-use://page/subject-id)');
+        }
+        expect(
+          await pagesService.detail({ ownerId: OWNER_USER_ID, readableId: 'legacy-account' }),
+        ).toEqual(before);
+        expect(await readdir(storageFolder, { recursive: true })).toEqual(['legacy.md']);
+        expect((await pages.list({ ownerId: OWNER_USER_ID, limit: 10, offset: 0 })).total).toBe(1);
+
+        const focusedPrefix = '# Focused subject\n\n';
+        const created = await client.callTool({
+          name: 'create_knowledge_page',
+          arguments: {
+            guide_version,
+            changeMessage: 'Extract a focused subject',
+            markdown:
+              focusedPrefix + '😀'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS - focusedPrefix.length),
+          },
+        });
+        expect(created.isError).not.toBe(true);
+        expect(created.structuredContent).toMatchObject({
+          address: 'context-use://page/focused-subject',
+        });
+        const updated = await client.callTool({
+          name: 'update_knowledge_page',
+          arguments: {
+            guide_version,
+            address,
+            expectedRevisionNumber: 1,
+            changeMessage: 'Replace the legacy account with a connected overview',
+            markdown:
+              '# Legacy account\n\nSee the [focused subject](context-use://page/focused-subject).',
+          },
+        });
+        expect(updated.isError).not.toBe(true);
+        expect(updated.structuredContent).toEqual({ revisionNumber: 2 });
+        expect(
+          await pagesService.revision({
+            ownerId: OWNER_USER_ID,
+            readableId: 'legacy-account',
+            revisionNumber: 1,
+          }),
+        ).toMatchObject({ markdown: legacyMarkdown });
+        const focused = await pagesService.detail({
+          ownerId: OWNER_USER_ID,
+          readableId: 'focused-subject',
+        });
+        expect(focused?.backlinks).toMatchObject([{ page: { readableId: 'legacy-account' } }]);
+      },
+    });
+  } finally {
+    await database.close();
+    await rm(dataFolder, { recursive: true, force: true });
+  }
+});
 
 test('knowledge page revisions durably snapshot the acting MCP client authorization name', async () => {
   const dataFolder = await mkdtemp(join(tmpdir(), 'context-use-mcp-tools-test-'));

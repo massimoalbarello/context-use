@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { assetsQueryKey } from '../../queries/assets';
 import { entitiesQueryKey } from '../../queries/entities';
 import { knowledgeSuggestionsQueryKey } from '../../queries/knowledge-suggestions';
-import { mapQueryKey } from '../../queries/map';
 import { pageDetailsQueryKey, pagePreviewsQueryKey, pagesListQueryKey } from '../../queries/pages';
 import { publicSiteQueryKey } from '../../queries/public-site';
 import {
@@ -41,7 +40,6 @@ export function usePublicationApproval() {
           pagePreviewsQueryKey,
           assetsQueryKey,
           recordsQueryKey,
-          mapQueryKey,
           publicSiteQueryKey,
           knowledgeSuggestionsQueryKey,
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),

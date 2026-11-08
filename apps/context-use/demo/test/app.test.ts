@@ -18,7 +18,6 @@ import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import type { AssetFaces } from '#backend/models/faces/model.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
-import type { MapPagesSchema } from '#backend/routes/api/map/model.ts';
 import { MAX_LIST_LIMIT } from '#backend/routes/api/model.ts';
 import { createPagesController } from '#backend/routes/api/pages/controller.ts';
 import type {
@@ -260,7 +259,7 @@ test(
         const read = (path: string) => fetchDemo(new Request(`http://demo.test${path}`));
         const root = await read('/');
         expect(root.status).toBe(StatusMap.Found);
-        expect(root.headers.get('location')).toBe('/app/map');
+        expect(root.headers.get('location')).toBe('/app/pages');
         for (const [path, count] of [
           ['/api/pages?limit=50', MAX_LIST_LIMIT],
           ['/api/pages?limit=50&offset=50', EXPECTED_PAGES - MAX_LIST_LIMIT],
@@ -296,10 +295,9 @@ test(
           '/api/face-recognition/settings',
           '/api/face-recognition/processing',
           '/api/records/filter-options',
-          '/api/map/pages',
           '/api/hypermedia/search?query=iPhone',
           '/app',
-          '/app/map',
+          '/app/pages',
           '/app/syncs',
           '/app/syncs/github?tab=authorization',
           '/app/syncs/granola?tab=authorization',
@@ -383,60 +381,6 @@ test(
         expect(await syncsHead.text()).toBe('');
         await assertPublicationStatuses(fetchDemo);
         await assertPreviewFormats(read);
-        // Prove the shared seed produces distinct, discoverable pages each month through
-        // the public demo API, with no month-specific pages leaking into adjacent months.
-        const seenPages = new Set<string>();
-        for (let month = 1; month <= 10; month += 1) {
-          const time = `2007-${String(month).padStart(2, '0')}`;
-          const response = await read(`/api/map/pages?visible=steve-jobs&time=${time}`);
-          expect(response.status).toBe(StatusMap.OK);
-          const result = (await response.json()) as Static<typeof MapPagesSchema>;
-          expect(result.nextOffset).toBeNull();
-          const datedPages = result.pages.filter((page) => {
-            const coverage = page.temporalCoverage;
-            return coverage !== null && !coverage.includes('/');
-          });
-          expect(
-            datedPages.length,
-            `${time} should visibly change Steve's map`,
-          ).toBeGreaterThanOrEqual(2);
-          for (const page of datedPages) {
-            expect(page.temporalCoverage?.startsWith(time)).toBe(true);
-            expect(seenPages.has(page.readableId)).toBe(false);
-            seenPages.add(page.readableId);
-            expect(page.entities).toContainEqual({ readableId: 'steve-jobs' });
-            expect((await read(`/api/pages/${page.readableId}`)).status).toBe(StatusMap.OK);
-          }
-        }
-        const graphQuery = new URLSearchParams({
-          anchors: JSON.stringify([
-            { anchor: { readableId: 'steve-jobs' } },
-            { anchor: { readableId: 'iphone' } },
-          ]),
-          limit: '2',
-        });
-        const graphPath = `/api/map/neighborhoods?${graphQuery}`;
-        const graph = await read(graphPath);
-        expect(graph.status).toBe(StatusMap.OK);
-        expect(graph.headers.get('cache-control')).toBe('no-store');
-        expect(graph.headers.has('set-cookie')).toBe(false);
-        expect(await graph.json()).toMatchObject({
-          entities: expect.arrayContaining([
-            expect.objectContaining({ readableId: 'steve-jobs' }),
-            expect.objectContaining({ readableId: 'iphone' }),
-          ]),
-          neighborhoods: [
-            { anchor: { readableId: 'steve-jobs' }, available: true, neighbors: expect.any(Array) },
-            { anchor: { readableId: 'iphone' }, available: true, neighbors: expect.any(Array) },
-          ],
-        });
-        const graphHead = await fetchDemo(
-          new Request(`http://demo.test${graphPath}`, { method: 'HEAD' }),
-        );
-        expect(graphHead.status).toBe(StatusMap.OK);
-        expect(await graphHead.text()).toBe('');
-        const invalidGraph = await read('/api/map/neighborhoods?anchors=[]');
-        expect(invalidGraph.status).toBe(StatusMap['Bad Request']);
         const page = (await (
           await read('/api/pages/bringing-our-music-work-into-phones')
         ).json()) as Static<typeof KnowledgePageSchema>;
@@ -563,7 +507,6 @@ test(
           '/api/publications/page/pictures-of-me-and-our-pocket-devices',
           '/api/publications/approvals',
           '/api/publications/approvals/test-approval/complete',
-          '/api/map/neighborhoods',
           '/api/pages',
           '/api/pages/my-work-from-ipod-to-iphone',
           '/api/pages/my-work-from-ipod-to-iphone/diff?from=0&to=1',

@@ -28,6 +28,7 @@ function unexpectedCall(): never {
 }
 
 const entity: EntityDetail = {
+  archivedAt: null,
   publicId: null,
   publishedAt: null,
   id: 'internal-entity-id',
@@ -50,6 +51,7 @@ const entitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: async () => entity,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 
@@ -60,6 +62,7 @@ const assetsService: AssetsServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   updateName: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
   content: unexpectedCall,
 };
@@ -72,6 +75,7 @@ const pagesService: KnowledgePagesServiceContract = {
   preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 

@@ -41,6 +41,7 @@ test('Authorization separates configured app status from account connection and 
         authorizationFailed={false}
         onAction={() => {}}
         onConnect={connect}
+        onReauthorize={() => {}}
         onSaveApp={() => {
           setProvider({
             ...provider,
@@ -96,35 +97,58 @@ test('Authorization separates configured app status from account connection and 
   );
 });
 
-test('a connected account appears alongside the configured app', async () => {
-  const provider = providerFixture();
-  provider.oauthApp.configured = true;
-  provider.account = { name: 'octocat', status: 'connected' };
-  const props = {
-    provider,
-    tab: 'authorization' as const,
-    onTabChange: () => {},
-    pending: false,
-    error: null,
-    appError: null,
-    authorizationFailed: false,
-    onAction: () => {},
-    onConnect: () => {},
-    onSaveApp: () => Promise.resolve(),
-  };
-  const view = render(<ProviderDetail {...props} />);
-  expect(view.queryByLabelText('Authorization callback URL')).toBeNull();
-  expect(view.getByText('Configured')).toBeTruthy();
-  expect(view.getByText('octocat')).toBeTruthy();
-  const user = userEvent.setup({ document });
-  await user.click(view.getByRole('button', { name: 'Edit OAuth app' }));
-  expect(view.getByRole('button', { name: 'Save OAuth app' })).toBeTruthy();
-  expect(view.queryByRole('button', { name: 'Edit OAuth app' })).toBeNull();
-  await user.click(view.getByRole('button', { name: 'Cancel' }));
-  expect(view.getByText('octocat')).toBeTruthy();
-  expect(view.queryByRole('button', { name: 'Connect account' })).toBeNull();
-  expect(view.queryByText('Not connected')).toBeNull();
-});
+test.each(['connected', 'error'] as const)(
+  'an existing %s account can be reauthorized',
+  async (status) => {
+    const provider = providerFixture();
+    provider.oauthApp.configured = true;
+    provider.account = { name: 'octocat', status };
+    provider.syncs[0]!.state = 'paused';
+    const reauthorize = mock(() => {});
+    const props = {
+      provider,
+      tab: 'authorization' as const,
+      onTabChange: () => {},
+      pending: false,
+      error: null,
+      appError: null,
+      authorizationFailed: false,
+      onAction: () => {},
+      onConnect: () => {},
+      onReauthorize: reauthorize,
+      onSaveApp: () => Promise.resolve(),
+    };
+    const view = render(<ProviderDetail {...props} />);
+    expect(view.queryByLabelText('Authorization callback URL')).toBeNull();
+    expect(view.getByText('Configured')).toBeTruthy();
+    expect(view.getByText('octocat')).toBeTruthy();
+    const user = userEvent.setup({ document });
+    await user.click(view.getByRole('button', { name: 'Edit OAuth app' }));
+    expect(view.getByRole('button', { name: 'Save OAuth app' })).toBeTruthy();
+    expect(view.queryByRole('button', { name: 'Edit OAuth app' })).toBeNull();
+    await user.click(view.getByRole('button', { name: 'Cancel' }));
+    expect(view.getByText('octocat')).toBeTruthy();
+    expect(view.queryByRole('button', { name: 'Connect account' })).toBeNull();
+    expect(view.queryByText('Not connected')).toBeNull();
+    await user.click(view.getByRole('button', { name: 'Reauthorize account' }));
+    expect(reauthorize).toHaveBeenCalledTimes(1);
+    view.rerender(<ProviderDetail {...props} pending />);
+    expect(
+      (view.getByRole('button', { name: 'Reauthorize account' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await user.click(view.getByRole('button', { name: 'Reauthorize account' }));
+    expect(reauthorize).toHaveBeenCalledTimes(1);
+    view.rerender(<ProviderDetail {...props} error={new Error('Authorization unavailable')} />);
+    expect(view.getByText('Authorization unavailable')).toBeTruthy();
+    expect(
+      (view.getByRole('button', { name: 'Reauthorize account' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    provider.syncs[0]!.state = 'disconnected';
+    view.rerender(<ProviderDetail {...props} />);
+    expect(view.getByRole('button', { name: 'Start sync' })).toBeTruthy();
+    expect(view.getByRole('button', { name: 'Reauthorize account' })).toBeTruthy();
+  },
+);
 
 test('automatic Granola authorization offers account connection without an OAuth app form', async () => {
   const provider = providerFixture();
@@ -143,6 +167,7 @@ test('automatic Granola authorization offers account connection without an OAuth
       authorizationFailed={false}
       onAction={() => {}}
       onConnect={connect}
+      onReauthorize={() => {}}
       onSaveApp={() => Promise.resolve()}
     />,
   );

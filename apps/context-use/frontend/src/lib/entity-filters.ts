@@ -3,13 +3,14 @@ import {
   type EntityTypeFilter,
   MAX_ENTITY_NAME_LENGTH,
 } from '#backend/models/entities/model.ts';
-
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
-import { publicationVisibilityFromSearch } from './publication-visibility';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
+import { resourceStatusSearch } from './resource-status';
 
 export type EntitySearch = {
   q?: string;
   entityType?: EntityTypeFilter;
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
 };
 
@@ -20,7 +21,7 @@ export function entitySearch(search: Record<string, unknown>): EntitySearch {
       typeof search.q === 'string'
         ? search.q.trim().slice(0, MAX_ENTITY_NAME_LENGTH) || undefined
         : undefined,
-    visibility: publicationVisibilityFromSearch(search.visibility),
+    ...resourceStatusSearch(search),
     entityType: entityType === 'all' ? undefined : entityType,
   };
 }

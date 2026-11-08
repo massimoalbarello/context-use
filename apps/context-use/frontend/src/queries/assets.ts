@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
+import type { ResourceStatus, UnarchiveResult } from '#backend/models/resource-archiving/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { assetContentUrl } from '../lib/asset-presentation';
@@ -39,11 +40,13 @@ async function assetSearchPage({
   query,
   limit,
   assetKind,
+  status,
   visibility,
 }: {
   query: string;
   limit?: number;
   assetKind?: 'entity_image';
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
 }): Promise<AssetPage> {
   const result = await searchHypermedia({
@@ -51,6 +54,7 @@ async function assetSearchPage({
     resourceTypes: 'asset',
     limit,
     assetKind,
+    status,
     visibility,
   });
   return {
@@ -60,22 +64,30 @@ async function assetSearchPage({
   };
 }
 
-export type AssetListFilters = { query?: string; visibility?: PublicationVisibility };
+export type AssetListFilters = {
+  query?: string;
+  status?: ResourceStatus;
+  visibility?: PublicationVisibility;
+};
 
-export function assetsQueryOptions({ query, visibility }: AssetListFilters = {}) {
+export function assetsQueryOptions({ query, status, visibility }: AssetListFilters = {}) {
   const normalizedQuery = query?.trim() || undefined;
   return infiniteQueryOptions({
     queryKey: [
       ...assetsListQueryKey,
-      { query: normalizedQuery ?? null, visibility: visibility ?? 'all' },
+      {
+        query: normalizedQuery ?? null,
+        status: status ?? 'active',
+        visibility: visibility ?? 'all',
+      },
     ],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (normalizedQuery) {
-        return assetSearchPage({ query: normalizedQuery, visibility });
+        return assetSearchPage({ query: normalizedQuery, status, visibility });
       }
       const { data, error } = await api.api.assets.get({
-        query: { offset: pageParam, visibility },
+        query: { status, offset: pageParam, visibility },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));
@@ -121,7 +133,9 @@ export function assetQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...assetDetailsQueryKey, readableId],
     queryFn: async () => {
-      const { data, error } = await api.api.assets({ assetReadableId: readableId }).get();
+      const { data, error } = await api.api
+        .assets({ assetReadableId: readableId })
+        .get({ query: { includeArchived: true } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -134,7 +148,9 @@ export function assetPreviewQueryOptions(readableId: string) {
   return queryOptions({
     queryKey: [...assetPreviewsQueryKey, readableId],
     queryFn: async () => {
-      const { data, error } = await api.api.assets({ assetReadableId: readableId }).preview.get();
+      const { data, error } = await api.api
+        .assets({ assetReadableId: readableId })
+        .preview.get({ query: { includeArchived: true } });
       if (error) {
         throw new Error(apiErrorMessage(error));
       }
@@ -185,15 +201,38 @@ export async function archiveAsset({
   return { state: 'archived' };
 }
 
-export function assetDocumentQueryOptions(readableId: string) {
+export function assetDocumentQueryOptions({
+  readableId,
+  includeArchived = false,
+}: {
+  readableId: string;
+  includeArchived?: boolean;
+}) {
   return queryOptions({
-    queryKey: [...assetsQueryKey, 'content', readableId],
+    queryKey: [...assetsQueryKey, 'content', readableId, includeArchived],
     queryFn: async ({ signal }) => {
       // Fetch bytes explicitly: Eden's content-type decoding is unsuitable for document parsers.
-      const response = await fetch(assetContentUrl(readableId), { signal });
+      const response = await fetch(assetContentUrl({ readableId, includeArchived }), { signal });
       return documentPreviewBytes(response);
     },
     staleTime: Infinity,
     retry: false,
   });
+}
+
+export async function unarchiveAsset({
+  readableId,
+}: {
+  readableId: string;
+}): Promise<UnarchiveResult> {
+  const { error } = await api.api
+    .assets({ assetReadableId: readableId })
+    .unarchive.put({ changeMessage: 'Unarchived asset from the dashboard' });
+  if (error) {
+    if (error.status === ApiStatus.Conflict && 'blockers' in error.value) {
+      return { state: 'dependencies_archived', blockers: error.value.blockers };
+    }
+    throw new Error(apiErrorMessage(error));
+  }
+  return { state: 'unarchived' };
 }

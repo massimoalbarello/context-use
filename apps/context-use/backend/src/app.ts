@@ -27,7 +27,6 @@ import type { EntitiesServiceContract } from '#backend/services/entities/service
 import type { FrontendAssetsServiceContract } from '#backend/services/frontend-assets/service.ts';
 import type { HealthServiceContract } from '#backend/services/health/service.ts';
 import type { HistoryServiceContract } from '#backend/services/history/service.ts';
-import type { HypermediaGraphServiceContract } from '#backend/services/hypermedia-graph/service.ts';
 import type { HypermediaRetrievalServiceContract } from '#backend/services/hypermedia-retrieval/service.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
@@ -54,7 +53,6 @@ export function createApp({
   entitiesService,
   historyService,
   healthService,
-  graphService,
   retrievalService,
   mcpClientAuthorizationsService,
   mcpServerUrl,
@@ -81,7 +79,6 @@ export function createApp({
   entitiesService: EntitiesServiceContract;
   historyService: HistoryServiceContract;
   healthService: HealthServiceContract;
-  graphService: HypermediaGraphServiceContract;
   retrievalService: HypermediaRetrievalServiceContract;
   mcpClientAuthorizationsService: McpClientAuthorizationsServiceContract;
   mcpServerUrl: string;
@@ -152,7 +149,7 @@ export function createApp({
             },
             {
               name: 'Hypermedia',
-              description: 'Bounded resource neighborhoods and their connected knowledge pages.',
+              description: 'Search across typed knowledge resources.',
             },
             {
               name: 'API keys',
@@ -200,7 +197,6 @@ export function createApp({
         entitiesService,
         historyService,
         healthService,
-        graphService,
         retrievalService,
         mcpClientAuthorizationsService,
         mcpServerUrl,

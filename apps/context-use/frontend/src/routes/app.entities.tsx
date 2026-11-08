@@ -10,6 +10,7 @@ import { EntityList } from '../components/entities/entity-list';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgeFilterPopover } from '../components/knowledge/knowledge-filter-popover';
+import { ResourceStatusFilter } from '../components/knowledge/resource-status-filter';
 import { PublicationVisibilityFilter } from '../components/publications/publication-visibility-filter';
 import {
   Select,
@@ -36,6 +37,7 @@ export const Route = createFileRoute('/app/entities')({
   loaderDeps: ({ search }) => ({
     query: search.q,
     entityType: search.entityType,
+    status: search.status,
     visibility: search.visibility,
   }),
   loader: ({ context, deps }) =>
@@ -56,8 +58,24 @@ function EntityFilterControl({ search }: { search: EntitySearch }) {
   return (
     <KnowledgeFilterPopover
       title="Filter entities"
-      filtered={Boolean(search.entityType || search.visibility)}
+      filtered={Boolean(search.entityType || search.visibility || search.status)}
     >
+      <ResourceStatusFilter
+        value={search.status}
+        onChange={(status) => {
+          void navigate({
+            to: '/app/entities',
+            search: (previous) => ({
+              ...previous,
+              status,
+              resource: undefined,
+              resourceId: undefined,
+              expanded: undefined,
+            }),
+            replace: true,
+          });
+        }}
+      />
       <PublicationVisibilityFilter
         value={search.visibility}
         onChange={(visibility) => onChange({ ...search, visibility })}
@@ -93,10 +111,11 @@ function EntitiesLayout() {
   const { profile } = Route.useRouteContext();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const { q = '', entityType, visibility } = search;
+  const { q = '', entityType, visibility, status } = search;
   const { entities, total, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntities({
     query: q,
     entityType,
+    status,
     visibility,
   });
   if (!profile) {
@@ -134,7 +153,7 @@ function EntitiesLayout() {
     >
       <EntityList
         entities={entities}
-        filtered={Boolean(q || entityType || visibility)}
+        filtered={Boolean(q || entityType || visibility || status)}
         search={search}
       />
     </CollectionWorkspace>

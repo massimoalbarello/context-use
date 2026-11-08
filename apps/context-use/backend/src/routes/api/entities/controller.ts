@@ -61,6 +61,7 @@ export function createEntitiesController({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
+          status: query.status,
           visibility: query.visibility,
           entityType: query.entityType,
         });

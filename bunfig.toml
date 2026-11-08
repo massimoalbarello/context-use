@@ -1,5 +1,6 @@
 [install]
 # Keep compiler API consumers on the root TypeScript 6 dependency rather than
 # an arbitrary workspace compiler. Bun's fetch types also need undici-types.
+# Libraries without a React types peer still need their declarations to resolve.
 linker = "isolated"
-hoistPattern = ["undici-types"]
+hoistPattern = ["undici-types", "@types/react"]

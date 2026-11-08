@@ -39,6 +39,7 @@ export interface ICreateAssetResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -55,6 +56,7 @@ export interface IListAssetsResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -75,6 +77,7 @@ export interface IFindAssetResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -97,6 +100,7 @@ export interface IUpdateAssetNameResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -106,16 +110,19 @@ export interface IUpdateAssetNameResult {
     updatedAt: string;
 }
 
+/** Result of query `FindAssetUnarchiveTarget`. */
+export interface IFindAssetUnarchiveTargetResult {
+    id: string;
+    name: string;
+    archivedAt: string | null;
+}
+
 /** Result of query `FindAssetArchiveTarget`. */
 export interface IFindAssetArchiveTargetResult {
     id: string;
     name: string;
     archivedAt: string | null;
     publishedAt: string | null;
-}
-
-/** Result of query `RemoveAssetSearchDocument`. */
-export interface IRemoveAssetSearchDocumentResult {
 }
 
 /** Result of query `ListAssetDepictedPeople`. */
@@ -127,6 +134,7 @@ export interface IListAssetDepictedPeopleResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     isSelf: number;
     source: "detected" | "confirmed";
 }
@@ -141,6 +149,7 @@ export interface IListActivePageAssetUsagesResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -156,6 +165,7 @@ export interface IListActiveEntityImageAssetUsagesResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     isSelf: number;
 }
 
@@ -191,6 +201,7 @@ export interface IListEntitiesResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -220,6 +231,7 @@ export interface IFindEntityResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -256,16 +268,27 @@ export interface IRemoveEntityImageResult {
     id: string;
 }
 
+/** Result of query `FindEntityUnarchiveTarget`. */
+export interface IFindEntityUnarchiveTargetResult {
+    id: string;
+    name: string;
+    archivedAt: string | null;
+    imageAssetId: string | null;
+}
+
+/** Result of query `FindEntityUnarchiveBlockers`. */
+export interface IFindEntityUnarchiveBlockersResult {
+    resourceType: "asset";
+    readableId: string;
+    name: string;
+}
+
 /** Result of query `FindEntityArchiveTarget`. */
 export interface IFindEntityArchiveTargetResult {
     id: string;
     archivedAt: string | null;
     isSelf: number;
     publishedAt: string | null;
-}
-
-/** Result of query `RemoveEntitySearchDocument`. */
-export interface IRemoveEntitySearchDocumentResult {
 }
 
 /** Result of query `ListActiveEntityMentioningPages`. */
@@ -278,6 +301,7 @@ export interface IListActiveEntityMentioningPagesResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -326,6 +350,7 @@ export interface IReadAssetFaceViewsResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     selfEntityId: string | null;
     similarity: number | null;
 }
@@ -343,6 +368,7 @@ export interface IFaceProcessingQueueResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -419,6 +445,7 @@ export interface IListPersonImagesResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -446,63 +473,12 @@ export interface IListResourceHistoryResult {
     available: unknown;
 }
 
-/** Result of query `ListHypermediaNeighborhoods`. */
-export interface IListHypermediaNeighborhoodsResult {
-    rowType: "anchor" | "neighbor" | "relationship";
-    sourceReadableId: string;
-    sharedPageCount: number;
-    position: number;
-    id: string;
-    readableId: string;
-    name: string;
-    description: string;
-    entityType: string | null;
-    publicId: string | null;
-    publishedAt: string | null;
-    isSelf: number;
-    imagePublicId: string | null;
-    imagePublishedAt: string | null;
-    imageId: string | null;
-    imageReadableId: string | null;
-    imageName: string | null;
-    imageMediaType: string | null;
-    imageExtension: string | null;
-    imageSizeBytes: number | null;
-    imageCreatedAt: string | null;
-    imageUpdatedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListHypermediaPages`. */
-export interface IListHypermediaPagesResult {
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    publicId: string | null;
-    publishedAt: string | null;
-    publishedRevisionNumber: number | null;
-    ongoingSort: number;
-    latestSort: unknown | null;
-    startSort: unknown | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
-/** Result of query `ListHypermediaPageEntities`. */
-export interface IListHypermediaPageEntitiesResult {
-    sourcePageReadableId: string;
-    readableId: string;
-}
-
 /** Result of query `SearchHypermedia`. */
 export interface ISearchHypermediaResult {
     total: number;
     resourceType: "entity" | "knowledge_page" | "asset" | "record";
     readableId: string;
+    archivedAt: string | null;
     storageKey: string;
     contentHash: string;
     contentSizeBytes: number;
@@ -569,6 +545,7 @@ export interface IFindCurrentKnowledgePageResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     storageKey: string;
     contentHash: string;
@@ -617,6 +594,7 @@ export interface IListKnowledgePagesResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -637,6 +615,7 @@ export interface IListKnowledgePagesByEntityResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -663,6 +642,7 @@ export interface IFindKnowledgePageResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     storageKey: string;
     contentHash: string;
@@ -671,16 +651,27 @@ export interface IFindKnowledgePageResult {
     updatedAt: string;
 }
 
+/** Result of query `FindKnowledgePageUnarchiveTarget`. */
+export interface IFindKnowledgePageUnarchiveTargetResult {
+    id: string;
+    archivedAt: string | null;
+    name: string;
+    revisionId: string;
+}
+
+/** Result of query `FindKnowledgePageUnarchiveBlockers`. */
+export interface IFindKnowledgePageUnarchiveBlockersResult {
+    resourceType: "entity" | "page" | "asset";
+    readableId: string;
+    name: string;
+}
+
 /** Result of query `FindKnowledgePageArchiveTarget`. */
 export interface IFindKnowledgePageArchiveTargetResult {
     id: string;
     currentRevisionId: string;
     archivedAt: string | null;
     publishedAt: string | null;
-}
-
-/** Result of query `RemoveKnowledgePageSearchDocument`. */
-export interface IRemoveKnowledgePageSearchDocumentResult {
 }
 
 /** Result of query `ListKnowledgePageMentions`. */
@@ -692,6 +683,7 @@ export interface IListKnowledgePageMentionsResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -727,6 +719,7 @@ export interface IListActiveKnowledgePageReferrersResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -752,6 +745,7 @@ export interface IListKnowledgePageReferencesResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -768,6 +762,7 @@ export interface IListKnowledgePageBacklinksResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -781,6 +776,7 @@ export interface IListKnowledgePageAssetUsagesResult {
     name: string;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     mediaType: string;
     extension: string | null;
     sizeBytes: number;
@@ -816,6 +812,7 @@ export interface IFindKnowledgeProfileResult {
     entityType: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     isSelf: number;
     createdAt: string;
     updatedAt: string;
@@ -1260,6 +1257,7 @@ export interface IListRecordBacklinksResult {
     temporalCoverage: string | null;
     publicId: string | null;
     publishedAt: string | null;
+    archivedAt: string | null;
     publishedRevisionNumber: number | null;
     createdAt: string;
     updatedAt: string;
@@ -1277,8 +1275,8 @@ export interface Queries {
     FindAsset: IFindAssetResult;
     FindAssetChangeName: IFindAssetChangeNameResult;
     UpdateAssetName: IUpdateAssetNameResult;
+    FindAssetUnarchiveTarget: IFindAssetUnarchiveTargetResult;
     FindAssetArchiveTarget: IFindAssetArchiveTargetResult;
-    RemoveAssetSearchDocument: IRemoveAssetSearchDocumentResult;
     ListAssetDepictedPeople: IListAssetDepictedPeopleResult;
     ListActivePageAssetUsages: IListActivePageAssetUsagesResult;
     ListActiveEntityImageAssetUsages: IListActiveEntityImageAssetUsagesResult;
@@ -1291,8 +1289,9 @@ export interface Queries {
     FindEntityImagePublicationTarget: IFindEntityImagePublicationTargetResult;
     SetEntityImage: ISetEntityImageResult;
     RemoveEntityImage: IRemoveEntityImageResult;
+    FindEntityUnarchiveTarget: IFindEntityUnarchiveTargetResult;
+    FindEntityUnarchiveBlockers: IFindEntityUnarchiveBlockersResult;
     FindEntityArchiveTarget: IFindEntityArchiveTargetResult;
-    RemoveEntitySearchDocument: IRemoveEntitySearchDocumentResult;
     ListActiveEntityMentioningPages: IListActiveEntityMentioningPagesResult;
     ReadActivePortraitReference: IReadActivePortraitReferenceResult;
     ReadFaceObservations: IReadFaceObservationsResult;
@@ -1313,9 +1312,6 @@ export interface Queries {
     ListPersonImages: IListPersonImagesResult;
     PingDatabase: IPingDatabaseResult;
     ListResourceHistory: IListResourceHistoryResult;
-    ListHypermediaNeighborhoods: IListHypermediaNeighborhoodsResult;
-    ListHypermediaPages: IListHypermediaPagesResult;
-    ListHypermediaPageEntities: IListHypermediaPageEntitiesResult;
     SearchHypermedia: ISearchHypermediaResult;
     FindKnowledgePageOwnerRevisionAuthor: IFindKnowledgePageOwnerRevisionAuthorResult;
     FindCurrentKnowledgePage: IFindCurrentKnowledgePageResult;
@@ -1330,8 +1326,9 @@ export interface Queries {
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
     FindKnowledgePageRevisionsByNumber: IFindKnowledgePageRevisionsByNumberResult;
     FindKnowledgePage: IFindKnowledgePageResult;
+    FindKnowledgePageUnarchiveTarget: IFindKnowledgePageUnarchiveTargetResult;
+    FindKnowledgePageUnarchiveBlockers: IFindKnowledgePageUnarchiveBlockersResult;
     FindKnowledgePageArchiveTarget: IFindKnowledgePageArchiveTargetResult;
-    RemoveKnowledgePageSearchDocument: IRemoveKnowledgePageSearchDocumentResult;
     ListKnowledgePageMentions: IListKnowledgePageMentionsResult;
     ListKnowledgePageRevisions: IListKnowledgePageRevisionsResult;
     ListActiveKnowledgePageReferrers: IListActiveKnowledgePageReferrersResult;

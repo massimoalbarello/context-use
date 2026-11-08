@@ -36,6 +36,7 @@ function imageFrom(row: SearchRow) {
     row.imageCreatedAt &&
     row.imageUpdatedAt
     ? {
+        archivedAt: null,
         publicId: row.imagePublicId,
         publishedAt: row.imagePublishedAt,
         id: row.imageId,
@@ -64,6 +65,7 @@ function resultFrom({
     return {
       resourceType: row.resourceType,
       entity: {
+        archivedAt: row.archivedAt,
         publicId: row.entityPublicId,
         publishedAt: row.entityPublishedAt,
         id: row.entityId,
@@ -86,6 +88,7 @@ function resultFrom({
     return {
       resourceType: row.resourceType,
       knowledgePage: {
+        archivedAt: row.archivedAt,
         publicId: row.pagePublicId,
         publishedAt: row.pagePublishedAt,
         publishedRevisionNumber: row.publishedRevisionNumber,
@@ -133,6 +136,7 @@ function resultFrom({
   return {
     resourceType: row.resourceType,
     asset: {
+      archivedAt: row.archivedAt,
       publicId: row.assetPublicId,
       publishedAt: row.assetPublishedAt,
       id: row.assetId,
@@ -217,7 +221,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     if (!expression) {
       return { results: [], totalMatches: 0, truncated: false };
     }
-    const visibility = filters?.visibility ?? 'all';
+    const { status = 'active', visibility = 'all' } = filters ?? {};
     const selectedTypes = JSON.stringify(resourceTypes);
     const entitiesOnly = filters?.entity?.type !== undefined;
     const entityType = filters?.entity?.type ?? 'all';
@@ -238,6 +242,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
     const rows = await this.sql.SearchHypermedia`
       /* @notNull resourceType readableId createdAt updatedAt total */
       /* @type total number */
+      /* @type archivedAt string | null */
       /* @type resourceType 'entity' | 'knowledge_page' | 'asset' | 'record' */
       /* @type isSelf number */
       /* @type revisionNumber number */
@@ -258,24 +263,24 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
           on document."resource_type" = 'entity'
          and entity."owner_id" = document."owner_id"
          and entity."readable_id" = document."readable_id"
-         and entity."archived_at" is null
+         and (${status} = 'archived') = (entity."archived_at" is not null)
         left join "knowledge_page" page
           on document."resource_type" = 'knowledge_page'
          and page."owner_id" = document."owner_id"
          and page."readable_id" = document."readable_id"
-         and page."archived_at" is null
+         and (${status} = 'archived') = (page."archived_at" is not null)
         left join "knowledge_page_revision" revision
           on revision."owner_id" = page."owner_id" and revision."id" = page."current_revision_id"
         left join "asset" asset
           on document."resource_type" = 'asset'
          and asset."owner_id" = document."owner_id"
          and asset."readable_id" = document."readable_id"
-         and asset."archived_at" is null
+         and (${status} = 'archived') = (asset."archived_at" is not null)
         left join "record" record
           on document."resource_type" = 'record'
          and record."owner_id" = document."owner_id"
          and record."readable_id" = document."readable_id"
-         and record."deleted_at" is null
+         and record."deleted_at" is null and ${status} = 'active'
         where "hypermedia_search_fts" match ${expression}
           and document."owner_id" = ${ownerId}
           and document."resource_type" in (select "resourceType" from selected_type)
@@ -334,6 +339,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
       )
       select (select count(*) from matching_document) as "total", document."resource_type" as "resourceType",
         document."readable_id" as "readableId",
+        coalesce(entity."archived_at", page."archived_at", asset."archived_at") as "archivedAt",
         coalesce(revision."storage_key", record."storage_key") as "storageKey",
         coalesce(revision."content_hash", record."content_hash") as "contentHash",
         coalesce(revision."size_bytes", record."size_bytes") as "contentSizeBytes",
@@ -383,7 +389,7 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         on document."resource_type" = 'entity'
        and entity."owner_id" = document."owner_id"
        and entity."readable_id" = document."readable_id"
-       and entity."archived_at" is null
+       and (${status} = 'archived') = (entity."archived_at" is not null)
       left join "knowledge_profile" profile
         on profile."owner_id" = entity."owner_id" and profile."self_entity_id" = entity."id"
       left join "asset" image
@@ -393,19 +399,19 @@ export class HypermediaRetrievalRepository implements HypermediaRetrievalReposit
         on document."resource_type" = 'knowledge_page'
        and page."owner_id" = document."owner_id"
        and page."readable_id" = document."readable_id"
-       and page."archived_at" is null
+       and (${status} = 'archived') = (page."archived_at" is not null)
       left join "knowledge_page_revision" revision
         on revision."owner_id" = page."owner_id" and revision."id" = page."current_revision_id"
       left join "asset" asset
         on document."resource_type" = 'asset'
        and asset."owner_id" = document."owner_id"
        and asset."readable_id" = document."readable_id"
-       and asset."archived_at" is null
+       and (${status} = 'archived') = (asset."archived_at" is not null)
       left join "record" record
         on document."resource_type" = 'record'
        and record."owner_id" = document."owner_id"
        and record."readable_id" = document."readable_id"
-       and record."deleted_at" is null
+       and record."deleted_at" is null and ${status} = 'active'
       order by selected_document."relevance", document."resource_type", document."readable_id"
     `;
     const totalMatches = Number(rows[0]?.total ?? 0);

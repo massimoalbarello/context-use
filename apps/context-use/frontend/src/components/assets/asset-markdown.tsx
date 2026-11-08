@@ -19,7 +19,7 @@ export function AssetMarkdownLink({
     return (
       <a
         className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
-        href={assetContentUrl(readableId)}
+        href={assetContentUrl({ readableId: readableId })}
       >
         {children}
       </a>

@@ -90,6 +90,7 @@ export function createPagesController({
           ownerId: user.id,
           limit: query.limit ?? DEFAULT_LIST_LIMIT,
           offset: query.offset ?? 0,
+          status: query.status,
           visibility: query.visibility,
           interval: query.interval,
           entityReadableId: query.entityReadableId,

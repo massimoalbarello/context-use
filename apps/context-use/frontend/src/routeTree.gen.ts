@@ -15,7 +15,6 @@ import { Route as AppAssetsRouteImport } from './routes/app.assets'
 import { Route as AppEntitiesRouteImport } from './routes/app.entities'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppLoginRouteImport } from './routes/app.login'
-import { Route as AppMapRouteImport } from './routes/app.map'
 import { Route as AppPagesRouteImport } from './routes/app.pages'
 import { Route as AppRecordsRouteImport } from './routes/app.records'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
@@ -35,6 +34,7 @@ import { Route as AppRecordsIndexRouteImport } from './routes/app.records.index'
 import { Route as AppRecordsIdRouteImport } from './routes/app.records.$id'
 import { Route as AppSettingsIndexRouteImport } from './routes/app.settings.index'
 import { Route as AppSettingsApiKeysRouteImport } from './routes/app.settings.api-keys'
+import { Route as AppSettingsAppearanceRouteImport } from './routes/app.settings.appearance'
 import { Route as AppSettingsFacesRouteImport } from './routes/app.settings.faces'
 import { Route as AppSettingsPasskeysRouteImport } from './routes/app.settings.passkeys'
 import { Route as AppSettingsPluginsRouteImport } from './routes/app.settings.plugins'
@@ -71,11 +71,6 @@ const AppHistoryRoute = AppHistoryRouteImport.update({
 const AppLoginRoute = AppLoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMapRoute = AppMapRouteImport.update({
-  id: '/map',
-  path: '/map',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPagesRoute = AppPagesRouteImport.update({
@@ -173,6 +168,11 @@ const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
   path: '/api-keys',
   getParentRoute: () => AppSettingsRoute,
 } as any)
+const AppSettingsAppearanceRoute = AppSettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
 const AppSettingsFacesRoute = AppSettingsFacesRouteImport.update({
   id: '/faces',
   path: '/faces',
@@ -216,7 +216,6 @@ export interface FileRoutesByFullPath {
   '/app/entities': typeof AppEntitiesRouteWithChildren
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
-  '/app/map': typeof AppMapRoute
   '/app/pages': typeof AppPagesRouteWithChildren
   '/app/records': typeof AppRecordsRouteWithChildren
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -232,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/app/pages/new': typeof AppPagesNewRoute
   '/app/records/$id': typeof AppRecordsIdRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/faces': typeof AppSettingsFacesRoute
   '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
   '/app/settings/plugins': typeof AppSettingsPluginsRoute
@@ -248,7 +248,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
-  '/app/map': typeof AppMapRoute
   '/app/setup': typeof AppSetupRoute
   '/app': typeof AppIndexRoute
   '/app/assets/$id': typeof AppAssetsIdRoute
@@ -260,6 +259,7 @@ export interface FileRoutesByTo {
   '/app/pages/new': typeof AppPagesNewRoute
   '/app/records/$id': typeof AppRecordsIdRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/faces': typeof AppSettingsFacesRoute
   '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
   '/app/settings/plugins': typeof AppSettingsPluginsRoute
@@ -280,7 +280,6 @@ export interface FileRoutesById {
   '/app/entities': typeof AppEntitiesRouteWithChildren
   '/app/history': typeof AppHistoryRoute
   '/app/login': typeof AppLoginRoute
-  '/app/map': typeof AppMapRoute
   '/app/pages': typeof AppPagesRouteWithChildren
   '/app/records': typeof AppRecordsRouteWithChildren
   '/app/settings': typeof AppSettingsRouteWithChildren
@@ -296,6 +295,7 @@ export interface FileRoutesById {
   '/app/pages/new': typeof AppPagesNewRoute
   '/app/records/$id': typeof AppRecordsIdRoute
   '/app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/app/settings/appearance': typeof AppSettingsAppearanceRoute
   '/app/settings/faces': typeof AppSettingsFacesRoute
   '/app/settings/passkeys': typeof AppSettingsPasskeysRoute
   '/app/settings/plugins': typeof AppSettingsPluginsRoute
@@ -317,7 +317,6 @@ export interface FileRouteTypes {
     | '/app/entities'
     | '/app/history'
     | '/app/login'
-    | '/app/map'
     | '/app/pages'
     | '/app/records'
     | '/app/settings'
@@ -333,6 +332,7 @@ export interface FileRouteTypes {
     | '/app/pages/new'
     | '/app/records/$id'
     | '/app/settings/api-keys'
+    | '/app/settings/appearance'
     | '/app/settings/faces'
     | '/app/settings/passkeys'
     | '/app/settings/plugins'
@@ -349,7 +349,6 @@ export interface FileRouteTypes {
   to:
     | '/app/history'
     | '/app/login'
-    | '/app/map'
     | '/app/setup'
     | '/app'
     | '/app/assets/$id'
@@ -361,6 +360,7 @@ export interface FileRouteTypes {
     | '/app/pages/new'
     | '/app/records/$id'
     | '/app/settings/api-keys'
+    | '/app/settings/appearance'
     | '/app/settings/faces'
     | '/app/settings/passkeys'
     | '/app/settings/plugins'
@@ -380,7 +380,6 @@ export interface FileRouteTypes {
     | '/app/entities'
     | '/app/history'
     | '/app/login'
-    | '/app/map'
     | '/app/pages'
     | '/app/records'
     | '/app/settings'
@@ -396,6 +395,7 @@ export interface FileRouteTypes {
     | '/app/pages/new'
     | '/app/records/$id'
     | '/app/settings/api-keys'
+    | '/app/settings/appearance'
     | '/app/settings/faces'
     | '/app/settings/passkeys'
     | '/app/settings/plugins'
@@ -457,13 +457,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/app/login'
       preLoaderRoute: typeof AppLoginRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/map': {
-      id: '/app/map'
-      path: '/map'
-      fullPath: '/app/map'
-      preLoaderRoute: typeof AppMapRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/pages': {
@@ -599,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApiKeysRouteImport
       parentRoute: typeof AppSettingsRoute
     }
+    '/app/settings/appearance': {
+      id: '/app/settings/appearance'
+      path: '/appearance'
+      fullPath: '/app/settings/appearance'
+      preLoaderRoute: typeof AppSettingsAppearanceRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
     '/app/settings/faces': {
       id: '/app/settings/faces'
       path: '/faces'
@@ -715,6 +715,7 @@ const AppRecordsRouteWithChildren = AppRecordsRoute._addFileChildren(
 
 interface AppSettingsRouteChildren {
   AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
+  AppSettingsAppearanceRoute: typeof AppSettingsAppearanceRoute
   AppSettingsFacesRoute: typeof AppSettingsFacesRoute
   AppSettingsPasskeysRoute: typeof AppSettingsPasskeysRoute
   AppSettingsPluginsRoute: typeof AppSettingsPluginsRoute
@@ -724,6 +725,7 @@ interface AppSettingsRouteChildren {
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
+  AppSettingsAppearanceRoute: AppSettingsAppearanceRoute,
   AppSettingsFacesRoute: AppSettingsFacesRoute,
   AppSettingsPasskeysRoute: AppSettingsPasskeysRoute,
   AppSettingsPluginsRoute: AppSettingsPluginsRoute,
@@ -754,7 +756,6 @@ interface AppRouteChildren {
   AppEntitiesRoute: typeof AppEntitiesRouteWithChildren
   AppHistoryRoute: typeof AppHistoryRoute
   AppLoginRoute: typeof AppLoginRoute
-  AppMapRoute: typeof AppMapRoute
   AppPagesRoute: typeof AppPagesRouteWithChildren
   AppRecordsRoute: typeof AppRecordsRouteWithChildren
   AppSettingsRoute: typeof AppSettingsRouteWithChildren
@@ -769,7 +770,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppEntitiesRoute: AppEntitiesRouteWithChildren,
   AppHistoryRoute: AppHistoryRoute,
   AppLoginRoute: AppLoginRoute,
-  AppMapRoute: AppMapRoute,
   AppPagesRoute: AppPagesRouteWithChildren,
   AppRecordsRoute: AppRecordsRouteWithChildren,
   AppSettingsRoute: AppSettingsRouteWithChildren,

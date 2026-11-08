@@ -221,6 +221,24 @@ export class ManagedSyncsService {
       });
     });
   }
+  async reauthorize(input: { actorId: string; providerId: string }) {
+    const scope = this.scope(input.actorId);
+    const provider = this.input.catalog.provider(input.providerId);
+    return await this.serial(async () => {
+      const connection = (await this.input.sync.providers.connections(scope)).find(
+        (item) => item.service === provider.id,
+      );
+      if (!connection) {
+        throw new NotFoundError('Connect your account first.');
+      }
+      return await this.input.sync.providers.start({
+        ...scope,
+        service: provider.id,
+        connectionId: connection.id,
+        authorizationOptionIds: provider.oauth.authorizationOptionIds,
+      });
+    });
+  }
   private async activate(input: { scope: Scope; provider: SyncProvider }) {
     const { scope, provider } = input;
     const connection = (await this.input.sync.providers.connections(scope)).find(
@@ -273,5 +291,5 @@ export class ManagedSyncsService {
 }
 export type ManagedSyncsServiceContract = Pick<
   ManagedSyncsService,
-  'list' | 'configureApp' | 'connect' | 'completeConnection' | 'update'
+  'list' | 'configureApp' | 'connect' | 'reauthorize' | 'completeConnection' | 'update'
 >;

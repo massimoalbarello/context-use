@@ -16,10 +16,11 @@ export const removalFile = (directory: string) => `${directory}.removal.json`;
 
 export async function removalStatus(directory: string) {
   try {
+    // Completion deletes the operation before releasing its lease; read the operation last.
+    const running = await check(removalFile(directory), removalLease);
     const operation = RemovalSchema.parse(
       JSON.parse(await readFile(removalFile(directory), 'utf8')),
     );
-    const running = await check(removalFile(directory), removalLease);
     return {
       running,
       error:

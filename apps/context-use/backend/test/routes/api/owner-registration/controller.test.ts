@@ -20,7 +20,6 @@ import {
   unusedApiKeysService,
   unusedAssetFacesService,
   unusedHistoryService,
-  unusedHypermediaGraphService,
   unusedManagedSyncsService,
   unusedPublicationApprovalService,
   unusedPublicResourcesService,
@@ -63,6 +62,7 @@ const assetsService: AssetsServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   updateName: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
   content: unexpectedCall,
 };
@@ -74,6 +74,7 @@ const entitiesService: EntitiesServiceContract = {
   list: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 const healthService: HealthServiceContract = { check: unexpectedCall };
@@ -85,6 +86,7 @@ const pagesService: KnowledgePagesServiceContract = {
   preview: unexpectedCall,
   detail: unexpectedCall,
   update: unexpectedCall,
+  unarchive: unexpectedCall,
   archive: unexpectedCall,
 };
 const profilesService: KnowledgeProfilesServiceContract = {
@@ -115,7 +117,6 @@ test('owner registration API exposes only complete registration states', async (
       frontendAssetsService,
       entitiesService,
       healthService,
-      graphService: unusedHypermediaGraphService,
       retrievalService: unusedHypermediaRetrievalService,
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
       mcpServerUrl: testMcpServerUrl,

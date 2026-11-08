@@ -38,6 +38,8 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
   });
   let connected = false;
   let configured = false;
+  const authorizations: Parameters<ProviderApi['start']>[0][] = [];
+  let authorizationError: Error | undefined;
   const connections = () =>
     connected ? [{ id: 'connection', service: 'github', account: 'octocat' }] : [];
   const providers: ProviderApi = {
@@ -76,7 +78,12 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
       configured = true;
       return Promise.resolve({ configured: true });
     },
-    start: () => Promise.resolve({ authorizationUrl: 'https://github.com/login/oauth/authorize' }),
+    start: (input) => {
+      authorizations.push(input);
+      return authorizationError
+        ? Promise.reject(authorizationError)
+        : Promise.resolve({ authorizationUrl: 'https://github.com/login/oauth/authorize' });
+    },
     connection: unexpected,
     catalog: unexpected,
   };
@@ -89,6 +96,9 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
     await expect(service.list({ actorId: 'other' })).rejects.toThrow('Forbidden');
     expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('setup-required');
     await expect(service.connect(actor)).rejects.toThrow('Set up');
+    await expect(service.reauthorize({ ...actor, actorId: 'other' })).rejects.toThrow('Forbidden');
+    await expect(service.reauthorize(actor)).rejects.toThrow('Connect your account first.');
+    expect(authorizations).toEqual([]);
     await expect(
       service.configureApp({
         actorId: 'other',
@@ -147,6 +157,25 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
       state: 'paused',
       message: 'Syncing paused after a provider error. Check your account access before resuming.',
     });
+    const pausedSyncs = runtime.api.syncs(scope);
+    await expect(service.reauthorize({ ...actor, providerId: 'youtube' })).rejects.toThrow(
+      'Connect your account first.',
+    );
+    expect(await service.reauthorize(actor)).toEqual({
+      authorizationUrl: 'https://github.com/login/oauth/authorize',
+    });
+    expect(authorizations.at(-1)).toEqual({
+      actorId: OWNER_USER_ID,
+      ownerId: OWNER_USER_ID,
+      service: 'github',
+      connectionId: 'connection',
+      authorizationOptionIds: ['read:user', 'repo'],
+    });
+    await service.completeConnection(actor);
+    expect(runtime.api.syncs(scope)).toEqual(pausedSyncs);
+    authorizationError = new Error('Authorization unavailable');
+    await expect(service.reauthorize(actor)).rejects.toThrow('Authorization unavailable');
+    expect(runtime.api.syncs(scope)).toEqual(pausedSyncs);
     await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resume' });
     expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('syncing');
     await expect(service.update({ ...actor, key: 'missing', action: 'pause' })).rejects.toThrow(

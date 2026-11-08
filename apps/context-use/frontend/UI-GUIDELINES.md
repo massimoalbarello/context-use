@@ -44,9 +44,8 @@ Each resource type owns one reusable identity treatment:
   source dates, and identifiers belong in detail. Delivered Markdown
   remains content and is not interpreted as record identity.
 
-Call the relationship overview **Map**. In collection navigation, use the
-plain labels **Entities**, **Pages**, **Assets**, and **Records**; explain “knowledge page” where the
-resource type needs to be distinguished from a generic web page.
+In collection navigation, use the plain labels **Entities**, **Pages**, **Assets**, and **Records**;
+explain “knowledge page” where the resource type needs to be distinguished from a generic web page.
 
 Use each treatment consistently wherever that resource type appears in sidebars, pickers, search,
 and relationship views. A shared card surface owns geometry and interaction states; the resource
@@ -68,10 +67,8 @@ for the screen.
   filters, creation actions, and incrementally loaded lists in the primary content surface.
 - Selecting a resource from a collection opens a right-hand preview; links in that preview retain
   the active collection. Links in expanded detail stay expanded, and returning to browsing restores
-  the original collection or Map. Expanded detail hides collection controls; narrow screens
+  the original collection. Expanded detail hides collection controls; narrow screens
   open expanded detail directly and return to browsing without a preview.
-- Treat Map as the default workspace destination. Visually separate it from the entity, page,
-  asset, and record collections in shared navigation: the map is an overview, not a resource.
 - Creation begins with an explicit action and receives a focused route, dialog, or surface. Do not
   leave creation forms permanently in the main workspace.
 - Add persistent chrome or primary navigation only when it owns a real product task.

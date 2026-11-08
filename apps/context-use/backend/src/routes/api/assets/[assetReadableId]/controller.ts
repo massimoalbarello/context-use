@@ -14,6 +14,8 @@ import {
   UpdateAssetBodySchema,
 } from '#backend/routes/api/assets/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
+import { UnarchiveBlockedSchema } from '#backend/routes/api/resource-archiving/model.ts';
+import { ResourceReadQuerySchema } from '#backend/routes/api/resource-archiving/state-model.ts';
 import { AssetContentHeadersSchema } from '#backend/routes/asset-content-response.ts';
 import { revalidatedAssetContentResponse } from '#backend/routes/revalidated-asset-content-response.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
@@ -31,10 +33,11 @@ export function createAssetReadableIdController({
     .guard({ auth: true, response: { [StatusMap.Unauthorized]: ErrorResponseSchema } })
     .get(
       '/assets/:assetReadableId',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const asset = await assetsService.detail({
           ownerId: user.id,
           readableId: params.assetReadableId,
+          includeArchived: query.includeArchived,
         });
         return asset
           ? status(StatusMap.OK, assetResponse(asset))
@@ -43,15 +46,17 @@ export function createAssetReadableIdController({
       {
         detail: { tags: ['Assets'], summary: 'Read an asset and its usages' },
         params: AssetParamsSchema,
+        query: ResourceReadQuerySchema,
         response: { [StatusMap.OK]: AssetSchema, [StatusMap['Not Found']]: ErrorResponseSchema },
       },
     )
     .get(
       '/assets/:assetReadableId/preview',
-      async ({ params, user, status }) => {
+      async ({ params, query, user, status }) => {
         const asset = await assetsService.preview({
           ownerId: user.id,
           readableId: params.assetReadableId,
+          includeArchived: query.includeArchived,
         });
         return asset
           ? status(StatusMap.OK, assetPreviewResponse(asset))
@@ -60,6 +65,7 @@ export function createAssetReadableIdController({
       {
         detail: { tags: ['Assets'], summary: 'Read an asset preview' },
         params: AssetParamsSchema,
+        query: ResourceReadQuerySchema,
         response: {
           [StatusMap.OK]: AssetPreviewSchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
@@ -72,6 +78,7 @@ export function createAssetReadableIdController({
         const content = await assetsService.content({
           ownerId: user.id,
           readableId: params.assetReadableId,
+          includeArchived: query.includeArchived,
         });
         if (!content) {
           return new Response(JSON.stringify({ error: 'Asset not found' }), {
@@ -93,6 +100,35 @@ export function createAssetReadableIdController({
         params: AssetParamsSchema,
         query: AssetContentQuerySchema,
         headers: AssetContentHeadersSchema,
+      },
+    )
+    .put(
+      '/assets/:assetReadableId/unarchive',
+      async ({ body, params, user, status }) => {
+        const result = await assetsService.unarchive({
+          change: { clientName: null, message: body.changeMessage },
+          ownerId: user.id,
+          readableId: params.assetReadableId,
+        });
+        if (result.state === 'dependencies_archived') {
+          return status(StatusMap.Conflict, {
+            error: 'Unarchive these resources first.',
+            blockers: result.blockers,
+          });
+        }
+        return result.state === 'unarchived'
+          ? status(StatusMap['No Content'], undefined)
+          : status(StatusMap['Not Found'], { error: 'Asset not found' });
+      },
+      {
+        changeMessage: true,
+        detail: { tags: ['Assets'], summary: 'Unarchive a asset' },
+        params: AssetParamsSchema,
+        response: {
+          [StatusMap['No Content']]: t.Void(),
+          [StatusMap['Not Found']]: ErrorResponseSchema,
+          [StatusMap.Conflict]: UnarchiveBlockedSchema,
+        },
       },
     )
     .put(

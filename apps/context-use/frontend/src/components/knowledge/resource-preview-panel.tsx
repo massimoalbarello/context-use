@@ -19,6 +19,7 @@ import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
+import { ArchivedStatus } from './archived-resource-detail';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
 import { ResourceList } from './resource-list';
 import { ResourceScrollArea } from './resource-scroll-area';
@@ -108,7 +109,13 @@ function PagePreview({ readableId, publicationStatus, onClose, onExpand }: Previ
   return (
     <PreviewPanelShell
       label="Knowledge page"
-      publicationStatus={publicationStatus}
+      publicationStatus={
+        page?.archivedAt ? (
+          <ArchivedStatus archivedAt={page.archivedAt} />
+        ) : page ? (
+          publicationStatus
+        ) : null
+      }
       context={
         page?.temporalCoverage ? (
           <TemporalCoverageLabel
@@ -140,7 +147,13 @@ function EntityPreview({ readableId, publicationStatus, onClose, onExpand }: Pre
   return (
     <PreviewPanelShell
       label="Entity"
-      publicationStatus={publicationStatus}
+      publicationStatus={
+        entity?.archivedAt ? (
+          <ArchivedStatus archivedAt={entity.archivedAt} />
+        ) : entity ? (
+          publicationStatus
+        ) : null
+      }
       onClose={onClose}
       onExpand={onExpand}
     >
@@ -153,7 +166,7 @@ function EntityPreview({ readableId, publicationStatus, onClose, onExpand }: Pre
             <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
             <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
           </div>
-          <EntityMentioningPages readableId={readableId} />
+          {!entity.archivedAt && <EntityMentioningPages readableId={readableId} />}
         </div>
       ) : (
         <PreviewStatus>Loading entity…</PreviewStatus>
@@ -208,18 +221,12 @@ export function ResourcePreviewPanel({
   onExpand: () => void;
   onClose: () => void;
 }) {
-  const publication = useQuery(
-    publicationStatusQueryOptions({
-      resourceType: selection.kind,
-      readableId: selection.readableId,
-    }),
-  );
   const Preview = previewComponents[selection.kind];
   return (
     <Preview
       key={`${selection.kind}:${selection.readableId}`}
       readableId={selection.readableId}
-      publicationStatus={<PublicationStatus query={publication} showPublic />}
+      publicationStatus={<PreviewPublicationStatus selection={selection} />}
       onClose={onClose}
       onExpand={onExpand}
     />
@@ -231,7 +238,13 @@ function AssetPreview({ readableId, publicationStatus, onClose, onExpand }: Prev
   return (
     <PreviewPanelShell
       label="Asset"
-      publicationStatus={publicationStatus}
+      publicationStatus={
+        asset?.archivedAt ? (
+          <ArchivedStatus archivedAt={asset.archivedAt} />
+        ) : asset ? (
+          publicationStatus
+        ) : null
+      }
       onClose={onClose}
       onExpand={onExpand}
     >
@@ -244,7 +257,7 @@ function AssetPreview({ readableId, publicationStatus, onClose, onExpand }: Prev
             {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
           </p>
           <AssetMedia asset={asset} className="max-h-96 w-full rounded-lg object-contain" />
-          <AssetFileActions readableId={asset.readableId} />
+          <AssetFileActions readableId={asset.readableId} includeArchived={!!asset.archivedAt} />
         </div>
       ) : (
         <PreviewStatus>Loading asset…</PreviewStatus>
@@ -297,3 +310,13 @@ const previewComponents = {
   asset: AssetPreview,
   record: RecordPreview,
 };
+
+function PreviewPublicationStatus({ selection }: { selection: ResourceSelection }) {
+  const publication = useQuery(
+    publicationStatusQueryOptions({
+      resourceType: selection.kind,
+      readableId: selection.readableId,
+    }),
+  );
+  return <PublicationStatus query={publication} showPublic />;
+}

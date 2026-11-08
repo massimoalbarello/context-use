@@ -17,6 +17,7 @@ import {
   readableIdFrom,
   readableIdWithSuffix,
 } from '#backend/models/readable-ids/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import type { AssetsRepositoryContract } from '#backend/repositories/assets/repository.ts';
 
 import type { AssetFacesServiceContract } from './faces.ts';
@@ -179,6 +180,7 @@ export class AssetsService {
     const storageKey = `${input.ownerId}/assets/${input.id}/content${media.extension ? `.${media.extension}` : ''}`;
     const now = new Date().toISOString();
     const stored: Omit<StoredAsset, 'publicId' | 'publishedAt'> = {
+      archivedAt: null,
       id: input.id,
       ownerId: input.ownerId,
       readableId: input.readableId,
@@ -227,17 +229,18 @@ export class AssetsService {
     ownerId: string;
     limit: number;
     offset: number;
+    status?: ResourceStatus;
     visibility?: PublicationVisibility;
     kind?: 'entity_image';
   }) {
     return this.assets.list(input);
   }
 
-  preview(input: { ownerId: string; readableId: string }) {
+  preview(input: { ownerId: string; readableId: string; includeArchived?: boolean }) {
     return this.assets.find(input);
   }
 
-  detail(input: { ownerId: string; readableId: string }) {
+  detail(input: { ownerId: string; readableId: string; includeArchived?: boolean }) {
     return this.assets.detail(input);
   }
 
@@ -249,6 +252,17 @@ export class AssetsService {
     return this.assets.updateName({ ...input, name, updatedAt: new Date().toISOString() });
   }
 
+  async unarchive(input: { change: ChangeContext; ownerId: string; readableId: string }) {
+    const result = await this.assets.unarchive({
+      ...input,
+      unarchivedAt: new Date().toISOString(),
+    });
+    if (result.state === 'unarchived') {
+      this.faces.notifyAssetSaved();
+    }
+    return result;
+  }
+
   archive(input: { change: ChangeContext; ownerId: string; readableId: string }) {
     return this.assets.archive({ ...input, archivedAt: new Date().toISOString() });
   }
@@ -256,6 +270,7 @@ export class AssetsService {
   async content(input: {
     ownerId: string;
     readableId: string;
+    includeArchived?: boolean;
   }): Promise<{ asset: StoredAsset; blob: Blob } | null> {
     const asset = await this.assets.find(input);
     if (!asset) {
@@ -273,5 +288,13 @@ export class AssetsService {
 
 export type AssetsServiceContract = Pick<
   AssetsService,
-  'create' | 'list' | 'detail' | 'preview' | 'updateName' | 'archive' | 'content' | 'faces'
+  | 'create'
+  | 'list'
+  | 'detail'
+  | 'preview'
+  | 'updateName'
+  | 'archive'
+  | 'unarchive'
+  | 'content'
+  | 'faces'
 >;

@@ -4,19 +4,21 @@ import {
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
+import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import { CollectionWorkspace } from '../components/knowledge/collection-workspace';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { KnowledgePageList } from '../components/pages/knowledge-page-list';
 import { PageFilters } from '../components/pages/page-filters';
 import { usePages } from '../lib/hooks/use-pages';
-import { publicationVisibilityFromSearch } from '../lib/publication-visibility';
 import { type ResourceSearch, resourceSearch } from '../lib/resource-selection';
+import { resourceStatusSearch } from '../lib/resource-status';
 import { type CalendarDateRange, calendarDateRangeFromSearch } from '../lib/temporal-coverage';
 import { type KnowledgePageListFilters, pagesQueryOptions } from '../queries/pages';
 
 export type PageSearch = Partial<CalendarDateRange> & {
   q?: string;
   interval?: KnowledgePageIntervalFilter;
+  status?: ResourceStatus;
   visibility?: PublicationVisibility;
 };
 
@@ -28,7 +30,7 @@ export function pageSearch(search: Record<string, unknown>): PageSearch {
   if (search.interval === 'with' || search.interval === 'without') {
     result.interval = search.interval;
   }
-  result.visibility = publicationVisibilityFromSearch(search.visibility);
+  Object.assign(result, resourceStatusSearch(search));
   return result;
 }
 
@@ -37,6 +39,7 @@ export function pageListFilters(search: PageSearch): KnowledgePageListFilters {
     dateRange: calendarDateRangeFromSearch(search),
     query: search.q,
     interval: search.interval,
+    status: search.status,
     visibility: search.visibility,
   };
 }
@@ -66,6 +69,20 @@ function PageFilterControl({ search }: { search: PageSearch }) {
     <PageFilters
       interval={interval}
       dateRange={dateRange}
+      status={search.status}
+      onStatusChange={(status) => {
+        void navigate({
+          to: '/app/pages',
+          search: (previous) => ({
+            ...previous,
+            status,
+            resource: undefined,
+            resourceId: undefined,
+            expanded: undefined,
+          }),
+          replace: true,
+        });
+      }}
       visibility={search.visibility}
       onVisibilityChange={(visibility) => {
         void navigate({
@@ -139,7 +156,11 @@ function PagesLayout() {
       <KnowledgePageList
         pages={pages}
         filtered={Boolean(
-          filters.dateRange || filters.query || filters.interval || filters.visibility,
+          filters.dateRange ||
+            filters.query ||
+            filters.interval ||
+            filters.visibility ||
+            filters.status,
         )}
       />
     </CollectionWorkspace>
