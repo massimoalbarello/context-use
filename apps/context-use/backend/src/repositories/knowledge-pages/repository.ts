@@ -32,13 +32,13 @@ import { replaceSearchDocument } from '../search-index.ts';
 import { prunePageRevisions } from './revision-retention.ts';
 
 export interface KnowledgePagesRepositoryContract {
-  pendingRevisionBlobDeletions(input: {
+  pendingRevisionDeletions(input: {
     ownerId: string;
     pageId: string;
     afterStorageKey: string;
     limit: number;
   }): Promise<string[]>;
-  completeRevisionBlobDeletion(input: {
+  completeRevisionDeletion(input: {
     ownerId: string;
     pageId: string;
     storageKey: string;
@@ -672,15 +672,15 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     });
   }
 
-  async pendingRevisionBlobDeletions(input: {
+  async pendingRevisionDeletions(input: {
     ownerId: string;
     pageId: string;
     afterStorageKey: string;
     limit: number;
   }): Promise<string[]> {
-    const rows = await this.sql.ListPendingPageRevisionBlobDeletions`
+    const rows = await this.sql.ListPendingPageRevisionDeletions`
       /* @notNull storageKey */
-      select "storage_key" as "storageKey" from "knowledge_page_revision_blob_deletion"
+      select "storage_key" as "storageKey" from "knowledge_page_revision_deletion_queue"
       where "owner_id" = ${input.ownerId} and "page_id" = ${input.pageId}
         and "storage_key" > ${input.afterStorageKey}
       order by "storage_key" limit ${input.limit}
@@ -688,13 +688,13 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     return rows.map((row) => row.storageKey);
   }
 
-  async completeRevisionBlobDeletion(input: {
+  async completeRevisionDeletion(input: {
     ownerId: string;
     pageId: string;
     storageKey: string;
   }): Promise<void> {
     await this.sql`
-      delete from "knowledge_page_revision_blob_deletion"
+      delete from "knowledge_page_revision_deletion_queue"
       where "owner_id" = ${input.ownerId} and "page_id" = ${input.pageId} and "storage_key" = ${input.storageKey}
     `;
   }

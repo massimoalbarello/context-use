@@ -321,7 +321,7 @@ export class KnowledgePagesService {
         return result;
       }
     }
-    await this.deletePrunedRevisionBlobs({ ownerId: input.ownerId, pageId: result.page.id });
+    await this.drainRevisionDeletionQueue({ ownerId: input.ownerId, pageId: result.page.id });
     const page = await this.detail({ ownerId: input.ownerId, readableId: input.readableId });
     if (!page) {
       throw new Error('Updated knowledge page could not be read');
@@ -329,7 +329,7 @@ export class KnowledgePagesService {
     return { state: 'saved', page };
   }
 
-  private async deletePrunedRevisionBlobs(input: {
+  private async drainRevisionDeletionQueue(input: {
     ownerId: string;
     pageId: string;
   }): Promise<void> {
@@ -337,7 +337,7 @@ export class KnowledgePagesService {
     let afterStorageKey = '';
     try {
       while (true) {
-        const keys = await this.pages.pendingRevisionBlobDeletions({
+        const keys = await this.pages.pendingRevisionDeletions({
           ...input,
           afterStorageKey,
           limit: batchSize,
@@ -350,7 +350,7 @@ export class KnowledgePagesService {
             if (await this.storage.exists(storageKey)) {
               await this.storage.delete(storageKey);
             }
-            await this.pages.completeRevisionBlobDeletion({ ...input, storageKey });
+            await this.pages.completeRevisionDeletion({ ...input, storageKey });
           } catch {
             this.logger.warn(
               'Could not remove an obsolete page revision; cleanup will retry on the next save.',

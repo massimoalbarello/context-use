@@ -98,7 +98,7 @@ async function setup() {
     const retained = async (input = identity) =>
       (await pages.detail(input))!.revisions.map((revision) => revision.revisionNumber);
     const pending = async ({ pageId, ownerId = OWNER }: { pageId: string; ownerId?: string }) =>
-      pages.pendingRevisionBlobDeletions({ ownerId, pageId, afterStorageKey: '', limit: 100 });
+      pages.pendingRevisionDeletions({ ownerId, pageId, afterStorageKey: '', limit: 100 });
     const publish = async (revisionNumber: number) => {
       const request = {
         ...identity,

@@ -579,8 +579,8 @@ export interface ICreateKnowledgePageResult {
     id: string;
 }
 
-/** Result of query `ListPendingPageRevisionBlobDeletions`. */
-export interface IListPendingPageRevisionBlobDeletionsResult {
+/** Result of query `ListPendingPageRevisionDeletions`. */
+export interface IListPendingPageRevisionDeletionsResult {
     storageKey: string;
 }
 
@@ -1320,7 +1320,7 @@ export interface Queries {
     ResolvePageLink: IResolvePageLinkResult;
     ResolveAssetLink: IResolveAssetLinkResult;
     CreateKnowledgePage: ICreateKnowledgePageResult;
-    ListPendingPageRevisionBlobDeletions: IListPendingPageRevisionBlobDeletionsResult;
+    ListPendingPageRevisionDeletions: IListPendingPageRevisionDeletionsResult;
     ListKnowledgePages: IListKnowledgePagesResult;
     CountKnowledgePages: ICountKnowledgePagesResult;
     ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;

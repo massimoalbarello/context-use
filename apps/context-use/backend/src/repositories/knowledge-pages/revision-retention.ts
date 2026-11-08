@@ -23,7 +23,7 @@ export async function prunePageRevisions({
   // Queue file paths in the same transaction as row deletion: storage cannot commit with SQLite.
   // The queue survives crashes and failed file deletions; a later save retries cleanup after commit.
   await db`
-    insert into "knowledge_page_revision_blob_deletion" ("storage_key", "owner_id", "page_id")
+    insert into "knowledge_page_revision_deletion_queue" ("storage_key", "owner_id", "page_id")
     select revision."storage_key", revision."owner_id", revision."page_id"
     from "knowledge_page_revision" revision
     join "knowledge_page" page on page."id" = revision."page_id" and page."owner_id" = revision."owner_id"
@@ -49,7 +49,7 @@ export async function prunePageRevisions({
     delete from "knowledge_page_revision"
     where "owner_id" = ${ownerId} and "page_id" = ${pageId}
       and "storage_key" in (
-        select "storage_key" from "knowledge_page_revision_blob_deletion"
+        select "storage_key" from "knowledge_page_revision_deletion_queue"
         where "owner_id" = ${ownerId} and "page_id" = ${pageId}
       )
   `;
