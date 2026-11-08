@@ -36,6 +36,43 @@ test('an unrelated live PID cannot block removal recovery', async () => {
   }
 });
 
+test('observers never report a successfully completed removal as interrupted', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'context-use-removal-completion-'));
+  const attempts = 100;
+  const observerCount = 16;
+  const readsPerObserver = 4;
+  const errors: string[] = [];
+  try {
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const directory = join(root, String(attempt));
+      await writeFile(`${directory}.removal.json`, '{}');
+      const started = Promise.withResolvers<void>();
+      const finish = Promise.withResolvers<void>();
+      const removal = runRemoval({
+        directory,
+        run: async () => {
+          started.resolve();
+          await finish.promise;
+        },
+      });
+      await started.promise;
+      const observers = Array.from({ length: observerCount }, async () => {
+        for (let read = 0; read < readsPerObserver; read++) {
+          const status = await removalStatus(directory);
+          if (status?.error) {
+            errors.push(status.error);
+          }
+        }
+      });
+      finish.resolve();
+      await Promise.all([removal, ...observers]);
+    }
+    expect(errors).toEqual([]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('a live worker excludes duplicates and an expired lease from a killed worker is recoverable', async () => {
   const root = await mkdtemp(join(tmpdir(), 'context-use-removal-'));
   const directory = join(root, 'connection');

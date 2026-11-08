@@ -168,6 +168,24 @@ async function waitGateway(): Promise<void> {
   throw new Error('Disposable gateway did not become ready.');
 }
 try {
+  // Keep npm's standalone helper available after OpenClaw uninstalls the plugin.
+  const helperPath = await realpath(
+    (
+      await command([
+        'npx',
+        '--yes',
+        '--package',
+        packageSpec,
+        '--',
+        'which',
+        'context-use-openclaw',
+      ])
+    ).trim(),
+  );
+  const helper = [node, helperPath];
+  const helperPackage = await Bun.file(join(dirname(helperPath), '../package.json')).json();
+  assert.equal(helperPackage.name, metadata.name);
+  assert.equal(helperPackage.version, metadata.version);
   app = await startApp({ repo, directory, node });
   owner = await ownerBrowser(app.origin);
   console.log('Owner registered through virtual passkey.');
@@ -225,25 +243,17 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
   // A stale operation record must not mistake this live, unrelated process for its worker.
   await writeFile(`${dirname(connectionFile)}.removal.json`, JSON.stringify({ pid: process.pid }));
-  // npm exec can unpack a local tarball again on every invocation. Isolate its
-  // caches so this tests competing profile removals rather than npm extraction races.
   await Promise.all([
-    command({
-      args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
-      env: { npm_config_cache: join(directory, 'removal-first-npm-cache') },
-    }),
-    command({
-      args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
-      env: { npm_config_cache: join(directory, 'removal-second-npm-cache') },
-    }),
+    command([...helper, 'remove', '--wait']),
+    command([...helper, 'remove', '--wait']),
   ]);
   assert(!(await Bun.file(connectionFile).exists()), 'Cancelled setup retained credentials');
   assert(!existsSync(dirname(connectionFile)), 'Removal retained its private directory');
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
-  assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
+  await command([...helper, 'remove', '--wait']);
+  assert((await command([...helper, 'status'])).includes('"installed": false'));
   assert(!existsSync(dirname(connectionFile)), 'Status recreated removed state');
   assert.deepEqual((await configuration()).plugins.entries?.[PLUGIN_ID], { enabled: false });
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await command([...helper, 'connect', app.origin]);
   const pending = await Bun.file(connectionFile).json();
   console.log('Removed an unfinished installation through the npm helper and connected again.');
   const redirectUrl = await owner.authorize({
@@ -253,8 +263,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   });
   const swapped = new URL(redirectUrl);
   swapped.searchParams.set('state', 'another-connection');
-  const authorize = (url: string) =>
-    command({ args: ['npx', '--yes', packageSpec, 'authorize'], stdin: url });
+  const authorize = (url: string) => command({ args: [...helper, 'authorize'], stdin: url });
   await assert.rejects(authorize(swapped.href));
   model.setup(`printf '%s' ${quote(redirectUrl)} | ${installCommand} authorize`);
   await command([
@@ -283,7 +292,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log('Native installation and pasted callback authorization passed.');
   await verifyLearningProgress({ seed: true });
 
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await command([...helper, 'connect', app.origin]);
   assert((await Bun.file(connectionFile).json()).oauth.tokens);
   console.log('Reconnect retained the current connection without another authorization.');
   const originalJournal = (await Bun.file(connectionFile).json()).changes;
@@ -291,13 +300,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   revoked.oauth.tokens.access_token = 'expired-access-token';
   revoked.oauth.tokens.refresh_token = 'expired-refresh-token';
   await writeFile(connectionFile, JSON.stringify(revoked), { mode: PRIVATE_MODE });
-  assert(
-    (await command(['npx', '--yes', packageSpec, 'status'])).includes('"authenticated": false'),
-  );
+  assert((await command([...helper, 'status'])).includes('"authenticated": false'));
   await configure(
     "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow.push('web_search');",
   );
-  await command(['npx', '--yes', packageSpec, 'reconnect']);
+  await command([...helper, 'reconnect']);
   const reauthorization = await Bun.file(connectionFile).json();
   assert(!reauthorization.oauth.tokens, 'Reconnect retained old credentials');
   assert.notEqual(reauthorization.oauth.client.client_id, pending.oauth.client.client_id);
@@ -323,7 +330,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   try {
     movedOwner = await ownerBrowser(movedApp.origin);
     const previousIdentity = (await Bun.file(connectionFile).json()).learningId;
-    await command(['npx', '--yes', packageSpec, 'connect', movedApp.origin]);
+    await command([...helper, 'connect', movedApp.origin]);
     const moving = await Bun.file(connectionFile).json();
     assert.equal(moving.config.serverUrl, `${movedApp.origin}/mcp`);
     assert(
@@ -338,12 +345,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       }),
     );
     assert.notEqual((await Bun.file(connectionFile).json()).learningId, previousIdentity);
-    assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"connected": true'));
+    assert((await command([...helper, 'status'])).includes('"connected": true'));
   } finally {
     await movedOwner?.close();
     await movedApp.stop();
   }
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await command([...helper, 'connect', app.origin]);
   const returning = await Bun.file(connectionFile).json();
   await authorize(
     await owner.authorize({
@@ -469,10 +476,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
   await command(['openclaw', 'plugins', 'disable', PLUGIN_ID]);
   assert(
-    (await command(['npx', '--yes', packageSpec, 'instructions'])).includes('name: context-use'),
+    (await command([...helper, 'instructions'])).includes('name: context-use'),
     'The setup skill must remain readable when the plugin is disabled',
   );
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
+  await command([...helper, 'remove', '--wait']);
   const afterRemoval = await configuration();
   assert.deepEqual(afterRemoval.plugins.entries?.[PLUGIN_ID], { enabled: false });
   assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['web_search', 'read']);
@@ -502,7 +509,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'Removal restored setup-owned settings, preserved workspace files, later edits and remote memory, and exposed only the restored memory provider in a fresh chat.',
   );
 
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await command([...helper, 'connect', app.origin]);
   console.log('Package reinstalled; authorizing the new connection.');
   const reconnect = await Bun.file(connectionFile).json();
   const newRedirect = await owner.authorize({
@@ -514,7 +521,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await verifyLearningProgress();
   // This was the original timeout before reinstallation, so it must not look like a failed commit.
   await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await command([...helper, 'connect', app.origin]);
   assert.equal(
     (await configuration()).plugins.entries['active-memory'].config.timeoutMs,
     USER_TIMEOUT_MS,
@@ -796,7 +803,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log(
     'Reinstalled in the same profile, recalled the preserved remote memory, removed through the native plugin command, and verified a fresh chat through the refreshed gateway.',
   );
-  const refresh = await command(['npx', '--yes', packageSpec, 'refresh']);
+  const refresh = await command([...helper, 'refresh']);
   assert(refresh.includes('Gateway refresh requested'));
   await waitGateway();
   const inventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
@@ -809,7 +816,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log('The npm helper refreshed the gateway after uninstall.');
   // Recovery must also work for interrupted installs whose files were removed
   // externally, even when this shell cannot authenticate to the running gateway.
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await command([...helper, 'connect', app.origin]);
   const interruptedInventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
   const interruptedPlugin = interruptedInventory.plugins.find(
     (plugin: { id: string }) => plugin.id === PLUGIN_ID,
@@ -831,7 +838,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     }),
   );
   await command({
-    args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
+    args: [...helper, 'remove', '--wait'],
     env: invalidGatewayAuth,
   });
   const recovered = await configuration();
@@ -842,8 +849,8 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     !existsSync(`${dirname(connectionFile)}.removal.json`),
     'Gateway authorization failure blocked removal',
   );
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
-  assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
+  await command([...helper, 'remove', '--wait']);
+  assert((await command([...helper, 'status'])).includes('"installed": false'));
   console.log(
     'Recovered a partially deleted reinstall without gateway authorization, and repeated removal without leftovers.',
   );
