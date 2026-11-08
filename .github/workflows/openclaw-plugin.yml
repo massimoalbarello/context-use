@@ -56,16 +56,8 @@ jobs:
           bun run --cwd packages/openclaw-memory check:types
           bun run --cwd packages/openclaw-memory test
 
-      - name: Install test browser
-        run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
-
-      - name: Package and test the release through real OpenClaw
-        run: bun run --cwd packages/openclaw-memory test:e2e
-
-      - name: Test the release through OpenClaw 2026.9.6
-        run: |
-          npm install --prefix "$RUNNER_TEMP/openclaw-host" --no-audit --no-fund openclaw@2026.9.6
-          OPENCLAW_TEST_HOST_ROOT="$RUNNER_TEMP/openclaw-host/node_modules/openclaw" bun run --cwd packages/openclaw-memory scripts/e2e.ts
+      - name: Package the release
+        run: bun run --cwd packages/openclaw-memory pack:release
 
       - uses: actions/upload-artifact@v7
         with:
@@ -74,9 +66,51 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  compatibility:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        openclaw: [workspace, 2026.9.6]
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: packages/openclaw-memory/.node-version
+          package-manager-cache: false
+
+      - uses: ./.github/actions/prepare
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: openclaw-memory-package
+          path: packages/openclaw-memory/release
+
+      - name: Select the release version
+        env:
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+        run: npm pkg set version="$RELEASE_VERSION" --prefix packages/openclaw-memory --workspaces=false
+
+      - name: Install test browser
+        run: bun run --cwd packages/browser-testing playwright install --with-deps chrome
+
+      - name: Select OpenClaw
+        if: matrix.openclaw != 'workspace'
+        env:
+          OPENCLAW_VERSION: ${{ matrix.openclaw }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/openclaw-host" --no-audit --no-fund "openclaw@$OPENCLAW_VERSION"
+          echo "OPENCLAW_TEST_HOST_ROOT=$RUNNER_TEMP/openclaw-host/node_modules/openclaw" >> "$GITHUB_ENV"
+
+      - name: Test the packaged release through real OpenClaw
+        run: bun run --cwd packages/openclaw-memory scripts/e2e.ts
+
   publish:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: verify
+    needs: [verify, compatibility]
     runs-on: ubuntu-latest
     environment: npm
     permissions:

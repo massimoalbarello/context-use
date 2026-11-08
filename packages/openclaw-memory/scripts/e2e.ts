@@ -19,6 +19,7 @@ const PRIVATE_MODE = 0o600;
 const EXECUTABLE_MODE = 0o700;
 const COMMAND_TIMEOUT_MS = 180_000;
 const COMMAND_LABEL_ARGUMENTS = 3;
+const startedAt = performance.now();
 const root = resolve(import.meta.dir, '..');
 const repo = resolve(root, '../..');
 let packageSpec = `${metadata.name}@${metadata.version}`;
@@ -51,6 +52,7 @@ const sdkConfig = createRequire(join(hostRoot, 'package.json')).resolve(
   'openclaw/plugin-sdk/config-mutation',
 );
 const connectionFile = join(stateDir, 'plugins', PLUGIN_ID, 'connection.json');
+let helperPath: string;
 using gatewayReservation = reservePort();
 const gatewayPort = gatewayReservation.port!;
 // The setup/removal tests below require an offline gateway, not an HTTP 503 listener.
@@ -59,6 +61,7 @@ await gatewayReservation.stop(true);
 async function command(
   input: string[] | { args: string[]; stdin?: string; env?: NodeJS.ProcessEnv },
 ): Promise<string> {
+  const started = performance.now();
   const {
     args,
     stdin,
@@ -77,12 +80,52 @@ async function command(
     new Response(process.stderr).text(),
     process.exited,
   ]);
+  const label =
+    args[1] === helperPath ? `helper ${args[2]}` : args.slice(0, COMMAND_LABEL_ARGUMENTS).join(' ');
+  console.log(`${label}: ${Math.round(performance.now() - started)}ms`);
   if (code !== 0 || process.signalCode || stderr.includes('context-use failed during register')) {
     throw new Error(
       `Command ${args.slice(0, COMMAND_LABEL_ARGUMENTS).join(' ')} failed (${code}): ${stderr}\n${stdout}`,
     );
   }
   return stdout;
+}
+
+function helper(input: string[] | { args: string[]; stdin?: string; env?: NodeJS.ProcessEnv }) {
+  const options = Array.isArray(input) ? { args: input } : input;
+  return command({ ...options, args: [node!, helperPath, ...options.args] });
+}
+
+function agent(input: { sessionKey: string; message: string; channel?: string; local?: boolean }) {
+  return command([
+    'openclaw',
+    'agent',
+    '--agent',
+    'main',
+    '--session-key',
+    input.sessionKey,
+    '--message',
+    input.message,
+    '--json',
+    ...(input.local ? ['--local'] : []),
+    ...(input.channel ? ['--channel', input.channel] : []),
+  ]);
+}
+
+function rpc(input: {
+  method: string;
+  params?: Record<string, unknown>;
+  timeoutMs?: number;
+  env?: NodeJS.ProcessEnv;
+}) {
+  const args = ['openclaw', 'gateway', 'call', input.method, '--json'];
+  if (input.params) {
+    args.push('--params', JSON.stringify(input.params));
+  }
+  if (input.timeoutMs) {
+    args.push('--timeout', String(input.timeoutMs));
+  }
+  return command({ args, env: input.env });
 }
 async function configure(source: string): Promise<void> {
   await command([
@@ -92,7 +135,7 @@ async function configure(source: string): Promise<void> {
     `import {mutateConfigFile} from ${JSON.stringify(sdkConfig)}; await mutateConfigFile({mutate(config){${source}}});`,
   ]);
 }
-async function configuration() {
+async function configuration(): Promise<ReturnType<typeof JSON.parse>> {
   return JSON.parse(
     await command([
       node!,
@@ -168,6 +211,23 @@ async function waitGateway(): Promise<void> {
   throw new Error('Disposable gateway did not become ready.');
 }
 try {
+  // Resolve npm's standalone helper once; it remains available after the host uninstalls the plugin.
+  helperPath = await realpath(
+    (
+      await command([
+        'npx',
+        '--yes',
+        '--package',
+        packageSpec,
+        '--',
+        'which',
+        'context-use-openclaw',
+      ])
+    ).trim(),
+  );
+  const helperPackage = await Bun.file(join(dirname(helperPath), '../package.json')).json();
+  assert.equal(helperPackage.name, metadata.name);
+  assert.equal(helperPackage.version, metadata.version);
   app = await startApp({ repo, directory, node });
   owner = await ownerBrowser(app.origin);
   console.log('Owner registered through virtual passkey.');
@@ -192,18 +252,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     OPENCLAW_INSTALL_COMMAND,
     installCommand,
   );
-  await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:1`,
-    '--message',
-    setupPrompt,
-    '--json',
-  ]);
+  await agent({ local: true, sessionKey: `${personalGroup}:topic:1`, message: setupPrompt });
   assert(model.observations.setupCalls > 1, 'The real agent did not execute installation');
   assert(
     model.observations.setupInstructions,
@@ -225,25 +274,15 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
   // A stale operation record must not mistake this live, unrelated process for its worker.
   await writeFile(`${dirname(connectionFile)}.removal.json`, JSON.stringify({ pid: process.pid }));
-  // npm exec can unpack a local tarball again on every invocation. Isolate its
-  // caches so this tests competing profile removals rather than npm extraction races.
-  await Promise.all([
-    command({
-      args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
-      env: { npm_config_cache: join(directory, 'removal-first-npm-cache') },
-    }),
-    command({
-      args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
-      env: { npm_config_cache: join(directory, 'removal-second-npm-cache') },
-    }),
-  ]);
+  // Both processes run the same npm-installed helper without competing package extraction.
+  await Promise.all([helper(['remove', '--wait']), helper(['remove', '--wait'])]);
   assert(!(await Bun.file(connectionFile).exists()), 'Cancelled setup retained credentials');
   assert(!existsSync(dirname(connectionFile)), 'Removal retained its private directory');
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
-  assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
+  await helper(['remove', '--wait']);
+  assert((await helper(['status'])).includes('"installed": false'));
   assert(!existsSync(dirname(connectionFile)), 'Status recreated removed state');
   assert.deepEqual((await configuration()).plugins.entries?.[PLUGIN_ID], { enabled: false });
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await helper(['connect', app.origin]);
   const pending = await Bun.file(connectionFile).json();
   console.log('Removed an unfinished installation through the npm helper and connected again.');
   const redirectUrl = await owner.authorize({
@@ -253,22 +292,14 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   });
   const swapped = new URL(redirectUrl);
   swapped.searchParams.set('state', 'another-connection');
-  const authorize = (url: string) =>
-    command({ args: ['npx', '--yes', packageSpec, 'authorize'], stdin: url });
+  const authorize = (url: string) => helper({ args: ['authorize'], stdin: url });
   await assert.rejects(authorize(swapped.href));
   model.setup(`printf '%s' ${quote(redirectUrl)} | ${installCommand} authorize`);
-  await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:1`,
-    '--message',
-    `Finish connecting using this authorization response: ${redirectUrl}`,
-    '--json',
-  ]);
+  await agent({
+    local: true,
+    sessionKey: `${personalGroup}:topic:1`,
+    message: `Finish connecting using this authorization response: ${redirectUrl}`,
+  });
   model.learn();
   await assert.rejects(authorize(redirectUrl));
   const expired = await Bun.file(connectionFile).json();
@@ -283,7 +314,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log('Native installation and pasted callback authorization passed.');
   await verifyLearningProgress({ seed: true });
 
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await helper(['connect', app.origin]);
   assert((await Bun.file(connectionFile).json()).oauth.tokens);
   console.log('Reconnect retained the current connection without another authorization.');
   const originalJournal = (await Bun.file(connectionFile).json()).changes;
@@ -291,13 +322,11 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   revoked.oauth.tokens.access_token = 'expired-access-token';
   revoked.oauth.tokens.refresh_token = 'expired-refresh-token';
   await writeFile(connectionFile, JSON.stringify(revoked), { mode: PRIVATE_MODE });
-  assert(
-    (await command(['npx', '--yes', packageSpec, 'status'])).includes('"authenticated": false'),
-  );
+  assert((await helper(['status'])).includes('"authenticated": false'));
   await configure(
     "config.plugins.entries['active-memory'].config.timeoutMs=45000; config.agents.entries.main.tools.alsoAllow.push('web_search');",
   );
-  await command(['npx', '--yes', packageSpec, 'reconnect']);
+  await helper(['reconnect']);
   const reauthorization = await Bun.file(connectionFile).json();
   assert(!reauthorization.oauth.tokens, 'Reconnect retained old credentials');
   assert.notEqual(reauthorization.oauth.client.client_id, pending.oauth.client.client_id);
@@ -323,7 +352,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   try {
     movedOwner = await ownerBrowser(movedApp.origin);
     const previousIdentity = (await Bun.file(connectionFile).json()).learningId;
-    await command(['npx', '--yes', packageSpec, 'connect', movedApp.origin]);
+    await helper(['connect', movedApp.origin]);
     const moving = await Bun.file(connectionFile).json();
     assert.equal(moving.config.serverUrl, `${movedApp.origin}/mcp`);
     assert(
@@ -338,12 +367,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       }),
     );
     assert.notEqual((await Bun.file(connectionFile).json()).learningId, previousIdentity);
-    assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"connected": true'));
+    assert((await helper(['status'])).includes('"connected": true'));
   } finally {
     await movedOwner?.close();
     await movedApp.stop();
   }
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await helper(['connect', app.origin]);
   const returning = await Bun.file(connectionFile).json();
   await authorize(
     await owner.authorize({
@@ -368,20 +397,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert.equal(await Bun.file(join(workspace, 'USER.md')).text(), initialUser);
   await writeFile(join(workspace, 'USER.md'), `${initialUser}\nLOCAL_MEMORY_CANARY`);
   await writeFile(join(workspace, 'MEMORY.md'), 'LOCAL_MEMORY_CANARY');
-  const learn = await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--channel',
-    'telegram',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:1`,
-    '--message',
-    "I'm Rowan. My sister Mira is studying architecture.",
-    '--json',
-  ]);
+  const learn = await agent({
+    local: true,
+    channel: 'telegram',
+    sessionKey: `${personalGroup}:topic:1`,
+    message: "I'm Rowan. My sister Mira is studying architecture.",
+  });
   assert.equal(
     JSON.parse(learn).meta.toolSummary.failures,
     1,
@@ -392,20 +413,12 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     'Real native agent never wrote the page',
   );
   model.recall();
-  const recall = await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--channel',
-    'telegram',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:2`,
-    '--message',
-    'What does my sister study?',
-    '--json',
-  ]);
+  const recall = await agent({
+    local: true,
+    channel: 'telegram',
+    sessionKey: `${personalGroup}:topic:2`,
+    message: 'What does my sister study?',
+  });
   assert(recall.includes('architecture'), recall);
   assert(model.observations.recallCalls > 1, 'Agentic recall did not make repeated model calls');
   assert(
@@ -417,36 +430,20 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
 
   model.recall();
-  const directRecall = await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--channel',
-    'webchat',
-    '--agent',
-    'main',
-    '--session-key',
-    'agent:main:webchat:direct:owner',
-    '--message',
-    'What does my sister study?',
-    '--json',
-  ]);
+  const directRecall = await agent({
+    local: true,
+    channel: 'webchat',
+    sessionKey: 'agent:main:webchat:direct:owner',
+    message: 'What does my sister study?',
+  });
   assert(directRecall.includes('architecture'));
   model.recall();
-  const channelRecall = await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--channel',
-    'slack',
-    '--agent',
-    'main',
-    '--session-key',
-    'agent:main:slack:channel:123',
-    '--message',
-    'What does my sister study?',
-    '--json',
-  ]);
+  const channelRecall = await agent({
+    local: true,
+    channel: 'slack',
+    sessionKey: 'agent:main:slack:channel:123',
+    message: 'What does my sister study?',
+  });
   assert(channelRecall.includes('architecture'));
   console.log(
     'The default install recalls across groups, forum topics, direct conversations and channels.',
@@ -469,10 +466,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert((await remote.text()).includes('Mira'), 'Disconnect removed remote memories');
   await command(['openclaw', 'plugins', 'disable', PLUGIN_ID]);
   assert(
-    (await command(['npx', '--yes', packageSpec, 'instructions'])).includes('name: context-use'),
+    (await helper(['instructions'])).includes('name: context-use'),
     'The setup skill must remain readable when the plugin is disabled',
   );
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
+  await helper(['remove', '--wait']);
   const afterRemoval = await configuration();
   assert.deepEqual(afterRemoval.plugins.entries?.[PLUGIN_ID], { enabled: false });
   assert.deepEqual(afterRemoval.agents.entries.main.tools.alsoAllow, ['web_search', 'read']);
@@ -482,27 +479,19 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     `${initialUser}\nLOCAL_MEMORY_CANARY`,
   );
   model.removed();
-  const cleanChat = await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--channel',
-    'telegram',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:3`,
-    '--message',
-    'What do you know about me?',
-    '--json',
-  ]);
+  const cleanChat = await agent({
+    local: true,
+    channel: 'telegram',
+    sessionKey: `${personalGroup}:topic:3`,
+    message: 'What do you know about me?',
+  });
   assert(cleanChat.includes('Local memory is available'));
   assert(model.observations.removedCalls > 0, 'No post-removal model request was inspected');
   console.log(
     'Removal restored setup-owned settings, preserved workspace files, later edits and remote memory, and exposed only the restored memory provider in a fresh chat.',
   );
 
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await helper(['connect', app.origin]);
   console.log('Package reinstalled; authorizing the new connection.');
   const reconnect = await Bun.file(connectionFile).json();
   const newRedirect = await owner.authorize({
@@ -514,26 +503,18 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   await verifyLearningProgress();
   // This was the original timeout before reinstallation, so it must not look like a failed commit.
   await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await helper(['connect', app.origin]);
   assert.equal(
     (await configuration()).plugins.entries['active-memory'].config.timeoutMs,
     USER_TIMEOUT_MS,
   );
   model.recall();
-  const reinstalledRecall = await command([
-    'openclaw',
-    'agent',
-    '--local',
-    '--channel',
-    'telegram',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:4`,
-    '--message',
-    'What does my sister study?',
-    '--json',
-  ]);
+  const reinstalledRecall = await agent({
+    local: true,
+    channel: 'telegram',
+    sessionKey: `${personalGroup}:topic:4`,
+    message: 'What does my sister study?',
+  });
   assert(reinstalledRecall.includes('architecture'));
   gateway = Bun.spawn(['openclaw', 'gateway', 'run'], {
     cwd: directory,
@@ -577,15 +558,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       ),
     },
   ];
-  const dispatched = await command([
-    'openclaw',
-    'gateway',
-    'call',
-    'chat.send',
-    '--timeout',
-    String(COMMAND_TIMEOUT_MS),
-    '--params',
-    JSON.stringify({
+  const dispatched = await rpc({
+    method: 'chat.send',
+    timeoutMs: COMMAND_TIMEOUT_MS,
+    params: {
       sessionKey: backgroundSession,
       message:
         "I'll visit Mira's exhibition on 20 June 2030 and buy admission at the door. Keep these image, video and document attachments with the plan.",
@@ -597,43 +573,20 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
       })),
       idempotencyKey: crypto.randomUUID(),
       deliver: false,
-    }),
-    '--json',
-  ]);
-  const completed = await command([
-    'openclaw',
-    'gateway',
-    'call',
-    'agent.wait',
-    '--timeout',
-    String(COMMAND_TIMEOUT_MS),
-    '--params',
-    JSON.stringify({ runId: JSON.parse(dispatched).runId, timeoutMs: COMMAND_TIMEOUT_MS }),
-    '--json',
-  ]);
+    },
+  });
+  const completed = await rpc({
+    method: 'agent.wait',
+    timeoutMs: COMMAND_TIMEOUT_MS,
+    params: { runId: JSON.parse(dispatched).runId, timeoutMs: COMMAND_TIMEOUT_MS },
+  });
   assert.equal(JSON.parse(completed).status, 'ok');
-  const reply = await command([
-    'openclaw',
-    'gateway',
-    'call',
-    'chat.history',
-    '--params',
-    JSON.stringify({ sessionKey: backgroundSession }),
-    '--json',
-  ]);
+  const reply = await rpc({ method: 'chat.history', params: { sessionKey: backgroundSession } });
   assert(reply.includes('Enjoy the exhibition.'));
   assert(
     !JSON.parse(reply).messages.some((message: { role: string }) => message.role === 'toolResult'),
   );
-  await command([
-    'openclaw',
-    'gateway',
-    'call',
-    'sessions.reset',
-    '--params',
-    JSON.stringify({ key: backgroundSession, reason: 'new' }),
-    '--json',
-  ]);
+  await rpc({ method: 'sessions.reset', params: { key: backgroundSession, reason: 'new' } });
   const learningTimeoutMs = 180_000;
   const pollIntervalMs = 1_000;
   const deadline = Date.now() + learningTimeoutMs;
@@ -696,32 +649,21 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   model.holdLearning();
   const unfinishedSession = `${personalGroup}:topic:8`;
   const unfinished = JSON.parse(
-    await command([
-      'openclaw',
-      'gateway',
-      'call',
-      'chat.send',
-      '--params',
-      JSON.stringify({
+    await rpc({
+      method: 'chat.send',
+      params: {
         sessionKey: unfinishedSession,
         message: 'UNSAVED_REMOVAL_CANARY',
         idempotencyKey: crypto.randomUUID(),
         deliver: false,
-      }),
-      '--json',
-    ]),
+      },
+    }),
   );
-  await command([
-    'openclaw',
-    'gateway',
-    'call',
-    'agent.wait',
-    '--timeout',
-    String(COMMAND_TIMEOUT_MS),
-    '--params',
-    JSON.stringify({ runId: unfinished.runId, timeoutMs: COMMAND_TIMEOUT_MS }),
-    '--json',
-  ]);
+  await rpc({
+    method: 'agent.wait',
+    timeoutMs: COMMAND_TIMEOUT_MS,
+    params: { runId: unfinished.runId, timeoutMs: COMMAND_TIMEOUT_MS },
+  });
   const learningStartDeadline = Date.now() + learningTimeoutMs;
   while (!model.observations.heldLearningCalls && Date.now() < learningStartDeadline) {
     await Bun.sleep(pollIntervalMs);
@@ -731,17 +673,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log('Removing the plugin with an unfinished background model request.');
   // Run removal from the installed command too: it must finish after uninstalling itself.
   model.setup('openclaw context-use remove');
-  const queuedRemoval = await command([
-    'openclaw',
-    'agent',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:7`,
-    '--message',
-    'Remove Context Use and finish this turn once removal is queued.',
-    '--json',
-  ]);
+  const queuedRemoval = await agent({
+    sessionKey: `${personalGroup}:topic:7`,
+    message: 'Remove Context Use and finish this turn once removal is queued.',
+  });
   assert(queuedRemoval.includes('Plugin setup completed'));
   const removalDeadline = Date.now() + COMMAND_TIMEOUT_MS;
   while (existsSync(`${dirname(connectionFile)}.removal.json`) && Date.now() < removalDeadline) {
@@ -759,15 +694,10 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   );
   // Removal requests a deferred refresh; wait before reading the surviving history.
   await waitGateway();
-  const survivingHistory = await command([
-    'openclaw',
-    'gateway',
-    'call',
-    'chat.history',
-    '--params',
-    JSON.stringify({ sessionKey: unfinishedSession }),
-    '--json',
-  ]);
+  const survivingHistory = await rpc({
+    method: 'chat.history',
+    params: { sessionKey: unfinishedSession },
+  });
   assert(
     survivingHistory.includes('UNSAVED_REMOVAL_CANARY'),
     'Removal deleted the user conversation',
@@ -779,24 +709,16 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(!pageText.includes('UNSAVED_REMOVAL_CANARY'), 'Removal flushed discarded evidence');
   console.log('Removal requested by the active Gateway agent finished after its own turn ended.');
   model.removed();
-  const gatewayChat = await command([
-    'openclaw',
-    'agent',
-    '--channel',
-    'telegram',
-    '--agent',
-    'main',
-    '--session-key',
-    `${personalGroup}:topic:5`,
-    '--message',
-    'What do you know about me?',
-    '--json',
-  ]);
+  const gatewayChat = await agent({
+    channel: 'telegram',
+    sessionKey: `${personalGroup}:topic:5`,
+    message: 'What do you know about me?',
+  });
   assert(gatewayChat.includes('Local memory is available'));
   console.log(
     'Reinstalled in the same profile, recalled the preserved remote memory, removed through the native plugin command, and verified a fresh chat through the refreshed gateway.',
   );
-  const refresh = await command(['npx', '--yes', packageSpec, 'refresh']);
+  const refresh = await helper(['refresh']);
   assert(refresh.includes('Gateway refresh requested'));
   await waitGateway();
   const inventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
@@ -809,7 +731,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log('The npm helper refreshed the gateway after uninstall.');
   // Recovery must also work for interrupted installs whose files were removed
   // externally, even when this shell cannot authenticate to the running gateway.
-  await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
+  await helper(['connect', app.origin]);
   const interruptedInventory = JSON.parse(await command(['openclaw', 'plugins', 'list', '--json']));
   const interruptedPlugin = interruptedInventory.plugins.find(
     (plugin: { id: string }) => plugin.id === PLUGIN_ID,
@@ -824,14 +746,9 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     OPENCLAW_GATEWAY_URL: `ws://127.0.0.1:${gatewayPort}`,
     OPENCLAW_GATEWAY_TOKEN: 'invalid-removal-test-token',
   };
-  await assert.rejects(
-    command({
-      args: ['openclaw', 'gateway', 'call', 'config.get', '--timeout', '3000', '--json'],
-      env: invalidGatewayAuth,
-    }),
-  );
-  await command({
-    args: ['npx', '--yes', packageSpec, 'remove', '--wait'],
+  await assert.rejects(rpc({ method: 'config.get', timeoutMs: 3000, env: invalidGatewayAuth }));
+  await helper({
+    args: ['remove', '--wait'],
     env: invalidGatewayAuth,
   });
   const recovered = await configuration();
@@ -842,10 +759,13 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     !existsSync(`${dirname(connectionFile)}.removal.json`),
     'Gateway authorization failure blocked removal',
   );
-  await command(['npx', '--yes', packageSpec, 'remove', '--wait']);
-  assert((await command(['npx', '--yes', packageSpec, 'status'])).includes('"installed": false'));
+  await helper(['remove', '--wait']);
+  assert((await helper(['status'])).includes('"installed": false'));
   console.log(
     'Recovered a partially deleted reinstall without gateway authorization, and repeated removal without leftovers.',
+  );
+  console.log(
+    `All OpenClaw end-to-end invariants passed in ${Math.round(performance.now() - startedAt)}ms`,
   );
 } finally {
   try {
