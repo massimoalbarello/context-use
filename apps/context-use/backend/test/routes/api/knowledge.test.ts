@@ -55,6 +55,7 @@ const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
+const LARGE_PAGE_CONTENT_LENGTH = 1_000_001;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -384,13 +385,18 @@ Every observation changes the next action.`,
       ownerId: OWNER_USER_ID,
       readableId: 'growth-playbook',
     });
-    for (const method of ['POST', 'PUT']) {
+    for (const [method, contentLength] of [
+      ['POST', MAX_KNOWLEDGE_PAGE_CHARACTERS],
+      ['PUT', MAX_KNOWLEDGE_PAGE_CHARACTERS],
+      ['POST', LARGE_PAGE_CONTENT_LENGTH],
+      ['PUT', LARGE_PAGE_CONTENT_LENGTH],
+    ] as const) {
       const oversizedResponse = await app.handle(
         jsonRequest({
           method,
           path: method === 'POST' ? '/pages' : '/pages/growth-playbook',
           body: {
-            markdown: `# Oversized write\n\n${'x'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS)}`,
+            markdown: `# Oversized write\n\n${'x'.repeat(contentLength)}`,
             expectedRevisionNumber: 1,
           },
         }),

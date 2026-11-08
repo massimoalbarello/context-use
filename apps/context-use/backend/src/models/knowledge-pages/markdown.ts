@@ -3,7 +3,6 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { SKIP, visit } from 'unist-util-visit';
 import {
   type KnowledgePageLinkSet,
-  MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_CHARACTERS,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
@@ -63,15 +62,6 @@ function claimsInternalScheme(value: string | null | undefined): boolean {
 function rejectHiddenInternalAddress(value: string | null | undefined): void {
   if (claimsInternalScheme(value)) {
     throw new InvalidKnowledgePageMarkdownError(LABELLED_INTERNAL_LINK_MESSAGE);
-  }
-}
-
-function validateMarkdownSize(markdown: string): void {
-  const sizeBytes = Buffer.byteLength(markdown, 'utf8');
-  if (sizeBytes === 0 || sizeBytes > MAX_KNOWLEDGE_PAGE_BYTES) {
-    throw new InvalidKnowledgePageMarkdownError(
-      `Knowledge pages must be between 1 and ${MAX_KNOWLEDGE_PAGE_BYTES} bytes.`,
-    );
   }
 }
 
@@ -304,7 +294,6 @@ export function parseKnowledgePageMarkdown(markdown: string): {
   searchableText: string;
   links: KnowledgePageLinkSet;
 } {
-  validateMarkdownSize(markdown);
   const tree = fromMarkdown(markdown, markdownTableOptions);
   const { body, title } = validatePageShape(tree);
   const links = extractLinks(tree);

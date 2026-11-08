@@ -5,7 +5,6 @@ import {
   parseKnowledgePageWriteMarkdown,
 } from '#backend/models/knowledge-pages/markdown.ts';
 import {
-  MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_CHARACTERS,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
@@ -306,11 +305,8 @@ ${source}`);
     expect(parsed.searchableText).toContain('The unrepresented tail remains searchable.');
   });
 
-  test('bounds UTF-8 size and requires exactly one leading bounded H1', () => {
+  test('requires exactly one leading bounded H1', () => {
     expect(() => parseKnowledgePageMarkdown('')).toThrow(InvalidKnowledgePageMarkdownError);
-    expect(() =>
-      parseKnowledgePageMarkdown(`# Too large\n\n${'é'.repeat(MAX_KNOWLEDGE_PAGE_BYTES)}`),
-    ).toThrow(`${MAX_KNOWLEDGE_PAGE_BYTES} bytes`);
     expect(() => parseKnowledgePageMarkdown('No title\n\nReadable body.')).toThrow(
       'start with one H1',
     );

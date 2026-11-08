@@ -3,7 +3,6 @@ import type { Entity } from '#backend/models/entities/model.ts';
 import type { PagePublicationStatus } from '#backend/models/publications/model.ts';
 import type { ResourceArchiveState } from '#backend/models/resource-archiving/model.ts';
 
-export const MAX_KNOWLEDGE_PAGE_BYTES = 1_000_000;
 export const MAX_KNOWLEDGE_PAGE_CHARACTERS = 4_000;
 export const MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH = 280;
 export const MAX_KNOWLEDGE_PAGE_TITLE_LENGTH = 240;

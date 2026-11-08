@@ -7,7 +7,6 @@ import {
   type KnowledgePageReference,
   type KnowledgePageRevisionSummary,
   type KnowledgePageSummary,
-  MAX_KNOWLEDGE_PAGE_BYTES,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
@@ -91,14 +90,14 @@ export const KnowledgePagePreviewSchema = t.Object({
 });
 
 export const CreateKnowledgePageBodySchema = t.Object({
-  markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
+  markdown: t.String({ minLength: 1 }),
   temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
   allowDuplicate: t.Optional(t.Boolean()),
 });
 
 export const UpdateKnowledgePageBodySchema = t.Object({
   expectedRevisionNumber: t.Integer({ minimum: 1 }),
-  markdown: t.String({ minLength: 1, maxLength: MAX_KNOWLEDGE_PAGE_BYTES }),
+  markdown: t.String({ minLength: 1 }),
   temporalCoverage: t.Optional(t.Nullable(t.String({ maxLength: MAX_TEMPORAL_COVERAGE_LENGTH }))),
 });
 

@@ -22,7 +22,6 @@ import { BACKEND_ENVIRONMENT } from '#backend/lib/runtime-config.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { MAX_ASSET_BYTES } from '#backend/models/assets/model.ts';
-import { MAX_KNOWLEDGE_PAGE_BYTES } from '#backend/models/knowledge-pages/model.ts';
 import { LOCAL_RECORD_DESTINATION } from '#backend/models/syncs/managed.ts';
 import { ApiKeysRepository } from '#backend/repositories/api-keys/repository.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
@@ -249,8 +248,7 @@ try {
   const { server } = app.listen({
     port: env.PORT,
     hostname: '0.0.0.0',
-    maxRequestBodySize:
-      Math.max(MAX_ASSET_BYTES, MAX_KNOWLEDGE_PAGE_BYTES) + REQUEST_BODY_OVERHEAD_BYTES,
+    maxRequestBodySize: MAX_ASSET_BYTES + REQUEST_BODY_OVERHEAD_BYTES,
   });
 
   logger.info(`listening on ${server!.url.origin}`);
