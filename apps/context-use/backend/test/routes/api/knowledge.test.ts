@@ -10,6 +10,7 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { ENTITY_TYPES, type Entity } from '#backend/models/entities/model.ts';
+import { MAX_KNOWLEDGE_PAGE_CHARACTERS } from '#backend/models/knowledge-pages/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#backend/models/readable-ids/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
@@ -379,6 +380,29 @@ Every observation changes the next action.`,
       throw new Error('Temporal page response omitted its coverage');
     }
     expect(growth.revisionNumber).toBe(1);
+    const beforeRejectedWrite = await pagesService.detail({
+      ownerId: OWNER_USER_ID,
+      readableId: 'growth-playbook',
+    });
+    for (const method of ['POST', 'PUT']) {
+      const oversizedResponse = await app.handle(
+        jsonRequest({
+          method,
+          path: method === 'POST' ? '/pages' : '/pages/growth-playbook',
+          body: {
+            markdown: `# Oversized write\n\n${'x'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS)}`,
+            expectedRevisionNumber: 1,
+          },
+        }),
+      );
+      expect(oversizedResponse.status).toBe(StatusMap['Bad Request']);
+      expect(await oversizedResponse.json()).toEqual({
+        error: expect.stringContaining('Split the content semantically into self-contained pages'),
+      });
+    }
+    expect(
+      await pagesService.detail({ ownerId: OWNER_USER_ID, readableId: 'growth-playbook' }),
+    ).toEqual(beforeRejectedWrite);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual([
       'luca-bianchi',
       'test-owner',

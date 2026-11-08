@@ -12,6 +12,7 @@ import {
   type KnowledgePageDiff,
   MAX_REVISION_DIFF_EDIT_LENGTH,
 } from '#backend/models/knowledge-pages/diff.ts';
+import { parseKnowledgePageMarkdown } from '#backend/models/knowledge-pages/markdown.ts';
 import { KnowledgePagesRepository } from '#backend/repositories/knowledge-pages/repository.ts';
 import { PublicResourcesRepository } from '#backend/repositories/public-resources/repository.ts';
 import { createPageReadableIdController } from '#backend/routes/api/pages/[pageReadableId]/controller.ts';
@@ -262,13 +263,27 @@ test('the API compares exact historical revisions in either direction and an emp
       deletions: 0,
       temporalCoverage: { from: '2026', to: null },
     });
-    await context.service.update({
-      message: 'Updated test knowledge',
-      ...context.input,
-      readableId: 'notes',
-      expectedRevisionNumber: LAST_REVISION + 1,
-      markdown: LATEST + 'New line\n'.repeat(MAX_REVISION_DIFF_EDIT_LENGTH + 1),
-    });
+    // Oversized historical revisions remain comparable even though new writes are bounded.
+    const legacyMarkdown = LATEST + 'New line\n'.repeat(MAX_REVISION_DIFF_EDIT_LENGTH + 1);
+    const storageKey = 'legacy-large-revision.md';
+    await context.storage.write(storageKey, new Blob([legacyMarkdown]));
+    expect(
+      (
+        await context.repository.update({
+          ...context.input,
+          ...parseKnowledgePageMarkdown(legacyMarkdown),
+          readableId: 'notes',
+          expectedRevisionNumber: LAST_REVISION + 1,
+          revisionId: Bun.randomUUIDv7(),
+          temporalCoverage: null,
+          storageKey,
+          contentHash: new Bun.CryptoHasher('sha256').update(legacyMarkdown).digest('hex'),
+          sizeBytes: Buffer.byteLength(legacyMarkdown),
+          message: 'Historical revision predating the write limit',
+          updatedAt: NOW.toISOString(),
+        })
+      ).state,
+    ).toBe('updated');
     const tooLarge = await context.request({ query: 'from=4&to=5' });
     expect(tooLarge.status).toBe(StatusMap['Unprocessable Content']);
     expect(await tooLarge.json()).toEqual({ error: 'This comparison is too large to display.' });

@@ -4,6 +4,7 @@ import { SKIP, visit } from 'unist-util-visit';
 import {
   type KnowledgePageLinkSet,
   MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_KNOWLEDGE_PAGE_CHARACTERS,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
@@ -284,6 +285,17 @@ function extractLinks(tree: MarkdownTree): KnowledgePageLinkSet {
     pageReferences: [...pageReferences.values()],
     assetUsages: [...assetUsages.values()],
   };
+}
+
+/** Validate new revisions without imposing the write limit on historical reads or indexing. */
+export function parseKnowledgePageWriteMarkdown(markdown: string) {
+  const characterCount = [...markdown].length;
+  if (characterCount > MAX_KNOWLEDGE_PAGE_CHARACTERS) {
+    throw new InvalidKnowledgePageMarkdownError(
+      `Knowledge pages must contain at most ${MAX_KNOWLEDGE_PAGE_CHARACTERS} Unicode characters in the complete Markdown document, including the title, whitespace, formatting, and link destinations; this write contains ${characterCount}. This limit also applies when updating an existing oversized page. Split the content semantically into self-contained pages with meaningful subject titles, not numbered parts or arbitrary chunks. Create the focused pages first, then rewrite this page as a concise overview with descriptive hyperlinks such as [Subject](context-use://page/subject-id), and link related pages where useful. Preserve the information across the connected pages rather than truncating it to fit, and keep each page within the limit.`,
+    );
+  }
+  return parseKnowledgePageMarkdown(markdown);
 }
 
 export function parseKnowledgePageMarkdown(markdown: string): {

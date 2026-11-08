@@ -4,7 +4,7 @@ import type { ChangeContext } from '#backend/models/history/model.ts';
 import { diffPageMarkdown, type KnowledgePageDiff } from '#backend/models/knowledge-pages/diff.ts';
 import {
   InvalidKnowledgePageMarkdownError,
-  parseKnowledgePageMarkdown,
+  parseKnowledgePageWriteMarkdown,
 } from '#backend/models/knowledge-pages/markdown.ts';
 import type {
   KnowledgePage,
@@ -351,10 +351,10 @@ export class KnowledgePagesService {
   private parse(
     markdown: string,
   ):
-    | ReturnType<typeof parseKnowledgePageMarkdown>
+    | ReturnType<typeof parseKnowledgePageWriteMarkdown>
     | { state: 'invalid_markdown'; message: string } {
     try {
-      return parseKnowledgePageMarkdown(markdown);
+      return parseKnowledgePageWriteMarkdown(markdown);
     } catch (error) {
       if (error instanceof InvalidKnowledgePageMarkdownError) {
         return { state: 'invalid_markdown', message: error.message };

@@ -2,9 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import {
   InvalidKnowledgePageMarkdownError,
   parseKnowledgePageMarkdown,
+  parseKnowledgePageWriteMarkdown,
 } from '#backend/models/knowledge-pages/markdown.ts';
 import {
   MAX_KNOWLEDGE_PAGE_BYTES,
+  MAX_KNOWLEDGE_PAGE_CHARACTERS,
   MAX_KNOWLEDGE_PAGE_EXCERPT_LENGTH,
   MAX_KNOWLEDGE_PAGE_TITLE_LENGTH,
 } from '#backend/models/knowledge-pages/model.ts';
@@ -12,6 +14,30 @@ import {
 const LONG_EXCERPT_REPEAT_COUNT = 12;
 
 describe('knowledge page Markdown', () => {
+  test('limits complete writes by Unicode characters while preserving oversized read projections', () => {
+    const prefix = '# Boundary\n\n';
+    const atLimit = prefix + '😀'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS - prefix.length);
+    expect(() => parseKnowledgePageWriteMarkdown(atLimit)).not.toThrow();
+    const oversized = `${atLimit}x`;
+    expect(() => parseKnowledgePageWriteMarkdown(oversized)).toThrow(
+      `this write contains ${MAX_KNOWLEDGE_PAGE_CHARACTERS + 1}`,
+    );
+    expect(() => parseKnowledgePageMarkdown(oversized)).not.toThrow();
+  });
+
+  test('counts Markdown syntax, whitespace, code, and link destinations in write limits', () => {
+    const prefix = '# Complete document\n\nReadable prose.\n\n';
+    for (const body of [
+      ' '.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS),
+      `\`\`\`text\n${'x'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS)}\n\`\`\``,
+      `[Short label](https://example.test/${'x'.repeat(MAX_KNOWLEDGE_PAGE_CHARACTERS)})`,
+    ]) {
+      expect(() => parseKnowledgePageWriteMarkdown(prefix + body)).toThrow(
+        'Split the content semantically into self-contained pages',
+      );
+    }
+  });
+
   test('extracts readable table cells and references using the rendered table dialect', () => {
     const parsed = parseKnowledgePageMarkdown(
       '# Payments\n\n| Item | Due |\n| --- | --- |\n| [**Plan**][plan] \\| regional | 30 June |\n\n[plan]: context-use://page/plan',
