@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { ownerBrowser } from '@repo/browser-testing/owner-browser';
 import metadata from '../package.json';
 import { CALLBACK_URL, PLUGIN_ID } from '../src/contract';
+import { evidenceFromMessages } from '../src/learning-evidence';
 import { LearningStore } from '../src/learning-store';
 import { OPENCLAW_INSTALL_COMMAND, openclawSetupPrompt } from '../src/setup-prompt';
 import { reservePort, startApp } from './e2e-app';
@@ -100,6 +101,35 @@ async function configuration() {
       `import {readConfigFileSnapshotForWrite} from ${JSON.stringify(sdkConfig)};const {snapshot}=await readConfigFileSnapshotForWrite();console.log(JSON.stringify(snapshot.config));`,
     ]),
   );
+}
+
+const completedEvidence = evidenceFromMessages([
+  { role: 'user', content: 'This conversation has already been learned.', timestamp: 1 },
+]);
+async function verifyLearningProgress(input: { seed?: boolean } = {}) {
+  const state = await Bun.file(connectionFile).json();
+  const store = new LearningStore({
+    directory: dirname(connectionFile),
+    config: state.config,
+    connectionId: state.learningId,
+  });
+  try {
+    const pending = store.status().pending;
+    store.capture({
+      source: 'completed-conversation',
+      evidence: completedEvidence,
+      now: Date.now(),
+    });
+    if (input.seed) {
+      const job = store.next({ agentId: 'main', now: Date.now() })!;
+      assert.equal(job.source, 'completed-conversation');
+      store.acknowledge({ sessionKey: job.sessionKey });
+      store.finish({ id: job.id, now: Date.now() });
+    }
+    assert.equal(store.status().pending, pending, 'Completed conversation was queued again');
+  } finally {
+    store.close();
+  }
 }
 
 await mkdir(join(directory, 'bin'), { recursive: true });
@@ -251,6 +281,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   assert(connected.plugins.entries['active-memory'].config.allowedChatTypes.includes('group'));
   assert((await command(['openclaw', 'context-use', 'status'])).includes('"connected": true'));
   console.log('Native installation and pasted callback authorization passed.');
+  await verifyLearningProgress({ seed: true });
 
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);
   assert((await Bun.file(connectionFile).json()).oauth.tokens);
@@ -285,6 +316,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
   console.log(
     'Explicit reconnect registered and authorized a fresh client while retaining restoration history.',
   );
+  await verifyLearningProgress();
   await mkdir(join(directory, 'moved'));
   const movedApp = await startApp({ repo, directory: join(directory, 'moved'), node });
   let movedOwner: Awaited<ReturnType<typeof ownerBrowser>> | undefined;
@@ -321,6 +353,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     }),
   );
   assert.deepEqual((await Bun.file(connectionFile).json()).changes, originalJournal);
+  await verifyLearningProgress();
   const reauthorizedConfig = await configuration();
   assert.equal(
     reauthorizedConfig.plugins.entries['active-memory'].config.timeoutMs,
@@ -478,6 +511,7 @@ config.models={providers:{fixture:{baseUrl:${JSON.stringify(`${model.origin}/v1`
     clientName: 'OpenClaw reinstallation',
   });
   await authorize(newRedirect);
+  await verifyLearningProgress();
   // This was the original timeout before reinstallation, so it must not look like a failed commit.
   await configure("config.plugins.entries['active-memory'].config.timeoutMs=45000;");
   await command(['npx', '--yes', packageSpec, 'connect', app.origin]);

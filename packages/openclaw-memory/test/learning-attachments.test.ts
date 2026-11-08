@@ -12,7 +12,8 @@ import { attachmentsFromMessages } from '../src/learning-evidence';
 import { attachmentDirectory, LearningStore } from '../src/learning-store';
 
 test('staged original bytes survive loss of the host cache and are removed after learning', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'learning-attachments-'));
+  const root = await mkdtemp(join(tmpdir(), 'learning-attachments-'));
+  const directory = join(root, 'connection');
   const connectionId = 'owner';
   const config = { agentId: 'main', serverUrl: 'https://example.com/mcp' };
   const db = new LearningStore({ directory, config, connectionId });
@@ -53,6 +54,6 @@ test('staged original bytes survive loss of the host cache and are removed after
     await expect(read()).rejects.toThrow();
   } finally {
     db.close();
-    await rm(directory, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
   }
 });
