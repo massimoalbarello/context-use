@@ -82,8 +82,7 @@ export function KnowledgePageRevisions({
             <Collapsible.Panel className="pt-4">
               <KnowledgePageRevisionComparison
                 readableId={page.readableId}
-                from={revision.revisionNumber - 1}
-                to={revision.revisionNumber}
+                revisionNumber={revision.revisionNumber}
               />
             </Collapsible.Panel>
           </Collapsible.Root>

@@ -10,7 +10,6 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import type { Session } from '../../src/lib/auth';
 import type { HistoryEntry, HistoryPage } from '../../src/queries/history';
-import type { KnowledgePageDiff } from '../../src/queries/pages';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
@@ -85,7 +84,7 @@ async function withHistory({
       (...args: Parameters<typeof globalThis.fetch>) => {
         const request = new Request(args[0], args[1]);
         const url = new URL(request.url);
-        if (url.pathname === '/api/history' || url.pathname.endsWith('/diff')) {
+        if (url.pathname === '/api/history') {
           return Promise.resolve(read(url));
         }
         return Promise.reject(new Error(`Unexpected request: ${url.pathname}`));
@@ -154,7 +153,7 @@ test('History preserves daily groups across pages, retries older changes, and ke
       const headings = screen.getAllByRole('heading', { level: 2 });
       expect(headings).toHaveLength(2);
       const lists = within(screen.getByRole('main'))
-        .getAllByRole('list')
+        .getAllByRole('list', { name: '' })
         .filter((list) => list.tagName === 'OL');
       expect(lists).toHaveLength(2);
       expect(
@@ -169,10 +168,9 @@ test('History preserves daily groups across pages, retries older changes, and ke
   });
 });
 
-test('History combines complete daily page revisions across API pages and compares the full day on demand', async () => {
+test('History combines complete daily page revisions across API pages and links to the Revisions tab', async () => {
   const user = userEvent.setup();
   const requests: string[] = [];
-  let comparisons = 0;
   const revision = (
     overrides: Partial<HistoryEntry> & { sequence: number; pageRevisionNumber: number },
   ) =>
@@ -187,27 +185,6 @@ test('History combines complete daily page revisions across API pages and compar
   await withHistory({
     read: (url) => {
       requests.push(url.pathname + url.search);
-      if (url.pathname.endsWith('/diff')) {
-        if (++comparisons === 1) {
-          return Response.json({ error: 'Comparison unavailable' }, { status: 500 });
-        }
-        return Response.json({
-          from: Number(url.searchParams.get('from')),
-          to: Number(url.searchParams.get('to')),
-          additions: 1,
-          deletions: 1,
-          temporalCoverage: null,
-          hunks: [
-            {
-              oldStart: 1,
-              oldLines: 1,
-              newStart: 1,
-              newLines: 1,
-              lines: ['-Before the day', '+Final content'],
-            },
-          ],
-        } satisfies KnowledgePageDiff);
-      }
       if (!url.searchParams.has('cursor')) {
         return Response.json({
           items: [
@@ -302,35 +279,20 @@ test('History combines complete daily page revisions across API pages and compar
       expect(within(revisions[0]!).getByText('by Assistant 6')).toBeTruthy();
       expect(within(revisions[1]!).queryByText(/^by\b/)).toBeNull();
       expect(within(revisions[2]!).getByText('by Assistant 4')).toBeTruthy();
-      const changes = within(row).getByRole('button', { name: /^Changes to/ });
-      expect(changes.getAttribute('aria-expanded')).toBe('false');
-      await user.click(changes);
-      await screen.findByRole('alert');
-      await user.click(screen.getByRole('button', { name: 'Retry' }));
-      await screen.findByText('Revision 3 → 6');
-      expect(screen.getByText('Final content')).toBeTruthy();
-      expect(requests.slice(2)).toEqual([
-        '/api/pages/notes/diff?from=3&to=6',
-        '/api/pages/notes/diff?from=3&to=6',
-      ]);
-      await user.click(changes);
-      await user.click(changes);
-      await screen.findByText('Revision 3 → 6');
-      expect(comparisons).toBe(2);
-      const newPage = screen.getByRole('link', { name: 'Newest page' }).closest('li')!;
-      await user.click(within(newPage).getByRole('button', { name: /^Changes to/ }));
-      await screen.findByText('Full content');
-      expect(requests.at(-1)).toBe('/api/pages/new-page/diff?from=0&to=1');
+      expect(link.getAttribute('href')).toBe('/app/pages/notes?view=revisions');
+      expect(screen.queryByRole('button', { name: /^Changes/ })).toBeNull();
+      const single = screen.getByRole('link', { name: 'Newest page' }).closest('li')!;
+      const singleRevisions = within(single).getByRole('list', { name: 'Revisions that day' });
+      const singleRevision = within(singleRevisions).getAllByRole('listitem');
+      expect(singleRevision).toHaveLength(1);
+      expect(within(singleRevision[0]!).getByText('Created')).toBeTruthy();
+      expect(within(singleRevision[0]!).getByText('Created a page')).toBeTruthy();
       await user.click(screen.getByRole('button', { name: 'Load more' }));
       await screen.findByText('Change 3');
       expect(screen.getAllByRole('link', { name: 'Project notes' })).toHaveLength(2);
       expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
       expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
       expect(requests.filter((path) => path.startsWith('/api/history'))).toHaveLength(2);
-      const yesterday = screen.getAllByRole('link', { name: 'Project notes' })[1]!.closest('li')!;
-      await user.click(within(yesterday).getByRole('button', { name: /^Changes to/ }));
-      await screen.findByText('Revision 1 → 3');
-      expect(requests.at(-1)).toBe('/api/pages/notes/diff?from=1&to=3');
     },
   });
 });
@@ -407,7 +369,7 @@ test('History shows a recoverable initial error and an intentional empty state',
   });
 });
 
-test('History retries a failed continuation before exposing a partial daily comparison', async () => {
+test('History retries a failed continuation before exposing a partial daily group', async () => {
   const user = userEvent.setup();
   let continuations = 0;
   await withHistory({
@@ -455,7 +417,7 @@ test('History retries a failed continuation before exposing a partial daily comp
       expect(within(row).getByText('2 revisions')).toBeTruthy();
       expect(within(row).getByText('First edit')).toBeTruthy();
       expect(within(row).getByText('Latest edit')).toBeTruthy();
-      expect(within(row).getByRole('button', { name: /^Changes to/ })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /^Changes/ })).toBeNull();
       expect(continuations).toBe(2);
     },
   });
