@@ -286,6 +286,9 @@ test('History combines complete daily page revisions across API pages and compar
       expect(within(row).getByText('3 revisions')).toBeTruthy();
       const messages = within(row).getByRole('list', { name: 'Revisions that day' });
       const revisions = within(messages).getAllByRole('listitem');
+      for (const revision of revisions) {
+        expect(within(revision).getByText('Updated')).toBeTruthy();
+      }
       expect(revisions.map((item) => item.querySelector('p')?.textContent)).toEqual([
         'Change 6',
         'Change 5',
@@ -371,7 +374,11 @@ test('History preserves creation and unavailable revisions in one daily item wit
     run: async () => {
       const title = await screen.findByRole('heading', { name: 'Deleted notes', level: 3 });
       const row = title.closest('li')!;
-      expect(within(row).getByText('Created')).toBeTruthy();
+      const revisions = within(
+        within(row).getByRole('list', { name: 'Revisions that day' }),
+      ).getAllByRole('listitem');
+      expect(within(revisions[0]!).getByText('Updated')).toBeTruthy();
+      expect(within(revisions[1]!).getByText('Created')).toBeTruthy();
       expect(within(row).getByText('2 revisions')).toBeTruthy();
       expect(within(row).getByText('Created the notes')).toBeTruthy();
       expect(within(row).getByText('Revised the notes')).toBeTruthy();

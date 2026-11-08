@@ -85,9 +85,23 @@ function HistoryTime({ entry, className }: { entry: HistoryEntry; className?: st
   );
 }
 
-function HistoryMessage({ entry }: { entry: HistoryEntry }) {
+function HistoryActionBadge({ entry }: { entry: HistoryEntry }) {
+  const action = actions[entry.action];
   return (
-    <div className="min-w-0">
+    <Badge
+      className={cn(
+        'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
+        action.className,
+      )}
+    >
+      {action.label}
+    </Badge>
+  );
+}
+
+function HistoryMessage({ entry, className }: { entry: HistoryEntry; className?: string }) {
+  return (
+    <div className={cn('min-w-0', className)}>
       <p className="break-words text-sm leading-6">{entry.message}</p>
       {entry.clientName !== null && (
         <p className="mt-0.5 text-muted-foreground text-xs">by {entry.clientName}</p>
@@ -99,7 +113,7 @@ function HistoryMessage({ entry }: { entry: HistoryEntry }) {
 function HistoryItem({ entry, revisions }: HistoryItemGroup) {
   const resource = resources[entry.resourceType];
   const oldest = revisions.at(-1);
-  const action = actions[oldest?.action === 'created' ? 'created' : entry.action];
+  const grouped = revisions.length > 1;
   const Icon = resource.icon;
   const from = oldest?.pageRevisionNumber;
   const to = entry.pageRevisionNumber;
@@ -108,18 +122,13 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
       render={<li />}
       className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4"
     >
-      <div className="flex flex-col items-start gap-1.5">
-        <Badge
-          className={cn(
-            'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
-            action.className,
-          )}
-        >
-          {action.label}
-        </Badge>
-        <HistoryTime entry={entry} className="sm:hidden" />
-      </div>
-      <div className="col-start-2 min-w-0">
+      {!grouped && (
+        <div className="flex flex-col items-start gap-1.5">
+          <HistoryActionBadge entry={entry} />
+          <HistoryTime entry={entry} className="sm:hidden" />
+        </div>
+      )}
+      <div className={cn('min-w-0', grouped ? 'col-span-full' : 'col-start-2')}>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="break-words font-semibold text-sm leading-6">
             {entry.available ? (
@@ -139,11 +148,11 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
             <Icon className="size-3" aria-hidden="true" />
             {resource.label}
           </span>
-          {revisions.length > 1 && (
+          {grouped && (
             <span className="text-muted-foreground text-xs">{revisions.length} revisions</span>
           )}
         </div>
-        {revisions.length > 1 ? (
+        {grouped ? (
           <ol
             aria-label="Revisions that day"
             className="mt-3 space-y-3 border-border border-l pl-4"
@@ -151,10 +160,11 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
             {revisions.map((revision) => (
               <li
                 key={revision.sequence}
-                className="grid gap-x-3 gap-y-0.5 sm:grid-cols-[auto_1fr]"
+                className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[auto_auto_1fr]"
               >
+                <HistoryActionBadge entry={revision} />
                 <HistoryTime entry={revision} className="pt-1" />
-                <HistoryMessage entry={revision} />
+                <HistoryMessage entry={revision} className="col-span-full sm:col-span-1" />
               </li>
             ))}
           </ol>
@@ -172,12 +182,16 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
           </Collapsible.Trigger>
         )}
       </div>
-      <HistoryTime
-        entry={entry}
-        className="hidden sm:col-start-3 sm:row-start-1 sm:block sm:pt-1"
-      />
+      {!grouped && (
+        <HistoryTime
+          entry={entry}
+          className="hidden sm:col-start-3 sm:row-start-1 sm:block sm:pt-1"
+        />
+      )}
       {entry.available && from != null && to != null && (
-        <Collapsible.Panel className="col-span-full min-w-0 pt-3 sm:col-span-2 sm:col-start-2">
+        <Collapsible.Panel
+          className={cn('col-span-full min-w-0 pt-3', !grouped && 'sm:col-span-2 sm:col-start-2')}
+        >
           <KnowledgePageRevisionComparison readableId={entry.readableId} from={from - 1} to={to} />
         </Collapsible.Panel>
       )}
