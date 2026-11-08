@@ -11,13 +11,13 @@ for the user or an agent to find, understand, and use it later.
    dates, participants, or sources alone do not justify combining material. Align the title,
    opening, and contents with the current account. Titles describe subjects; dates belong in
    temporal coverage and prose unless they identify the subject itself.
-2. **Place detail at the appropriate level.** Give important recurring entities and relationships
-   useful general overviews. Keep specific experiences and histories in focused accounts.
-   Overviews explain defining characteristics, milestones, and connections. Summarize essential
-   facts for context and link to their detailed accounts instead of copying them. Create
-   broader syntheses only when a meaningful pattern or period adds understanding. Split only into
-   useful, connected accounts. Select and arrange text and media for a coherent account, not
-   source order. Omit repetition unless it adds meaning.
+2. **Keep pages focused and connected.** Respect the write tools' character limit. Give important
+   recurring entities and relationships concise overviews of defining characteristics, milestones,
+   and connections. Keep specific experiences and histories in self-contained, meaningfully titled
+   accounts. Summarize essential facts and link to details instead of copying them. Split larger
+   accounts semantically by subject, never into numbered parts or arbitrary chunks; preserve
+   information through descriptive hyperlinks. Broader syntheses need meaningful patterns or
+   periods. Arrange text and media coherently, not by source order. Omit repetition unless meaningful.
 3. **Reconcile rather than accumulate.** Read relevant existing pages before creating or revising.
    Reconsider titles, openings, structure, time coverage, and links, including affected summaries.
    Rewrite, combine, split, or remove material as needed. Resolve duplication, errors, and
