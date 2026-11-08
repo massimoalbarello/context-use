@@ -10,6 +10,7 @@ import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
 import { ENTITY_TYPES, type Entity } from '#backend/models/entities/model.ts';
+import { MAX_KNOWLEDGE_PAGE_CHARACTERS } from '#backend/models/knowledge-pages/model.ts';
 import { temporalBoundsFrom } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { READABLE_ID_SUFFIX_LENGTH } from '#backend/models/readable-ids/model.ts';
 import { AssetsRepository } from '#backend/repositories/assets/repository.ts';
@@ -54,6 +55,7 @@ const EXPECTED_SECOND_PAGE_OFFSET = 4;
 const EXPECTED_FILTERED_PAGE_COUNT = 3;
 const EXPECTED_GROWTH_REVISION_COUNT = 3;
 const EXPECTED_CURRENT_MENTION_COUNT = 5;
+const LARGE_PAGE_CONTENT_LENGTH = 1_000_001;
 
 const frontendAssetsService: FrontendAssetsServiceContract = {
   routes: () => new Map(),
@@ -379,6 +381,34 @@ Every observation changes the next action.`,
       throw new Error('Temporal page response omitted its coverage');
     }
     expect(growth.revisionNumber).toBe(1);
+    const beforeRejectedWrite = await pagesService.detail({
+      ownerId: OWNER_USER_ID,
+      readableId: 'growth-playbook',
+    });
+    for (const [method, contentLength] of [
+      ['POST', MAX_KNOWLEDGE_PAGE_CHARACTERS],
+      ['PUT', MAX_KNOWLEDGE_PAGE_CHARACTERS],
+      ['POST', LARGE_PAGE_CONTENT_LENGTH],
+      ['PUT', LARGE_PAGE_CONTENT_LENGTH],
+    ] as const) {
+      const oversizedResponse = await app.handle(
+        jsonRequest({
+          method,
+          path: method === 'POST' ? '/pages' : '/pages/growth-playbook',
+          body: {
+            markdown: `# Oversized write\n\n${'x'.repeat(contentLength)}`,
+            expectedRevisionNumber: 1,
+          },
+        }),
+      );
+      expect(oversizedResponse.status).toBe(StatusMap['Bad Request']);
+      expect(await oversizedResponse.json()).toEqual({
+        error: expect.stringContaining('Split the content semantically into self-contained pages'),
+      });
+    }
+    expect(
+      await pagesService.detail({ ownerId: OWNER_USER_ID, readableId: 'growth-playbook' }),
+    ).toEqual(beforeRejectedWrite);
     expect(growth.mentions.map(({ readableId }) => readableId)).toEqual([
       'luca-bianchi',
       'test-owner',
