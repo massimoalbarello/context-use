@@ -56,8 +56,18 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
   const Icon = resource.icon;
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-4">
-      <div className="row-span-2 flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:row-span-1">
-        <Icon className="size-5" aria-hidden="true" />
+      <div className="row-span-2 flex w-22 flex-col items-start gap-2 sm:row-span-1 sm:w-36 sm:flex-row sm:gap-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <Icon className="size-5" aria-hidden="true" />
+        </div>
+        <Badge
+          className={cn(
+            'rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide sm:mt-0.5',
+            action.className,
+          )}
+        >
+          {action.label}
+        </Badge>
       </div>
       <div className="col-start-2 min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -76,14 +86,6 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
             )}
           </h3>
           <span className="text-muted-foreground text-xs">{resource.label}</span>
-          <Badge
-            className={cn(
-              'rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
-              action.className,
-            )}
-          >
-            {action.label}
-          </Badge>
         </div>
         <p className="break-words text-sm leading-6">{entry.message}</p>
         {entry.clientName !== null && (
