@@ -1,10 +1,30 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
 import { type BrowserContext, chromium } from 'playwright';
 import { enableVirtualPasskey } from './auth';
 
 const BROWSER_TIMEOUT_MS = 90_000;
+const ENDPOINT_POLL_MS = 50;
+
+async function debuggingPort(profile: string): Promise<string> {
+  const deadline = Date.now() + BROWSER_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      const [port] = (await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n');
+      if (port) {
+        return port;
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+    await setTimeout(ENDPOINT_POLL_MS);
+  }
+  throw new Error('Chrome did not publish its debugging endpoint before the startup timeout.');
+}
 
 export async function virtualPasskeyBrowser(input: { headless: boolean }) {
   const profile = await mkdtemp(join(tmpdir(), 'context-use-browser-'));
@@ -32,7 +52,7 @@ export async function virtualPasskeyBrowser(input: { headless: boolean }) {
       handleSIGHUP: false,
       args: ['--remote-debugging-port=0'],
     });
-    const [port] = (await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n');
+    const port = await debuggingPort(profile);
     const page = context.pages()[0] ?? (await context.newPage());
     const closed = new Promise<void>((resolve) => {
       context!.once('close', () => resolve());

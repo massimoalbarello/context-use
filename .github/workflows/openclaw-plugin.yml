@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - packages/openclaw-memory/**
+      - packages/browser-testing/**
       - packages/typescript-config/**
       - package.json
       - bun.lock
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - packages/openclaw-memory/**
+      - packages/browser-testing/**
       - packages/typescript-config/**
       - package.json
       - bun.lock
