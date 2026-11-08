@@ -1,5 +1,7 @@
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
+import { mcpClientAuthorizationId } from '#backend/models/mcp-client-authorizations/authorization-id.ts';
 import {
+  MCP_CODE_CHALLENGE_PATTERN,
   type McpClientAuthorizationPrincipal,
   normalizeMcpClientName,
 } from '#backend/models/mcp-client-authorizations/model.ts';
@@ -24,12 +26,12 @@ export class McpClientAuthorizationsService {
     return client ? { state: 'found' as const, client } : { state: 'not_found' as const };
   }
 
-  async approve(input: { actorId: string; clientId: string; name: string }) {
+  async approve(input: { actorId: string; clientId: string; codeChallenge: string; name: string }) {
     if (!this.isOwner(input.actorId)) {
       return { state: 'forbidden' as const };
     }
     const name = normalizeMcpClientName(input.name);
-    if (!name) {
+    if (!name || !MCP_CODE_CHALLENGE_PATTERN.test(input.codeChallenge)) {
       return { state: 'invalid' as const };
     }
     const client = await this.clientAuthorizations.oauthClient({ clientId: input.clientId });
@@ -37,7 +39,11 @@ export class McpClientAuthorizationsService {
       return { state: 'not_found' as const };
     }
     return await this.clientAuthorizations.approve({
-      id: Bun.randomUUIDv7(),
+      id: mcpClientAuthorizationId({
+        ownerId: input.actorId,
+        oauthClientId: client.clientId,
+        codeChallenge: input.codeChallenge,
+      }),
       ownerId: input.actorId,
       name,
       oauthClientId: client.clientId,
@@ -87,6 +93,7 @@ export class McpClientAuthorizationsService {
   async authenticate(input: {
     ownerId: string;
     oauthClientId: string;
+    clientAuthorizationId: string;
   }): Promise<McpClientAuthorizationPrincipal | null> {
     if (!this.isOwner(input.ownerId)) {
       return null;

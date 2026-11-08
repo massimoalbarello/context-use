@@ -3,7 +3,10 @@ import type {
   McpClientAuthorization,
   McpOAuthClient,
 } from '#backend/models/mcp-client-authorizations/model.ts';
-import { MAX_MCP_CLIENT_NAME_LENGTH } from '#backend/models/mcp-client-authorizations/model.ts';
+import {
+  MAX_MCP_CLIENT_NAME_LENGTH,
+  MCP_CODE_CHALLENGE_PATTERN,
+} from '#backend/models/mcp-client-authorizations/model.ts';
 
 export const McpClientSchema = t.Object({
   id: t.String(),
@@ -31,6 +34,7 @@ export const McpAuthorizationClientQuerySchema = t.Object({
 
 export const ApproveMcpClientBodySchema = t.Object({
   clientId: t.String({ minLength: 1 }),
+  codeChallenge: t.String({ pattern: MCP_CODE_CHALLENGE_PATTERN.source }),
   name: t.String({ minLength: 1, maxLength: MAX_MCP_CLIENT_NAME_LENGTH }),
 });
 

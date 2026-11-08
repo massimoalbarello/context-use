@@ -9,6 +9,7 @@ import { approveMcpClient, mcpAuthorizationClientQueryOptions } from '../queries
 
 type AuthorizationSearch = {
   client_id?: string;
+  code_challenge?: string;
   scope?: string;
   claims?: string;
   oauth_query?: string;
@@ -17,6 +18,7 @@ type AuthorizationSearch = {
 export const Route = createFileRoute('/app/mcp/authorize')({
   validateSearch: (search: Record<string, unknown>): AuthorizationSearch => ({
     client_id: typeof search.client_id === 'string' ? search.client_id : undefined,
+    code_challenge: typeof search.code_challenge === 'string' ? search.code_challenge : undefined,
     scope: typeof search.scope === 'string' ? search.scope : undefined,
     claims: typeof search.claims === 'string' ? search.claims : undefined,
     oauth_query: typeof search.oauth_query === 'string' ? search.oauth_query : undefined,
@@ -27,6 +29,9 @@ export const Route = createFileRoute('/app/mcp/authorize')({
     }
     if (!search.client_id) {
       throw new Error('OAuth authorization is missing its client identity.');
+    }
+    if (!search.code_challenge) {
+      throw new Error('OAuth authorization is missing its PKCE challenge.');
     }
   },
   loaderDeps: ({ search }) => ({ clientId: search.client_id! }),
@@ -46,7 +51,11 @@ function McpAuthorizeRoute() {
   const search = Route.useSearch();
   const approval = useMutation({
     mutationFn: async (name: string) => {
-      await approveMcpClient({ clientId: search.client_id!, name });
+      await approveMcpClient({
+        clientId: search.client_id!,
+        codeChallenge: search.code_challenge!,
+        name,
+      });
       const { data, error } = await authClient.oauth2.consent({
         accept: true,
         scope: search.scope,
@@ -73,7 +82,7 @@ function McpAuthorizeRoute() {
     <FormShell
       eyebrow="MCP authorization"
       title="Connect an MCP client"
-      description="Approve this client only if you tried to connect it. The name you choose is the identity Context Use will show in future activity."
+      description="Approve only if you started this connection. Give this agent a distinct name, such as “Work Codex” or “Personal Codex”, to recognize its activity and revoke its access separately."
     >
       <Card>
         <CardContent>

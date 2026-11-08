@@ -9,6 +9,7 @@ import { withAuthTestDatabase } from '../../lib/auth/auth-test-database.ts';
 
 const EXPECTED_CLIENT_AUTHORIZATION_COUNT = 4;
 const EXPECTED_ACTIVE_CLIENT_AUTHORIZATION_COUNT = 1;
+const CODE_CHALLENGE_LENGTH = 43;
 
 async function insertOAuthClient({
   database,
@@ -69,6 +70,7 @@ test('client names are reusable only after every matching authorization is revok
       const first = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',
+        codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
         name: 'Shared friendly name',
       });
       expect(first.state).toBe('approved');
@@ -78,6 +80,7 @@ test('client names are reusable only after every matching authorization is revok
       const reconnect = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',
+        codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
         name: 'Renamed on reconnect',
       });
       expect(reconnect.state).toBe('approved');
@@ -92,6 +95,7 @@ test('client names are reusable only after every matching authorization is revok
         await service.approve({
           actorId: OWNER_USER_ID,
           clientId: 'fresh-client',
+          codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
           name: 'renamed on reconnect',
         }),
       ).toEqual({ state: 'name_conflict' });
@@ -99,6 +103,7 @@ test('client names are reusable only after every matching authorization is revok
       const fresh = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'fresh-client',
+        codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
         name: 'Fresh client',
       });
       expect(fresh.state).toBe('approved');
@@ -141,6 +146,7 @@ test('client names are reusable only after every matching authorization is revok
         await service.approve({
           actorId: OWNER_USER_ID,
           clientId: 'replacement-client',
+          codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
           name: 'renamed on reconnect',
         }),
       ).toEqual({ state: 'name_conflict' });
@@ -154,6 +160,7 @@ test('client names are reusable only after every matching authorization is revok
       const replacement = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'replacement-client',
+        codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
         name: 'renamed on reconnect',
       });
       expect(replacement.state).toBe('approved');
@@ -166,6 +173,7 @@ test('client names are reusable only after every matching authorization is revok
         await service.approve({
           actorId: OWNER_USER_ID,
           clientId: 'verified-client',
+          codeChallenge: 'b'.repeat(CODE_CHALLENGE_LENGTH),
           name: 'Renamed on reconnect',
         }),
       ).toEqual({ state: 'name_conflict' });
@@ -178,6 +186,7 @@ test('client names are reusable only after every matching authorization is revok
       const reauthorized = await service.approve({
         actorId: OWNER_USER_ID,
         clientId: 'verified-client',
+        codeChallenge: 'b'.repeat(CODE_CHALLENGE_LENGTH),
         name: 'Renamed on reconnect',
       });
       expect(reauthorized.state).toBe('approved');

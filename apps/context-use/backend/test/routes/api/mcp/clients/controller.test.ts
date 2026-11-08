@@ -11,6 +11,7 @@ import {
 } from '../../../../support/mcp.ts';
 
 const createdAt = new Date('2026-01-01T00:00:00.000Z');
+const CODE_CHALLENGE_LENGTH = 43;
 const ownerAuth: Auth = {
   passkeyOrigins: [],
   handler: async () => new Response(null, { status: StatusMap['Not Found'] }),
@@ -69,6 +70,7 @@ test('duplicate client names are returned as conflicts', async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         clientId: 'oauth-client',
+        codeChallenge: 'a'.repeat(CODE_CHALLENGE_LENGTH),
         name: 'Codex',
         changeMessage: 'Authorize Codex',
       }),
