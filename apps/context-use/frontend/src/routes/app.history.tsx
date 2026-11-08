@@ -118,83 +118,89 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
   const from = oldest?.pageRevisionNumber;
   const to = entry.pageRevisionNumber;
   return (
-    <Collapsible.Root
-      render={<li />}
-      className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4"
-    >
-      {!grouped && (
-        <div className="flex flex-col items-start gap-1.5">
-          <HistoryActionBadge entry={entry} />
-          <HistoryTime entry={entry} className="sm:hidden" />
-        </div>
-      )}
-      <div className={cn('min-w-0', grouped ? 'col-span-full' : 'col-start-2')}>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h3 className="break-words font-semibold text-sm leading-6">
-            {entry.available ? (
-              <Link
-                to={resource.to}
-                params={{ id: entry.readableId }}
-                search={entry.resourceType === 'page' ? { view: 'revisions' } : {}}
-                className="underline-offset-4 hover:underline"
-              >
-                {entry.name}
-              </Link>
-            ) : (
-              <span>{entry.name}</span>
+    <Collapsible.Root render={<li />} className="flex items-start gap-3 py-4 sm:gap-4">
+      <span
+        className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+        aria-hidden="true"
+      >
+        <Icon className="size-5 stroke-[1.5]" />
+      </span>
+      <div className="grid min-w-0 flex-1 grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4">
+        {!grouped && (
+          <div className="flex flex-col items-start gap-1.5">
+            <HistoryActionBadge entry={entry} />
+            <HistoryTime entry={entry} className="sm:hidden" />
+          </div>
+        )}
+        <div className={cn('min-w-0', grouped ? 'col-span-full' : 'col-start-2')}>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h3 className="break-words font-semibold text-sm leading-6">
+              {entry.available ? (
+                <Link
+                  to={resource.to}
+                  params={{ id: entry.readableId }}
+                  search={entry.resourceType === 'page' ? { view: 'revisions' } : {}}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {entry.name}
+                </Link>
+              ) : (
+                <span>{entry.name}</span>
+              )}
+            </h3>
+            <span className="text-muted-foreground text-xs">{resource.label}</span>
+            {grouped && (
+              <span className="text-muted-foreground text-xs">{revisions.length} revisions</span>
             )}
-          </h3>
-          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
-            <Icon className="size-3" aria-hidden="true" />
-            {resource.label}
-          </span>
-          {grouped && (
-            <span className="text-muted-foreground text-xs">{revisions.length} revisions</span>
+          </div>
+          {grouped ? (
+            <ol
+              aria-label="Revisions that day"
+              className="mt-3 space-y-3 border-border border-l pl-4"
+            >
+              {revisions.map((revision) => (
+                <li
+                  key={revision.sequence}
+                  className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[auto_auto_1fr]"
+                >
+                  <HistoryActionBadge entry={revision} />
+                  <HistoryTime entry={revision} className="pt-1" />
+                  <HistoryMessage entry={revision} className="col-span-full sm:col-span-1" />
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <HistoryMessage entry={entry} />
+          )}
+          {entry.available && from != null && to != null && (
+            <Collapsible.Trigger
+              render={<Button variant="ghost" size="sm" />}
+              className="group mt-2"
+              aria-label={`Changes to ${entry.name} on ${entry.createdAt.toLocaleDateString([], { dateStyle: 'full' })}`}
+            >
+              Changes
+              <ChevronDown className="size-4 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none" />
+            </Collapsible.Trigger>
           )}
         </div>
-        {grouped ? (
-          <ol
-            aria-label="Revisions that day"
-            className="mt-3 space-y-3 border-border border-l pl-4"
-          >
-            {revisions.map((revision) => (
-              <li
-                key={revision.sequence}
-                className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[auto_auto_1fr]"
-              >
-                <HistoryActionBadge entry={revision} />
-                <HistoryTime entry={revision} className="pt-1" />
-                <HistoryMessage entry={revision} className="col-span-full sm:col-span-1" />
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <HistoryMessage entry={entry} />
+        {!grouped && (
+          <HistoryTime
+            entry={entry}
+            className="hidden sm:col-start-3 sm:row-start-1 sm:block sm:pt-1"
+          />
         )}
         {entry.available && from != null && to != null && (
-          <Collapsible.Trigger
-            render={<Button variant="ghost" size="sm" />}
-            className="group mt-2"
-            aria-label={`Changes to ${entry.name} on ${entry.createdAt.toLocaleDateString([], { dateStyle: 'full' })}`}
+          <Collapsible.Panel
+            className={cn('col-span-full min-w-0 pt-3', !grouped && 'sm:col-span-2 sm:col-start-2')}
           >
-            Changes
-            <ChevronDown className="size-4 transition-transform group-data-panel-open:rotate-180 motion-reduce:transition-none" />
-          </Collapsible.Trigger>
+            <KnowledgePageRevisionComparison
+              readableId={entry.readableId}
+              from={from - 1}
+              to={to}
+            />
+          </Collapsible.Panel>
         )}
       </div>
-      {!grouped && (
-        <HistoryTime
-          entry={entry}
-          className="hidden sm:col-start-3 sm:row-start-1 sm:block sm:pt-1"
-        />
-      )}
-      {entry.available && from != null && to != null && (
-        <Collapsible.Panel
-          className={cn('col-span-full min-w-0 pt-3', !grouped && 'sm:col-span-2 sm:col-start-2')}
-        >
-          <KnowledgePageRevisionComparison readableId={entry.readableId} from={from - 1} to={to} />
-        </Collapsible.Panel>
-      )}
     </Collapsible.Root>
   );
 }
