@@ -50,21 +50,76 @@ const actions = {
   deleted: { label: 'Deleted', className: 'bg-diff-removed/10 text-diff-removed' },
 };
 
-function HistoryItem({ entry }: { entry: HistoryEntry }) {
-  const resource = resources[entry.resourceType];
+type HistoryItemGroup = { entry: HistoryEntry; revisions: HistoryEntry[] };
+
+function groupDailyHistory(entries: HistoryEntry[]) {
+  const items: HistoryItemGroup[] = [];
+  const pages = new Map<string, HistoryItemGroup>();
+  for (const entry of entries) {
+    if (entry.resourceType !== 'page' || entry.pageRevisionNumber === null) {
+      items.push({ entry, revisions: [] });
+      continue;
+    }
+    const group = pages.get(entry.readableId);
+    if (group) {
+      group.revisions.push(entry);
+      continue;
+    }
+    const item = { entry, revisions: [entry] };
+    pages.set(entry.readableId, item);
+    items.push(item);
+  }
+  return items;
+}
+
+function HistoryTime({ entry }: { entry: HistoryEntry }) {
+  return (
+    <time
+      className="whitespace-nowrap pt-1 text-muted-foreground text-xs tabular-nums"
+      dateTime={entry.createdAt.toISOString()}
+    >
+      {entry.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    </time>
+  );
+}
+
+function HistoryActionBadge({ entry }: { entry: HistoryEntry }) {
   const action = actions[entry.action];
+  return (
+    <Badge
+      className={cn(
+        'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
+        action.className,
+      )}
+    >
+      {action.label}
+    </Badge>
+  );
+}
+
+function HistoryMessage({ entry }: { entry: HistoryEntry }) {
+  return (
+    <div className="col-span-full min-w-0 sm:col-span-1">
+      <p className="break-words text-sm leading-6">{entry.message}</p>
+      {entry.clientName !== null && (
+        <p className="mt-0.5 text-muted-foreground text-xs">by {entry.clientName}</p>
+      )}
+    </div>
+  );
+}
+
+function HistoryItem({ entry, revisions }: HistoryItemGroup) {
+  const resource = resources[entry.resourceType];
   const Icon = resource.icon;
   return (
-    <li className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4">
-      <Badge
-        className={cn(
-          'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
-          action.className,
-        )}
+    <li className="flex items-start gap-3 py-4 sm:gap-4">
+      <span
+        className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+        aria-hidden="true"
       >
-        {action.label}
-      </Badge>
-      <div className="col-start-2 row-span-2 min-w-0 sm:row-span-1">
+        <Icon className="size-5 stroke-[1.5]" />
+      </span>
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="break-words font-semibold text-sm leading-6">
             {entry.available ? (
@@ -80,22 +135,24 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
               <span>{entry.name}</span>
             )}
           </h3>
-          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
-            <Icon className="size-3" aria-hidden="true" />
-            {resource.label}
-          </span>
+          <span className="text-muted-foreground text-xs">{resource.label}</span>
         </div>
-        <p className="break-words text-sm leading-6">{entry.message}</p>
-        {entry.clientName !== null && (
-          <p className="mt-0.5 text-muted-foreground text-xs">by {entry.clientName}</p>
-        )}
+        <ol
+          aria-label={revisions.length > 0 ? 'Revisions that day' : 'Changes that day'}
+          className="mt-3 space-y-3"
+        >
+          {(revisions.length > 0 ? revisions : [entry]).map((revision) => (
+            <li
+              key={revision.sequence}
+              className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[auto_auto_1fr]"
+            >
+              <HistoryTime entry={revision} />
+              <HistoryActionBadge entry={revision} />
+              <HistoryMessage entry={revision} />
+            </li>
+          ))}
+        </ol>
       </div>
-      <time
-        className="col-start-1 row-start-2 whitespace-nowrap text-muted-foreground text-xs tabular-nums sm:col-start-3 sm:row-start-1 sm:pt-1"
-        dateTime={entry.createdAt.toISOString()}
-      >
-        {entry.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </time>
     </li>
   );
 }
@@ -147,15 +204,10 @@ function HistoryRoute() {
   const { profile } = Route.useRouteContext();
   const { resourceType } = Route.useSearch();
   const query = useInfiniteQuery(historyQueryOptions(resourceType));
-  const days = new Map<string, { date: Date; entries: HistoryEntry[] }>();
-  for (const page of query.data?.pages ?? []) {
-    for (const entry of page.items) {
-      const key = entry.createdAt.toLocaleDateString();
-      const group = days.get(key) ?? { date: entry.createdAt, entries: [] };
-      group.entries.push(entry);
-      days.set(key, group);
-    }
-  }
+  const days = (query.data?.pages ?? []).flatMap((page) => {
+    const first = page.items[0];
+    return first ? [{ date: first.createdAt, items: groupDailyHistory(page.items) }] : [];
+  });
   if (!profile) {
     return null;
   }
@@ -188,13 +240,13 @@ function HistoryRoute() {
                   Retry
                 </Button>
               </div>
-            ) : days.size === 0 ? (
+            ) : days.length === 0 ? (
               <HistoryEmptyState filtered={Boolean(resourceType)} />
             ) : (
               <div className="space-y-8">
-                {Array.from(days, ([key, day]) => (
+                {days.map((day) => (
                   <section
-                    key={key}
+                    key={day.date.toLocaleDateString()}
                     aria-label={day.date.toLocaleDateString([], { dateStyle: 'full' })}
                   >
                     <h2 className="border-border border-b pb-3 font-semibold text-base tracking-tight">
@@ -210,8 +262,8 @@ function HistoryRoute() {
                       </time>
                     </h2>
                     <ol className="divide-y divide-border/60">
-                      {day.entries.map((entry) => (
-                        <HistoryItem key={entry.sequence} entry={entry} />
+                      {day.items.map((item) => (
+                        <HistoryItem key={item.entry.sequence} {...item} />
                       ))}
                     </ol>
                   </section>
