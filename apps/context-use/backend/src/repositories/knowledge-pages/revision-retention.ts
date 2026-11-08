@@ -20,8 +20,13 @@ export async function prunePageRevisions({
   // Prune only on saves, keeping the union of the latest revisions and the inclusive time window.
   // Current publication and valid pending approvals protect extra revisions until that use ends.
   // Publication, approval creation, and this save share the database write lock.
-  // Queue file paths in the same transaction as row deletion: storage cannot commit with SQLite.
-  // The queue survives crashes and failed file deletions; a later save retries cleanup after commit.
+
+  // SQLite and object storage cannot share a transaction. Deleting objects first could leave
+  // readable or publishable revisions without content if the database transaction rolls back.
+  // Deleting rows first without a queue would lose the storage keys if cleanup fails or crashes.
+  // Queue the keys and remove revision rows atomically under the publication write lock, then
+  // delete objects after commit and acknowledge each completed queue entry. Pending entries
+  // survive restarts and retry on the same page's next successful save; there is no background retry.
   await db`
     insert into "knowledge_page_revision_deletion_queue" ("storage_key", "owner_id", "page_id")
     select revision."storage_key", revision."owner_id", revision."page_id"
