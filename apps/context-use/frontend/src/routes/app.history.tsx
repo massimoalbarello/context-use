@@ -55,16 +55,11 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
   const action = actions[entry.action];
   const Icon = resource.icon;
   return (
-    <li className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[5.5rem_1fr_auto] sm:gap-x-4">
-      <Badge
-        className={cn(
-          'mt-0.5 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
-          action.className,
-        )}
-      >
-        {action.label}
-      </Badge>
-      <div className="col-start-2 row-span-2 min-w-0 sm:row-span-1">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-4">
+      <div className="row-span-2 flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:row-span-1">
+        <Icon className="size-5" aria-hidden="true" />
+      </div>
+      <div className="col-start-2 min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="break-words font-semibold text-sm leading-6">
             {entry.available ? (
@@ -80,10 +75,15 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
               <span>{entry.name}</span>
             )}
           </h3>
-          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
-            <Icon className="size-3" aria-hidden="true" />
-            {resource.label}
-          </span>
+          <span className="text-muted-foreground text-xs">{resource.label}</span>
+          <Badge
+            className={cn(
+              'rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
+              action.className,
+            )}
+          >
+            {action.label}
+          </Badge>
         </div>
         <p className="break-words text-sm leading-6">{entry.message}</p>
         {entry.clientName !== null && (
@@ -91,7 +91,7 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
         )}
       </div>
       <time
-        className="col-start-1 row-start-2 whitespace-nowrap text-muted-foreground text-xs tabular-nums sm:col-start-3 sm:row-start-1 sm:pt-1"
+        className="col-start-2 row-start-2 whitespace-nowrap text-muted-foreground text-xs tabular-nums sm:col-start-3 sm:row-start-1 sm:pt-1"
         dateTime={entry.createdAt.toISOString()}
       >
         {entry.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
