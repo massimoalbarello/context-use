@@ -56,20 +56,18 @@ function HistoryItem({ entry }: { entry: HistoryEntry }) {
   const Icon = resource.icon;
   return (
     <li className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-4">
-      <div className="row-span-2 flex w-22 flex-col items-start gap-2 sm:row-span-1 sm:w-36 sm:flex-row sm:gap-4">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          <Icon className="size-5" aria-hidden="true" />
-        </div>
+      <div className="row-span-2 flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:row-span-1">
+        <Icon className="size-5" aria-hidden="true" />
+      </div>
+      <div className="col-start-2 min-w-0">
         <Badge
           className={cn(
-            'rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide sm:mt-0.5',
+            'mb-1 rounded-full border-0 px-2.5 py-1 font-semibold text-[10px] uppercase tracking-wide',
             action.className,
           )}
         >
           {action.label}
         </Badge>
-      </div>
-      <div className="col-start-2 min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <h3 className="break-words font-semibold text-sm leading-6">
             {entry.available ? (
