@@ -50,23 +50,24 @@ const actions = {
   deleted: { label: 'Deleted', className: 'bg-diff-removed/10 text-diff-removed' },
 };
 
-type HistoryItemGroup = { entry: HistoryEntry; revisions: HistoryEntry[] };
+type HistoryItemGroup = { entry: HistoryEntry; changes: HistoryEntry[] };
 
 function groupDailyHistory(entries: HistoryEntry[]) {
   const items: HistoryItemGroup[] = [];
-  const pages = new Map<string, HistoryItemGroup>();
+  const resources = new Map<string, HistoryItemGroup>();
   for (const entry of entries) {
-    if (entry.resourceType !== 'page' || entry.pageRevisionNumber === null) {
-      items.push({ entry, revisions: [] });
+    if (entry.resourceType === 'page' && entry.pageRevisionNumber === null) {
+      items.push({ entry, changes: [entry] });
       continue;
     }
-    const group = pages.get(entry.readableId);
+    const key = `${entry.resourceType}:${entry.readableId}`;
+    const group = resources.get(key);
     if (group) {
-      group.revisions.push(entry);
+      group.changes.push(entry);
       continue;
     }
-    const item = { entry, revisions: [entry] };
-    pages.set(entry.readableId, item);
+    const item = { entry, changes: [entry] };
+    resources.set(key, item);
     items.push(item);
   }
   return items;
@@ -108,7 +109,7 @@ function HistoryMessage({ entry }: { entry: HistoryEntry }) {
   );
 }
 
-function HistoryItem({ entry, revisions }: HistoryItemGroup) {
+function HistoryItem({ entry, changes }: HistoryItemGroup) {
   const resource = resources[entry.resourceType];
   const Icon = resource.icon;
   return (
@@ -138,17 +139,21 @@ function HistoryItem({ entry, revisions }: HistoryItemGroup) {
           <span className="text-muted-foreground text-xs">{resource.label}</span>
         </div>
         <ol
-          aria-label={revisions.length > 0 ? 'Revisions that day' : 'Changes that day'}
+          aria-label={
+            entry.resourceType === 'page' && entry.pageRevisionNumber !== null
+              ? 'Revisions that day'
+              : 'Changes that day'
+          }
           className="mt-3 space-y-3"
         >
-          {(revisions.length > 0 ? revisions : [entry]).map((revision) => (
+          {changes.map((change) => (
             <li
-              key={revision.sequence}
+              key={change.sequence}
               className="grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1 sm:grid-cols-[auto_auto_1fr]"
             >
-              <HistoryTime entry={revision} />
-              <HistoryActionBadge entry={revision} />
-              <HistoryMessage entry={revision} />
+              <HistoryTime entry={change} />
+              <HistoryActionBadge entry={change} />
+              <HistoryMessage entry={change} />
             </li>
           ))}
         </ol>

@@ -296,6 +296,115 @@ test('History combines complete daily page revisions across API pages and links 
   });
 });
 
+test('History stacks entities, assets, and records by identity and day across API pages', async () => {
+  const user = userEvent.setup();
+  const resources = [
+    { resourceType: 'entity', latestSequence: 10, createdSequence: 6 },
+    { resourceType: 'asset', latestSequence: 9, createdSequence: 5 },
+    { resourceType: 'record', latestSequence: 8, createdSequence: 4 },
+  ] as const;
+  await withHistory({
+    read: (url) => {
+      if (!url.searchParams.has('cursor')) {
+        return Response.json({
+          items: [
+            ...resources.map(({ resourceType, latestSequence }) =>
+              entry({
+                sequence: latestSequence,
+                resourceType,
+                readableId: 'shared-id',
+                name: `Latest ${resourceType}`,
+                action: resourceType === 'record' ? 'deleted' : 'updated',
+                available: resourceType !== 'record',
+                message: `Latest ${resourceType} change`,
+                createdAt: new Date('2026-09-21T18:00:00'),
+              }),
+            ),
+            entry({
+              sequence: 7,
+              resourceType: 'page',
+              readableId: 'shared-id',
+              name: 'Separate page',
+              pageRevisionNumber: 1,
+              action: 'created',
+            }),
+          ],
+          nextCursor: 'same-day',
+        } satisfies HistoryPage);
+      }
+      expect(url.searchParams.get('cursor')).toBe('same-day');
+      return Response.json({
+        items: [
+          ...resources.map(({ resourceType, createdSequence }) =>
+            entry({
+              sequence: createdSequence,
+              resourceType,
+              readableId: 'shared-id',
+              name: `Original ${resourceType}`,
+              action: 'created',
+              available: resourceType !== 'record',
+              message: `Created ${resourceType}`,
+              clientName: null,
+              createdAt: new Date('2026-09-21T09:00:00'),
+            }),
+          ),
+          entry({
+            sequence: 3,
+            readableId: 'shared-id',
+            name: 'Yesterday entity',
+            message: 'Yesterday change',
+            createdAt: new Date('2026-09-20T23:59:00'),
+          }),
+        ],
+        nextCursor: null,
+      } satisfies HistoryPage);
+    },
+    run: async () => {
+      await screen.findByRole('heading', { name: 'Latest entity', level: 3 });
+      expect(screen.getAllByRole('heading', { level: 3 }).map((item) => item.textContent)).toEqual([
+        'Latest entity',
+        'Latest asset',
+        'Latest record',
+        'Separate page',
+      ]);
+      for (const { resourceType } of resources) {
+        const heading = screen.getByRole('heading', { name: `Latest ${resourceType}`, level: 3 });
+        const row = heading.closest('li')!;
+        const changes = within(
+          within(row).getByRole('list', { name: 'Changes that day' }),
+        ).getAllByRole('listitem');
+        expect(changes).toHaveLength(2);
+        expect(within(changes[0]!).getByText(`Latest ${resourceType} change`)).toBeTruthy();
+        expect(within(changes[0]!).getByText('by Research assistant')).toBeTruthy();
+        expect(
+          within(changes[0]!).getByText(resourceType === 'record' ? 'Deleted' : 'Updated'),
+        ).toBeTruthy();
+        expect(within(changes[1]!).getByText(`Created ${resourceType}`)).toBeTruthy();
+        expect(within(changes[1]!).getByText('Created')).toBeTruthy();
+        expect(within(changes[1]!).queryByText(/^by\b/)).toBeNull();
+        expect(changes.map((item) => item.querySelector('time')?.dateTime)).toEqual([
+          new Date('2026-09-21T18:00:00').toISOString(),
+          new Date('2026-09-21T09:00:00').toISOString(),
+        ]);
+        const link = within(row).queryByRole('link');
+        if (resourceType === 'record') {
+          expect(link).toBeNull();
+        } else {
+          expect(link?.getAttribute('href')).toBe(
+            `/app/${resourceType === 'entity' ? 'entities' : 'assets'}/shared-id`,
+          );
+        }
+      }
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      const yesterday = await screen.findByRole('link', { name: 'Yesterday entity' });
+      expect(within(yesterday.closest('li')!).getByText('Yesterday change')).toBeTruthy();
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(2);
+      expect(screen.getAllByRole('heading', { name: 'Latest entity', level: 3 })).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    },
+  });
+});
+
 test('History preserves creation and unavailable revisions in one daily item without offering an unavailable diff', async () => {
   await withHistory({
     read: () =>
