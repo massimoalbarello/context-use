@@ -15,11 +15,13 @@ import {
   OWNER_SYNTHETIC_EMAIL,
   OWNER_USER_ID,
 } from '#backend/lib/auth/owner-registration.ts';
+import { createRequestLogger } from '#backend/lib/request-logger.ts';
 import { McpClientAuthorizationsRepository } from '#backend/repositories/mcp-client-authorizations/repository.ts';
 import { createMcpClientsController } from '#backend/routes/api/mcp/clients/controller.ts';
 import { createAuthDiscoveryController } from '#backend/routes/auth-discovery/controller.ts';
 import { createMcpController } from '#backend/routes/mcp/controller.ts';
 import { McpClientAuthorizationsService } from '#backend/services/mcp-client-authorizations/service.ts';
+import { captureLogs } from '../../support/logging.ts';
 import { unusedMcpTransport } from '../../support/mcp.ts';
 import { withAuthTestDatabase } from './auth-test-database.ts';
 
@@ -576,7 +578,9 @@ describe('MCP OAuth foundation', () => {
           });
           expect(Number(claims.exp) - Number(claims.iat)).toBe(ACCESS_TOKEN_LIFETIME_SECONDS);
 
+          const logs = captureLogs();
           const resourceServerAuth = createAuth({
+            requestLogger: createRequestLogger(logs.logger),
             getMcpAuthorizationId: async (input) =>
               (await clientAuthorizations.authenticate(input))?.clientAuthorizationId ?? null,
             database,
@@ -651,7 +655,7 @@ describe('MCP OAuth foundation', () => {
           expect(cookieOnly.status).toBe(HTTP_UNAUTHORIZED);
 
           const wrongResource = await refreshClient({
-            handler: oauth.handler,
+            handler: resourceServerAuth.handler,
             clientId: client.client_id,
             refreshToken: initial.refresh_token,
             urls,
@@ -828,13 +832,33 @@ describe('MCP OAuth foundation', () => {
           await expect(replayed.json()).resolves.toMatchObject({ error: 'invalid_grant' });
 
           const familyInvalidated = await refreshClient({
-            handler: oauth.handler,
+            handler: resourceServerAuth.handler,
             clientId: client.client_id,
             refreshToken: refreshed.refresh_token,
             urls,
           });
           expect(familyInvalidated.status).toBe(HTTP_BAD_REQUEST);
           expect(await familyInvalidated.json()).toMatchObject({ error: 'invalid_grant' });
+          for (const outcome of [
+            { status: HTTP_OK },
+            { status: HTTP_BAD_REQUEST, oauthError: 'invalid_target' },
+            { status: HTTP_BAD_REQUEST, oauthError: 'invalid_grant' },
+          ]) {
+            expect(logs.records()).toContainEqual(
+              expect.objectContaining({
+                event: 'oauth.token_exchange.completed',
+                grantType: 'refresh_token',
+                ...outcome,
+              }),
+            );
+          }
+          for (const token of [
+            initial.access_token,
+            initial.refresh_token,
+            refreshed.refresh_token,
+          ]) {
+            expect(logs.lines.join('')).not.toContain(token);
+          }
         } finally {
           await authorizationServer.stop(true);
         }

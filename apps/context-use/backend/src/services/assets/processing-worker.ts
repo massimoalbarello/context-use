@@ -1,7 +1,7 @@
 import { createLogger } from '#backend/lib/logger.ts';
 
 const POLL_MS = 2000;
-const logger = createLogger('face-processing');
+const logger = createLogger({ scope: 'face-processing' });
 
 /** Serializes background polling; the face service owns inference, cancellation, and durable work. */
 export class FaceProcessingWorker {

@@ -18,6 +18,7 @@ import { loadEnv } from '#backend/lib/env.ts';
 import { LocalFaceAnalyzer } from '#backend/lib/face-analysis/local-analyzer.ts';
 import { createLogger } from '#backend/lib/logger.ts';
 import { createMcpTransport } from '#backend/lib/mcp/transport.ts';
+import { createRequestLogger } from '#backend/lib/request-logger.ts';
 import { BACKEND_ENVIRONMENT } from '#backend/lib/runtime-config.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
@@ -75,7 +76,8 @@ const authSecret = await loadAuthSecret({
   dataFolder: env.DATA_FOLDER,
   environmentSecret: env.BETTER_AUTH_SECRET,
 });
-const logger = createLogger('main');
+const logger = createLogger({ scope: 'main' });
+const requestLogger = createRequestLogger(createLogger({ scope: 'http' }));
 if (authSecret.source.kind === 'environment') {
   logger.info(`using auth secret from ${BACKEND_ENVIRONMENT.authSecret}`);
 } else if (authSecret.source.kind === 'generated-file') {
@@ -170,6 +172,7 @@ try {
     passkeys: passkeyConfiguration({ baseUrl: env.BASE_URL, nibrunHostname: env.NIBRUN_HOSTNAME }),
   });
   const auth = createAuth({
+    requestLogger,
     getMcpAuthorizationId: async (input) =>
       (await mcpClientAuthorizationsService.authenticate(input))?.clientAuthorizationId ?? null,
     database,
@@ -181,7 +184,7 @@ try {
 
   const catalog = new SyncCatalog(syncProviders);
   sync = await createOpenSync({
-    onEvent: syncEventLogger(createLogger('sync')),
+    onEvent: syncEventLogger(createLogger({ scope: 'sync' })),
     dataDirectory: join(env.DATA_FOLDER, 'open-sync'),
     publicUrl: new URL('/api/open-sync', env.BASE_URL).href,
     authorize: async (request) => {
@@ -210,6 +213,7 @@ try {
     catalog,
   });
   const app = createApp({
+    requestLogger,
     historyService: new HistoryService(new HistoryRepository(retrievalDatabase)),
     managedSyncsService,
     syncFetch: sync.fetch,

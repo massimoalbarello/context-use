@@ -73,7 +73,7 @@ async function listeningAddress(stdout: ReadableStream<Uint8Array>): Promise<URL
   const decoder = new TextDecoder();
   for await (const chunk of stdout.values({ preventCancel: true })) {
     output += decoder.decode(chunk, { stream: true });
-    const match = output.match(/listening on (http:\/\/[^\s]+)/);
+    const match = output.match(/listening on (http:\/\/[^\s"]+)/);
     if (match) {
       const url = new URL(match[1]!);
       url.hostname = '127.0.0.1';

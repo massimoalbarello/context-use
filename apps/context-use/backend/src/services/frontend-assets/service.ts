@@ -10,7 +10,7 @@ const REVALIDATE_CACHE_CONTROL = 'no-cache';
 
 export class FrontendAssetsService {
   private readonly assets: FrontendAssetsRepositoryContract;
-  private readonly logger = createLogger('FrontendAssetsService');
+  private readonly logger = createLogger({ scope: 'FrontendAssetsService' });
 
   constructor(assets: FrontendAssetsRepositoryContract) {
     this.assets = assets;

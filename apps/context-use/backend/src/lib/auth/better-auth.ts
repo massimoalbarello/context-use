@@ -5,7 +5,12 @@ import { getOAuthProviderState } from '@better-auth/oauth-provider';
 import { passkey } from '@better-auth/passkey';
 import { bunSqlAdapter } from '@ilbertt/better-auth-bun-sql';
 import { type BetterAuthOptions, betterAuth } from 'better-auth';
-import { APIError, createAuthMiddleware, getAuthoritativeSessionFromCtx } from 'better-auth/api';
+import {
+  APIError,
+  createAuthMiddleware,
+  getAuthoritativeSessionFromCtx,
+  isAPIError,
+} from 'better-auth/api';
 import { jwt } from 'better-auth/plugins';
 import type { SQL } from 'bun';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -19,6 +24,8 @@ import {
   ownerRegistrationUser,
 } from '#backend/lib/auth/owner-registration.ts';
 import { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
+import { createLogger } from '#backend/lib/logger.ts';
+import { createRequestLogger, type RequestLogger } from '#backend/lib/request-logger.ts';
 import { mcpClientAuthorizationId } from '#backend/models/mcp-client-authorizations/authorization-id.ts';
 import { MCP_CODE_CHALLENGE_PATTERN } from '#backend/models/mcp-client-authorizations/model.ts';
 
@@ -37,6 +44,8 @@ const REFRESH_TOKEN_RETRY_SECONDS = 30;
 const BETTER_AUTH_API_BASE_PATH = `${API_PATH}${AUTH_ROUTE_PATH}`;
 const BETTER_AUTH_TABLES_PREFIX = 'auth_';
 const PASSKEY_RELYING_PARTY_NAME = 'Context Use';
+const HTTP_OK = 200;
+const HTTP_SERVER_ERROR = 500;
 const PASSKEY_DELETE_PATH = '/passkey/delete-passkey';
 
 function passkeyIdForDeletion(body: unknown): string | null {
@@ -90,6 +99,7 @@ async function mcpAuthorizationRequest(ownerId: string) {
 }
 
 export function createAuthOptions({
+  requestLogger = createRequestLogger(createLogger({ scope: 'oauth' })),
   database,
   baseUrl,
   nibrunHostname,
@@ -97,6 +107,7 @@ export function createAuthOptions({
   fetchClientMetadataResource,
   getMcpAuthorizationId,
 }: {
+  requestLogger?: RequestLogger;
   database: SQL;
   baseUrl: URL;
   nibrunHostname?: string;
@@ -115,6 +126,29 @@ export function createAuthOptions({
     basePath: BETTER_AUTH_API_BASE_PATH,
     secret,
     hooks: {
+      after: createAuthMiddleware((ctx) => {
+        if (ctx.path !== '/oauth2/token' || !ctx.request) {
+          return Promise.resolve();
+        }
+        const error = isAPIError(ctx.context.returned) ? ctx.context.returned : undefined;
+        const status = error?.statusCode ?? HTTP_OK;
+        const grantType =
+          ctx.body?.grant_type === 'refresh_token' || ctx.body?.grant_type === 'authorization_code'
+            ? ctx.body.grant_type
+            : 'other';
+        const logger = requestLogger(ctx.request);
+        const level = status >= HTTP_SERVER_ERROR ? 'error' : error ? 'warn' : 'info';
+        logger[level](
+          {
+            event: 'oauth.token_exchange.completed',
+            grantType,
+            status,
+            oauthError: error?.body?.error,
+          },
+          'OAuth token exchange completed',
+        );
+        return Promise.resolve();
+      }),
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== PASSKEY_DELETE_PATH || !ctx.request || ctx.request.method !== 'POST') {
           return;
@@ -290,6 +324,7 @@ export function createAuthOptions({
 }
 
 export function createAuth(input: {
+  requestLogger?: RequestLogger;
   database: SQL;
   baseUrl: URL;
   nibrunHostname?: string;

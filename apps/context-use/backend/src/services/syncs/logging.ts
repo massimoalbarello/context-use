@@ -1,11 +1,14 @@
 import type { OpenSyncOptions } from '@context-use/open-sync';
-import type { createLogger } from '#backend/lib/logger.ts';
 
-export function syncEventLogger(
-  logger: Pick<ReturnType<typeof createLogger>, 'info' | 'error'>,
-): NonNullable<OpenSyncOptions['onEvent']> {
+export function syncEventLogger(logger: {
+  info: (message: string) => void;
+  error: (message: string) => void;
+}): NonNullable<OpenSyncOptions['onEvent']> {
   return (event) => {
-    const write = event.code === 'cancelled' ? logger.info : logger.error;
-    write(JSON.stringify(event));
+    if (event.code === 'cancelled') {
+      logger.info(JSON.stringify(event));
+    } else {
+      logger.error(JSON.stringify(event));
+    }
   };
 }
