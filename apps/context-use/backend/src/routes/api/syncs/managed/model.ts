@@ -1,5 +1,5 @@
 import { t } from 'elysia';
-import { MANAGED_SYNC_STATES } from '#backend/models/syncs/managed.ts';
+import { MANAGED_SYNC_ACTIONS, MANAGED_SYNC_STATES } from '#backend/models/syncs/managed.ts';
 
 export const ProviderParamsSchema = t.Object({
   providerId: t.String({ pattern: '^[a-z][a-z0-9-]{0,63}$' }),
@@ -52,5 +52,5 @@ export const OAuthAppBodySchema = t.Object(
   { error: oauthAppValidationError },
 );
 export const ActionBodySchema = t.Object({
-  action: t.Union([t.Literal('pause'), t.Literal('resume'), t.Literal('run')]),
+  action: t.UnionEnum(MANAGED_SYNC_ACTIONS),
 });

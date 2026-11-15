@@ -9,17 +9,25 @@ import type {
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import type { JsonObject } from '@context-use/open-sync/json';
 import type { SQL } from 'bun';
+import { z } from 'zod';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
+import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
+import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
 import {
   githubPullRequests,
   stepGithubPullRequests,
 } from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
-import { githubRecord } from '#backend/services/syncs/sources/github/pull-requests/record.ts';
+import {
+  githubRecord,
+  pullSchema,
+} from '#backend/services/syncs/sources/github/pull-requests/record.ts';
+import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
 
@@ -71,6 +79,174 @@ function bundle(records: DeliveredRecord[]): Deliverable {
 function delivery(deliverable: Deliverable) {
   return { scope, config: {}, deliverable, signal: new AbortController().signal };
 }
+
+test('managed historical reprocessing replaces formatting and enriches metadata across restart without duplicating records', async () => {
+  await withRecordTestDatabase({
+    run: async (input) => {
+      const host = await store(input);
+      let reformat = false;
+      let sourceOccurredAt: string | null = null;
+      const registration = {
+        ...definition,
+        definition: {
+          ...definition.definition,
+          kinds: {
+            'pull-request': JSON.parse(
+              JSON.stringify(
+                z.toJSONSchema(
+                  pullSchema.extend({
+                    sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt,
+                  }),
+                ),
+              ),
+            ),
+          },
+        },
+        load: () => ({
+          async step(context: SyncContext) {
+            const step = await stepGithubPullRequests(context);
+            return {
+              ...step,
+              records: step.records.map((record) => {
+                if (record.operation !== 'upsert') {
+                  return record;
+                }
+                return {
+                  ...record,
+                  data: { ...record.data, sourceOccurredAt },
+                  ...(reformat && record.content
+                    ? {
+                        content: {
+                          ...record.content,
+                          body: `## Historical record\n\n${record.content.body}`,
+                        },
+                      }
+                    : {}),
+                };
+              }),
+            };
+          },
+        }),
+      };
+      const options = {
+        databasePath: join(input.dataFolder, 'sync.db'),
+        definitions: [registration],
+        destinationTypes: { 'local-records': host.destination },
+        connector: {
+          bind: async () => ({
+            get: unexpected,
+            action: unexpected,
+            post: ({ body }: { body: JsonObject }) => {
+              const cursor = (body.variables as JsonObject).after;
+              return Promise.resolve({
+                status: 200,
+                headers: {},
+                body:
+                  cursor === null
+                    ? page({ nodes: [pull(), pull({ id: 'PR_two' })], more: true })
+                    : page({ cursor: 'last', nodes: [pull({ id: 'PR_three' })] }),
+              });
+            },
+          }),
+        },
+      };
+      let runtime = createSyncRuntime(options);
+      const reprocess = () =>
+        new ManagedSyncsService({
+          catalog: new SyncCatalog(syncProviders),
+          sync: {
+            api: runtime.api,
+            providers: {
+              credentials: unexpected,
+              connections: unexpected,
+              status: unexpected,
+              configure: unexpected,
+              start: unexpected,
+              connection: unexpected,
+              catalog: unexpected,
+            },
+          },
+        }).update({
+          actorId: OWNER_USER_ID,
+          key: definition.definition.id,
+          action: 'resync',
+        });
+      try {
+        const sync = await runtime.api.createSync({
+          ...scope,
+          definition: definition.definition.id,
+          connection: { id: 'github-owner', service: 'github' },
+          destination: { type: 'local-records', input: {} },
+          config: {},
+        });
+        await runtime.tick();
+        await runtime.tick();
+        await runtime.tick();
+        const original = (await host.list()).items;
+        expect(original).toHaveLength(SOURCE_RECORD_COUNT);
+        reformat = true;
+        await reprocess();
+        await runtime.tick();
+        await runtime.close();
+        runtime = createSyncRuntime(options);
+        await runtime.tick();
+        await runtime.tick();
+        const updated = (await host.list()).items;
+        expect(updated).toEqual(
+          original.map((record) => ({ ...record, updatedAt: expect.any(String) })),
+        );
+        expect(runtime.api.syncs(scope).map(({ id }) => id)).toEqual([sync.id]);
+        expect(runtime.api.status(scope).queue.pendingRecords).toBe(0);
+        for (const record of updated) {
+          const resource = await host.records.findResource({
+            ownerId: OWNER_USER_ID,
+            readableId: record.readableId,
+          });
+          expect(resource?.body).toBe(
+            `## Historical record\n\n${githubRecord(pull({ id: record.source.id })).content.body}`,
+          );
+        }
+        const historyAfterFormatting = (await host.history()).items;
+        expect(historyAfterFormatting).toHaveLength(SOURCE_RECORD_COUNT * 2);
+        sourceOccurredAt = '2026-09-17';
+        await reprocess();
+        await runtime.tick();
+        await runtime.tick();
+        await runtime.tick();
+        const enriched = (await host.list()).items;
+        expect(enriched).toEqual(
+          updated.map((record) => ({
+            ...record,
+            sourceOccurredAt,
+            updatedAt: expect.any(String),
+          })),
+        );
+        for (const record of enriched) {
+          expect(
+            await host.records.findResource({
+              ownerId: OWNER_USER_ID,
+              readableId: record.readableId,
+            }),
+          ).toMatchObject({
+            sourceOccurredAt,
+            body: `## Historical record\n\n${githubRecord(pull({ id: record.source.id })).content.body}`,
+          });
+        }
+        const history = (await host.history()).items;
+        expect(history).toHaveLength(historyAfterFormatting.length + SOURCE_RECORD_COUNT);
+        await reprocess();
+        await runtime.tick();
+        await runtime.tick();
+        await runtime.tick();
+        expect((await host.list()).items).toEqual(enriched);
+        expect((await host.history()).items).toEqual(history);
+        expect(runtime.api.status(scope).queue.pendingRecords).toBe(0);
+      } finally {
+        await runtime.close();
+      }
+    },
+  });
+});
 
 test('npm engine immediately backfills native pages across restart, then polls only the updated prefix', async () => {
   await withRecordTestDatabase({
