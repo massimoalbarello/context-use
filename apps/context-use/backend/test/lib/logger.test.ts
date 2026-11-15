@@ -52,3 +52,14 @@ test('redacts credential fields in events, child context, and HTTP headers witho
   });
   expect(fields.refresh_token).toBe('private-refresh');
 });
+
+test('an unavailable destination does not fail application logging', () => {
+  const logger = createLogger({
+    destination: {
+      write: () => {
+        throw new Error('Sink unavailable');
+      },
+    },
+  });
+  expect(() => logger.info({ event: 'job.completed' }, 'Job completed')).not.toThrow();
+});

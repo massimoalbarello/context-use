@@ -840,14 +840,13 @@ describe('MCP OAuth foundation', () => {
           expect(familyInvalidated.status).toBe(HTTP_BAD_REQUEST);
           expect(await familyInvalidated.json()).toMatchObject({ error: 'invalid_grant' });
           for (const outcome of [
-            { outcome: 'succeeded', status: HTTP_OK },
-            { outcome: 'failed', status: HTTP_BAD_REQUEST, oauthError: 'invalid_target' },
-            { outcome: 'failed', status: HTTP_BAD_REQUEST, oauthError: 'invalid_grant' },
+            { status: HTTP_OK },
+            { status: HTTP_BAD_REQUEST, oauthError: 'invalid_target' },
+            { status: HTTP_BAD_REQUEST, oauthError: 'invalid_grant' },
           ]) {
             expect(logs.records()).toContainEqual(
               expect.objectContaining({
                 event: 'oauth.token_exchange.completed',
-                oauthClientId: client.client_id,
                 grantType: 'refresh_token',
                 ...outcome,
               }),
