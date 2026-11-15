@@ -46,6 +46,8 @@ test('historical reprocessing validates the action and uses the authenticated ow
     list: () => Promise.resolve([]),
     configureApp: () => Promise.resolve(),
     connect: () => Promise.resolve({ authorizationUrl: null }),
+    reauthorize: () =>
+      Promise.resolve({ authorizationUrl: 'https://github.com/login/oauth/authorize' }),
     completeConnection: () => Promise.resolve(),
     update: (input) => {
       updates.push(input);

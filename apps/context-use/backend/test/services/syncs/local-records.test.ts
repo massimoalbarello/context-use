@@ -9,8 +9,10 @@ import type {
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import type { JsonObject } from '@context-use/open-sync/json';
 import type { SQL } from 'bun';
+import { z } from 'zod';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
+import { RecordInputSchema } from '#backend/models/records/model.ts';
 import { HistoryRepository } from '#backend/repositories/history/repository.ts';
 import { RecordsRepository } from '#backend/repositories/records/repository.ts';
 import { RecordsService } from '#backend/services/records/service.ts';
@@ -21,7 +23,10 @@ import {
   githubPullRequests,
   stepGithubPullRequests,
 } from '#backend/services/syncs/sources/github/pull-requests/definition.ts';
-import { githubRecord } from '#backend/services/syncs/sources/github/pull-requests/record.ts';
+import {
+  githubRecord,
+  pullSchema,
+} from '#backend/services/syncs/sources/github/pull-requests/record.ts';
 import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now, page, pull } from './github-fixture.ts';
@@ -75,29 +80,50 @@ function delivery(deliverable: Deliverable) {
   return { scope, config: {}, deliverable, signal: new AbortController().signal };
 }
 
-test('managed historical reprocessing replaces formatting at unchanged source timestamps across restart without duplicating records', async () => {
+test('managed historical reprocessing replaces formatting and enriches metadata across restart without duplicating records', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       const host = await store(input);
       let reformat = false;
+      let sourceOccurredAt: string | null = null;
       const registration = {
         ...definition,
+        definition: {
+          ...definition.definition,
+          kinds: {
+            'pull-request': JSON.parse(
+              JSON.stringify(
+                z.toJSONSchema(
+                  pullSchema.extend({
+                    sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt,
+                  }),
+                ),
+              ),
+            ),
+          },
+        },
         load: () => ({
           async step(context: SyncContext) {
             const step = await stepGithubPullRequests(context);
             return {
               ...step,
-              records: step.records.map((record) =>
-                reformat && record.operation === 'upsert' && record.content
-                  ? {
-                      ...record,
-                      content: {
-                        ...record.content,
-                        body: `## Historical record\n\n${record.content.body}`,
-                      },
-                    }
-                  : record,
-              ),
+              records: step.records.map((record) => {
+                if (record.operation !== 'upsert') {
+                  return record;
+                }
+                return {
+                  ...record,
+                  data: { ...record.data, sourceOccurredAt },
+                  ...(reformat && record.content
+                    ? {
+                        content: {
+                          ...record.content,
+                          body: `## Historical record\n\n${record.content.body}`,
+                        },
+                      }
+                    : {}),
+                };
+              }),
             };
           },
         }),
@@ -180,13 +206,39 @@ test('managed historical reprocessing replaces formatting at unchanged source ti
             `## Historical record\n\n${githubRecord(pull({ id: record.source.id })).content.body}`,
           );
         }
-        const history = (await host.history()).items;
-        expect(history).toHaveLength(SOURCE_RECORD_COUNT * 2);
+        const historyAfterFormatting = (await host.history()).items;
+        expect(historyAfterFormatting).toHaveLength(SOURCE_RECORD_COUNT * 2);
+        sourceOccurredAt = '2026-09-17';
         await reprocess();
         await runtime.tick();
         await runtime.tick();
         await runtime.tick();
-        expect((await host.list()).items).toEqual(updated);
+        const enriched = (await host.list()).items;
+        expect(enriched).toEqual(
+          updated.map((record) => ({
+            ...record,
+            sourceOccurredAt,
+            updatedAt: expect.any(String),
+          })),
+        );
+        for (const record of enriched) {
+          expect(
+            await host.records.findResource({
+              ownerId: OWNER_USER_ID,
+              readableId: record.readableId,
+            }),
+          ).toMatchObject({
+            sourceOccurredAt,
+            body: `## Historical record\n\n${githubRecord(pull({ id: record.source.id })).content.body}`,
+          });
+        }
+        const history = (await host.history()).items;
+        expect(history).toHaveLength(historyAfterFormatting.length + SOURCE_RECORD_COUNT);
+        await reprocess();
+        await runtime.tick();
+        await runtime.tick();
+        await runtime.tick();
+        expect((await host.list()).items).toEqual(enriched);
         expect((await host.history()).items).toEqual(history);
         expect(runtime.api.status(scope).queue.pendingRecords).toBe(0);
       } finally {
