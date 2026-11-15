@@ -3,7 +3,7 @@ import type { HealthRepositoryContract } from '#backend/repositories/health/repo
 
 export class HealthService {
   private readonly healthRepo: HealthRepositoryContract;
-  private readonly logger = createLogger('HealthService');
+  private readonly logger = createLogger({ scope: 'HealthService' });
 
   constructor(healthRepo: HealthRepositoryContract) {
     this.healthRepo = healthRepo;

@@ -20,7 +20,7 @@ const ANALYSIS_TIMEOUT_MS = 90_000;
 const MODEL_RETRY_MS = 30_000;
 const REMATCH_BATCH_SIZE = 50;
 const DEFAULT_IMAGE_LIMIT = 30;
-const logger = createLogger('face-analysis');
+const logger = createLogger({ scope: 'face-analysis' });
 
 type AssetInput = { ownerId: string; readableId: string };
 

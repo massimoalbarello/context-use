@@ -44,7 +44,7 @@ function contentHash(markdown: string): string {
 }
 
 export class KnowledgePagesService {
-  private readonly logger = createLogger('knowledge-pages');
+  private readonly logger = createLogger({ scope: 'knowledge-pages' });
   private readonly pages: KnowledgePagesRepositoryContract;
   private readonly storage: StorageClient;
 

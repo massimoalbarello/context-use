@@ -8,7 +8,7 @@ export function createHealthController({
 }: {
   healthService: HealthServiceContract;
 }) {
-  const logger = createLogger('healthController');
+  const logger = createLogger({ scope: 'healthController' });
   return new Elysia().get(
     '/health',
     async ({ status }) => {

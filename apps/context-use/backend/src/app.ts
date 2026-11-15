@@ -4,6 +4,7 @@ import { type Auth, sessionSecuritySchemes } from '#backend/lib/auth/better-auth
 import { createOwnerAuth } from '#backend/lib/auth/owner-auth.ts';
 import { elysiaErrorHandler } from '#backend/lib/errors.ts';
 import type { McpTransportContract } from '#backend/lib/mcp/transport.ts';
+import type { RequestLogger } from '#backend/lib/request-logger.ts';
 import { createRequestResponsePlugin } from '#backend/lib/request-response.ts';
 import { apiKeySecuritySchemes } from '#backend/routes/api/api-keys/model.ts';
 import { createApiController } from '#backend/routes/api/controller.ts';
@@ -46,6 +47,7 @@ import type { ManagedSyncsServiceContract } from '#backend/services/syncs/manage
 const OPENAPI_PATH = '/openapi';
 
 export function createApp({
+  requestLogger,
   auth: authentication,
   assetsService,
   assetTransferCapabilities,
@@ -71,6 +73,7 @@ export function createApp({
   syncFetch,
 }: {
   auth: Auth;
+  requestLogger?: RequestLogger;
   syncFetch: SyncFetch;
   managedSyncsService: ManagedSyncsServiceContract;
   assetsService: AssetsServiceContract;
@@ -100,7 +103,7 @@ export function createApp({
   return new Elysia()
     .use(createFrontendAssetsController({ frontendAssetsService }))
     .onError(elysiaErrorHandler)
-    .use(createRequestResponsePlugin())
+    .use(createRequestResponsePlugin({ requestLogger }))
     .use(
       openapi({
         path: OPENAPI_PATH,

@@ -2,7 +2,7 @@ import type { SQL } from 'bun';
 import { getMigrations } from '#backend/lib/assets.ts';
 import { createLogger } from '#backend/lib/logger.ts';
 
-const logger = createLogger('db/migrate');
+const logger = createLogger({ scope: 'db/migrate' });
 
 const MIGRATIONS_TABLE = '__migrations';
 const MIGRATION_FILE_EXTENSION = '.sql';

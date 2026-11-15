@@ -19,6 +19,9 @@ import {
   ownerRegistrationUser,
 } from '#backend/lib/auth/owner-registration.ts';
 import { passkeyConfiguration } from '#backend/lib/auth/passkey-configuration.ts';
+import { logTokenExchanges } from '#backend/lib/auth/token-exchange-logging.ts';
+import { createLogger } from '#backend/lib/logger.ts';
+import { createRequestLogger, type RequestLogger } from '#backend/lib/request-logger.ts';
 import { mcpClientAuthorizationId } from '#backend/models/mcp-client-authorizations/authorization-id.ts';
 import { MCP_CODE_CHALLENGE_PATTERN } from '#backend/models/mcp-client-authorizations/model.ts';
 
@@ -290,6 +293,7 @@ export function createAuthOptions({
 }
 
 export function createAuth(input: {
+  requestLogger?: RequestLogger;
   database: SQL;
   baseUrl: URL;
   nibrunHostname?: string;
@@ -303,9 +307,11 @@ export function createAuth(input: {
 
   return {
     passkeyOrigins: options.trustedOrigins,
-    handler(request: Request) {
-      return auth.handler(request);
-    },
+    handler: logTokenExchanges({
+      handler: (request) => auth.handler(request),
+      tokenPath: `${BETTER_AUTH_API_BASE_PATH}/oauth2/token`,
+      requestLogger: input.requestLogger ?? createRequestLogger(createLogger({ scope: 'oauth' })),
+    }),
     async getSession({ headers }: { headers: Headers }) {
       return await auth.api.getSession({ headers });
     },
