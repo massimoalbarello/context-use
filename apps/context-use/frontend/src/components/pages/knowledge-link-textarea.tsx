@@ -1,6 +1,8 @@
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { useEffect, useId, useRef, useState } from 'react';
+import { Popover, PopoverContent } from '@repo/ui/popover';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import getCaretCoordinates from 'textarea-caret';
 import type { KnowledgeSuggestion } from '../../queries/knowledge-suggestions';
 import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent } from '../entities/entity-link';
@@ -109,8 +111,11 @@ export function KnowledgeLinkTextarea({
 }) {
   const listId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [link, setLink] = useState<ActiveKnowledgeLink | null>(null);
+  const [scrollOffset, setScrollOffset] = useState({ left: 0, top: 0 });
   const [activeIndex, setActiveIndex] = useState(0);
   const suggestionsOpen = Boolean(link?.query.trim());
   const suggestions = suggestionsOpen && !loading && !error ? results : [];
@@ -118,6 +123,25 @@ export function KnowledgeLinkTextarea({
   const activeOptionId = activeSuggestion
     ? `${listId}-${suggestionId(activeSuggestion)}`
     : undefined;
+  const caretAnchor = useMemo(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || !link) {
+      return null;
+    }
+    return {
+      contextElement: textarea,
+      getBoundingClientRect() {
+        const bounds = textarea.getBoundingClientRect();
+        const caret = getCaretCoordinates(textarea, link.end);
+        return new DOMRect(
+          bounds.left + caret.left - scrollOffset.left,
+          bounds.top + caret.top - scrollOffset.top,
+          0,
+          caret.height,
+        );
+      },
+    };
+  }, [link, scrollOffset]);
 
   useEffect(() => {
     const menu = menuRef.current;
@@ -155,7 +179,10 @@ export function KnowledgeLinkTextarea({
       className="relative min-w-0"
       aria-label="Knowledge editor"
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
+        if (
+          !event.currentTarget.contains(event.relatedTarget) &&
+          !popupRef.current?.contains(event.relatedTarget)
+        ) {
           setLink(null);
           onQueryChange(null);
         }
@@ -168,6 +195,12 @@ export function KnowledgeLinkTextarea({
         rows={12}
         value={value}
         onBlur={onBlur}
+        onScroll={(event) =>
+          setScrollOffset({
+            left: event.currentTarget.scrollLeft,
+            top: event.currentTarget.scrollTop,
+          })
+        }
         onChange={(event) => {
           const { value: markdown, selectionStart: cursor } = event.currentTarget;
           onChange(markdown);
@@ -208,6 +241,9 @@ export function KnowledgeLinkTextarea({
               if (activeSuggestion) {
                 event.preventDefault();
                 selectSuggestion(activeSuggestion);
+              } else if (event.key === 'Tab' && !event.shiftKey && error) {
+                event.preventDefault();
+                retryRef.current?.focus();
               }
               break;
           }
@@ -223,8 +259,28 @@ export function KnowledgeLinkTextarea({
         spellCheck
         className="block min-h-64 resize-y font-mono leading-relaxed md:min-h-72"
       />
-      {suggestionsOpen && (
-        <div className="absolute top-full left-0 z-10 mt-2 w-full max-w-xl rounded-lg border border-border bg-popover p-1 shadow-lg">
+      <Popover
+        open={suggestionsOpen}
+        // biome-ignore lint/complexity/useMaxParams: Base UI provides the open state and event details separately.
+        onOpenChange={(open, details) => {
+          if (details.event.target === textareaRef.current) {
+            details.cancel();
+          } else if (!open) {
+            setLink(null);
+            onQueryChange(null);
+          }
+        }}
+      >
+        <PopoverContent
+          ref={popupRef}
+          anchor={caretAnchor}
+          align="start"
+          positionMethod="fixed"
+          initialFocus={false}
+          finalFocus={false}
+          role="presentation"
+          className="flex max-h-(--available-height) w-xl max-w-(--available-width) flex-col p-1"
+        >
           <div className="flex items-center justify-between gap-2 px-3 py-2 text-muted-foreground text-xs">
             <p role="status">
               {pickerStatus({
@@ -237,6 +293,7 @@ export function KnowledgeLinkTextarea({
             </p>
             {error && (
               <Button
+                ref={retryRef}
                 type="button"
                 variant="ghost"
                 size="sm"
@@ -252,7 +309,7 @@ export function KnowledgeLinkTextarea({
           </div>
           <div
             ref={menuRef}
-            className="grid max-h-64 gap-1 overflow-y-auto"
+            className="grid max-h-64 min-h-0 gap-1 overflow-y-auto"
             id={listId}
             role="listbox"
             aria-label="Knowledge"
@@ -291,8 +348,8 @@ export function KnowledgeLinkTextarea({
               );
             })}
           </div>
-        </div>
-      )}
+        </PopoverContent>
+      </Popover>
     </fieldset>
   );
 }

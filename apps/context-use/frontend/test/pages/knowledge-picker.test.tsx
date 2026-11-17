@@ -134,6 +134,18 @@ test('clearing the query closes the picker without fetching initial suggestions'
   expect((textarea as HTMLTextAreaElement).value).toBe('# Evidence\n\n@  \n');
 });
 
+test('pointer selection in the popup inserts the resource and returns focus to the editor', async () => {
+  const { user, textarea } = setup(async () => Response.json(response([entityHit('Found')])));
+  await user.type(textarea, '@lookup');
+  await user.click(await screen.findByRole('option', { name: /Found/ }));
+  await waitFor(() => expect(document.activeElement).toBe(textarea));
+  expect((textarea as HTMLTextAreaElement).value).toBe(
+    '# Evidence\n\n[Found](context-use://entity/Found) ',
+  );
+  expect(textarea.getAttribute('aria-expanded')).toBe('false');
+  expect(textarea.hasAttribute('aria-activedescendant')).toBe(false);
+});
+
 test('a search completing after its query is deleted cannot reopen the picker', async () => {
   const pending = Promise.withResolvers<Response>();
   const { user, textarea, requests } = setup(() => pending.promise);
