@@ -27,12 +27,13 @@ export interface SyncProviderSummary {
   id: string;
   name: string;
   description: string;
+  apiKeySetupUrl: string | null;
   oauthApp: {
     configured: boolean;
     callbackUrl: string;
     createAppUrl: string | null;
     automaticRegistration: boolean;
-  };
+  } | null;
   account: { name: string | null; status: 'disconnected' | 'connected' | 'error' };
   syncs: ManagedSyncSummary[];
 }

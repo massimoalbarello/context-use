@@ -10,6 +10,9 @@ export function ProviderAccount(input: {
   onReauthorize: () => void;
 }) {
   const { provider } = input;
+  if (!provider.oauthApp) {
+    return null;
+  }
   return (
     <section aria-label="Account" className="grid gap-5">
       <ResourceDetailHeading

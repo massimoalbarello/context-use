@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   configureOAuthApp,
+  configureSyncApiKey,
   connectSyncProvider,
   managedSyncsQueryKey,
   reauthorizeSyncProvider,
@@ -20,6 +21,16 @@ export function useConfigureOAuthApp() {
 
 export function useConnectSyncProvider() {
   return useProviderAuthorization(connectSyncProvider);
+}
+export function useConfigureSyncApiKey() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: configureSyncApiKey,
+    gcTime: 0,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: managedSyncsQueryKey });
+    },
+  });
 }
 export function useReauthorizeSyncProvider() {
   return useProviderAuthorization(reauthorizeSyncProvider);

@@ -110,17 +110,18 @@ export class ManagedSyncsService {
       this.input.catalog.providers.map(async (provider) => {
         const status = await this.input.sync.providers.status({ ...scope, service: provider.id });
         const oauth = status.setup.oauthClient;
-        if (!oauth) {
+        if (provider.oauth && !oauth) {
           throw new BadRequestError('OAuth app setup is unavailable.');
         }
-        const connection = status.connections[0];
+        const connections = status.connections.filter(
+          (connection) => provider.oauth || connection.authType === 'api_key',
+        );
+        const connection = connections[0];
         const syncs = provider.syncs.map((sync): ManagedSyncSummary => {
           const configuredSync = configuredSyncs.find(
             (item) => item.definition === sync.registration.definition.id,
           );
-          const bound = status.connections.find(
-            (item) => item.id === configuredSync?.connection?.id,
-          );
+          const bound = connections.find((item) => item.id === configuredSync?.connection?.id);
           const polls = configuredSync
             ? this.input.sync.api.polls({ ...scope, id: configuredSync.id }).polls
             : [];
@@ -132,8 +133,11 @@ export class ManagedSyncsService {
             provider: provider.id,
             kinds: Object.keys(sync.registration.definition.kinds),
             ...managedState({
-              configured: oauth.configured || oauth.automaticRegistration === true,
-              connected: Boolean(connection),
+              configured:
+                !provider.oauth ||
+                oauth?.configured === true ||
+                oauth?.automaticRegistration === true,
+              connected: Boolean(bound),
               connectionActive: bound?.status === 'active',
               configuredSync,
               queue: configuredSync
@@ -149,12 +153,16 @@ export class ManagedSyncsService {
           id: provider.id,
           name: provider.name,
           description: provider.description,
-          oauthApp: {
-            configured: oauth.configured,
-            automaticRegistration: oauth.automaticRegistration === true,
-            callbackUrl: oauth.expectedRedirectUri,
-            createAppUrl: provider.oauth.createAppUrl,
-          },
+          apiKeySetupUrl: provider.apiKeySetupUrl ?? null,
+          oauthApp:
+            provider.oauth && oauth
+              ? {
+                  configured: oauth.configured,
+                  automaticRegistration: oauth.automaticRegistration === true,
+                  callbackUrl: oauth.expectedRedirectUri,
+                  createAppUrl: provider.oauth.createAppUrl,
+                }
+              : null,
           account: {
             name: connection?.account ?? null,
             status: connection
@@ -176,8 +184,8 @@ export class ManagedSyncsService {
   }) {
     const scope = this.scope(input.actorId);
     const provider = this.input.catalog.provider(input.providerId);
-    if (!provider.oauth.createAppUrl) {
-      throw new BadRequestError('This provider registers its OAuth app automatically.');
+    if (!provider.oauth?.createAppUrl) {
+      throw new BadRequestError('This provider does not use manual OAuth app setup.');
     }
     await this.serial(async () => {
       try {
@@ -199,6 +207,9 @@ export class ManagedSyncsService {
   }): Promise<{ authorizationUrl: string | null }> {
     const scope = this.scope(input.actorId);
     const provider = this.input.catalog.provider(input.providerId);
+    if (!provider.oauth) {
+      throw new BadRequestError('Save your API key to connect this provider.');
+    }
     return await this.serial(async () => {
       if (
         (await this.input.sync.providers.connections(scope)).some(
@@ -218,13 +229,16 @@ export class ManagedSyncsService {
       return await this.input.sync.providers.start({
         ...scope,
         service: provider.id,
-        authorizationOptionIds: provider.oauth.authorizationOptionIds,
+        authorizationOptionIds: provider.oauth?.authorizationOptionIds,
       });
     });
   }
   async reauthorize(input: { actorId: string; providerId: string }) {
     const scope = this.scope(input.actorId);
     const provider = this.input.catalog.provider(input.providerId);
+    if (!provider.oauth) {
+      throw new BadRequestError('Save a new API key to reauthorize this provider.');
+    }
     return await this.serial(async () => {
       const connection = (await this.input.sync.providers.connections(scope)).find(
         (item) => item.service === provider.id,
@@ -236,8 +250,59 @@ export class ManagedSyncsService {
         ...scope,
         service: provider.id,
         connectionId: connection.id,
-        authorizationOptionIds: provider.oauth.authorizationOptionIds,
+        authorizationOptionIds: provider.oauth?.authorizationOptionIds,
       });
+    });
+  }
+  async configureApiKey(input: { actorId: string; providerId: string; apiKey: string }) {
+    const scope = this.scope(input.actorId);
+    const provider = this.input.catalog.provider(input.providerId);
+    if (!provider.apiKeySetupUrl) {
+      throw new BadRequestError('This provider does not use API keys.');
+    }
+    await this.serial(async () => {
+      const status = await this.input.sync.providers.status({ ...scope, service: provider.id });
+      const connection = status.connections.find((item) => item.authType === 'api_key');
+      // Validate and save through the provider owner before touching the running sync.
+      try {
+        await this.input.sync.providers.credentials({
+          ...scope,
+          service: provider.id,
+          authType: 'api_key',
+          connectionId: connection?.id,
+          values: { apiKey: input.apiKey },
+        });
+      } catch {
+        throw new BadRequestError('Could not save your API key. Check its access and try again.');
+      }
+      const updated = await this.input.sync.providers.status({ ...scope, service: provider.id });
+      const replacement = updated.connections.find((item) => item.authType === 'api_key');
+      if (!replacement) {
+        throw new BadRequestError('API key connection is unavailable. Try saving it again.');
+      }
+      for (const sync of provider.syncs) {
+        const existing = this.configuredSync({ scope, sync });
+        if (!existing) {
+          await this.input.sync.api.createSync({
+            ...scope,
+            definition: sync.registration.definition.id,
+            connection: { id: replacement.id, service: provider.id },
+            config: {},
+            destination: { type: LOCAL_RECORD_DESTINATION, input: {} },
+          });
+          continue;
+        }
+        const wasEnabled = existing.enabled;
+        await this.input.sync.api.setEnabled({ ...scope, id: existing.id, enabled: false });
+        await this.input.sync.api.connectSync({
+          ...scope,
+          id: existing.id,
+          connection: { id: replacement.id, service: provider.id },
+        });
+        if (wasEnabled) {
+          await this.input.sync.api.setEnabled({ ...scope, id: existing.id, enabled: true });
+        }
+      }
     });
   }
   private async activate(input: { scope: Scope; provider: SyncProvider }) {
@@ -296,5 +361,11 @@ export class ManagedSyncsService {
 }
 export type ManagedSyncsServiceContract = Pick<
   ManagedSyncsService,
-  'list' | 'configureApp' | 'connect' | 'reauthorize' | 'completeConnection' | 'update'
+  | 'list'
+  | 'configureApp'
+  | 'configureApiKey'
+  | 'connect'
+  | 'reauthorize'
+  | 'completeConnection'
+  | 'update'
 >;

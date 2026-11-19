@@ -6,6 +6,7 @@ import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import type { ManagedSyncsServiceContract } from '#backend/services/syncs/managed.ts';
 import {
   ActionBodySchema,
+  ApiKeyBodySchema,
   ManagedSyncListSchema,
   OAuthAppBodySchema,
   ProviderParamsSchema,
@@ -42,6 +43,24 @@ export function createManagedSyncsController(input: {
       {
         response: { [StatusMap.OK]: ManagedSyncListSchema },
         detail: { tags: ['Syncs'], summary: 'List locally managed syncs' },
+      },
+    )
+    .post(
+      '/providers/:providerId/api-key',
+      async ({ user, body, params }) => {
+        await input.syncs.configureApiKey({
+          actorId: user.id,
+          providerId: params.providerId,
+          apiKey: body.apiKey,
+        });
+        return null;
+      },
+      {
+        changeMessage: true,
+        params: ProviderParamsSchema,
+        body: ApiKeyBodySchema,
+        response: { [StatusMap.OK]: t.Null() },
+        detail: { tags: ['Syncs'], summary: 'Connect a provider with an API key' },
       },
     )
     .post(

@@ -8,6 +8,7 @@ import type {
 import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { ApiKeySetup } from './api-key-setup';
 import { ManagedSyncCard } from './managed-sync-card';
 import { OAuthAppSetup } from './oauth-app-setup';
 import { ProviderAccount } from './provider-account';
@@ -20,6 +21,7 @@ export function ProviderDetail(input: {
   onConnect: () => void;
   onReauthorize: () => void;
   onSaveApp: (credentials: OAuthAppCredentials) => Promise<void>;
+  onSaveApiKey: (apiKey: string) => Promise<void>;
   onAction: (input: { key: string; action: ManagedSyncAction }) => void;
   pending: boolean;
   error: Error | null;
@@ -46,13 +48,17 @@ export function ProviderDetail(input: {
         </TabsList>
         <TabsContent value="sync" className="pt-7">
           <div className="grid gap-8">
-            {(!provider.oauthApp.configured && !provider.oauthApp.automaticRegistration) ||
+            {(provider.oauthApp &&
+              !provider.oauthApp.configured &&
+              !provider.oauthApp.automaticRegistration) ||
             provider.account.status === 'disconnected' ? (
               <div className="grid justify-items-start gap-4">
                 <Button variant="outline" onClick={() => input.onTabChange('authorization')}>
-                  {provider.oauthApp.configured || provider.oauthApp.automaticRegistration
-                    ? 'Connect account'
-                    : 'Set up OAuth app'}
+                  {provider.apiKeySetupUrl
+                    ? 'Connect with API key'
+                    : provider.oauthApp?.configured || provider.oauthApp?.automaticRegistration
+                      ? 'Connect account'
+                      : 'Set up OAuth app'}
                 </Button>
               </div>
             ) : (
@@ -69,19 +75,32 @@ export function ProviderDetail(input: {
         </TabsContent>
         <TabsContent value="authorization" className="pt-7">
           <div className="grid gap-10">
-            <OAuthAppPanel
-              provider={provider}
-              pending={input.pending}
-              error={input.appError}
-              onSave={input.onSaveApp}
-            />
-            <ProviderAccount
-              provider={provider}
-              pending={input.pending}
-              authorizationFailed={input.authorizationFailed}
-              onConnect={input.onConnect}
-              onReauthorize={input.onReauthorize}
-            />
+            {provider.apiKeySetupUrl ? (
+              <ApiKeySetup
+                providerName={provider.name}
+                setupUrl={provider.apiKeySetupUrl}
+                connected={provider.account.status === 'connected'}
+                pending={input.pending}
+                error={input.appError}
+                onSave={input.onSaveApiKey}
+              />
+            ) : (
+              <>
+                <OAuthAppPanel
+                  provider={provider}
+                  pending={input.pending}
+                  error={input.appError}
+                  onSave={input.onSaveApp}
+                />
+                <ProviderAccount
+                  provider={provider}
+                  pending={input.pending}
+                  authorizationFailed={input.authorizationFailed}
+                  onConnect={input.onConnect}
+                  onReauthorize={input.onReauthorize}
+                />
+              </>
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -102,7 +121,7 @@ function OAuthAppPanel(input: {
 }) {
   const [editing, setEditing] = useState(false);
   const { provider } = input;
-  if (!provider.oauthApp.createAppUrl) {
+  if (!provider.oauthApp?.createAppUrl) {
     return null;
   }
   if (editing) {

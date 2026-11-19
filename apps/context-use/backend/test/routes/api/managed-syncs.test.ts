@@ -44,6 +44,7 @@ test('historical reprocessing validates the action and uses the authenticated ow
   const updates: Parameters<ManagedSyncsServiceContract['update']>[0][] = [];
   const services: ManagedSyncsServiceContract = {
     list: () => Promise.resolve([]),
+    configureApiKey: () => Promise.resolve(),
     configureApp: () => Promise.resolve(),
     connect: () => Promise.resolve({ authorizationUrl: null }),
     reauthorize: () =>
@@ -97,6 +98,7 @@ test('management rejects unauthenticated and cross-origin mutations; OAuth compl
   const reauthorized: { actorId: string; providerId: string }[] = [];
   const services: ManagedSyncsServiceContract = {
     list: () => Promise.resolve([]),
+    configureApiKey: () => Promise.resolve(),
     configureApp: ({ actorId }) => {
       configured.push(actorId);
       return Promise.resolve();
@@ -234,6 +236,7 @@ test.each(['connected', 'failed'] as const)(
     const completed: string[] = [];
     const services: ManagedSyncsServiceContract = {
       list: () => Promise.resolve([]),
+      configureApiKey: () => Promise.resolve(),
       configureApp: () => Promise.resolve(),
       connect: () => Promise.resolve({ authorizationUrl: null }),
       reauthorize: () =>
@@ -270,3 +273,47 @@ test.each(['connected', 'failed'] as const)(
     expect(completed).toEqual(outcome === 'connected' ? [OWNER_USER_ID] : []);
   },
 );
+
+test('API key credentials require an owner session, same origin, and a nonblank key', async () => {
+  const saved: Parameters<ManagedSyncsServiceContract['configureApiKey']>[0][] = [];
+  const services: ManagedSyncsServiceContract = {
+    list: () => Promise.resolve([]),
+    configureApp: () => Promise.resolve(),
+    configureApiKey: (input) => {
+      saved.push(input);
+      return Promise.resolve();
+    },
+    connect: () => Promise.resolve({ authorizationUrl: null }),
+    reauthorize: () => Promise.resolve({ authorizationUrl: 'https://example.invalid' }),
+    completeConnection: () => Promise.resolve(),
+    update: () => Promise.resolve(),
+  };
+  const app = new Elysia({ prefix: '/api' })
+    .onError(elysiaErrorHandler)
+    .use(createManagedSyncsController({ auth: auth(), syncs: services }));
+  const post = ({ cookie, origin, apiKey }: { cookie: string; origin: string; apiKey: string }) =>
+    app.handle(
+      new Request('http://host/api/syncs/managed/providers/granola/api-key', {
+        method: 'POST',
+        headers: { cookie, origin, 'content-type': 'application/json' },
+        body: JSON.stringify({ apiKey, actorId: 'other', changeMessage: 'Set provider API key' }),
+      }),
+    );
+  expect((await post({ cookie: '', origin: 'http://host', apiKey: 'key' })).status).toBe(
+    StatusMap.Unauthorized,
+  );
+  expect(
+    (await post({ cookie: 'owner-session', origin: 'http://attacker', apiKey: 'key' })).status,
+  ).toBe(StatusMap.Forbidden);
+  expect(
+    (await post({ cookie: 'owner-session', origin: 'http://host', apiKey: '  ' })).status,
+  ).toBe(StatusMap['Bad Request']);
+  expect(saved).toEqual([]);
+  expect(
+    (await post({ cookie: 'owner-session', origin: 'http://host', apiKey: 'synthetic-key' }))
+      .status,
+  ).toBe(StatusMap.OK);
+  expect(saved).toEqual([
+    { actorId: OWNER_USER_ID, providerId: 'granola', apiKey: 'synthetic-key' },
+  ]);
+});

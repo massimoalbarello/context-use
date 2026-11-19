@@ -50,7 +50,7 @@ test('OAuth app credentials persist through the installed package without becomi
         catalog: new SyncCatalog(syncProviders),
         sync: restarted,
       });
-      expect((await service.list(actor))[0]?.oauthApp.configured).toBe(true);
+      expect((await service.list(actor))[0]?.oauthApp?.configured).toBe(true);
       const persistedAuthorization = new URL((await service.connect(actor)).authorizationUrl!);
       expect(persistedAuthorization.searchParams.get('client_id')).toBe('synthetic-client');
       expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('disconnected');
@@ -60,7 +60,7 @@ test('OAuth app credentials persist through the installed package without becomi
         clientSecret: 'updated-secret',
       });
       const status = await service.list(actor);
-      expect(status[0]?.oauthApp.configured).toBe(true);
+      expect(status[0]?.oauthApp?.configured).toBe(true);
       expect(JSON.stringify(status)).not.toContain('updated-secret');
       const authorization = new URL((await service.connect(actor)).authorizationUrl!);
       expect(authorization.origin).toBe('https://github.com');
