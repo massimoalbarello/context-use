@@ -269,7 +269,7 @@ async function expectRevokedCredentials({
 
 describe('MCP OAuth foundation', () => {
   for (const registration of ['cimd', 'dcr'] as const) {
-    test(`separates approvals, attribution and revocation for instances sharing a ${registration} client`, async () => {
+    test(`isolates approvals, refresh replay and revocation for instances sharing a ${registration} client`, async () => {
       await withAuthTestDatabase({
         run: async (database) => {
           let oauthHandler: (request: Request) => Promise<Response> = async () =>
@@ -408,6 +408,63 @@ describe('MCP OAuth foundation', () => {
             expect(decodeJwt(rotatedWork.access_token).mcp_authorization_id).toBe(
               work.authorizationId,
             );
+            const rotatedPersonal = await responseJson<OAuthTokenResponse>(
+              await refreshClient({
+                handler: resourceAuth.handler,
+                clientId,
+                refreshToken: personal.tokens.refresh_token,
+                urls,
+              }),
+            );
+            const retriedPersonal = await responseJson<OAuthTokenResponse>(
+              await refreshClient({
+                handler: oauth.handler,
+                clientId,
+                refreshToken: personal.tokens.refresh_token,
+                urls,
+              }),
+            );
+            expect(retriedPersonal.refresh_token).toBe(rotatedPersonal.refresh_token);
+            await database`
+              update "auth_oauthRefreshToken"
+              set "rotationReplayExpiresAt" = ${new Date(0).toISOString()}
+              where "referenceId" = ${personal.authorizationId} and "rotatedAt" is not null
+            `;
+            for (const refreshToken of [
+              personal.tokens.refresh_token,
+              rotatedPersonal.refresh_token,
+            ]) {
+              const replayed = await refreshClient({
+                handler: oauth.handler,
+                clientId,
+                refreshToken,
+                urls,
+              });
+              expect(replayed.status).toBe(HTTP_BAD_REQUEST);
+              expect(await replayed.json()).toMatchObject({ error: 'invalid_grant' });
+            }
+            expect(
+              await database`
+                select "id" from "auth_oauthRefreshToken"
+                where "referenceId" = ${personal.authorizationId}
+              `,
+            ).toHaveLength(0);
+            const independentWork = await responseJson<OAuthTokenResponse>(
+              await refreshClient({
+                handler: resourceAuth.handler,
+                clientId,
+                refreshToken: rotatedWork.refresh_token,
+                urls,
+              }),
+            );
+            expect(await (await access(independentWork.access_token)).json()).toMatchObject({
+              clientAuthorizationId: work.authorizationId,
+              clientAuthorizationName: 'Granola Codex',
+            });
+            const reconnectedPersonal = await connect({
+              name: 'Personal Codex reconnected',
+              verifier: `${CODE_VERIFIER}-new-personal`,
+            });
             expect(
               await clientAuthorizations.archive({
                 actorId: OWNER_USER_ID,
@@ -415,7 +472,7 @@ describe('MCP OAuth foundation', () => {
               }),
             ).toEqual({ state: 'archived' });
             await expectRevokedCredentials({
-              tokens: [work.tokens, rotatedWork],
+              tokens: [work.tokens, rotatedWork, independentWork],
               access,
               handler: oauth.handler,
               clientId,
@@ -425,19 +482,21 @@ describe('MCP OAuth foundation', () => {
               await refreshClient({
                 handler: resourceAuth.handler,
                 clientId,
-                refreshToken: personal.tokens.refresh_token,
+                refreshToken: reconnectedPersonal.tokens.refresh_token,
                 urls,
               }),
             );
             expect(decodeJwt(refreshedPersonal.access_token).mcp_authorization_id).toBe(
-              personal.authorizationId,
+              reconnectedPersonal.authorizationId,
             );
             expect((await access(personal.tokens.access_token)).status).toBe(HTTP_OK);
             expect((await access(refreshedPersonal.access_token)).status).toBe(HTTP_OK);
             const consents = await database<{ referenceId: string }[]>`
               select "referenceId" from "auth_oauthConsent" where "clientId" = ${clientId}
             `;
-            expect(consents).toEqual([{ referenceId: personal.authorizationId }]);
+            expect(consents.map(({ referenceId }) => referenceId).toSorted()).toEqual(
+              [personal.authorizationId, reconnectedPersonal.authorizationId].toSorted(),
+            );
 
             await expect(
               authorizeClient({

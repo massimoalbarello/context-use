@@ -29,7 +29,7 @@
         "@better-auth/cimd": "^1.7.2",
         "@better-auth/core": "^1.7.2",
         "@better-auth/mcp": "^1.7.2",
-        "@better-auth/oauth-provider": "^1.7.2",
+        "@better-auth/oauth-provider": "1.7.2",
         "@better-auth/passkey": "catalog:",
         "@context-use/open-sync": "0.5.0",
         "@context-use/openclaw-memory": "workspace:*",
@@ -200,6 +200,9 @@
         "tailwindcss": "^4.3.3",
       },
     },
+  },
+  "patchedDependencies": {
+    "@better-auth/oauth-provider@1.7.2": "patches/@better-auth%2Foauth-provider@1.7.2.patch",
   },
   "catalog": {
     "@better-auth/passkey": "^1.7.2",

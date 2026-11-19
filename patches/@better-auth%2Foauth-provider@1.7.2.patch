@@ -1,0 +1,78 @@
+diff --git a/dist/introspect-C6P1zrTr.mjs b/dist/introspect-C6P1zrTr.mjs
+index 0b3934dd6724d408a84624a3fb0215f6d3274fea..a6db792be65cd2db0898f69473c215b9081f0740 100644
+--- a/dist/introspect-C6P1zrTr.mjs
++++ b/dist/introspect-C6P1zrTr.mjs
+@@ -1479,7 +1479,7 @@ async function createOpaqueAccessToken(ctx, opts, user, client, scopes, payload,
+ 	return (opts.prefix?.opaqueAccessToken ?? "") + token;
+ }
+ /**
+-* Tear down the entire refresh-token family for a (client, user) pair, plus
++* Tear down the refresh-token family for the originating authorization grant, plus
+ * any access tokens that reference those refresh rows, per RFC 9700 §4.14.
+ * Access tokens are deleted first so the parent rows' foreign-key children
+ * do not block the refresh-row delete.
+@@ -1487,7 +1487,7 @@ async function createOpaqueAccessToken(ctx, opts, user, client, scopes, payload,
+ * TODO(invalidate-family-race): the two `deleteMany` calls are not atomic
+ * with respect to each other. Between them, a concurrent rotation in a
+ * different worker can `create` a fresh refresh row (and, immediately after,
+-* an access-token row referencing it) for the same (client, user) pair,
++* an access-token row referencing it) for the same authorization grant,
+ * leaving the family partially rebuilt and the new refresh row orphaned of
+ * any deletion. Closing this window requires the same transactional adapter
+ * contract tracked under FIXME(strict-family-invalidation) in
+@@ -1495,16 +1495,23 @@ async function createOpaqueAccessToken(ctx, opts, user, client, scopes, payload,
+ *
+ * @internal
+ */
+-async function invalidateRefreshFamily(ctx, clientId, userId) {
++async function invalidateRefreshFamily(ctx, refreshToken) {
++	const where = [{
++		field: "clientId",
++		value: refreshToken.clientId
++	}, {
++		field: "userId",
++		value: refreshToken.userId
++	}, {
++		field: "referenceId",
++		value: refreshToken.referenceId ?? null
++	}, {
++		field: "authorizationCodeId",
++		value: refreshToken.authorizationCodeId ?? null
++	}];
+ 	const refreshTokens = await ctx.context.adapter.findMany({
+ 		model: "oauthRefreshToken",
+-		where: [{
+-			field: "clientId",
+-			value: clientId
+-		}, {
+-			field: "userId",
+-			value: userId
+-		}]
++		where
+ 	});
+ 	if (refreshTokens.length) await ctx.context.adapter.deleteMany({
+ 		model: "oauthAccessToken",
+@@ -1516,13 +1523,7 @@ async function invalidateRefreshFamily(ctx, clientId, userId) {
+ 	});
+ 	await ctx.context.adapter.deleteMany({
+ 		model: "oauthRefreshToken",
+-		where: [{
+-			field: "clientId",
+-			value: clientId
+-		}, {
+-			field: "userId",
+-			value: userId
+-		}]
++		where
+ 	});
+ }
+ async function revokeTokensIssuedForAuthorizationCode(ctx, authorizationCodeId) {
+@@ -2157,7 +2158,7 @@ async function handleRefreshTokenGrant(ctx, opts) {
+ 				error: "invalid_grant"
+ 			});
+ 		}
+-		await invalidateRefreshFamily(ctx, client_id, refreshToken.userId);
++		await invalidateRefreshFamily(ctx, refreshToken);
+ 		throw new APIError("BAD_REQUEST", {
+ 			error_description: "invalid refresh token",
+ 			error: "invalid_grant"
