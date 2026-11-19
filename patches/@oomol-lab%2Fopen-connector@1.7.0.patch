@@ -1,0 +1,41 @@
+diff --git a/src/providers/granola/mcp-response.js b/src/providers/granola/mcp-response.js
+index c73dc8a005fa3be6917b147667a03a222f145ef2..552a9f069fb1b079ab3a06430eaf53ad26c9e653 100644
+--- a/src/providers/granola/mcp-response.js
++++ b/src/providers/granola/mcp-response.js
+@@ -1,6 +1,6 @@
+ import { XMLParser } from "fast-xml-parser";
+ import { SyntaxValidator } from "fast-xml-validator";
+-import { objectArray, optionalString, requiredRawString, requiredString } from "../../core/cast.js";
++import { objectArray, optionalRecord, optionalString, requiredRawString, requiredString } from "../../core/cast.js";
+ import { parseProviderJsonBodyText, providerResponseError, requiredResponseRecord } from "../provider-runtime.js";
+ const xml = new XMLParser({
+     ignoreAttributes: false,
+@@ -37,17 +37,24 @@ export function parseGranolaMeetings(text) {
+     const meetings = records.map((meeting) => ({
+         id: requiredString(meeting["@_id"], "Granola meeting ID", providerResponseError),
+         title: requiredRawString(meeting["@_title"], "Granola meeting title", providerResponseError),
+-        date: requiredRawString(meeting["@_date"], "Granola meeting date", providerResponseError),
++        date: requiredRawString(meeting["@_meeting_at"] ?? meeting["@_date"], "Granola meeting date", providerResponseError),
+         attendees: requiredRawString(meeting.known_participants ?? "", "Granola participants", providerResponseError),
+-        summary: meeting.summary === undefined
+-            ? undefined
+-            : requiredRawString(meeting.summary, "Granola meeting summary", providerResponseError),
++        summary: parseGranolaSummary(meeting.summary),
+     }));
+     if (new Set(meetings.map((meeting) => meeting.id)).size !== meetings.length) {
+         throw providerResponseError("Granola returned duplicate meeting IDs.");
+     }
+     return meetings;
+ }
++function parseGranolaSummary(value) {
++    if (value === undefined)
++        return undefined;
++    const envelope = optionalRecord(value);
++    // Granola marks empty notes explicitly; its explanatory text is not note content.
++    if (envelope?.["@_status"] === "empty")
++        return "";
++    return requiredRawString(value, "Granola meeting summary", providerResponseError);
++}
+ /** Map MCP folder titles to the note API's folder names, without inventing hierarchy metadata. */
+ export function parseGranolaFolders(text) {
+     const root = requiredResponseRecord(parseProviderJsonBodyText(text, {
