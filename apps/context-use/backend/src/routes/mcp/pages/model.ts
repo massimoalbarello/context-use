@@ -31,6 +31,12 @@ export const McpKnowledgePageSummarySchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
+export const KnowledgePageListOutputSchema = z.object({
+  items: z.array(McpKnowledgePageSummarySchema),
+  total: z.number().int().nonnegative(),
+  nextCursor: z.string().nullable(),
+});
+
 const McpKnowledgePageReferenceSchema = z.object({
   address: PageReferenceAddressSchema,
   page: McpKnowledgePageSummarySchema,

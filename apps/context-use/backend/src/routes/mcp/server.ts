@@ -10,6 +10,7 @@ import { registerAssetTools } from './assets/tools.ts';
 import type { AssetTransferCapabilitiesContract } from './assets/transfer-capabilities.ts';
 import { registerEntityTools } from './entities/tools.ts';
 import { registerHypermediaRetrievalTools } from './hypermedia-retrieval/tools.ts';
+import { registerPagesApp } from './pages/app.ts';
 import { registerKnowledgePageTools } from './pages/tools.ts';
 import { registerRecordTools } from './records/tools.ts';
 
@@ -42,6 +43,7 @@ export function createContextUseMcpServer({
   registerEntityTools({ server, principal, entitiesService, profilesService });
   registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
+  registerPagesApp({ server });
   registerRecordTools({ server, principal, recordsService });
   return server;
 }

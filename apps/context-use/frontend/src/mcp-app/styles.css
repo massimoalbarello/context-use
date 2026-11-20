@@ -1,0 +1,64 @@
+@import "tailwindcss" source(none);
+@import "@repo/ui/theme.css";
+@source "./";
+@source "../components/ui";
+@source "../components/knowledge/resource-archive-action.tsx";
+@source "../../../../../packages/ui/src/components/ui/button.tsx";
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+[data-page-prose] {
+  line-height: 1.75;
+}
+[data-page-prose] h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  line-height: 1.25;
+}
+[data-page-prose] h2,
+[data-page-prose] h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-block: 1.5rem 0.75rem;
+}
+[data-page-prose] p,
+[data-page-prose] ul,
+[data-page-prose] ol,
+[data-page-prose] pre,
+[data-page-prose] table {
+  margin-block: 1rem;
+}
+[data-page-prose] ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+[data-page-prose] ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+[data-page-prose] a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+[data-page-prose] pre {
+  overflow-x: auto;
+  background: var(--muted);
+  padding: 1rem;
+  border-radius: var(--radius);
+}
+[data-page-prose] blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
+[data-page-prose] th,
+[data-page-prose] td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+}

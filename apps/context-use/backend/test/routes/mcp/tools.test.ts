@@ -378,6 +378,46 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
   });
 });
 
+test('page tools expose a self-contained MCP app without owner data in the resource', async () => {
+  await withMcpClient({
+    run: async (client) => {
+      const { tools } = await client.listTools();
+      const uri = 'ui://context-use/pages.html';
+      for (const name of [
+        'create_knowledge_page',
+        'list_knowledge_pages',
+        'read_knowledge_page',
+        'update_knowledge_page',
+        'archive_knowledge_page',
+      ]) {
+        expect(tools.find((tool) => tool.name === name)?._meta).toMatchObject({
+          ui: { resourceUri: uri },
+        });
+      }
+      const { resources } = await client.listResources();
+      expect(resources).toMatchObject([
+        {
+          uri,
+          mimeType: 'text/html;profile=mcp-app',
+          _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] } } },
+        },
+      ]);
+      const resource = await client.readResource({ uri });
+      const content = resource.contents[0]!;
+      expect(content.mimeType).toBe('text/html;profile=mcp-app');
+      expect('text' in content).toBe(true);
+      if (!('text' in content)) {
+        throw new Error('Expected HTML resource');
+      }
+      expect(content.text).toContain('<!doctype html>');
+      expect(content.text).not.toMatch(/<script[^>]+src=/);
+      expect(content.text).not.toContain(INTERNAL_PAGE_ID);
+      expect(content.text).not.toContain(principal.ownerId);
+      expect(content.text).not.toContain(page.markdown);
+    },
+  });
+});
+
 test('search_hypermedia returns compact typed previews and canonical dereference addresses', async () => {
   const retrievalService: Pick<HypermediaRetrievalServiceContract, 'search'> = {
     search: (input) => {
@@ -844,6 +884,17 @@ test('successful create and update tools return only newly needed coordinates an
         },
       });
       expect(updatedPage.structuredContent).toEqual({ revisionNumber: 2 });
+      for (const result of [createdPage, updatedPage]) {
+        expect(result._meta).toMatchObject({
+          page: {
+            address: 'context-use://page/growth-playbook',
+            markdown: page.markdown,
+            revisionNumber: 2,
+          },
+        });
+        expectNoInternalResourceIds(result._meta);
+        expect(JSON.stringify(result.content)).not.toContain(page.markdown);
+      }
     },
   });
 });
