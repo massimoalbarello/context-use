@@ -5,6 +5,7 @@ import { ProviderDetail, type SyncProviderTab } from '../components/syncs/provid
 import { SyncQueryState } from '../components/syncs/query-state';
 import {
   useConfigureOAuthApp,
+  useConfigureSyncApiKey,
   useConnectSyncProvider,
   useReauthorizeSyncProvider,
   useUpdateManagedSync,
@@ -35,6 +36,7 @@ function SyncProviderRoute() {
   const connect = useConnectSyncProvider();
   const reauthorize = useReauthorizeSyncProvider();
   const configure = useConfigureOAuthApp();
+  const apiKey = useConfigureSyncApiKey();
   const update = useUpdateManagedSync();
   const provider = query.data?.find((item) => item.id === providerId);
   return (
@@ -55,10 +57,18 @@ function SyncProviderRoute() {
           tab={tab}
           authorizationFailed={authorization === 'failed'}
           pending={
-            connect.isPending || reauthorize.isPending || configure.isPending || update.isPending
+            connect.isPending ||
+            reauthorize.isPending ||
+            configure.isPending ||
+            apiKey.isPending ||
+            update.isPending
           }
           error={connect.error ?? reauthorize.error ?? update.error}
-          appError={configure.error}
+          appError={configure.error ?? apiKey.error}
+          onSaveApiKey={async (value) => {
+            await apiKey.mutateAsync({ providerId: provider.id, apiKey: value });
+            apiKey.reset();
+          }}
           onTabChange={(value) => {
             void navigate({ search: { tab: value } });
           }}

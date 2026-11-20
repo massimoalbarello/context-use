@@ -50,6 +50,7 @@ export const unusedAssetFacesService: AssetFacesServiceContract = {
 
 export const unusedManagedSyncsService: ManagedSyncsServiceContract = {
   list: unexpectedCall,
+  configureApiKey: unexpectedCall,
   configureApp: unexpectedCall,
   connect: unexpectedCall,
   reauthorize: unexpectedCall,
