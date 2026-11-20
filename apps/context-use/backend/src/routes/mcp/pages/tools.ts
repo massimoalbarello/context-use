@@ -7,8 +7,8 @@ import { pageAddress, pageReadableId } from '#backend/models/readable-ids/addres
 import { withChangeMessage } from '#backend/routes/change-message.ts';
 import { PageAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
+  KnowledgePageListOutputSchema,
   McpKnowledgePageSchema,
-  McpKnowledgePageSummarySchema,
   mcpArchiveBlockers,
   mcpKnowledgePage,
   mcpKnowledgePageSummary,
@@ -26,6 +26,7 @@ import {
 } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
+import { PAGES_APP_META } from './app.ts';
 import {
   HYPERMEDIA_CURATION_GUIDE,
   HYPERMEDIA_CURATION_GUIDE_VERSION,
@@ -78,12 +79,6 @@ const UpdateKnowledgePageInputSchema = GuidedPageAddressInputSchema.extend({
   temporalCoverage: TemporalCoverageValueSchema.nullable()
     .optional()
     .describe(TEMPORAL_COVERAGE_UPDATE_DESCRIPTION),
-});
-
-const KnowledgePageListOutputSchema = z.object({
-  items: z.array(McpKnowledgePageSummarySchema),
-  total: z.number().int().nonnegative(),
-  nextCursor: z.string().nullable(),
 });
 
 const ArchiveKnowledgePageOutputSchema = z.object({
@@ -154,6 +149,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'create_knowledge_page',
     {
+      _meta: PAGES_APP_META,
       title: 'Create knowledge page',
       description:
         'Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
@@ -173,10 +169,13 @@ export function registerKnowledgePageTools({
         ...input,
       });
       if (result.state === 'saved') {
-        return mcpToolSuccess({
-          address: pageAddress(result.page.readableId),
-          revisionNumber: result.page.revisionNumber,
-        });
+        return {
+          ...mcpToolSuccess({
+            address: pageAddress(result.page.readableId),
+            revisionNumber: result.page.revisionNumber,
+          }),
+          _meta: { page: mcpKnowledgePage(result.page) },
+        };
       }
       if (result.state === 'title_conflict') {
         return mcpToolError({
@@ -203,6 +202,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'list_knowledge_pages',
     {
+      _meta: PAGES_APP_META,
       title: 'List knowledge pages',
       description:
         'List active knowledge pages without searching. Pass nextCursor unchanged to continue the list.',
@@ -234,6 +234,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'read_knowledge_page',
     {
+      _meta: PAGES_APP_META,
       title: 'Read knowledge page',
       description: 'Read one active knowledge page by its exact canonical page address.',
       inputSchema: PageAddressInputSchema,
@@ -254,6 +255,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'update_knowledge_page',
     {
+      _meta: PAGES_APP_META,
       title: 'Update knowledge page',
       description: `Create a new revision of one knowledge page. Updating a public page requires explicit user confirmation. Prefer creating a new private page unless the user explicitly wants to modify the public page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
       inputSchema: withChangeMessage(UpdateKnowledgePageInputSchema),
@@ -282,7 +284,10 @@ export function registerKnowledgePageTools({
         temporalCoverage,
       });
       if (result.state === 'saved') {
-        return mcpToolSuccess({ revisionNumber: result.page.revisionNumber });
+        return {
+          ...mcpToolSuccess({ revisionNumber: result.page.revisionNumber }),
+          _meta: { page: mcpKnowledgePage(result.page) },
+        };
       }
       if (result.state === 'revision_conflict') {
         return mcpToolError({
@@ -309,6 +314,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'archive_knowledge_page',
     {
+      _meta: PAGES_APP_META,
       title: 'Archive knowledge page',
       description:
         'Archive one knowledge page. This is destructive and succeeds only when no active inbound references block it.',

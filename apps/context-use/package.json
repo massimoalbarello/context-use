@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "bun run --no-orphans --parallel dev:server dev:client",
-    "dev:server": "bun run generate:public-styles && bun run scripts/dev.ts",
+    "dev:server": "bun run generate:mcp-app && bun run generate:public-styles && bun run scripts/dev.ts",
     "dev:client": "bun --bun vite --config frontend/vite.config.ts",
-    "build:instance": "bun run generate:public-styles && bun run scripts/build-instance.ts",
+    "build:instance": "bun run generate:mcp-app && bun run generate:public-styles && bun run scripts/build-instance.ts",
     "build:demo": "bun run scripts/build-demo.ts",
     "build:client": "bun --bun vite build --config frontend/vite.config.ts",
     "build:demo:client": "bun --bun vite build --config demo/vite.config.ts",
@@ -16,7 +16,7 @@
     "deploy:demo": "bun run scripts/deploy-demo.ts",
     "generate:queries": "bun --cwd backend bun-sqlgen generate 'src/repositories/**/*.ts' --migrations src/db/migrations",
     "check:queries": "bun run generate:queries --check",
-    "check:types": "bun run check:queries && bun run check:public-styles && bun run --bun tsc -b",
+    "check:types": "bun run check:queries && bun run check:public-styles && bun run check:mcp-app && bun run --bun tsc -b",
     "test": "bun run --sequential test:backend test:frontend test:demo test:build",
     "test:backend": "bun test --cwd backend",
     "test:frontend": "bun test --cwd frontend",
@@ -25,7 +25,9 @@
     "test:binary:instance": "bun test ./test/binary-instance.test.ts",
     "test:binary:demo": "bun test ./demo/test/binary.test.ts",
     "generate:public-styles": "bun run scripts/generate-public-styles.ts",
-    "check:public-styles": "bun run generate:public-styles --check"
+    "check:public-styles": "bun run generate:public-styles --check",
+    "generate:mcp-app": "bun run scripts/generate-mcp-app.ts",
+    "check:mcp-app": "bun run generate:mcp-app --check"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -43,6 +45,7 @@
     "@ilbertt/better-auth-bun-sql": "^0.4.0",
     "@ilbertt/bun-sqlgen": "^0.5.1",
     "@modelcontextprotocol/client": "^2",
+    "@modelcontextprotocol/ext-apps": "^2.0.4",
     "@modelcontextprotocol/server": "^2",
     "@repo/ui": "workspace:*",
     "@simplewebauthn/browser": "13.3.0",
