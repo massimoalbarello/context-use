@@ -38,7 +38,7 @@ function ContextRecordLink({ href, children }: { href?: string; children: ReactN
 
 export function ContextRecordMarkdown({ markdown, label }: { markdown: string; label: string }) {
   return (
-    <article className="py-3 md:py-5" aria-label={label}>
+    <article className="[&_blockquote]:wrap-anywhere py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
         remarkPlugins={[remarkTables, remarkAssetLayout]}
         skipHtml
@@ -83,7 +83,7 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
             <ol className="my-5 list-decimal pl-6 text-[1.05rem] leading-8">{children}</ol>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="wrap-anywhere my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
+            <blockquote className="my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
               {children}
             </blockquote>
           ),
