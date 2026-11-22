@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { assetAddress, assetReadableId } from '#backend/models/readable-ids/addresses.ts';
 import { withChangeMessage } from '#backend/routes/change-message.ts';

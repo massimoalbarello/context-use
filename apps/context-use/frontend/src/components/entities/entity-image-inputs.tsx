@@ -1,8 +1,8 @@
 import { Button, buttonVariants } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { useState } from 'react';
-import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
 import { MAX_ASSET_MEBIBYTES } from '#backend/models/assets/model.ts';
+import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/presentation.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import { useImageAssetSuggestions } from '../../lib/hooks/use-assets';
 import type { AssetSummary } from '../../queries/assets';

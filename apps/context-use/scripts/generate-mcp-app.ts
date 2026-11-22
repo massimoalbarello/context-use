@@ -2,8 +2,11 @@ import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { build } from 'vite';
 
+import { pdfjsLegacyEntry } from './pdfjs-build';
+
 const result = await build({
   configFile: false,
+  resolve: { alias: [{ find: /^pdfjs-dist$/, replacement: pdfjsLegacyEntry }] },
   root: fileURLToPath(new URL('../frontend', import.meta.url)),
   logLevel: 'silent',
   define: { 'process.env.NODE_ENV': JSON.stringify('production') },
@@ -12,7 +15,7 @@ const result = await build({
     write: false,
     minify: true,
     cssMinify: true,
-    rolldownOptions: { output: { comments: { legal: true } } },
+    rolldownOptions: { output: { codeSplitting: false, comments: { legal: true } } },
     lib: {
       entry: fileURLToPath(new URL('../frontend/src/mcp-app/main.tsx', import.meta.url)),
       formats: ['iife'],

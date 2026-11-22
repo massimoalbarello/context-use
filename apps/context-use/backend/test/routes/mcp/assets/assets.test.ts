@@ -137,6 +137,7 @@ async function withAssetMcp({
     transferCapabilities,
   });
   const server = createContextUseMcpServer({
+    instanceOrigin: 'https://context-use.example',
     recordsService: unusedMcpRecordsService,
     principal,
     assetsService,
@@ -341,6 +342,20 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       expect(downloadRequest.instructions).toContain('raw asset bytes');
       expect(downloadRequest.instructions).toContain('not JSON or base64');
       expect(downloadRequest.instructions).toContain('Content-Type and Content-Disposition');
+      const preflight = await transferController.handle(
+        new Request(downloadRequest.url, {
+          method: 'OPTIONS',
+          headers: {
+            origin: 'null',
+            'access-control-request-method': 'GET',
+            'access-control-request-headers': MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
+          },
+        }),
+      );
+      expect(preflight.status).toBe(StatusMap['No Content']);
+      expect(preflight.headers.get('access-control-allow-headers')).toBe(
+        MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
+      );
       const downloadResponse = await transferController.handle(
         new Request(downloadRequest.url, {
           method: downloadRequest.method,
@@ -348,6 +363,8 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
         }),
       );
       expect(downloadResponse.status).toBe(StatusMap.OK);
+      expect(downloadResponse.headers.get('access-control-allow-origin')).toBe('*');
+      expect(downloadResponse.headers.has('access-control-allow-credentials')).toBe(false);
       expect(downloadResponse.headers.get('content-type')).toBe('image/png');
       expect(downloadResponse.headers.get('content-disposition')).toStartWith('attachment;');
       expect(new Uint8Array(await downloadResponse.arrayBuffer())).toEqual(PNG_BYTES);
@@ -646,6 +663,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     baseUrl: new URL('https://context-use.example'),
   });
   const server = createContextUseMcpServer({
+    instanceOrigin: 'https://context-use.example',
     recordsService: unusedMcpRecordsService,
     principal,
     assetsService,

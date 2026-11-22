@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'bun:test';
+import { afterEach, expect, spyOn, test } from 'bun:test';
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
@@ -28,10 +28,12 @@ const page: Page = {
 afterEach(cleanup);
 function setup({
   initial = null,
+  address = initial?.address ?? page.address,
   call,
   observeSize = () => () => {},
 }: {
   initial?: Page | null;
+  address?: string;
   call: App['callServerTool'];
   observeSize?: App['setupSizeChangedNotifications'];
 }) {
@@ -48,7 +50,7 @@ function setup({
   }
   render(
     <QueryClientProvider client={queryClient}>
-      <ResourceViewer client={client} initialAddress={initial?.address ?? page.address} />
+      <ResourceViewer client={client} initialAddress={address} />
     </QueryClientProvider>,
   );
   return userEvent.setup();
@@ -69,6 +71,62 @@ test('opens an explicitly presented address or saved page and ignores discovery 
     address: page.address,
     page: { kind: 'page', value: page },
   });
+});
+
+test('renders a private CSV using the download capability returned by read_asset', async () => {
+  const address = 'context-use://asset/schedule';
+  const url = 'https://instance.example/mcp/asset-transfers/downloads/schedule';
+  const requiredHeaders = { 'x-context-use-transfer-capability': 'single-use-test-value' };
+  const fetch = spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response('Name,Time\nReview,Noon'),
+  );
+  try {
+    setup({
+      address,
+      call: ({ name, arguments: args }) => {
+        expect(name).toBe('read_asset');
+        expect(args?.address).toBe(address);
+        if (args?.includeDownload) {
+          return Promise.resolve(
+            success({
+              download: {
+                method: 'GET',
+                url,
+                requiredHeaders,
+                expiresAt: page.updatedAt,
+                instructions: '',
+              },
+            }),
+          );
+        }
+        return Promise.resolve(
+          success({
+            address,
+            readableId: 'schedule',
+            name: 'Schedule',
+            mediaType: 'text/csv',
+            extension: 'csv',
+            sizeBytes: 21,
+            publication: { isPublic: false },
+            createdAt: page.createdAt,
+            updatedAt: page.updatedAt,
+            usages: [],
+            depicts: [],
+          }),
+        );
+      },
+    });
+    await screen.findByRole('cell', { name: 'Noon' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(url, {
+      headers: requiredHeaders,
+      credentials: 'omit',
+      redirect: 'error',
+      signal: expect.any(AbortSignal),
+    });
+  } finally {
+    fetch.mockRestore();
+  }
 });
 
 test('shows an outcome when a page write returns without a preview address', () => {

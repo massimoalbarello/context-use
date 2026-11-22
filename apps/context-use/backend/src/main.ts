@@ -151,6 +151,7 @@ try {
   const mcpTransport = createMcpTransport({
     createServer: ({ principal }) =>
       createContextUseMcpServer({
+        instanceOrigin: env.BASE_URL.origin,
         principal,
         assetsService,
         entitiesService,

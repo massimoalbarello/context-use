@@ -25,7 +25,9 @@ export function createContextUseMcpServer({
   profilesService,
   recordsService,
   transferCapabilities,
+  instanceOrigin,
 }: {
+  instanceOrigin: string;
   principal: McpClientAuthorizationPrincipal;
   assetsService: AssetsServiceContract;
   entitiesService: EntitiesServiceContract;
@@ -43,7 +45,7 @@ export function createContextUseMcpServer({
   registerEntityTools({ server, principal, entitiesService, profilesService });
   registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
-  registerMcpApp(server);
+  registerMcpApp({ server, instanceOrigin });
   registerRecordTools({ server, principal, recordsService });
   return server;
 }

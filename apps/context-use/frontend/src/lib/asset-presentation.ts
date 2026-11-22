@@ -1,4 +1,4 @@
-import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
+import { isEmbeddableAssetMedia, isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 export function assetContentUrl({
   readableId,
   includeArchived = false,
@@ -20,7 +20,7 @@ export function assetDownloadUrl({
 }
 
 export function isEmbeddableAsset(asset: { mediaType: string }): boolean {
-  return ['image/gif', 'image/jpeg', 'image/png', 'image/webp'].includes(asset.mediaType);
+  return isEmbeddableAssetMedia(asset.mediaType);
 }
 
 export function isVideoAsset(asset: { mediaType: string }): boolean {

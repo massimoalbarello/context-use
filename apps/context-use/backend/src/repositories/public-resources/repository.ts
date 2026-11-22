@@ -1,6 +1,6 @@
 import { type TypedSQL, withTypes } from '@ilbertt/bun-sqlgen';
 import type { SQL } from 'bun';
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
 import { ENTITY_TYPES, type EntityType } from '#backend/models/entities/model.ts';
 import type { PublicMarkdownTarget } from '#backend/models/public-resources/markdown.ts';
 import type { IFindPublicPageResult, Queries } from '#backend/queries.gen.ts';

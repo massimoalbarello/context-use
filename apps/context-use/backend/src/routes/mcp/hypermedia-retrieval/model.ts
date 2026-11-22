@@ -49,9 +49,8 @@ export const SearchHypermediaInputSchema = z.object({
     .min(1)
     .max(MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH)
     .regex(/.*\S.*/)
-    .optional()
     .describe(
-      'Plain-text names, readable IDs, or topic words to search for. Omit for an empty search. Do not use search operators.',
+      'Plain-text names, readable IDs, or topic words to search for. Do not use search operators.',
     ),
   resourceTypes: z
     .array(z.enum(HYPERMEDIA_RESOURCE_TYPES))

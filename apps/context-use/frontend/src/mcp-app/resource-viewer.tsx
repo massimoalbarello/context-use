@@ -1,11 +1,12 @@
 import { Button } from '@repo/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { AssetPreview } from './asset-preview';
 import type { McpAppClient, Page } from './client';
 import { PageDetail } from './page-detail';
 import { PageEditor } from './page-editor';
 import { resourceQueryKey } from './queries';
-import { AssetPreview, EntityPreview } from './resource-preview';
+import { EntityPreview } from './resource-preview';
 import { useContentSize, WidgetLoading } from './widget-loading';
 
 export function ResourceViewer({
@@ -112,7 +113,7 @@ function ResourceDetail({
     case 'entity':
       return <EntityPreview entity={detail.data.value} client={client} onOpen={onOpen} />;
     case 'asset':
-      return <AssetPreview asset={detail.data.value} client={client} />;
+      return <AssetPreview result={detail.data} client={client} />;
     case 'page':
       return editing ? (
         <PageEditor

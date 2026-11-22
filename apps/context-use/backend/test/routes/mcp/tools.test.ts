@@ -9,7 +9,7 @@ import { createSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
-import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
+import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/presentation.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
 import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
 import { parseKnowledgePageMarkdown } from '#backend/models/knowledge-pages/markdown.ts';
@@ -164,6 +164,7 @@ async function withMcpClient<T>({
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
   const server = createContextUseMcpServer({
+    instanceOrigin: 'https://context-use.example',
     recordsService,
     principal: actor,
     assetsService,
@@ -277,6 +278,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'cursor',
       );
       const searchInput = tools.find(({ name }) => name === 'search_hypermedia')!.inputSchema;
+      expect(searchInput.required).toContain('query');
       const searchFields = searchInput.properties as Record<
         string,
         { description?: string; properties?: Record<string, { description?: string }> }
@@ -388,9 +390,6 @@ test('page tools expose a self-contained MCP app without owner data in the resou
       const { resources } = await client.listResources();
       const uri = resources[0]!.uri;
       expect(uri).toMatch(/^ui:\/\/context-use\/workspace-[a-f0-9]{64}\.html$/);
-      expect(await client.callTool({ name: 'search_hypermedia', arguments: {} })).toMatchObject({
-        structuredContent: { results: [], truncated: false },
-      });
       expect(tools.filter((tool) => tool._meta?.ui).map((tool) => tool.name)).toEqual([
         'create_knowledge_page',
         'update_knowledge_page',
@@ -414,7 +413,14 @@ test('page tools expose a self-contained MCP app without owner data in the resou
         {
           uri,
           mimeType: 'text/html;profile=mcp-app',
-          _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] } } },
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: ['https://context-use.example'],
+                resourceDomains: ['https://context-use.example'],
+              },
+            },
+          },
         },
       ]);
       const resource = await client.readResource({ uri });
@@ -613,6 +619,11 @@ test('MCP search rejects invalid filters before reaching retrieval', async () =>
       },
     },
     run: async (client) => {
+      for (const args of [{}, { query: '' }, { query: '   ' }]) {
+        expect(
+          (await client.callTool({ name: 'search_hypermedia', arguments: args })).isError,
+        ).toBe(true);
+      }
       for (const filters of [
         { interval: 'all' },
         { assetKind: 'image' },

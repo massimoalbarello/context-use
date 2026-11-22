@@ -1,7 +1,6 @@
 import { Elysia, StatusMap, t } from 'elysia';
 import { ErrorResponseSchema, NotFoundError } from '#backend/lib/errors.ts';
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
-import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
+import { isEmbeddableAssetMedia, isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { AssetContentHeadersSchema } from '#backend/routes/asset-content-response.ts';
 import { createPublicDiscoveryController } from '#backend/routes/public/discovery-controller.ts';
 import { PUBLIC_DOCUMENT_CSP } from '#backend/routes/public/document.tsx';

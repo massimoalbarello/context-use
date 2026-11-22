@@ -1,14 +1,12 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
-import { AssetImage, AssetPreviewContent } from '../components/assets/asset-preview-content';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { EntityPageSections } from '../components/entities/entity-page-sections';
 import { EntityProfile } from '../components/entities/entity-profile';
 import { resourceCardVariants } from '../components/knowledge/resource-list';
 import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
-import { isEmbeddableAsset } from '../lib/asset-presentation';
 import { ENTITY_MENTIONS_PAGE_SIZE } from '../queries/entity-mentions';
-import type { Asset, Entity, McpAppClient } from './client';
+import type { Entity, McpAppClient } from './client';
 import { resourceQueryKey } from './queries';
 
 function previewQuery({ client, address }: { client: McpAppClient; address: string }) {
@@ -35,28 +33,6 @@ export function PreviewPortrait({
   const image = useQuery(previewQuery({ client, address }));
   return <EntityAvatar entity={{ name }} imageSrc={image.data} size={size} className={className} />;
 }
-export function PreviewImage({
-  client,
-  address,
-  alt,
-  className,
-}: {
-  client: McpAppClient;
-  address: string;
-  alt: string;
-  className?: string;
-}) {
-  const image = useQuery(previewQuery({ client, address }));
-  if (!image.data) {
-    return (
-      <span className="text-muted-foreground text-sm">
-        {image.isPending ? 'Loading image…' : 'Image preview unavailable.'}
-      </span>
-    );
-  }
-  return <AssetImage src={image.data} alt={alt} className={className} />;
-}
-
 export function EntityPreview({
   entity,
   client,
@@ -117,20 +93,5 @@ export function EntityPreview({
         )}
       />
     </section>
-  );
-}
-
-export function AssetPreview({ asset, client }: { asset: Asset; client: McpAppClient }) {
-  return (
-    <AssetPreviewContent asset={asset} heading="h1">
-      {isEmbeddableAsset(asset) && (
-        <PreviewImage
-          address={asset.address}
-          alt={asset.name}
-          client={client}
-          className="max-h-[36rem] w-full rounded-xl bg-muted object-contain"
-        />
-      )}
-    </AssetPreviewContent>
   );
 }

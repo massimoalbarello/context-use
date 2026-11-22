@@ -1,8 +1,7 @@
 import type { Nodes, Root, RootContent } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
-import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
+import { isEmbeddableAssetMedia, isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { internalReferenceFromLink } from '#backend/models/knowledge-pages/markdown.ts';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
 import {

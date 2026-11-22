@@ -1,6 +1,7 @@
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { z } from 'zod';
-import { McpAssetSchema } from '#backend/routes/mcp/assets/model.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
+import { McpAssetSchema, McpAssetTransferRequestSchema } from '#backend/routes/mcp/assets/model.ts';
 import { PreviewAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import { McpEntitySchema } from '#backend/routes/mcp/entities/model.ts';
 import {
@@ -34,7 +35,7 @@ type ToolContent = Awaited<ReturnType<App['callServerTool']>>['content'];
 function assetResult({ asset, content }: { asset: Asset; content?: ToolContent }) {
   const image = content?.find((block) => block.type === 'image');
   const imageSrc =
-    image && (image.mimeType === 'image/webp' || image.mimeType === 'image/gif')
+    image && isEmbeddableAssetMedia(image.mimeType)
       ? `data:${image.mimeType};base64,${image.data}`
       : undefined;
   return { kind: 'asset', value: asset, imageSrc } as const;
@@ -140,6 +141,29 @@ export class McpAppClient {
       asset: McpAssetSchema.parse(result.structuredContent),
       content: result.content,
     });
+  }
+
+  async downloadAsset({ address, signal }: { address: string; signal: AbortSignal }) {
+    const result = await this.call({
+      name: resourceReaders.asset.tool,
+      args: { address, includeDownload: true },
+    });
+    const { download } = z
+      .object({ download: McpAssetTransferRequestSchema })
+      .parse(result.structuredContent);
+    if (download.method !== 'GET') {
+      throw new Error('Invalid download request.');
+    }
+    const response = await fetch(download.url, {
+      headers: download.requiredHeaders,
+      credentials: 'omit',
+      redirect: 'error',
+      signal,
+    });
+    if (!response.ok) {
+      throw new Error('Could not load this file.');
+    }
+    return { response, origin: new URL(download.url).origin };
   }
 
   private async guideVersion() {

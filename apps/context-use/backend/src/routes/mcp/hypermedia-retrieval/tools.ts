@@ -55,21 +55,19 @@ export function registerHypermediaRetrievalTools({
         }
         throw error;
       }
-      const result = query
-        ? await retrievalService.search({
-            ownerId: principal.ownerId,
-            query,
-            resourceTypes,
-            limit,
-            filters: {
-              visibility,
-              entity: { type: entityType },
-              knowledgePage: { interval, temporalBounds },
-              asset: { kind: assetKind },
-              record: recordFilter,
-            },
-          })
-        : { results: [], truncated: false };
+      const result = await retrievalService.search({
+        ownerId: principal.ownerId,
+        query,
+        resourceTypes,
+        limit,
+        filters: {
+          visibility,
+          entity: { type: entityType },
+          knowledgePage: { interval, temporalBounds },
+          asset: { kind: assetKind },
+          record: recordFilter,
+        },
+      });
       return mcpToolSuccess({
         results: result.results.map(mcpHypermediaRetrievalResult),
         truncated: result.truncated,

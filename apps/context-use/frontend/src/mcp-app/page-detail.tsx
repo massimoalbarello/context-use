@@ -9,8 +9,9 @@ import { ResourceDetailHeading } from '../components/knowledge/resource-detail-h
 import { markdownTextContent } from '../components/markdown/markdown-heading';
 import { PageProse } from '../components/pages/page-prose';
 import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-label';
+import { AssetEmbed } from './asset-preview';
 import type { McpAppClient, Page } from './client';
-import { PreviewImage, PreviewPortrait } from './resource-preview';
+import { PreviewPortrait } from './resource-preview';
 
 export function PageDetail({
   client,
@@ -118,28 +119,15 @@ export function PageMarkdown({
         if (!client) {
           return null;
         }
-        const image = (
-          <PreviewImage
-            client={client}
-            address={address}
-            alt={alt || 'Attached asset'}
-            className="bg-muted"
-          />
-        );
         return (
           <DeferredAsset className={className}>
-            {onOpen && !linked ? (
-              <button
-                type="button"
-                className="block w-full"
-                onClick={() => onOpen(address)}
-                aria-label={`Open ${alt || 'asset'}`}
-              >
-                {image}
-              </button>
-            ) : (
-              image
-            )}
+            <AssetEmbed
+              address={address}
+              client={client}
+              alt={alt}
+              linked={linked}
+              onOpen={onOpen}
+            />
           </DeferredAsset>
         );
       }}

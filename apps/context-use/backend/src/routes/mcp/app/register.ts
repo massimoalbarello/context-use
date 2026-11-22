@@ -7,9 +7,16 @@ import { mcpAppHtml, mcpAppUri } from './html.gen.ts';
 
 export const MCP_APP_META = { ui: { resourceUri: mcpAppUri } };
 
-const resourceMeta = { ui: { csp: { connectDomains: [], resourceDomains: [] } } };
-
-export function registerMcpApp(server: McpServer): void {
+export function registerMcpApp({
+  server,
+  instanceOrigin,
+}: {
+  server: McpServer;
+  instanceOrigin: string;
+}): void {
+  const resourceMeta = {
+    ui: { csp: { connectDomains: [instanceOrigin], resourceDomains: [instanceOrigin] } },
+  };
   server.registerTool(
     'open_resource',
     {

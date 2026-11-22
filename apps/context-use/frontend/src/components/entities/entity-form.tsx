@@ -1,8 +1,8 @@
 import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
 import type { ReactNode } from 'react';
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { MAX_ASSET_BYTES, MAX_ASSET_MEBIBYTES } from '#backend/models/assets/model.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
 import {
   type EntityType,
   MAX_ENTITY_DESCRIPTION_LENGTH,

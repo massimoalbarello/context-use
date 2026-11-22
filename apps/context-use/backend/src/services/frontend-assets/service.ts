@@ -44,7 +44,10 @@ export class FrontendAssetsService {
       : REVALIDATE_CACHE_CONTROL;
 
     return new Response(asset, {
-      headers: { 'Cache-Control': cacheControl },
+      headers: {
+        'Cache-Control': cacheControl,
+        ...(path.startsWith('/pdfjs/') && { 'Access-Control-Allow-Origin': '*' }),
+      },
     });
   }
 }

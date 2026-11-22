@@ -89,6 +89,7 @@ test('authenticated 2025-06-18 clients can initialize and call the same tools', 
   const serverTransport = createMcpTransport({
     createServer: ({ principal: authenticatedPrincipal }) =>
       createContextUseMcpServer({
+        instanceOrigin: 'https://context-use.example',
         recordsService: unusedMcpRecordsService,
         principal: authenticatedPrincipal,
         assetsService,

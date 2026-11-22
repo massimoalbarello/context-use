@@ -1,4 +1,4 @@
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
 import type { Entity, EntityType, EntityTypeFilter } from '#backend/models/entities/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
