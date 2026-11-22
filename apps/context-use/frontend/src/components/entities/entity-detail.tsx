@@ -21,6 +21,7 @@ import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceName } from '../knowledge/resource-name';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
+import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
@@ -163,7 +164,10 @@ function EntityDetailContent({ entity, onArchived }: { entity: Entity; onArchive
       <div
         className={cn('grid items-start gap-8', entity.entityType === 'person' && 'md:grid-cols-2')}
       >
-        <EntityPageSections pages={entity.pages} />
+        <EntityPageSections
+          pages={entity.pages}
+          renderPage={(page) => <KnowledgePageLink page={page} presentation="card" />}
+        />
         {entity.entityType === 'person' && <PersonImages readableId={entity.readableId} />}
       </div>
     </DetailShell>

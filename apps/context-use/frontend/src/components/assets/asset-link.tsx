@@ -2,16 +2,17 @@ import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { File, Image as ImageIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { assetContentUrl, assetTypeLabel, isEmbeddableAsset } from '../../lib/asset-presentation';
+import {
+  assetContentUrl,
+  assetTypeLabel,
+  formatAssetSize,
+  isEmbeddableAsset,
+} from '../../lib/asset-presentation';
 import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
 import { PublicBadge } from '../publications/publication-appearance';
 import { Badge } from '../ui/badge';
-
-const BYTES_PER_KIBIBYTE = 1024;
-const KIBIBYTES_PER_MEBIBYTE = 1024;
-const BYTES_PER_MEBIBYTE = BYTES_PER_KIBIBYTE * KIBIBYTES_PER_MEBIBYTE;
 
 type AssetName = Pick<AssetSummary, 'readableId' | 'name'>;
 type AssetIdentity = Pick<AssetSummary, 'readableId' | 'name' | 'mediaType' | 'extension'> &
@@ -20,16 +21,6 @@ type AssetIdentity = Pick<AssetSummary, 'readableId' | 'name' | 'mediaType' | 'e
 type AssetLinkProps =
   | { asset: AssetName; presentation: 'inline'; active?: never; children?: ReactNode }
   | { asset: AssetIdentity; presentation: 'card'; active?: boolean; children?: never };
-
-export function formatAssetSize(sizeBytes: number): string {
-  if (sizeBytes < BYTES_PER_KIBIBYTE) {
-    return `${sizeBytes} B`;
-  }
-  if (sizeBytes < BYTES_PER_MEBIBYTE) {
-    return `${(sizeBytes / BYTES_PER_KIBIBYTE).toFixed(1)} KB`;
-  }
-  return `${(sizeBytes / BYTES_PER_MEBIBYTE).toFixed(1)} MB`;
-}
 
 export function AssetCardContent({
   asset,
@@ -72,6 +63,15 @@ export function AssetCardContent({
   );
 }
 
+export function InlineAsset({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <ImageIcon className="mr-1 inline size-4" aria-hidden="true" />
+      {children}
+    </>
+  );
+}
+
 export function AssetLink({ asset, presentation, active, children }: AssetLinkProps) {
   const resourceLink = useResourceLink({ kind: 'asset', readableId: asset.readableId });
   if (presentation === 'inline') {
@@ -79,12 +79,11 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
       <Link
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
-        className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
+        className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
         to="/app/assets/$id"
         params={{ id: asset.readableId }}
       >
-        <ImageIcon className="size-4" aria-hidden="true" />
-        {children ?? asset.name}
+        <InlineAsset>{children ?? asset.name}</InlineAsset>
       </Link>
     );
   }

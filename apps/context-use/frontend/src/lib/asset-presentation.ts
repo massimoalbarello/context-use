@@ -33,3 +33,17 @@ export function assetTypeLabel(asset: { mediaType: string; extension?: string | 
   }
   return asset.mediaType === 'application/octet-stream' ? 'File' : asset.mediaType;
 }
+
+const BYTES_PER_KIBIBYTE = 1024;
+const KIBIBYTES_PER_MEBIBYTE = 1024;
+const BYTES_PER_MEBIBYTE = BYTES_PER_KIBIBYTE * KIBIBYTES_PER_MEBIBYTE;
+
+export function formatAssetSize(sizeBytes: number): string {
+  if (sizeBytes < BYTES_PER_KIBIBYTE) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < BYTES_PER_MEBIBYTE) {
+    return `${(sizeBytes / BYTES_PER_KIBIBYTE).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / BYTES_PER_MEBIBYTE).toFixed(1)} MB`;
+}

@@ -6,7 +6,7 @@ import { ResourceNavigation } from '../knowledge/resource-navigation';
 import { AssetLink } from './asset-link';
 import { AssetMedia } from './asset-media';
 import { AssetPreviewFallback } from './asset-preview-fallback';
-import { AssetEmbedPlaceholder, DeferredAsset } from './deferred-asset';
+import { AssetEmbedPlaceholder, DeferredAsset, markdownAssetMediaClass } from './deferred-asset';
 
 export function AssetMarkdownLink({
   readableId,
@@ -79,7 +79,7 @@ function AssetEmbedMedia({ asset, alt, linked }: EmbedProps & { asset: AssetPrev
   return (
     <AssetMedia
       asset={{ ...asset, name: alt || asset.name }}
-      className="max-h-[36rem] w-full rounded-xl bg-muted object-contain"
+      className={markdownAssetMediaClass}
       fallback={
         <AssetPreviewFallback message="This file could not be previewed.">
           {!linked && (

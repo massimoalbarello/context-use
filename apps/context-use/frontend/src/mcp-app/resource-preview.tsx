@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
 import { AssetImage } from '../components/assets/asset-image';
-import { formatAssetSize } from '../components/assets/asset-link';
+import { AssetPreviewContent } from '../components/assets/asset-preview-content';
 import { EntityAvatar } from '../components/entities/entity-link';
+import { EntityPageSections } from '../components/entities/entity-page-sections';
 import { EntityProfile } from '../components/entities/entity-profile';
-import { ResourceList, resourceCardVariants } from '../components/knowledge/resource-list';
-import { ResourceName } from '../components/knowledge/resource-name';
+import { resourceCardVariants } from '../components/knowledge/resource-list';
 import { KnowledgePageCardContent } from '../components/pages/knowledge-page-card-content';
-import { assetTypeLabel, isEmbeddableAsset } from '../lib/asset-presentation';
+import { isEmbeddableAsset } from '../lib/asset-presentation';
 import type { Asset, Entity, PagesClient } from './client';
 
 function previewQuery({ client, address }: { client: PagesClient; address: string }) {
@@ -91,22 +91,18 @@ export function EntityPreview({
         }
       />
       {entity.pages.length > 0 && (
-        <>
-          <h2 className="font-semibold">Mentioned in pages</h2>
-          <ResourceList>
-            {entity.pages.map((page) => (
-              <li key={page.address}>
-                <button
-                  type="button"
-                  className={resourceCardVariants({ className: 'w-full' })}
-                  onClick={() => onOpen(page.address)}
-                >
-                  <KnowledgePageCardContent page={page} />
-                </button>
-              </li>
-            ))}
-          </ResourceList>
-        </>
+        <EntityPageSections
+          pages={entity.pages}
+          renderPage={(page) => (
+            <button
+              type="button"
+              className={resourceCardVariants({ className: 'w-full' })}
+              onClick={() => onOpen(page.address)}
+            >
+              <KnowledgePageCardContent page={page} />
+            </button>
+          )}
+        />
       )}
     </section>
   );
@@ -114,11 +110,7 @@ export function EntityPreview({
 
 export function AssetPreview({ asset, client }: { asset: Asset; client: PagesClient }) {
   return (
-    <section className="grid gap-4">
-      <ResourceName>{asset.name}</ResourceName>
-      <p className="text-muted-foreground text-sm">
-        {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
-      </p>
+    <AssetPreviewContent asset={asset} heading="h1">
       {isEmbeddableAsset(asset) && (
         <PreviewImage
           address={asset.address}
@@ -127,6 +119,6 @@ export function AssetPreview({ asset, client }: { asset: Asset; client: PagesCli
           className="max-h-[36rem] w-full rounded-xl bg-muted object-contain"
         />
       )}
-    </section>
+    </AssetPreviewContent>
   );
 }

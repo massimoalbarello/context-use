@@ -1,7 +1,9 @@
 import { cn } from '@repo/ui/class-names';
+import { createContext, type ReactNode, type Ref, useContext } from 'react';
 import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { remarkTables } from '#backend/models/markdown/tables.ts';
+import { internalLink } from '../../lib/internal-link';
 import { headingId } from './markdown-heading';
 import { markdownTableComponents } from './markdown-table';
 
@@ -64,23 +66,67 @@ const markdownComponents: Components = {
   ),
 };
 
+export type PageLinkProps = {
+  href: string;
+  target: ReturnType<typeof internalLink>;
+  children: ReactNode;
+};
+
+type PageRenderers = {
+  renderLink: (props: PageLinkProps) => ReactNode;
+  renderAsset: (props: {
+    address: string;
+    readableId: string;
+    alt?: string;
+    className?: string;
+    linked: boolean;
+  }) => ReactNode;
+};
+
+const PageReferences = createContext<PageRenderers | null>(null);
+
+const pageComponents: Components = {
+  ...markdownComponents,
+  a: function PageLink({ href = '', children }) {
+    return useContext(PageReferences)?.renderLink({ href, target: internalLink(href), children });
+  },
+  img: function PageAsset({ src = '', alt, className, node }) {
+    const references = useContext(PageReferences);
+    const target = internalLink(src);
+    if (target?.kind !== 'asset') {
+      return null;
+    }
+    return references?.renderAsset({
+      address: src,
+      readableId: target.readableId,
+      alt,
+      className,
+      linked: Boolean(node?.properties['data-asset-linked']),
+    });
+  },
+};
+
 export function PageProse({
   markdown,
-  link,
-  image,
-}: {
-  markdown: string;
-  link: NonNullable<Components['a']>;
-  image: NonNullable<Components['img']>;
-}) {
+  articleRef,
+  className,
+  renderLink,
+  renderAsset,
+}: PageRenderers & { markdown: string; articleRef?: Ref<HTMLElement>; className?: string }) {
   return (
-    <ReactMarkdown
-      skipHtml
-      remarkPlugins={[remarkTables, remarkAssetLayout]}
-      urlTransform={(url) => (url.startsWith('context-use://') ? url : defaultUrlTransform(url))}
-      components={{ ...markdownComponents, a: link, img: image }}
-    >
-      {markdown}
-    </ReactMarkdown>
+    <article className={cn('py-3 md:py-5', className)} ref={articleRef}>
+      <PageReferences value={{ renderLink, renderAsset }}>
+        <ReactMarkdown
+          skipHtml
+          remarkPlugins={[remarkTables, remarkAssetLayout]}
+          urlTransform={(url) =>
+            url.startsWith('context-use://') ? url : defaultUrlTransform(url)
+          }
+          components={pageComponents}
+        >
+          {markdown}
+        </ReactMarkdown>
+      </PageReferences>
+    </article>
   );
 }

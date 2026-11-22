@@ -1,11 +1,10 @@
 import { InlineEntity } from '@repo/ui/inline-entity';
-import { File } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { DeferredAsset } from '../components/assets/deferred-asset';
+import { InlineAsset } from '../components/assets/asset-link';
+import { DeferredAsset, markdownAssetMediaClass } from '../components/assets/deferred-asset';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { markdownTextContent } from '../components/pages/markdown-heading';
 import { PageProse } from '../components/pages/page-prose';
-import { internalLink } from '../lib/internal-link';
 import type { Page, PagesClient } from './client';
 import { PreviewImage, PreviewPortrait } from './resource-preview';
 
@@ -25,88 +24,81 @@ export function PageMarkdown({
   fragment?: string;
 }) {
   return (
-    <article
-      className="min-w-0 overflow-x-auto break-words py-3 md:py-5"
-      ref={(node) => {
+    <PageProse
+      className="min-w-0 overflow-x-auto break-words"
+      articleRef={(node) => {
         if (node && fragment) {
           node.ownerDocument.getElementById(fragment)?.scrollIntoView();
         }
       }}
-    >
-      <PageProse
-        markdown={markdown}
-        link={({ href = '', children }) => {
-          const target = internalLink(href);
-          if (target && target.kind !== 'record') {
-            const content =
-              target.kind === 'entity' ? (
-                <EntityMention
-                  client={client}
-                  mention={mentions.find((item) => item.readableId === target.readableId)}
-                >
-                  {children}
-                </EntityMention>
-              ) : (
-                <>
-                  {target.kind === 'asset' && (
-                    <File className="mr-1 inline size-4" aria-hidden="true" />
-                  )}
-                  {children}
-                </>
-              );
-            return onOpen ? (
-              <button
-                type="button"
-                className={
-                  target.kind === 'entity'
-                    ? 'group/entity text-inherit'
-                    : 'font-medium text-foreground underline decoration-foreground/35 underline-offset-4'
-                }
-                onClick={() => onOpen(href)}
-              >
-                {content}
-              </button>
-            ) : (
-              <span>{content}</span>
-            );
-          }
+      markdown={markdown}
+      renderLink={({ href, target, children }) => {
+        if (!target || target.kind === 'record') {
           return (
             <ExternalLink href={href} onExternal={onExternal}>
               {children}
             </ExternalLink>
           );
-        }}
-        image={({ src, alt, className, node }) => {
-          if (!client || !src || internalLink(src)?.kind !== 'asset') {
-            return null;
-          }
-          const image = (
-            <PreviewImage
+        }
+        const content =
+          target.kind === 'entity' ? (
+            <EntityMention
               client={client}
-              address={src}
-              alt={alt || 'Attached asset'}
-              className="max-h-[36rem] w-full rounded-xl bg-muted object-contain"
-            />
+              mention={mentions.find((item) => item.readableId === target.readableId)}
+            >
+              {children}
+            </EntityMention>
+          ) : target.kind === 'asset' ? (
+            <InlineAsset>{children}</InlineAsset>
+          ) : (
+            children
           );
-          return (
-            <DeferredAsset className={className}>
-              {onOpen && !node?.properties['data-asset-linked'] ? (
-                <button
-                  type="button"
-                  className="block w-full"
-                  onClick={() => onOpen(src)}
-                  aria-label={`Open ${alt || 'asset'}`}
-                >
-                  {image}
-                </button>
-              ) : (
-                image
-              )}
-            </DeferredAsset>
-          );
-        }}
-      />
-    </article>
+        return onOpen ? (
+          <button
+            type="button"
+            className={
+              target.kind === 'entity'
+                ? 'group/entity text-inherit'
+                : 'font-medium text-foreground underline decoration-foreground/35 underline-offset-4'
+            }
+            onClick={() => onOpen(href)}
+          >
+            {content}
+          </button>
+        ) : (
+          <span>{content}</span>
+        );
+      }}
+      renderAsset={({ address, alt, className, linked }) => {
+        if (!client) {
+          return null;
+        }
+        const image = (
+          <PreviewImage
+            client={client}
+            address={address}
+            alt={alt || 'Attached asset'}
+            className={markdownAssetMediaClass}
+          />
+        );
+        return (
+          <DeferredAsset className={className}>
+            {onOpen && !linked ? (
+              <button
+                type="button"
+                className="block w-full"
+                onClick={() => onOpen(address)}
+                aria-label={`Open ${alt || 'asset'}`}
+              >
+                {image}
+              </button>
+            ) : (
+              image
+            )}
+          </DeferredAsset>
+        );
+      }}
+    />
   );
 }
 
