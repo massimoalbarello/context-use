@@ -2,12 +2,22 @@ import type { App } from '@modelcontextprotocol/ext-apps';
 import { z } from 'zod';
 import { McpAssetSchema } from '#backend/routes/mcp/assets/model.ts';
 import { McpEntityDetailSchema } from '#backend/routes/mcp/entities/detail-model.ts';
+import {
+  SearchHypermediaInputSchema,
+  SearchHypermediaOutputSchema,
+} from '#backend/routes/mcp/hypermedia-retrieval/model.ts';
 import { McpKnowledgePageSchema } from '#backend/routes/mcp/pages/model.ts';
-import { WidgetSearchSchema } from '#backend/routes/mcp/pages/search-model.ts';
 import { internalLink } from '../lib/internal-link';
 import type { CreatePageVariables } from '../queries/pages';
 
-export type WidgetSearch = z.infer<typeof WidgetSearchSchema>;
+export type SearchHit = z.infer<typeof SearchHypermediaOutputSchema>['results'][number];
+export type SearchInput = z.infer<typeof SearchHypermediaInputSchema>;
+const PICKER_LIMIT = 10;
+
+export function pickerInput(input: SearchInput) {
+  return { ...input, limit: Math.min(input.limit ?? PICKER_LIMIT, PICKER_LIMIT) };
+}
+
 export type Entity = z.infer<typeof McpEntityDetailSchema>;
 export type Asset = z.infer<typeof McpAssetSchema>;
 export type Page = z.infer<typeof McpKnowledgePageSchema>;
@@ -28,7 +38,6 @@ const resourceReaders = {
 };
 
 const launchSchema = z.union([
-  WidgetSearchSchema.transform((value) => ({ kind: 'search', value }) as const),
   resourceReaders.page.schema,
   resourceReaders.entity.schema,
   resourceReaders.asset.schema,
@@ -38,6 +47,22 @@ export function launchResource(result: {
   structuredContent?: unknown;
   _meta?: Record<string, unknown>;
 }) {
+  if (result._meta?.search != null) {
+    const input = SearchHypermediaInputSchema.safeParse(result._meta.search);
+    const output = SearchHypermediaOutputSchema.safeParse(result.structuredContent);
+    if (input.success && output.success) {
+      const search = pickerInput(input.data);
+      const { results, truncated } = output.data;
+      return {
+        kind: 'search',
+        value: {
+          input: search,
+          results: results.slice(0, search.limit),
+          truncated: truncated || results.length > search.limit,
+        },
+      } as const;
+    }
+  }
   if (result._meta?.page != null) {
     const page = resourceReaders.page.schema.safeParse(result._meta.page);
     if (page.success) {
@@ -88,9 +113,9 @@ export class PagesClient {
     return result;
   }
 
-  async search(input: Pick<WidgetSearch, 'query' | 'resourceType'>) {
-    const result = await this.call({ name: 'open_resource_search', args: input });
-    return WidgetSearchSchema.parse(result.structuredContent);
+  async search(input: SearchInput) {
+    const result = await this.call({ name: 'search_hypermedia', args: input });
+    return SearchHypermediaOutputSchema.parse(result.structuredContent);
   }
 
   async resource(address: string) {

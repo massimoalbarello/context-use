@@ -27,7 +27,7 @@ function renderResult() {
     queryClient.setQueryData(resourceQueryKey(resource.value.address), resource);
   }
   if (search) {
-    queryClient.setQueryData([...searchQueryKey, search.query, search.resourceType], search);
+    queryClient.setQueryData([...searchQueryKey, search.input], search);
   }
   if (mounted && !search) {
     void queryClient.invalidateQueries({ queryKey: searchQueryKey });
@@ -35,9 +35,9 @@ function renderResult() {
   root.render(
     <QueryClientProvider client={queryClient}>
       <PagesApp
-        key={JSON.stringify([address, search?.query, search?.resourceType])}
+        key={JSON.stringify([address, search?.input])}
         client={client}
-        initialSearch={search}
+        initialSearch={search?.input}
         initialAddress={address}
         initialNotice={initialNotice(received)}
       />

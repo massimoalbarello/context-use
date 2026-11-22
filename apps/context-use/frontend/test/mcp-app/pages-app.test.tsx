@@ -3,7 +3,7 @@ import type { App } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { launchResource, type Page, PagesClient } from '../../src/mcp-app/client';
+import { launchResource, type Page, PagesClient, type SearchInput } from '../../src/mcp-app/client';
 import { PagesApp } from '../../src/mcp-app/pages-app';
 import { resourceQueryKey } from '../../src/mcp-app/queries';
 
@@ -57,6 +57,35 @@ test('opens the same page from a read result and from a write receipt', () => {
   expect(launchResource(success({ revisionNumber: 1 }))).toBeUndefined();
 });
 
+test('caps the picker independently of the search result and retains filters for refinements', () => {
+  const search: SearchInput = {
+    query: 'Notes',
+    resourceTypes: ['knowledge_page'],
+    visibility: 'private',
+    limit: 30,
+  };
+  const matchCount = 12;
+  const results = Array.from(Array(matchCount).keys(), (index: number) => ({
+    ...page,
+    address: `context-use://page/notes-${index}`,
+    readableId: `notes-${index}`,
+    matchExcerpt: null,
+    resourceType: 'knowledge_page',
+  }));
+  const launch = launchResource({ ...success({ results, truncated: false }), _meta: { search } });
+  if (launch?.kind !== 'search') {
+    throw new Error('Expected search results');
+  }
+  expect(launch.value.input).toEqual({
+    ...search,
+    limit: 10,
+  });
+  expect(launch.value.results.map(({ address }) => address)).toEqual(
+    results.slice(0, 10).map(({ address }) => address),
+  );
+  expect(launch.value.truncated).toBe(true);
+});
+
 test('validates and saves through the host when native form submission is unavailable', async () => {
   const markdownWithSetextTitle = 'Notes\n=====\n\nThings to remember.';
   let saved = page;
@@ -64,11 +93,10 @@ test('validates and saves through the host when native form submission is unavai
   const user = setup({
     call: ({ name, arguments: args }) => {
       switch (name) {
-        case 'open_resource_search':
+        case 'search_hypermedia':
           searchQueries.push(args);
           return Promise.resolve(
             success({
-              query: args?.query,
               results:
                 args?.query === 'remember'
                   ? [
@@ -105,7 +133,7 @@ test('validates and saves through the host when native form submission is unavai
       }
     },
   });
-  const search = screen.getByRole('searchbox', { name: 'Search pages, entities, and assets' });
+  const search = screen.getByRole('searchbox', { name: 'Search Context Use' });
   expect(searchQueries).toHaveLength(0);
   expect(screen.queryByRole('list')).toBeNull();
   await user.type(search, 'missing{Enter}');
@@ -117,6 +145,7 @@ test('validates and saves through the host when native form submission is unavai
   expect(searchQueries).toEqual(
     ['missing', 'remember'].map((query) => ({
       query,
+      limit: 10,
     })),
   );
   await user.click(await screen.findByRole('button', { name: 'Edit page' }));

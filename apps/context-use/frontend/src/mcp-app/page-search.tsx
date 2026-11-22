@@ -8,8 +8,9 @@ import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { ResourceList, resourceCardVariants } from '../components/knowledge/resource-list';
 import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
 import { PublicBadge } from '../components/publications/publication-appearance';
+import { RecordCardContent } from '../components/records/record-link';
 import { isEmbeddableAsset } from '../lib/asset-presentation';
-import type { PagesClient, WidgetSearch } from './client';
+import { type PagesClient, pickerInput, type SearchHit, type SearchInput } from './client';
 import { searchQueryKey } from './queries';
 
 export function PageSearch({
@@ -17,17 +18,18 @@ export function PageSearch({
   onPage,
   query,
   setQuery,
-  resourceType,
+  filters,
 }: {
   client: PagesClient;
   query: string;
   setQuery: (query: string) => void;
-  resourceType?: WidgetSearch['resourceType'];
+  filters?: SearchInput;
   onPage: (address: string) => void;
 }) {
+  const input = pickerInput({ ...filters, query });
   const search = useQuery({
-    queryKey: [...searchQueryKey, query, resourceType],
-    queryFn: () => client.search({ query, resourceType }),
+    queryKey: [...searchQueryKey, input],
+    queryFn: () => client.search(input),
     enabled: !!query,
     staleTime: 30_000,
   });
@@ -37,13 +39,9 @@ export function PageSearch({
       <KeywordFilter
         inputId="page-search"
         placeholder={
-          resourceType === 'knowledge_page'
+          filters?.resourceTypes?.length === 1 && filters.resourceTypes[0] === 'knowledge_page'
             ? 'Search pages'
-            : resourceType === 'entity'
-              ? 'Search entities'
-              : resourceType === 'asset'
-                ? 'Search assets'
-                : 'Search pages, entities, and assets'
+            : 'Search Context Use'
         }
         maxLength={MAX_HYPERMEDIA_SEARCH_QUERY_LENGTH}
         value={query}
@@ -62,38 +60,9 @@ export function PageSearch({
         <>
           {search.data.results.length ? (
             <ResourceList>
-              {search.data.results.map(
-                (item) =>
-                  item.resourceType !== 'record' && (
-                    <li key={item.address}>
-                      <button
-                        type="button"
-                        className={resourceCardVariants({ className: 'w-full' })}
-                        onClick={() => onPage(item.address)}
-                      >
-                        {item.resourceType === 'knowledge_page' ? (
-                          <KnowledgePageCardContent
-                            page={{ ...item, excerpt: item.matchExcerpt ?? item.excerpt }}
-                            publicationStatus={item.publication.isPublic && <PublicBadge />}
-                          />
-                        ) : item.resourceType === 'entity' ? (
-                          <EntityCardContent entity={item} />
-                        ) : (
-                          <AssetCardContent
-                            asset={item}
-                            thumbnail={
-                              isEmbeddableAsset(item) ? (
-                                <ImageIcon aria-hidden="true" />
-                              ) : (
-                                <File aria-hidden="true" />
-                              )
-                            }
-                          />
-                        )}
-                      </button>
-                    </li>
-                  ),
-              )}
+              {search.data.results.map((item) => (
+                <SearchResult key={item.address} item={item} onOpen={onPage} />
+              ))}
             </ResourceList>
           ) : (
             <p role="status">No matches.</p>
@@ -106,5 +75,44 @@ export function PageSearch({
         </>
       )}
     </section>
+  );
+}
+
+function SearchResult({ item, onOpen }: { item: SearchHit; onOpen: (address: string) => void }) {
+  if (item.resourceType === 'record') {
+    return (
+      <li className="flex items-center gap-3 px-3 py-2">
+        <RecordCardContent record={item} />
+      </li>
+    );
+  }
+  return (
+    <li>
+      <button
+        type="button"
+        className={resourceCardVariants({ className: 'w-full' })}
+        onClick={() => onOpen(item.address)}
+      >
+        {item.resourceType === 'knowledge_page' ? (
+          <KnowledgePageCardContent
+            page={{ ...item, excerpt: item.matchExcerpt ?? item.excerpt }}
+            publicationStatus={item.publication.isPublic && <PublicBadge />}
+          />
+        ) : item.resourceType === 'entity' ? (
+          <EntityCardContent entity={item} />
+        ) : (
+          <AssetCardContent
+            asset={item}
+            thumbnail={
+              isEmbeddableAsset(item) ? (
+                <ImageIcon aria-hidden="true" />
+              ) : (
+                <File aria-hidden="true" />
+              )
+            }
+          />
+        )}
+      </button>
+    </li>
   );
 }

@@ -1,7 +1,7 @@
 import { Button } from '@repo/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { Page, PagesClient, WidgetSearch } from './client';
+import type { Page, PagesClient, SearchInput } from './client';
 import { PageDetail } from './page-detail';
 import { PageEditor } from './page-editor';
 import { PageSearch } from './page-search';
@@ -16,7 +16,7 @@ export function PagesApp({
 }: {
   client: PagesClient;
   initialAddress?: string;
-  initialSearch?: WidgetSearch;
+  initialSearch?: SearchInput;
   initialNotice?: string;
 }) {
   const [path, setPath] = useState<string[]>(initialAddress ? [initialAddress] : []);
@@ -76,7 +76,7 @@ export function PagesApp({
           onPage={open}
           query={query}
           setQuery={setQuery}
-          resourceType={initialSearch?.resourceType}
+          filters={initialSearch}
         />
       ) : (
         <ResourceDetail
