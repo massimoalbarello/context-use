@@ -54,8 +54,5 @@
     "bun": "1.4.0",
     "node": ">=22.14.0"
   },
-  "packageManager": "bun@1.4.0",
-  "patchedDependencies": {
-    "@context-use/open-sync@0.5.1": "patches/@context-use%2Fopen-sync@0.5.1.patch"
-  }
+  "packageManager": "bun@1.4.0"
 }
