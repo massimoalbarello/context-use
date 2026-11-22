@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type Page, PagesClient } from '../../src/mcp-app/client';
 import { PagesApp } from '../../src/mcp-app/pages-app';
@@ -52,38 +52,68 @@ const failure = ({ code, message }: { code: string; message: string }) => ({
 
 test('validates and saves through the host when native form submission is unavailable', async () => {
   const markdownWithSetextTitle = 'Notes\n=====\n\nThings to remember.';
-  let saved = false;
+  let saved = page;
+  const searchQueries: unknown[] = [];
   const user = setup({
     call: ({ name, arguments: args }) => {
       switch (name) {
-        case 'list_knowledge_pages':
+        case 'search_hypermedia':
+          searchQueries.push(args);
           return Promise.resolve(
-            success({ items: saved ? [page] : [], total: saved ? 1 : 0, nextCursor: null }),
+            success({
+              results:
+                args?.query === 'remember'
+                  ? [
+                      {
+                        ...page,
+                        resourceType: 'knowledge_page',
+                        matchExcerpt: 'Things to remember.',
+                      },
+                    ]
+                  : [],
+              truncated: false,
+            }),
           );
         case 'read_hypermedia_curation_guide':
           return Promise.resolve(success({ guide_version: 'current-guide' }));
-        case 'create_knowledge_page':
+        case 'update_knowledge_page':
           expect(args).toMatchObject({
+            address: page.address,
+            expectedRevisionNumber: 1,
             guide_version: 'current-guide',
             markdown: markdownWithSetextTitle,
             temporalCoverage: '2026',
             changeMessage: 'First draft',
           });
-          saved = true;
+          saved = { ...page, markdown: markdownWithSetextTitle, revisionNumber: 2 };
           return Promise.resolve({
             ...success({ address: page.address, revisionNumber: 1 }),
-            _meta: { page },
+            _meta: { page: saved },
           });
         case 'read_knowledge_page':
-          return Promise.resolve(success(page));
+          return Promise.resolve(success(saved));
         default:
           throw new Error(`Unexpected ${name}`);
       }
     },
   });
-  await screen.findByText(/No pages yet/);
-  await user.click(screen.getByRole('button', { name: 'New page' }));
-  const markdown = screen.getByRole('textbox', { name: 'Page content (Markdown)' });
+  const search = screen.getByRole('searchbox', { name: 'Search pages' });
+  expect(searchQueries).toHaveLength(0);
+  expect(screen.queryByRole('list')).toBeNull();
+  await user.type(search, 'missing{Enter}');
+  await screen.findByText('No matching pages.');
+  await user.clear(search);
+  expect(screen.queryByText('No matching pages.')).toBeNull();
+  await user.type(search, 'remember{Enter}');
+  await user.click(await screen.findByRole('button', { name: /Notes Things to remember/ }));
+  expect(searchQueries).toEqual(
+    ['missing', 'remember'].map((query) => ({
+      query,
+      resourceTypes: ['knowledge_page'],
+      limit: 5,
+    })),
+  );
+  const markdown = await screen.findByRole('textbox', { name: 'Page content (Markdown)' });
   // A host iframe can allow scripts while blocking native form submission.
   (markdown as HTMLTextAreaElement).form!.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -101,7 +131,7 @@ test('validates and saves through the host when native form submission is unavai
   await user.click(screen.getByRole('button', { name: 'Preview' }));
   expect(screen.getByRole('heading', { name: 'Notes' })).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Save page' }));
-  await screen.findByRole('button', { name: 'Edit page' });
+  await screen.findByText('Revision 2 · Private');
   expect(screen.getByRole('heading', { name: 'Notes' })).toBeTruthy();
 });
 
@@ -111,7 +141,13 @@ test('keeps the draft after a concurrent revision conflict and never retries the
     initial: page,
     call: ({ name, arguments: args }) => {
       if (name === 'read_knowledge_page') {
-        return Promise.resolve(success(page));
+        return Promise.resolve(
+          success(
+            writes
+              ? { ...page, revisionNumber: 2, markdown: '# Notes\n\nChanged elsewhere.' }
+              : page,
+          ),
+        );
       }
       if (name === 'read_hypermedia_curation_guide') {
         return Promise.resolve(success({ guide_version: 'current-guide' }));
@@ -133,28 +169,17 @@ test('keeps the draft after a concurrent revision conflict and never retries the
   await screen.findByRole('alert');
   expect(markdown.value).toContain('My unsaved thought.');
   expect(writes).toBe(1);
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  await screen.findByText('Changed elsewhere.');
 });
 
-test('requires a public-edit decision and a separate archive confirmation', async () => {
+test('requires confirmation to edit a public page', async () => {
   const publicPage = { ...page, publication: { isPublic: true, publishedRevisionNumber: 1 } };
-  let archiveCalls = 0;
   const user = setup({
     initial: publicPage,
     call: ({ name }) => {
-      if (name === 'read_knowledge_page') {
-        return Promise.resolve(success(publicPage));
-      }
-      if (name === 'read_hypermedia_curation_guide') {
-        return Promise.resolve(success({ guide_version: 'current-guide' }));
-      }
-      expect(name).toBe('archive_knowledge_page');
-      archiveCalls++;
-      return Promise.resolve(
-        failure({
-          code: 'resource_published',
-          message: 'Unpublish this resource before archiving.',
-        }),
-      );
+      expect(name).toBe('read_knowledge_page');
+      return Promise.resolve(success(publicPage));
     },
   });
   await user.click(await screen.findByRole('button', { name: 'Edit page' }));
@@ -166,60 +191,9 @@ test('requires a public-edit decision and a separate archive confirmation', asyn
     false,
   );
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
-  await user.click(screen.getByRole('button', { name: 'Archive' }));
-  await screen.findByRole('alertdialog');
-  expect(archiveCalls).toBe(0);
-  await user.click(screen.getByRole('button', { name: 'Archive page' }));
-  await screen.findByText('Unpublish this page in Context Use before archiving it.');
-  expect(archiveCalls).toBe(1);
-});
-
-test('continues opaque pagination and can navigate to an archive blocker', async () => {
-  let loads = 0;
-  const blocker = {
-    ...page,
-    address: 'context-use://page/blocker',
-    readableId: 'blocker',
-    title: 'Blocker',
-    publication: { isPublic: true, publishedRevisionNumber: 1 },
-    markdown: '# Blocker\n\nReference to notes.',
-  };
-  const user = setup({
-    call: ({ name, arguments: args }) => {
-      if (name === 'list_knowledge_pages') {
-        loads++;
-        if (args?.cursor) {
-          expect(args.cursor).toBe('opaque-cursor');
-          return Promise.resolve(success({ items: [blocker], total: 2, nextCursor: null }));
-        }
-        return Promise.resolve(success({ items: [page], total: 2, nextCursor: 'opaque-cursor' }));
-      }
-      if (name === 'read_knowledge_page') {
-        return Promise.resolve(success(args?.address === page.address ? page : blocker));
-      }
-      if (name === 'read_hypermedia_curation_guide') {
-        return Promise.resolve(success({ guide_version: 'current-guide' }));
-      }
-      return Promise.resolve({
-        ...success({
-          error: {
-            code: 'resource_in_use',
-            message: 'This page is referenced.',
-            blockers: [{ page: blocker }],
-          },
-        }),
-        isError: true,
-      });
-    },
-  });
-  await user.click(await screen.findByRole('button', { name: 'Load more pages' }));
-  await screen.findByRole('button', { name: /Blocker Things.*Public/ });
-  expect(loads).toBe(2);
-  await user.click(screen.getByRole('button', { name: /Notes Things/ }));
-  await user.click(await screen.findByRole('button', { name: 'Archive' }));
-  await user.click(screen.getByRole('button', { name: 'Archive page' }));
-  await user.click(await screen.findByRole('button', { name: 'Blocker' }));
-  await waitFor(() => expect(screen.getByRole('heading', { name: 'Blocker' })).toBeTruthy());
+  await user.click(screen.getByRole('button', { name: 'Search pages' }));
+  expect(screen.getByRole('searchbox')).toBeTruthy();
+  expect(screen.queryByRole('list')).toBeNull();
 });
 
 test('renders untrusted Markdown without running HTML or fetching remote images', async () => {

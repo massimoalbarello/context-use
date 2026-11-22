@@ -202,7 +202,6 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'list_knowledge_pages',
     {
-      _meta: PAGES_APP_META,
       title: 'List knowledge pages',
       description:
         'List active knowledge pages without searching. Pass nextCursor unchanged to continue the list.',

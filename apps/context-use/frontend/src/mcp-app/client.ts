@@ -1,36 +1,26 @@
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { z } from 'zod';
-import {
-  KnowledgePageListOutputSchema,
-  McpKnowledgePageSchema,
-  McpKnowledgePageSummarySchema,
-} from '#backend/routes/mcp/pages/model.ts';
+import { SearchHypermediaOutputSchema } from '#backend/routes/mcp/hypermedia-retrieval/model.ts';
+import { McpKnowledgePageSchema } from '#backend/routes/mcp/pages/model.ts';
 import type { CreatePageVariables } from '../queries/pages';
 
 export type Page = z.infer<typeof McpKnowledgePageSchema>;
-export type PageSummary = z.infer<typeof McpKnowledgePageSummarySchema>;
 const ToolErrorSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
-    blockers: z.array(z.object({ page: McpKnowledgePageSummarySchema })).optional(),
   }),
 });
 
 export class PageToolError extends Error {
   readonly code: string;
-  readonly blockers: PageSummary[];
   constructor(error: z.infer<typeof ToolErrorSchema>['error']) {
-    const messages: Record<string, string> = {
-      resource_in_use: 'Other pages reference this page. Review those references before archiving.',
-      resource_published: 'Unpublish this page in Context Use before archiving it.',
-      revision_conflict: 'This page changed elsewhere. Your draft has not been saved.',
-      page_title_conflict:
-        'A page with this title already exists. Choose a different title or confirm the duplicate.',
-    };
-    super(messages[error.code] ?? error.message);
+    super(
+      error.code === 'revision_conflict'
+        ? 'This page changed elsewhere. Your draft has not been saved.'
+        : error.message,
+    );
     this.code = error.code;
-    this.blockers = error.blockers?.map(({ page }) => page) ?? [];
   }
 }
 
@@ -56,9 +46,13 @@ export class PagesClient {
     return result;
   }
 
-  async list(cursor?: string) {
-    const result = await this.call({ name: 'list_knowledge_pages', args: { cursor } });
-    return KnowledgePageListOutputSchema.parse(result.structuredContent);
+  async search(query: string) {
+    const result = await this.call({
+      name: 'search_hypermedia',
+      args: { query, resourceTypes: ['knowledge_page'], limit: 5 },
+    });
+    const { results, truncated } = SearchHypermediaOutputSchema.parse(result.structuredContent);
+    return { pages: results.filter((item) => item.resourceType === 'knowledge_page'), truncated };
   }
 
   async read(address: string) {
@@ -71,32 +65,24 @@ export class PagesClient {
     return z.object({ guide_version: z.string() }).parse(result.structuredContent).guide_version;
   }
 
-  async save(input: CreatePageVariables & { page?: Page }) {
-    const { page, changeMessage, ...values } = input;
+  async save({
+    page,
+    markdown,
+    temporalCoverage,
+    changeMessage,
+  }: CreatePageVariables & { page: Page }) {
     const result = await this.call({
-      name: page ? 'update_knowledge_page' : 'create_knowledge_page',
+      name: 'update_knowledge_page',
       args: {
-        ...values,
-        ...(page ? { address: page.address, expectedRevisionNumber: page.revisionNumber } : {}),
+        address: page.address,
+        expectedRevisionNumber: page.revisionNumber,
+        markdown,
+        temporalCoverage,
         guide_version: await this.guideVersion(),
-        changeMessage:
-          changeMessage ??
-          (page ? 'Edited page in Context Use app' : 'Created page in Context Use app'),
+        changeMessage: changeMessage ?? 'Edited page in Context Use app',
       },
     });
     return McpKnowledgePageSchema.parse(result._meta?.page);
-  }
-
-  async archive(address: string) {
-    const result = await this.call({
-      name: 'archive_knowledge_page',
-      args: {
-        address,
-        guide_version: await this.guideVersion(),
-        changeMessage: 'Archived page in Context Use app',
-      },
-    });
-    z.object({ archived: z.literal(true) }).parse(result.structuredContent);
   }
 }
 

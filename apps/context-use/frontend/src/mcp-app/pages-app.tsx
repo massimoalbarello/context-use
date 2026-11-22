@@ -1,14 +1,13 @@
 import { Button } from '@repo/ui/button';
-import { useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { Page, PagesClient } from './client';
 import { PageDetail } from './page-detail';
 import { PageEditor } from './page-editor';
-import { PagesList } from './pages-list';
+import { PageSearch } from './page-search';
 import { pageQueryKey, pagesQueryKey } from './queries';
 
-type View = { kind: 'browse' } | { kind: 'read'; address: string } | { kind: 'edit'; page?: Page };
+type View = { kind: 'read' | 'edit'; address: string };
 
 export function PagesApp({
   client,
@@ -19,16 +18,21 @@ export function PagesApp({
   initial: Page | null;
   initialNotice?: string;
 }) {
-  const [view, setView] = useState<View>(
-    initial ? { kind: 'read', address: initial.address } : { kind: 'browse' },
+  const [view, setView] = useState<View | null>(
+    initial ? { kind: 'read', address: initial.address } : null,
   );
   const [notice, setNotice] = useState(initialNotice);
   const queryClient = useQueryClient();
-  const selectPage = (address: string) => {
-    setView({ kind: 'read', address });
+  const navigate = (next: View | null) => {
+    setView(next);
     setNotice('');
   };
-  const browse = () => setView({ kind: 'browse' });
+  const address = view?.address.split('#')[0];
+  const detail = useQuery({
+    queryKey: pageQueryKey(address),
+    queryFn: () => client.read(address!),
+    enabled: !!address,
+  });
   const saved = (page: Page) => {
     queryClient.setQueryData(pageQueryKey(page.address), page);
     void queryClient.invalidateQueries({ queryKey: pagesQueryKey });
@@ -41,23 +45,10 @@ export function PagesApp({
         <span className="font-semibold text-sm">
           context-use <span className="ml-2 font-normal text-muted-foreground">Pages</span>
         </span>
-        {view.kind !== 'edit' && (
-          <div className="flex gap-2">
-            {view.kind === 'read' && (
-              <Button variant="outline" onClick={browse}>
-                All pages
-              </Button>
-            )}
-            <Button
-              onClick={() => {
-                setView({ kind: 'edit' });
-                setNotice('');
-              }}
-            >
-              <Plus aria-hidden="true" />
-              New page
-            </Button>
-          </div>
+        {view && (view.kind === 'read' || !detail.data) && (
+          <Button variant="outline" onClick={() => navigate(null)}>
+            Search pages
+          </Button>
         )}
       </header>
       {notice && (
@@ -65,31 +56,37 @@ export function PagesApp({
           {notice}
         </p>
       )}
-      {view.kind === 'edit' && (
-        <PageEditor
-          client={client}
-          page={view.page}
-          onSaved={saved}
-          onCancel={() => (view.page ? selectPage(view.page.address) : browse())}
-        />
+      {!view ? (
+        <PageSearch client={client} onPage={(address) => navigate({ kind: 'edit', address })} />
+      ) : detail.data ? (
+        view.kind === 'edit' ? (
+          <PageEditor
+            key={view.address}
+            client={client}
+            page={detail.data}
+            onSaved={saved}
+            onCancel={() => navigate({ ...view, kind: 'read' })}
+          />
+        ) : (
+          <PageDetail
+            key={view.address}
+            client={client}
+            page={detail.data}
+            address={view.address}
+            onPage={(address) => navigate({ kind: 'read', address })}
+            onEdit={() => navigate({ ...view, kind: 'edit' })}
+          />
+        )
+      ) : detail.error ? (
+        <div role="alert">
+          <p>{detail.error.message}</p>
+          <Button variant="outline" onClick={() => void detail.refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <p role="status">Loading page…</p>
       )}
-      {view.kind === 'read' && (
-        <PageDetail
-          key={view.address}
-          client={client}
-          address={view.address}
-          onPage={selectPage}
-          onEdit={(page) => {
-            setView({ kind: 'edit', page });
-            setNotice('');
-          }}
-          onArchived={() => {
-            browse();
-            setNotice('Page archived. You can restore it from the Archived filter in Context Use.');
-          }}
-        />
-      )}
-      {view.kind === 'browse' && <PagesList client={client} onPage={selectPage} />}
     </main>
   );
 }

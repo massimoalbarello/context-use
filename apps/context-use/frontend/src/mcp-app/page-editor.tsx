@@ -1,30 +1,38 @@
 import { Button } from '@repo/ui/button';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { PageForm } from '../components/pages/page-form';
 import { PageMarkdownTextarea } from '../components/pages/page-markdown-textarea';
 import { FieldLabel } from '../components/ui/field';
 import { type Page, type PagesClient, PageToolError } from './client';
 import { PageMarkdown } from './page-markdown';
+import { pageQueryKey } from './queries';
 
 export function PageEditor({
   client,
-  page,
+  page: loadedPage,
   onSaved,
   onCancel,
 }: {
   client: PagesClient;
-  page?: Page;
+  page: Page;
   onSaved: (page: Page) => void;
   onCancel: () => void;
 }) {
+  const [page] = useState(loadedPage); // Keep the revision the draft was based on.
   const [preview, setPreview] = useState(false);
   const [confirmedPublicEdit, setConfirmedPublicEdit] = useState(false);
+  const queryClient = useQueryClient();
   const save = useMutation({
-    mutationFn: (values: Parameters<PagesClient['save']>[0]) => client.save(values),
+    mutationFn: (input: Parameters<PagesClient['save']>[0]) => client.save(input),
     onSuccess: onSaved,
+    onError: (error) => {
+      if (error instanceof PageToolError && error.code === 'revision_conflict') {
+        void queryClient.invalidateQueries({ queryKey: pageQueryKey(page.address) });
+      }
+    },
   });
-  const submitDisabled = !!page?.publication.isPublic && !confirmedPublicEdit;
+  const submitDisabled = page.publication.isPublic && !confirmedPublicEdit;
   const error = save.error;
   return (
     <PageForm
@@ -44,21 +52,19 @@ export function PageEditor({
           </>
         )
       }
-      duplicateTitle={
-        !page && error instanceof PageToolError && error.code === 'page_title_conflict'
-      }
+      duplicateTitle={false}
       initialValues={page}
-      onSubmit={(values) => save.mutate({ ...values, page })}
+      onSubmit={(values) => save.mutate({ page, ...values })}
       header={({ intervalField, actions }) => (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="font-semibold text-xl">{page ? 'Edit page' : 'New page'}</h1>
+            <h1 className="font-semibold text-xl">Edit page</h1>
             <fieldset disabled={save.isPending} className="flex gap-2">
               {actions}
             </fieldset>
           </div>
           {intervalField}
-          {page?.publication.isPublic && (
+          {page.publication.isPublic && (
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"

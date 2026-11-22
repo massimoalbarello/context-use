@@ -83,9 +83,23 @@ export function KeywordFilter({
         placeholder={placeholder}
         maxLength={maxLength}
         value={draft}
-        onChange={(event) => setDraft(event.currentTarget.value)}
+        onChange={(event) => {
+          const next = event.currentTarget.value;
+          setDraft(next);
+          if (!next && value) {
+            onApply('');
+          }
+        }}
         onKeyDown={(event) => {
-          if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
+          if (event.nativeEvent.isComposing) {
+            return;
+          }
+          if (event.key === 'Enter') {
+            // MCP hosts can disable native form submission in the widget sandbox.
+            event.preventDefault();
+            onApply(draft.trim());
+          }
+          if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
             clearSearch();

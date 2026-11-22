@@ -223,6 +223,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'open_page_search',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -382,10 +383,13 @@ test('page tools expose a self-contained MCP app without owner data in the resou
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
-      const uri = 'ui://context-use/pages.html';
+      const uri = 'ui://context-use/page-search.html';
+      expect(await client.callTool({ name: 'open_page_search', arguments: {} })).toMatchObject({
+        content: [],
+      });
       for (const name of [
         'create_knowledge_page',
-        'list_knowledge_pages',
+        'open_page_search',
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
