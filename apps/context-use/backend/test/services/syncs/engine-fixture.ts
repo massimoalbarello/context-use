@@ -14,7 +14,9 @@ export async function fixture(input: {
   registration: SyncRegistration;
   provider: ProviderOperations;
   config?: JsonObject;
+  ownerId?: string;
 }) {
+  const scope = input.ownerId ? { actorId: input.ownerId, ownerId: input.ownerId } : owner;
   const directory = await mkdtemp(join(tmpdir(), 'example-sync-'));
   const deliveries: Deliverable[] = [];
   const options = {
@@ -34,13 +36,13 @@ export async function fixture(input: {
   let engine = createSyncRuntime(options);
   const destination = { type: 'test', input: {} };
   const sync = await engine.api.createSync({
-    ...owner,
+    ...scope,
     definition: input.registration.definition.id,
     connection: { id: 'connection', service: input.registration.definition.provider!.service },
     config: input.config ?? {},
     destination,
   });
-  const resource = { ...owner, id: sync.id };
+  const resource = { ...scope, id: sync.id };
   return {
     deliveries,
     get engine() {
@@ -53,9 +55,9 @@ export async function fixture(input: {
           .query<{ checkpoint: string }, string[]>(
             'SELECT checkpoint FROM syncs WHERE owner_id=? AND id=?',
           )
-          .get(owner.ownerId, sync.id)!;
+          .get(scope.ownerId, sync.id)!;
         return {
-          ...engine.api.sync({ ...owner, id: sync.id }),
+          ...engine.api.sync({ ...scope, id: sync.id }),
           checkpoint: JSON.parse(row.checkpoint),
         };
       } finally {
@@ -77,7 +79,7 @@ export async function fixture(input: {
         }
         if (
           engine.api.sync(resource).status === 'succeeded' &&
-          !engine.api.status(owner).queue.pendingRecords
+          !engine.api.status(scope).queue.pendingRecords
         ) {
           return;
         }

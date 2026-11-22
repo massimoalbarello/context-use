@@ -2,8 +2,10 @@ import { cn } from '@repo/ui/class-names';
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
+import { remarkTables } from '#backend/models/markdown/tables.ts';
 import { internalLink } from '../../lib/internal-link';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
+import { markdownTableComponents } from '../pages/markdown-table';
 
 export function externalRecordUrl(url: string): string {
   try {
@@ -36,12 +38,13 @@ function ContextRecordLink({ href, children }: { href?: string; children: ReactN
 
 export function ContextRecordMarkdown({ markdown, label }: { markdown: string; label: string }) {
   return (
-    <article className="py-3 md:py-5" aria-label={label}>
+    <article className="[&_blockquote]:wrap-anywhere py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
-        remarkPlugins={[remarkAssetLayout]}
+        remarkPlugins={[remarkTables, remarkAssetLayout]}
         skipHtml
         urlTransform={(url) => (internalLink(url)?.kind === 'asset' ? url : externalRecordUrl(url))}
         components={{
+          ...markdownTableComponents,
           a: ({ href, children }) => <ContextRecordLink href={href}>{children}</ContextRecordLink>,
           img: ({ src, alt, className, node }) => {
             const asset = src ? internalLink(src) : null;
@@ -56,6 +59,9 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
               <span className="text-muted-foreground text-sm">Image: {alt}</span>
             ) : null;
           },
+          hr: () => (
+            <hr className="has-[+hr]:hidden [hr+&]:my-8 [hr+&]:border-foreground/40 [hr+&]:border-t-4 [hr+&]:border-double" />
+          ),
           h1: ({ children, node }) =>
             node?.position?.start.line === 1 && children === label ? null : (
               <h2 className="mb-7 font-semibold text-2xl tracking-tight">{children}</h2>

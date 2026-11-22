@@ -3,9 +3,10 @@ import type { JsonObject } from '@context-use/open-sync/json';
 import { z } from 'zod';
 
 const gone = 410;
+export const INVALID_CHECKPOINT_CODE = 'googlecalendar_checkpoint_invalid_resync_required';
 const badRequest = 400;
 export class ResetRequired extends SourceHttpError {
-  override readonly code = 'googlecalendar_checkpoint_invalid_resync_required';
+  override readonly code = INVALID_CHECKPOINT_CODE;
   constructor() {
     super({ status: gone });
     this.message = 'Google Calendar rejected its saved cursor. Explicit resync is required.';

@@ -3,7 +3,7 @@ import type { SyncContext } from '@context-use/open-sync/definition';
 import { googleCalendarEvents } from '#backend/services/syncs/sources/googlecalendar/definition.ts';
 import { step } from '#backend/services/syncs/sources/googlecalendar/events.ts';
 import { initialCheckpoint } from '#backend/services/syncs/sources/googlecalendar/models.ts';
-import { fixture, unused } from './fixture.ts';
+import { fixture, unused } from '../engine-fixture.ts';
 import { calendarFixture, event } from './googlecalendar-fixture.ts';
 
 const backfillCount = 3;

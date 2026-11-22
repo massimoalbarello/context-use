@@ -300,6 +300,7 @@ test(
           '/app/pages',
           '/app/syncs',
           '/app/syncs/github?tab=authorization',
+          '/app/syncs/gmail?tab=authorization',
           '/app/syncs/granola?tab=authorization',
           '/app/syncs/googlecalendar?tab=authorization',
           '/api/syncs/managed',
@@ -328,6 +329,22 @@ test(
             account: { name: null, status: 'disconnected' },
             syncs: [
               expect.objectContaining({ key: 'github.pull-requests', state: 'setup-required' }),
+            ],
+          }),
+          expect.objectContaining({
+            id: 'gmail',
+            name: 'Gmail',
+            oauthApp: expect.objectContaining({
+              configured: false,
+              callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
+            }),
+            account: { name: null, status: 'disconnected' },
+            syncs: [
+              expect.objectContaining({
+                key: 'gmail.threads',
+                kinds: ['thread'],
+                state: 'setup-required',
+              }),
             ],
           }),
           expect.objectContaining({

@@ -2,6 +2,7 @@ import { SourceHttpError, type SyncContext } from '@context-use/open-sync/defini
 import type { JsonObject } from '@context-use/open-sync/json';
 import { z } from 'zod';
 
+export const INVALID_CHECKPOINT_CODE = 'youtube_checkpoint_invalid';
 const badRequest = 400;
 export class ExpiredPageToken extends Error {
   constructor(readonly path: string) {
@@ -12,7 +13,7 @@ export class PlaylistNotFound extends Error {}
 // 410 pauses acquisition instead of retrying an unusable checkpoint forever.
 // The diagnostic code survives hosts that hide exception messages.
 export class InvalidCheckpoint extends SourceHttpError {
-  override readonly code = 'youtube_checkpoint_invalid';
+  override readonly code = INVALID_CHECKPOINT_CODE;
   constructor(message: string) {
     const gone = 410;
     super({ status: gone });

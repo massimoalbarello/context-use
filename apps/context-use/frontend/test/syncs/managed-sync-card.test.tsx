@@ -45,29 +45,31 @@ test('sync controls use registered provider and kind with the shared half-hourly
   expect(action).toHaveBeenCalledWith('pause');
 });
 
-test('paused syncs explain why they stopped and offer Resume without a disabled Sync now action', async () => {
-  const sync = {
-    ...providerFixture().syncs[0]!,
-    state: 'paused' as const,
-    message: 'Syncing paused after a provider error. Check your account access before resuming.',
-  };
-  const action = mock(() => {});
-  const root = createRootRoute({
-    component: () => <ManagedSyncCard sync={sync} pending={false} onAction={action} />,
-  });
-  const router = createRouter({
-    routeTree: root,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  });
-  await router.load();
-  const view = render(<RouterProvider router={router} />);
-  expect((await view.findByRole('status')).textContent).toBe(sync.message);
-  expect(view.queryByText('Every 30 minutes')).toBeNull();
-  expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
-  expect(view.queryByRole('button', { name: 'Reprocess history' })).toBeNull();
-  await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Resume' }));
-  expect(action).toHaveBeenCalledWith('resume');
-});
+test.each([
+  { state: 'paused', button: 'Resume', action: 'resume', hidden: 'Reprocess history' },
+  { state: 'reprocess-required', button: 'Reprocess history', action: 'resync', hidden: 'Resume' },
+] as const)(
+  '$state offers only the applicable recovery action',
+  async ({ state, button, action, hidden }) => {
+    const sync = { ...providerFixture().syncs[0]!, state };
+    const onAction = mock(() => {});
+    const root = createRootRoute({
+      component: () => <ManagedSyncCard sync={sync} pending={false} onAction={onAction} />,
+    });
+    const router = createRouter({
+      routeTree: root,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+    await router.load();
+    const view = render(<RouterProvider router={router} />);
+    expect((await view.findByRole('status')).textContent).toBe(sync.message);
+    expect(view.queryByText('Every 30 minutes')).toBeNull();
+    expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
+    expect(view.queryByRole('button', { name: hidden })).toBeNull();
+    await userEvent.setup({ document }).click(view.getByRole('button', { name: button }));
+    expect(onAction).toHaveBeenCalledWith(action);
+  },
+);
 
 test.each([
   { state: 'syncing' as const, pending: false },

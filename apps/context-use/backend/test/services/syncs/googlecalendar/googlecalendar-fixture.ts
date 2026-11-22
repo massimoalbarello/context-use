@@ -1,6 +1,6 @@
 import type { ProviderOperations, ProviderResponse } from '@context-use/open-sync/definition';
 import type { JsonObject } from '@context-use/open-sync/json';
-import { unused } from './fixture.ts';
+import { unused } from '../engine-fixture.ts';
 
 export const created = '2020-01-02T03:04:05Z';
 export function event(id: string): JsonObject {

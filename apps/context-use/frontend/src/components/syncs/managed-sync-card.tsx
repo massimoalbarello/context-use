@@ -10,6 +10,7 @@ const stateLabels = {
   ready: 'Up to date',
   syncing: 'Syncing',
   paused: 'Paused',
+  'reprocess-required': 'Paused',
   error: 'Needs attention',
 } as const;
 export function ManagedSyncCard(input: {
@@ -19,6 +20,9 @@ export function ManagedSyncCard(input: {
 }) {
   const { sync } = input;
   const connected = sync.state !== 'setup-required' && sync.state !== 'disconnected';
+  const needsReprocessing = sync.state === 'reprocess-required';
+  const paused = sync.state === 'paused' || needsReprocessing;
+  const busy = input.pending || sync.state === 'syncing';
   return (
     <section aria-label={sync.name} className="grid gap-6 py-2">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -46,9 +50,7 @@ export function ManagedSyncCard(input: {
             </div>
             <div>
               <dt className="text-muted-foreground text-xs">Schedule</dt>
-              <dd className="mt-1 text-sm">
-                {sync.state === 'paused' ? 'Paused' : 'Every 30 minutes'}
-              </dd>
+              <dd className="mt-1 text-sm">{paused ? 'Paused' : 'Every 30 minutes'}</dd>
             </div>
           </dl>
           <div className="flex flex-wrap items-center gap-2">
@@ -63,36 +65,34 @@ export function ManagedSyncCard(input: {
               View records
               <ArrowUpRight aria-hidden="true" />
             </Link>
-            {sync.state !== 'paused' && (
-              <>
-                <Button
-                  variant="outline"
-                  disabled={input.pending || sync.state === 'syncing'}
-                  onClick={() => input.onAction('run')}
-                >
-                  <RefreshCw aria-hidden="true" />
-                  Sync now
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={input.pending || sync.state === 'syncing'}
-                  onClick={() => input.onAction('resync')}
-                >
-                  <History aria-hidden="true" />
-                  Reprocess history
-                </Button>
-              </>
+            {!paused && (
+              <Button variant="outline" disabled={busy} onClick={() => input.onAction('run')}>
+                <RefreshCw aria-hidden="true" />
+                Sync now
+              </Button>
             )}
-            <Button
-              variant="ghost"
-              disabled={input.pending}
-              onClick={() => input.onAction(sync.state === 'paused' ? 'resume' : 'pause')}
-            >
-              {sync.state === 'paused' ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
-              {sync.state === 'paused' ? 'Resume' : 'Pause'}
-            </Button>
+            {sync.state !== 'paused' && (
+              <Button variant="outline" disabled={busy} onClick={() => input.onAction('resync')}>
+                <History aria-hidden="true" />
+                Reprocess history
+              </Button>
+            )}
+            {!needsReprocessing && (
+              <Button
+                variant="ghost"
+                disabled={input.pending}
+                onClick={() => input.onAction(sync.state === 'paused' ? 'resume' : 'pause')}
+              >
+                {sync.state === 'paused' ? (
+                  <Play aria-hidden="true" />
+                ) : (
+                  <Pause aria-hidden="true" />
+                )}
+                {sync.state === 'paused' ? 'Resume' : 'Pause'}
+              </Button>
+            )}
           </div>
-          {sync.state !== 'paused' && (
+          {!paused && (
             <p className="text-muted-foreground text-sm">
               Reprocess history fetches available source history again and updates saved records.
             </p>

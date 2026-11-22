@@ -21,12 +21,27 @@ type Scope = { actorId: string; ownerId: string };
 type Queue = { blocked: string[]; pending: number };
 type ConfiguredSync = ReturnType<OpenSyncRuntime['api']['syncs']>[number];
 
+function requiresReprocessing({
+  sync,
+  configuredSync,
+}: {
+  sync: ContextSync;
+  configuredSync: ConfiguredSync;
+}) {
+  return (
+    !configuredSync.enabled &&
+    !!sync.invalidCheckpointCode &&
+    configuredSync.errorCode === sync.invalidCheckpointCode
+  );
+}
+
 function managedState(input: {
   configured: boolean;
   connected: boolean;
   connectionActive: boolean;
   configuredSync: ConfiguredSync | undefined;
   queue: Queue;
+  sync: ContextSync;
 }): { state: ManagedSyncState; message: string } {
   if (!input.configured) {
     return { state: 'setup-required', message: 'Set up your OAuth app to get started.' };
@@ -34,11 +49,18 @@ function managedState(input: {
   if (!input.connected || !input.configuredSync) {
     return { state: 'disconnected', message: 'Connect your account to start syncing.' };
   }
+  if (requiresReprocessing({ sync: input.sync, configuredSync: input.configuredSync })) {
+    return {
+      state: 'reprocess-required',
+      message: 'The saved sync position is no longer valid. Reprocess history to resume syncing.',
+    };
+  }
   if (!input.configuredSync.enabled) {
     return {
       state: 'paused',
       message: input.configuredSync.errorCode
-        ? 'Syncing paused after a provider error. Check your account access before resuming.'
+        ? (input.sync.errorMessages?.[input.configuredSync.errorCode] ??
+          'Syncing paused after a provider error. Check your account access before resuming.')
         : 'Automatic syncing is paused. Your records are kept.',
     };
   }
@@ -133,6 +155,7 @@ export class ManagedSyncsService {
             provider: provider.id,
             kinds: Object.keys(sync.registration.definition.kinds),
             ...managedState({
+              sync,
               configured:
                 !provider.oauth ||
                 oauth?.configured === true ||
@@ -193,6 +216,7 @@ export class ManagedSyncsService {
           ...scope,
           service: provider.id,
           values: { clientId: input.clientId, clientSecret: input.clientSecret },
+          requestedScopes: provider.oauth?.requestedScopes,
         });
       } catch {
         throw new BadRequestError(
@@ -333,29 +357,44 @@ export class ManagedSyncsService {
   }
   async update(input: { actorId: string; key: string; action: ManagedSyncAction }) {
     const scope = this.scope(input.actorId);
-    const { sync } = this.input.catalog.sync(input.key);
+    await this.serial(() => this.updateSync({ ...input, scope }));
+  }
+  private async updateSync({
+    scope,
+    key,
+    action,
+  }: {
+    scope: Scope;
+    key: string;
+    action: ManagedSyncAction;
+  }) {
+    const { sync } = this.input.catalog.sync(key);
     const configuredSync = this.configuredSync({ scope, sync });
     if (!configuredSync) {
       throw new NotFoundError('Connect your account first.');
     }
-    if (input.action === 'run' || input.action === 'resync') {
-      if (!configuredSync.enabled) {
-        throw new BadRequestError('Resume the sync first.');
-      }
-      for (const id of this.queue({ ...scope, syncId: configuredSync.id }).blocked) {
-        this.input.sync.api.retryDelivery({ ...scope, syncId: configuredSync.id, id });
-      }
-      if (input.action === 'resync') {
-        await this.input.sync.api.resync({ ...scope, id: configuredSync.id });
-      } else {
-        this.input.sync.api.runNow({ ...scope, id: configuredSync.id });
-      }
+    const resource = { ...scope, id: configuredSync.id };
+    const reprocess = requiresReprocessing({ sync, configuredSync });
+    if (reprocess && action !== 'resync') {
+      throw new BadRequestError('Reprocess history to resume syncing.');
+    }
+    if (action === 'pause' || action === 'resume') {
+      await this.input.sync.api.setEnabled({ ...resource, enabled: action === 'resume' });
+      return;
+    }
+    if (!configuredSync.enabled && !reprocess) {
+      throw new BadRequestError('Resume the sync first.');
+    }
+    for (const id of this.queue({ ...scope, syncId: resource.id }).blocked) {
+      this.input.sync.api.retryDelivery({ ...scope, syncId: resource.id, id });
+    }
+    if (reprocess) {
+      await this.input.sync.api.setEnabled({ ...resource, enabled: true });
+    }
+    if (action === 'resync') {
+      await this.input.sync.api.resync(resource);
     } else {
-      await this.input.sync.api.setEnabled({
-        ...scope,
-        id: configuredSync.id,
-        enabled: input.action === 'resume',
-      });
+      this.input.sync.api.runNow(resource);
     }
   }
 }
