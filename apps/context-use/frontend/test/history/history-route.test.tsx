@@ -259,29 +259,33 @@ test('History combines complete daily page revisions across API pages and links 
         within(dayList)
           .getAllByRole('heading', { level: 3 })
           .map((heading) => heading.textContent),
-      ).toEqual(['Newest page', 'Project notes', 'Unrelated entity', 'Restored notes']);
-      const messages = within(row).getByRole('list', { name: 'Revisions that day' });
+      ).toEqual(['Newest page', 'Project notes', 'Unrelated entity']);
+      const messages = within(row).getByRole('list', { name: 'Changes that day' });
       const revisions = within(messages).getAllByRole('listitem');
-      for (const revision of revisions) {
-        expect(within(revision).getByText('Updated')).toBeTruthy();
+      const [latest, previous, earliest, restored] = revisions;
+      for (const revision of [latest, previous, earliest]) {
+        expect(within(revision!).getByText('Updated')).toBeTruthy();
       }
       expect(revisions.map((item) => item.querySelector('p')?.textContent)).toEqual([
         'Change 6',
         'Change 5',
         'Change 4',
+        'Restored the page',
       ]);
       expect(revisions.map((item) => item.querySelector('time')?.dateTime)).toEqual([
         new Date('2026-09-21T22:50:00').toISOString(),
         new Date('2026-09-21T10:00:00').toISOString(),
         new Date('2026-09-21T00:01:00').toISOString(),
+        new Date('2026-09-21T00:00:30').toISOString(),
       ]);
+      expect(within(restored!).getByText('Unarchived')).toBeTruthy();
       expect(within(revisions[0]!).getByText('by Assistant 6')).toBeTruthy();
       expect(within(revisions[1]!).queryByText(/^by\b/)).toBeNull();
       expect(within(revisions[2]!).getByText('by Assistant 4')).toBeTruthy();
       expect(link.getAttribute('href')).toBe('/app/pages/notes?view=revisions');
       expect(screen.queryByRole('button', { name: /^Changes/ })).toBeNull();
       const single = screen.getByRole('link', { name: 'Newest page' }).closest('li')!;
-      const singleRevisions = within(single).getByRole('list', { name: 'Revisions that day' });
+      const singleRevisions = within(single).getByRole('list', { name: 'Changes that day' });
       const singleRevision = within(singleRevisions).getAllByRole('listitem');
       expect(singleRevision).toHaveLength(1);
       expect(within(singleRevision[0]!).getByText('Created')).toBeTruthy();
@@ -405,7 +409,7 @@ test('History stacks entities, assets, and records by identity and day across AP
   });
 });
 
-test('History preserves creation and unavailable revisions in one daily item without offering an unavailable diff', async () => {
+test('History groups page creation, revisions, and archiving under the latest daily title', async () => {
   await withHistory({
     read: () =>
       Response.json({
@@ -414,13 +418,22 @@ test('History preserves creation and unavailable revisions in one daily item wit
             sequence: 3,
             resourceType: 'page',
             readableId: 'removed',
-            name: 'Deleted notes',
+            name: 'Archived notes',
+            action: 'archived',
+            message: 'Archived the notes',
+            available: false,
+          }),
+          entry({
+            sequence: 2,
+            resourceType: 'page',
+            readableId: 'removed',
+            name: 'Revised notes',
             pageRevisionNumber: 2,
             message: 'Revised the notes',
             available: false,
           }),
           entry({
-            sequence: 2,
+            sequence: 1,
             resourceType: 'page',
             readableId: 'removed',
             name: 'Original title',
@@ -429,30 +442,25 @@ test('History preserves creation and unavailable revisions in one daily item wit
             message: 'Created the notes',
             available: false,
           }),
-          entry({
-            sequence: 1,
-            resourceType: 'page',
-            readableId: 'removed',
-            name: 'Archived notes',
-            action: 'archived',
-            message: 'Archived the notes',
-            available: false,
-          }),
         ],
         nextCursor: null,
       } satisfies HistoryPage),
     run: async () => {
-      const title = await screen.findByRole('heading', { name: 'Deleted notes', level: 3 });
+      const title = await screen.findByRole('heading', { name: 'Archived notes', level: 3 });
+      expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(1);
       const row = title.closest('li')!;
-      const revisions = within(
-        within(row).getByRole('list', { name: 'Revisions that day' }),
+      const changes = within(
+        within(row).getByRole('list', { name: 'Changes that day' }),
       ).getAllByRole('listitem');
-      expect(within(revisions[0]!).getByText('Updated')).toBeTruthy();
-      expect(within(revisions[1]!).getByText('Created')).toBeTruthy();
-      expect(within(row).getByText('Created the notes')).toBeTruthy();
-      expect(within(row).getByText('Revised the notes')).toBeTruthy();
-      expect(screen.getByText('Archived the notes')).toBeTruthy();
-      expect(screen.queryByRole('link', { name: 'Deleted notes' })).toBeNull();
+      expect(within(changes[0]!).getByText('Archived')).toBeTruthy();
+      expect(within(changes[1]!).getByText('Updated')).toBeTruthy();
+      expect(within(changes[2]!).getByText('Created')).toBeTruthy();
+      expect(changes.map((item) => item.querySelector('p')?.textContent)).toEqual([
+        'Archived the notes',
+        'Revised the notes',
+        'Created the notes',
+      ]);
+      expect(within(row).queryByRole('link')).toBeNull();
       expect(screen.queryByRole('button', { name: /^Changes to/ })).toBeNull();
     },
   });
