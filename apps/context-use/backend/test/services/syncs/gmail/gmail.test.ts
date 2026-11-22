@@ -142,6 +142,74 @@ test('a failed nested attachment commits no partial conversation or cursor and s
   }
 });
 
+test('Gmail downloads attached files and visible images while skipping signature and template images', async () => {
+  const source = gmailFixture();
+  source.listings = [{ threads: [{ id: 'thread-one' }] }];
+  const image = ({ cid, disposition = 'inline' }: { cid: string; disposition?: string }) => ({
+    partId: cid,
+    filename: `${cid}.png`,
+    mimeType: 'image/png',
+    headers: [
+      { name: 'Content-ID', value: `<${cid}>` },
+      { name: 'Content-Disposition', value: disposition },
+    ],
+    body: { attachmentId: cid },
+  });
+  const html = [
+    '<p>See the chart and <a href="CID:detail">detail</a>.</p><img src="cid:chart" alt="Revenue">',
+    '<div data-smartmail="gmail_signature">Sales team<img src="cid:logo"><img src="cid:chart"><img src="cid:attached"></div>',
+    '<img src="cid:pixel" width="1" height="1"><span hidden><img src="cid:tile"></span>',
+    '<a href="https://www.instagram.com/company/"><img src="cid:social" alt="Instagram"></a>',
+    '<a href="https://example.com"><img src="cid:brand" alt="Company logo"></a>',
+    '<blockquote>Original payment terms.</blockquote>',
+  ].join('');
+  source.thread = {
+    ...source.thread,
+    messages: [
+      {
+        ...message({ id: 'signed', text: '' }),
+        payload: {
+          mimeType: 'multipart/mixed',
+          parts: [
+            {
+              partId: 'text',
+              mimeType: 'text/html',
+              body: { data: Buffer.from(html).toString('base64url') },
+            },
+            ...['chart', 'detail', 'logo', 'pixel', 'tile', 'social', 'brand', 'standalone'].map(
+              (cid) => image({ cid }),
+            ),
+            image({ cid: 'attached', disposition: 'attachment' }),
+          ],
+        },
+      },
+    ],
+  };
+  const f = await fixture({ registration: gmailThreads, provider: source.provider });
+  try {
+    await f.finish();
+    expect(source.downloads.toSorted()).toEqual(['attached', 'chart', 'detail', 'standalone']);
+    const record = f.records[0]!;
+    if (record.operation !== 'upsert') {
+      throw new Error('Expected an imported thread');
+    }
+    expect(record.content?.body).toContain('![Revenue]');
+    expect(record.content?.body).toContain('[detail](open-sync-asset:');
+    expect(record.content?.body).toContain('Original payment terms.');
+    expect(record.content?.body).not.toMatch(
+      /Sales team|logo.png|tile.png|pixel.png|instagram|brand.png/i,
+    );
+    expect(f.deliveries[0]!.assets.map((asset) => asset.name).toSorted()).toEqual([
+      'attached.png',
+      'chart.png',
+      'detail.png',
+      'standalone.png',
+    ]);
+  } finally {
+    await f.close();
+  }
+});
+
 test('Gmail renders accents in normalized UTF-8 and original Latin-1 MIME parts', async () => {
   const source = gmailFixture();
   const parts = [

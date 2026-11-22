@@ -2,7 +2,9 @@ import { tables } from '@truto/turndown-plugin-gfm';
 import EmailReplyParser from 'email-reply-parser';
 import { parseHTML } from 'linkedom';
 import TurndownService from 'turndown';
-import type { Attachment } from './mime.ts';
+import { cidReference, cleanEmailHtml, withoutSignature } from './cleanup.ts';
+
+export type Attachment = { name: string; file: string; contentId: string };
 
 const textConverter = new TurndownService();
 export function markdownText(value: string) {
@@ -28,24 +30,6 @@ function alreadyQuoted(input: { previous: string[]; text: string }) {
 type EmailDocument = ReturnType<typeof parseHTML>['document'];
 const MAX_HEADING_LEVEL = 6;
 
-function removeHidden(document: EmailDocument) {
-  for (const element of document.querySelectorAll(
-    'script,style,head,meta,link,title,iframe,object,form,svg,.gmail_attr,#divRplyFwdMsg',
-  )) {
-    element.remove();
-  }
-  for (const element of document.querySelectorAll('[hidden],[aria-hidden="true"],[style]')) {
-    if (
-      element.hasAttribute('hidden') ||
-      element.getAttribute('aria-hidden') === 'true' ||
-      /(?:display\s*:\s*none|visibility\s*:\s*hidden|mso-hide\s*:\s*all)/i.test(
-        element.getAttribute('style') ?? '',
-      )
-    ) {
-      element.remove();
-    }
-  }
-}
 function flattenLayoutTables(document: EmailDocument) {
   for (const table of document.querySelectorAll('table')) {
     // Newsletter templates often use unmarked, nested tables or rows of spacer cells.
@@ -72,7 +56,7 @@ function flattenLayoutTables(document: EmailDocument) {
 }
 function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[] }) {
   for (const image of input.document.querySelectorAll('img')) {
-    const cid = image.getAttribute('src')?.replace(/^cid:/i, '');
+    const cid = cidReference(image.getAttribute('src'));
     const asset = input.attachments.find((item) => item.contentId && item.contentId === cid);
     if (asset) {
       image.setAttribute('src', asset.file);
@@ -82,14 +66,19 @@ function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[
     }
   }
   for (const link of input.document.querySelectorAll('a[href]')) {
-    if (!/^(?:https?:|mailto:)/i.test(link.getAttribute('href') ?? '')) {
+    const href = link.getAttribute('href');
+    const cid = cidReference(href);
+    const asset = cid && input.attachments.find((item) => item.contentId === cid);
+    if (asset) {
+      link.setAttribute('href', asset.file);
+    } else if (!/^(?:https?:|mailto:)/i.test(href ?? '')) {
       link.replaceWith(...link.childNodes);
     }
   }
 }
 function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
   const { document } = parseHTML(`<html><body>${input.html}</body></html>`);
-  removeHidden(document);
+  const { discardedContentIds, signatureText } = cleanEmailHtml(document);
   flattenLayoutTables(document);
   for (const quote of document.querySelectorAll('.gmail_quote,.yahoo_quoted,.protonmail_quote')) {
     const block = document.createElement('blockquote');
@@ -105,7 +94,11 @@ function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
     replacement: (content, node) =>
       `\n\n${'#'.repeat(Math.min(Number(node.nodeName.slice(1)) + 2, MAX_HEADING_LEVEL))} ${content}\n\n`,
   });
-  return converter.turndown(document.body.innerHTML);
+  return {
+    markdown: converter.turndown(document.body.innerHTML),
+    discardedContentIds,
+    signatureText,
+  };
 }
 // Outlook embeds these envelope fields as prose in forwarded messages.
 function forwardedField(labels: string) {
@@ -128,10 +121,14 @@ export function readableBody(input: {
   attachments: Attachment[];
   previous: string[];
 }) {
-  const html = input.html.trim() && htmlMarkdown(input);
+  const html = input.html.trim() ? htmlMarkdown(input) : undefined;
+  const discardedContentIds = html?.discardedContentIds ?? new Set<string>();
+  const plain = withoutSignature(input.plain);
+  const fallback =
+    html?.signatureText && quotedText(html.signatureText) === quotedText(plain) ? '' : plain;
   const converted =
-    html ||
-    input.plain
+    (html && withoutSignature(html.markdown)) ||
+    fallback
       .split('\n')
       .map((line) => {
         const prefix = /^[ \t]*(?:>[ \t]*)+/.exec(line)?.[0] ?? '';
@@ -140,11 +137,11 @@ export function readableBody(input: {
       .join('\n');
   const markdown = converted.replace(forwardedEnvelope, 'Forwarded from $1 · $5');
   if (!input.previous.length || !/^\s*>/m.test(markdown)) {
-    return { body: markdown.trim(), original: input.plain || markdown };
+    return { body: markdown.trim(), original: input.plain || markdown, discardedContentIds };
   }
   const previous = input.previous.map(quotedText);
   // Only remove quoted content already present in this conversation. Forwarded material and
-  // fresh quotations still belong to their message, as do signatures and inline answers.
+  // fresh quotations and inline answers still belong to their message.
   const body = new EmailReplyParser()
     .read(markdown)
     .getFragments()
@@ -164,5 +161,5 @@ export function readableBody(input: {
     })
     .join('\n')
     .trim();
-  return { body, original: input.plain || markdown };
+  return { body, original: input.plain || markdown, discardedContentIds };
 }

@@ -24,7 +24,7 @@ test('HTML quote removal preserves new answers inside and outside quoted contain
   });
   expect(result.body).toContain('I paid it today.');
   expect(result.body).toContain('Tuesday works.');
-  expect(result.body).toContain('Regards, Sam');
+  expect(result.body).not.toContain('Regards, Sam');
   expect(result.body).not.toContain('Amount due');
   expect(result.body).not.toContain('When can we meet');
 });
@@ -51,7 +51,7 @@ test('plain text remains available when the HTML alternative contains only decor
   expect(result.body).toBe('Your total is £42.');
 });
 
-test('plain-text replies keep inline answers and signatures while removing repeated quotes', () => {
+test('plain-text replies keep inline answers while removing signatures and repeated quotes', () => {
   const result = readableBody({
     html: '',
     plain:
@@ -61,7 +61,7 @@ test('plain-text replies keep inline answers and signatures while removing repea
   });
   expect(result.body).toContain('First answer.');
   expect(result.body).toContain('Second answer.');
-  expect(result.body).toContain('Sam');
+  expect(result.body).not.toContain('Sam');
   expect(result.body).not.toContain('budget');
   expect(result.body).not.toContain('Alex wrote');
 });
@@ -159,4 +159,30 @@ test('an embedded Outlook envelope becomes a short attribution above the forward
   expect(result.body).toContain('Fattura');
   expect(result.body).toContain('In allegato la fattura.');
   expect(result.body).not.toContain('Inviato:');
+});
+
+test('a delimited signature can precede a postscript or a forwarded email', () => {
+  const result = readableBody({
+    plain:
+      'See invoice.\r\n-- \r\nAlex\r\nBilling Department\r\nP.S. Total is £240.\r\n\r\nFrom: Accounts\r\nThe invoice is attached.\r\nSent from my iPhone',
+    html: '',
+    attachments: [],
+    previous: [],
+  });
+  expect(result.body).toContain('See invoice.');
+  expect(result.body).toContain('P.S. Total is £240.');
+  expect(result.body).toContain('The invoice is attached.');
+  expect(result.body).not.toMatch(/Alex|Billing Department|Sent from my iPhone/);
+});
+
+test('the plain alternative supplies missing content without bringing back an HTML signature', () => {
+  const input = {
+    html: '<div class="gmail_signature">Alex Accounts</div>',
+    previous: [],
+    attachments: [],
+  };
+  expect(readableBody({ ...input, plain: 'Alex Accounts' }).body).toBe('');
+  expect(readableBody({ ...input, plain: 'Account balance: £42.' }).body).toBe(
+    'Account balance: £42.',
+  );
 });

@@ -3,9 +3,9 @@ import { type AssetRef, assetPlaceholder } from '@context-use/open-sync/assets';
 import type { SyncContext } from '@context-use/open-sync/definition';
 import { getStreamAsArrayBuffer } from 'get-stream';
 import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
+import { type Attachment, readableBody } from './content.ts';
 import { decode, header, type Message, type MessagePart } from './models.ts';
 
-export type Attachment = { name: string; file: string; contentId: string };
 function bodyText(input: { part: MessagePart; bytes: Uint8Array }) {
   const charset =
     /charset\s*=\s*["']?([^\s;"']+)/i.exec(
@@ -18,12 +18,11 @@ function bodyText(input: { part: MessagePart; bytes: Uint8Array }) {
   }
   return decoder.decode(input.bytes);
 }
+function explicitAttachment(part: MessagePart) {
+  return /^attachment\b/i.test(header({ part, name: 'content-disposition' }).trim());
+}
 function attachment(part: MessagePart) {
-  return Boolean(
-    part.filename ||
-      part.mimeType.startsWith('image/') ||
-      /^attachment\b/i.test(header({ part, name: 'content-disposition' })),
-  );
+  return Boolean(part.filename || part.mimeType.startsWith('image/') || explicitAttachment(part));
 }
 async function readPart(input: { context: SyncContext; messageId: string; part: MessagePart }) {
   const body = input.part.body;
@@ -51,9 +50,9 @@ export async function messageContent(input: {
   context: SyncContext;
   account: string;
   message: Message;
+  previous: string[];
 }) {
-  const refs: Record<string, AssetRef> = {};
-  const attachments: Attachment[] = [];
+  const parts = new Map<string, { part: MessagePart; id: string; asset: Attachment }>();
   const bodies: Record<'text/html' | 'text/plain', string[]> = {
     'text/html': [],
     'text/plain': [],
@@ -63,26 +62,17 @@ export async function messageContent(input: {
       if (!part.partId && part !== input.message.payload) {
         throw new Error('Gmail attachment has no stable MIME part identity.');
       }
-      const bytes = await readPart({ ...input, messageId: input.message.id, part });
-      const version = new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
       const id = JSON.stringify([input.account, input.message.id, part.partId]);
       const key = `part_${Buffer.from(id).toString('base64url')}`;
-      if (Object.hasOwn(refs, key)) {
+      if (parts.has(key)) {
         throw new Error('Gmail repeated an attachment part identity.');
       }
-      const name = part.filename || `Attachment ${part.partId}`.trimEnd();
-      refs[key] = await input.context.assets.capture({
-        id,
-        version,
-        name: name.slice(0, MAX_ASSET_NAME_LENGTH),
-        mediaType: part.mimeType,
-        read: () => Promise.resolve(new Blob([bytes]).stream()),
-      });
-      attachments.push({
-        name,
+      const asset = {
+        name: part.filename || `Attachment ${part.partId}`.trimEnd(),
         file: assetPlaceholder(key),
-        contentId: header({ part, name: 'content-id' }).replace(/^<|>$/g, ''),
-      });
+        contentId: header({ part, name: 'content-id' }).trim().replace(/^<|>$/g, ''),
+      };
+      parts.set(key, { id, part, asset });
       return;
     }
     if (part.mimeType === 'text/plain' || part.mimeType === 'text/html') {
@@ -94,10 +84,31 @@ export async function messageContent(input: {
     }
   };
   await visit(input.message.payload);
-  return {
-    refs,
-    attachments,
+  const readable = readableBody({
     html: bodies['text/html'].join('\n'),
     plain: bodies['text/plain'].join('\n'),
-  };
+    attachments: Array.from(parts.values(), ({ asset }) => asset),
+    previous: input.previous,
+  });
+  const refs: Record<string, AssetRef> = {};
+  const attachments: Attachment[] = [];
+  for (const [key, { part, id, asset }] of parts) {
+    if (
+      part.mimeType.startsWith('image/') &&
+      readable.discardedContentIds.has(asset.contentId) &&
+      !explicitAttachment(part)
+    ) {
+      continue;
+    }
+    const bytes = await readPart({ ...input, messageId: input.message.id, part });
+    refs[key] = await input.context.assets.capture({
+      id,
+      version: new Bun.CryptoHasher('sha256').update(bytes).digest('hex'),
+      name: asset.name.slice(0, MAX_ASSET_NAME_LENGTH),
+      mediaType: part.mimeType,
+      read: () => Promise.resolve(new Blob([bytes]).stream()),
+    });
+    attachments.push(asset);
+  }
+  return { refs, attachments, body: readable.body, original: readable.original };
 }

@@ -2,7 +2,7 @@ import type { AssetRef } from '@context-use/open-sync/assets';
 import type { SyncContext } from '@context-use/open-sync/definition';
 import type { SyncRecord } from '@context-use/open-sync/record';
 import type { z } from 'zod';
-import { markdownText, readableBody } from './content.ts';
+import { markdownText } from './content.ts';
 import { messageContent } from './mime.ts';
 import { header, type threadSchema } from './models.ts';
 
@@ -41,9 +41,8 @@ export async function threadRecord(input: {
   const previous: string[] = [];
   let previousSubject = subject;
   for (const message of messages) {
-    const content = await messageContent({ ...input, message });
-    const readable = readableBody({ ...content, previous });
-    previous.push(readable.original);
+    const content = await messageContent({ ...input, message, previous });
+    previous.push(content.original);
     Object.assign(assetRefs, content.refs);
     const currentSubject = header({ part: message.payload, name: 'subject' }).trim();
     const sender = senderName(header({ part: message.payload, name: 'from' }));
@@ -55,7 +54,7 @@ export async function threadRecord(input: {
       currentSubject &&
         currentSubject !== previousSubject &&
         `Subject: ${markdownText(currentSubject)}`,
-      readable.body || (!attachmentLinks.length && '*No new message text.*'),
+      content.body || (!attachmentLinks.length && '*No new message text.*'),
       attachmentLinks.join('\n'),
     ];
     previousSubject = currentSubject || previousSubject;
