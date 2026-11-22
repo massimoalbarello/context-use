@@ -32,8 +32,14 @@ export async function threadRecord(input: {
   if (!messages.length || new Set(messages.map((message) => message.id)).size !== messages.length) {
     throw new Error('Gmail returned an incomplete conversation.');
   }
+  const direct = messages.filter(
+    (message) =>
+      !/^(?:fw|fwd|i):/i.test(header({ part: message.payload, name: 'subject' }).trimStart()),
+  );
+  const displayed = new Set(direct.length ? direct : messages);
   const subject =
-    header({ part: messages[0]!.payload, name: 'subject' }).trim() || 'Untitled email conversation';
+    header({ part: (direct[0] ?? messages[0])!.payload, name: 'subject' }).trim() ||
+    'Untitled email conversation';
   const assetRefs: Record<string, AssetRef> = {};
   const sections: string[] = [];
   const previous: string[] = [];
@@ -42,14 +48,17 @@ export async function threadRecord(input: {
   for (const message of messages) {
     const content = await messageContent({ ...input, message, previous });
     previous.push(content.original);
-    Object.assign(assetRefs, content.refs);
+    if (!displayed.has(message)) {
+      continue;
+    }
+    const { refs, attachments } = await content.captureAttachments();
+    Object.assign(assetRefs, refs);
     const currentSubject = header({ part: message.payload, name: 'subject' }).trim();
     const from = addressHeader({ part: message.payload, name: 'from' });
     const to = addressHeader({ part: message.payload, name: 'to' });
-    const files = content.attachments.map(
-      (asset) => `[${markdownText(asset.name)}](${asset.file})`,
-    );
+    const files = attachments.map((asset) => `[${markdownText(asset.name)}](${asset.file})`);
     const metadata = [
+      `**From** · ${from}`,
       `**To** · ${to}`,
       `**At** · ${sentTime.format(Number(message.internalDate))} UTC`,
       files.length && `**Attachments** · ${files.join(' · ')}`,
@@ -60,7 +69,7 @@ export async function threadRecord(input: {
       .filter(Boolean)
       .join('  \n> ');
     previousSubject = currentSubject ? subjectText(currentSubject) : previousSubject;
-    const heading = `> ### From · ${from}\n>\n> ${metadata}`;
+    const heading = `> ${metadata}`;
     sections.push([heading, content.body].filter(Boolean).join('\n\n'));
   }
   const first = new Date(Number(messages[0]!.internalDate)).toISOString();

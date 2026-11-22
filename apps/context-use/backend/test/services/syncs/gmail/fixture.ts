@@ -10,6 +10,7 @@ export function message(input: {
   id: string;
   text: string;
   labels?: string[];
+  subject?: string;
   date?: string;
   html?: string;
 }): JsonObject {
@@ -27,7 +28,7 @@ export function message(input: {
       partId: '',
       mimeType: 'multipart/mixed',
       headers: [
-        { name: 'Subject', value: 'Quarterly invoice' },
+        { name: 'Subject', value: input.subject ?? 'Quarterly invoice' },
         { name: 'From', value: 'Alex <alex@example.com>' },
         { name: 'To', value: account },
         { name: 'TO', value: '"Smith, Pat"\r\n <pat@example.com>' },
@@ -38,8 +39,8 @@ export function message(input: {
     },
   };
 }
-export function attachedMessage(): JsonObject {
-  const msg = message({ id: 'message-one', text: 'Amount due: £120.50' });
+export function attachedMessage(subject?: string): JsonObject {
+  const msg = message({ id: 'message-one', text: 'Amount due: £120.50', subject });
   const payload = msg.payload as JsonObject;
   return {
     ...msg,

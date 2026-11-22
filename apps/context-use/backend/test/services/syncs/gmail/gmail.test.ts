@@ -294,7 +294,7 @@ test('single-part attachments and empty text messages import together', async ()
     expect(f.records[0]).toMatchObject({
       content: {
         body: expect.stringMatching(
-          /> ### From · Not listed\n>\n> \*\*To\*\* · Not listed[^\n]*\n> \*\*At\*\*[^\n]*\n> \*\*Attachments\*\* · \[invoice\.pdf\]/,
+          /> \*\*From\*\* · Not listed[^\n]*\n> \*\*To\*\* · Not listed[^\n]*\n> \*\*At\*\*[^\n]*\n> \*\*Attachments\*\* · \[invoice\.pdf\]/,
         ),
       },
     });
@@ -480,6 +480,53 @@ test('Gmail fails closed for a missing or replaced label and a different mailbox
     await f.engine.tick();
     expect(f.saved.checkpoint).toEqual(checkpoint);
     expect(f.saved.errorCode).toBe('gmail_checkpoint_invalid_resync_required');
+  } finally {
+    await f.close();
+  }
+});
+
+test('Gmail keeps files on a forward-only thread and skips forwarded copies when a direct reply exists', async () => {
+  const source = gmailFixture();
+  const forward = attachedMessage('I: Quarterly invoice');
+  source.thread = { ...source.thread, messages: [forward] };
+  const f = await fixture({ registration: gmailThreads, provider: source.provider });
+  try {
+    await f.finish();
+    expect(f.records.at(-1)).toMatchObject({
+      content: { body: expect.stringContaining('[invoice.pdf]') },
+    });
+    expect(source.downloads).toContain('invoice-bytes');
+
+    source.downloads.length = 0;
+    source.thread = {
+      ...source.thread,
+      messages: [
+        forward,
+        message({
+          id: 'reply',
+          subject: 'Re: Fwd: Quarterly invoice',
+          text: 'Paid today.\n\n> Invoice',
+          date: '2026-11-02T10:00:00Z',
+        }),
+      ],
+    };
+    source.historyPages = [
+      {
+        history: [{ messagesAdded: [{ message: { threadId: 'thread-one' } }] }],
+        historyId: completedHistory,
+      },
+    ];
+    f.queue();
+    await f.finish();
+    const latest = f.records.at(-1);
+    if (latest?.operation !== 'upsert') {
+      throw new Error('Expected an updated conversation');
+    }
+    expect(latest.content?.body).toContain('Paid today.');
+    expect(latest.content?.body?.match(/^> \*\*From\*\*/gm)).toHaveLength(1);
+    expect(latest.content?.body).not.toContain('[invoice.pdf]');
+    expect(latest.content?.body).not.toContain('> Invoice');
+    expect(source.downloads).toEqual([]);
   } finally {
     await f.close();
   }

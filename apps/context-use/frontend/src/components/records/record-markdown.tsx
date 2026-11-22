@@ -60,7 +60,7 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
             ) : null;
           },
           hr: () => (
-            <hr className="has-[+hr]:hidden [hr+&]:my-8 [hr+&]:border-foreground/40 [hr+&]:border-t-4 [hr+&]:border-double" />
+            <hr className="has-[+hr]:hidden [hr+&]:my-8 [hr+&]:h-2.5 [hr+&]:border-foreground/65 [hr+&]:border-y-2" />
           ),
           h1: ({ children, node }) =>
             node?.position?.start.line === 1 && children === label ? null : (
