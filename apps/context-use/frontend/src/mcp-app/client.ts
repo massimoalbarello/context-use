@@ -61,18 +61,8 @@ export function launchResource(result: {
 }) {
   if (result._meta?.search != null) {
     const input = SearchHypermediaInputSchema.safeParse(result._meta.search);
-    const output = SearchHypermediaOutputSchema.safeParse(result.structuredContent);
-    if (input.success && output.success) {
-      const search = pickerInput(input.data);
-      const { results, truncated } = output.data;
-      return {
-        kind: 'search',
-        value: {
-          input: search,
-          results: results.slice(0, search.limit),
-          truncated: truncated || results.length > search.limit,
-        },
-      } as const;
+    if (input.success) {
+      return { kind: 'search', value: pickerInput(input.data) } as const;
     }
   }
   if (result._meta?.page != null) {
@@ -107,7 +97,9 @@ export class PageToolError extends Error {
 }
 
 export class PagesClient {
-  constructor(readonly app: Pick<App, 'callServerTool' | 'openLink'>) {}
+  constructor(
+    readonly app: Pick<App, 'callServerTool' | 'openLink' | 'setupSizeChangedNotifications'>,
+  ) {}
 
   private async call({ name, args = {} }: { name: string; args?: Record<string, unknown> }) {
     const result = await this.app.callServerTool({ name, arguments: args });

@@ -7,6 +7,7 @@ import { PageEditor } from './page-editor';
 import { PageSearch } from './page-search';
 import { resourceQueryKey, searchQueryKey } from './queries';
 import { AssetPreview, EntityPreview } from './resource-preview';
+import { useContentSize, WidgetLoading } from './widget-loading';
 
 export function PagesApp({
   client,
@@ -119,6 +120,7 @@ function ResourceDetail({
     queryKey: resourceQueryKey(canonical),
     queryFn: () => client.resource(canonical),
   });
+  useContentSize({ client, ready: !detail.isPending });
   if (!detail.data) {
     return detail.error ? (
       <div role="alert">
@@ -128,7 +130,7 @@ function ResourceDetail({
         </Button>
       </div>
     ) : (
-      <p role="status">Loading…</p>
+      <WidgetLoading label="Loading preview" />
     );
   }
   switch (detail.data.kind) {

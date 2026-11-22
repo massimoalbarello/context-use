@@ -4,9 +4,10 @@ import { createRoot } from 'react-dom/client';
 import { initialNotice, launchResource, PagesClient } from './client';
 import { PagesApp } from './pages-app';
 import { resourceQueryKey, searchQueryKey } from './queries';
+import { WidgetLoading } from './widget-loading';
 import '../styles.css';
 
-const app = new App({ name: 'Context Use', version: '1.0.0' });
+const app = new App({ name: 'Context Use', version: '1.0.0' }, {}, { autoResize: false });
 const client = new PagesClient(app);
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -26,18 +27,15 @@ function renderResult() {
   if (resource) {
     queryClient.setQueryData(resourceQueryKey(resource.value.address), resource);
   }
-  if (search) {
-    queryClient.setQueryData([...searchQueryKey, search.input], search);
-  }
   if (mounted && !search) {
     void queryClient.invalidateQueries({ queryKey: searchQueryKey });
   }
   root.render(
     <QueryClientProvider client={queryClient}>
       <PagesApp
-        key={JSON.stringify([address, search?.input])}
+        key={JSON.stringify([address, search])}
         client={client}
-        initialSearch={search?.input}
+        initialSearch={search}
         initialAddress={address}
         initialNotice={initialNotice(received)}
       />
@@ -51,15 +49,16 @@ function theme(value?: string) {
     document.documentElement.classList.toggle('dark', value === 'dark');
   }
 }
+theme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 app.onhostcontextchanged = (context) => theme(context.theme);
 app.ontoolresult = (result) => {
   received = result;
   renderResult();
 };
 root.render(
-  <p role="status" className="p-6">
-    Connecting to Context Use…
-  </p>,
+  <main className="mx-auto max-w-3xl p-4 sm:p-6">
+    <WidgetLoading label="Loading Context Use" />
+  </main>,
 );
 app
   .connect()

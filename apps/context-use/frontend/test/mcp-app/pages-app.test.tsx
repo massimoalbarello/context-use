@@ -26,8 +26,20 @@ const page: Page = {
 };
 
 afterEach(cleanup);
-function setup({ initial = null, call }: { initial?: Page | null; call: App['callServerTool'] }) {
-  const client = new PagesClient({ callServerTool: call, openLink: () => Promise.resolve({}) });
+function setup({
+  initial = null,
+  call,
+  observeSize = () => () => {},
+}: {
+  initial?: Page | null;
+  call: App['callServerTool'];
+  observeSize?: App['setupSizeChangedNotifications'];
+}) {
+  const client = new PagesClient({
+    callServerTool: call,
+    setupSizeChangedNotifications: observeSize,
+    openLink: () => Promise.resolve({}),
+  });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -57,33 +69,37 @@ test('opens the same page from a read result and from a write receipt', () => {
   expect(launchResource(success({ revisionNumber: 1 }))).toBeUndefined();
 });
 
-test('caps the picker independently of the search result and retains filters for refinements', () => {
+test('launches the picker with its search filters and a ten-result limit', () => {
   const search: SearchInput = {
     query: 'Notes',
     resourceTypes: ['knowledge_page'],
     visibility: 'private',
-    limit: 30,
   };
-  const matchCount = 12;
-  const results = Array.from(Array(matchCount).keys(), (index: number) => ({
-    ...page,
-    address: `context-use://page/notes-${index}`,
-    readableId: `notes-${index}`,
-    matchExcerpt: null,
-    resourceType: 'knowledge_page',
-  }));
-  const launch = launchResource({ ...success({ results, truncated: false }), _meta: { search } });
-  if (launch?.kind !== 'search') {
-    throw new Error('Expected search results');
-  }
-  expect(launch.value.input).toEqual({
-    ...search,
-    limit: 10,
+  expect(launchResource({ _meta: { search } })).toEqual({
+    kind: 'search',
+    value: { ...search, limit: 10 },
   });
-  expect(launch.value.results.map(({ address }) => address)).toEqual(
-    results.slice(0, 10).map(({ address }) => address),
-  );
-  expect(launch.value.truncated).toBe(true);
+});
+
+test('holds the iframe height during search and resumes sizing for an empty result', async () => {
+  const request = Promise.withResolvers<Awaited<ReturnType<App['callServerTool']>>>();
+  let sizing = false;
+  const user = setup({
+    call: () => request.promise,
+    observeSize: () => {
+      sizing = true;
+      return () => {
+        sizing = false;
+      };
+    },
+  });
+  expect(sizing).toBe(true);
+  await user.type(screen.getByRole('searchbox'), 'notes{Enter}');
+  await screen.findByText('Searching');
+  expect(sizing).toBe(false);
+  request.resolve(success({ results: [], truncated: false }));
+  await screen.findByText('No matches.');
+  expect(sizing).toBe(true);
 });
 
 test('validates and saves through the host when native form submission is unavailable', async () => {

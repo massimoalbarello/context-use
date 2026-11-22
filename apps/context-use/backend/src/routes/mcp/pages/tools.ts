@@ -152,7 +152,7 @@ export function registerKnowledgePageTools({
       _meta: PAGES_APP_META,
       title: 'Create knowledge page',
       description:
-        'Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
+        'Before creating a page, use search_hypermedia to find relevant existing pages to link. Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
       inputSchema: withChangeMessage(CreateKnowledgePageInputSchema),
       outputSchema: GuidedCreateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,

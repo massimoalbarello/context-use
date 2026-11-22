@@ -12,6 +12,7 @@ import { RecordCardContent } from '../components/records/record-link';
 import { isEmbeddableAsset } from '../lib/asset-presentation';
 import { type PagesClient, pickerInput, type SearchHit, type SearchInput } from './client';
 import { searchQueryKey } from './queries';
+import { useContentSize, WidgetLoading } from './widget-loading';
 
 export function PageSearch({
   client,
@@ -34,6 +35,8 @@ export function PageSearch({
     staleTime: 30_000,
   });
 
+  useContentSize({ client, ready: !query || !search.isPending });
+
   return (
     <section className="grid gap-4">
       <KeywordFilter
@@ -47,7 +50,7 @@ export function PageSearch({
         value={query}
         onApply={setQuery}
       />
-      {query && search.isPending && <p role="status">Searching…</p>}
+      {query && search.isPending && <WidgetLoading label="Searching" />}
       {search.error && (
         <div role="alert">
           <p>{search.error.message}</p>

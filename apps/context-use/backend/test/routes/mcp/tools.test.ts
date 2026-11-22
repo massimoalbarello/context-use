@@ -223,6 +223,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'open_search_picker',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -388,13 +389,13 @@ test('page tools expose a self-contained MCP app without owner data in the resou
       const uri = 'ui://context-use/workspace-search.html';
       expect(await client.callTool({ name: 'search_hypermedia', arguments: {} })).toMatchObject({
         structuredContent: { results: [], truncated: false },
-        _meta: { search: {} },
       });
+      expect(tools.find((tool) => tool.name === 'search_hypermedia')?._meta?.ui).toBeUndefined();
       for (const name of [
         'read_entity',
         'read_asset',
         'create_knowledge_page',
-        'search_hypermedia',
+        'open_search_picker',
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
@@ -449,11 +450,11 @@ test('an ambiguous page request opens ranked choices scoped to the authenticated
         name: 'search_hypermedia',
         arguments: { query: 'notes', resourceTypes: ['knowledge_page'], limit: 10 },
       });
-      expect(result._meta?.search).toEqual({
-        query: 'notes',
-        resourceTypes: ['knowledge_page'],
-        limit: 10,
-      });
+      expect(result._meta?.search).toBeUndefined();
+      const search = { query: 'notes', resourceTypes: ['knowledge_page'] };
+      const picker = await client.callTool({ name: 'open_search_picker', arguments: search });
+      expect(picker._meta?.search).toEqual(search);
+      expect(picker.structuredContent).toBeUndefined();
       expect(result.structuredContent).toMatchObject({
         results: [{ address: `context-use://page/${page.readableId}` }],
       });
