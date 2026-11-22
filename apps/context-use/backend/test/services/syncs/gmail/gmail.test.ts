@@ -161,6 +161,8 @@ test('Gmail downloads attached files and visible images while skipping signature
     '<img src="cid:pixel" width="1" height="1"><span hidden><img src="cid:tile"></span>',
     '<a href="https://www.instagram.com/company/"><img src="cid:social" alt="Instagram"></a>',
     '<a href="https://example.com"><img src="cid:brand" alt="Company logo"></a>',
+    '<p><span><a href="https://facebook.com/example/"><img src="cid:fb" alt="Facebook Example Company"></a></span><a href="https://youtube.com/watch?v=intro"><img src="cid:video" alt="YouTube Example Company"></a></p>',
+    '<p><a href="https://youtube.com/watch?v=results"><img src="cid:results" alt="YouTube Revenue Breakdown"></a></p>',
     '<blockquote>Original payment terms.</blockquote>',
   ].join('');
   source.thread = {
@@ -176,9 +178,19 @@ test('Gmail downloads attached files and visible images while skipping signature
               mimeType: 'text/html',
               body: { data: Buffer.from(html).toString('base64url') },
             },
-            ...['chart', 'detail', 'logo', 'pixel', 'tile', 'social', 'brand', 'standalone'].map(
-              (cid) => image({ cid }),
-            ),
+            ...[
+              'chart',
+              'detail',
+              'logo',
+              'pixel',
+              'tile',
+              'social',
+              'brand',
+              'fb',
+              'video',
+              'results',
+              'standalone',
+            ].map((cid) => image({ cid })),
             image({ cid: 'attached', disposition: 'attachment' }),
           ],
         },
@@ -188,7 +200,13 @@ test('Gmail downloads attached files and visible images while skipping signature
   const f = await fixture({ registration: gmailThreads, provider: source.provider });
   try {
     await f.finish();
-    expect(source.downloads.toSorted()).toEqual(['attached', 'chart', 'detail', 'standalone']);
+    expect(source.downloads.toSorted()).toEqual([
+      'attached',
+      'chart',
+      'detail',
+      'results',
+      'standalone',
+    ]);
     const record = f.records[0]!;
     if (record.operation !== 'upsert') {
       throw new Error('Expected an imported thread');
@@ -203,6 +221,7 @@ test('Gmail downloads attached files and visible images while skipping signature
       'attached.png',
       'chart.png',
       'detail.png',
+      'results.png',
       'standalone.png',
     ]);
   } finally {

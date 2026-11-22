@@ -42,6 +42,50 @@ function brandingLink(input: { href: string; alt: string }) {
   );
 }
 
+// Some templates label a row of profile icons with the platform followed by the same company name.
+function socialIcon(link: Element) {
+  const image = link.querySelector('img');
+  const label = /^(facebook|instagram|youtube|linkedin|twitter|x)\s+(.+)$/i.exec(
+    image?.getAttribute('alt')?.trim() ?? '',
+  );
+  const url = URL.parse(link.getAttribute('href') ?? '');
+  if (
+    !label ||
+    !url ||
+    !/^https?:$/.test(url.protocol) ||
+    link.textContent?.trim() ||
+    link.querySelectorAll('img').length !== 1
+  ) {
+    return;
+  }
+  const network = label[1]!.toLowerCase();
+  if (url.hostname.replace(/^www\./, '') === `${network}.com`) {
+    return { network, brand: label[2]!.toLowerCase() };
+  }
+}
+function removeSocialIconRows(document: EmailDocument) {
+  const rows = new Map<Element, { link: Element; network: string; brand: string }[]>();
+  for (const link of document.querySelectorAll('a[href]')) {
+    const icon = socialIcon(link);
+    const row = link.closest('p,td,li,div');
+    if (icon && row) {
+      const icons = rows.get(row) ?? [];
+      icons.push({ link, ...icon });
+      rows.set(row, icons);
+    }
+  }
+  for (const [row, icons] of rows) {
+    if (row.textContent?.trim()) {
+      continue;
+    }
+    for (const icon of icons) {
+      if (icons.some((other) => other.brand === icon.brand && other.network !== icon.network)) {
+        icon.link.remove();
+      }
+    }
+  }
+}
+
 function removeDecorativeImages(document: EmailDocument) {
   for (const image of document.querySelectorAll('img')) {
     const tiny = (dimension: 'width' | 'height') =>
@@ -91,6 +135,7 @@ export function cleanEmailHtml(document: EmailDocument) {
     signature.remove();
   }
   removeHidden(document);
+  removeSocialIconRows(document);
   removeDecorativeImages(document);
   for (const id of inlineContentIds(document)) {
     discardedContentIds.delete(id);
