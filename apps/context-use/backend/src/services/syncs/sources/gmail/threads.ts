@@ -4,10 +4,12 @@ import {
   checkpointSchema,
   excluded,
   GMAIL_SYNC_LABEL,
+  GMAIL_SYNC_LOOKBACK_MONTHS,
   historyId,
   nativeId,
   PAGE_SIZE,
   threadSchema,
+  threadSummarySchema,
 } from './models.ts';
 import { threadRecord } from './record.ts';
 import {
@@ -76,34 +78,43 @@ export async function step(context: SyncContext): Promise<SyncStep> {
   return { records, checkpoint: page.checkpoint, complete: page.complete };
 }
 
+function qualifies(input: {
+  messages: z.infer<typeof threadSummarySchema>['messages'];
+  labelId: string;
+  cutoff: number;
+}) {
+  return (
+    input.messages.some((message) => message.labelIds.includes(input.labelId)) &&
+    input.messages.some((message) => Number(message.internalDate) >= input.cutoff)
+  );
+}
+
 async function readRecords(input: {
   context: SyncContext;
   ids: string[];
   account: string;
   labelId: string;
 }) {
+  const cutoff = Temporal.Now.zonedDateTimeISO('UTC').subtract({
+    months: GMAIL_SYNC_LOOKBACK_MONTHS,
+  }).epochMilliseconds;
   const records = [];
   for (const id of input.ids) {
     let thread: z.infer<typeof threadSchema>;
     try {
       const path = `/users/me/threads/${encodeURIComponent(id)}`;
-      const summary = z
-        .object({
-          id: z.literal(id),
-          messages: z.array(z.object({ labelIds: z.array(z.string()).default([]) })).min(1),
-        })
-        .parse(
-          await request({
-            context: input.context,
-            path,
-            query: { format: 'minimal', fields: 'id,messages(labelIds)' },
-          }),
-        );
-      if (
-        !summary.messages.some(
-          (message) => !excluded(message.labelIds) && message.labelIds.includes(input.labelId),
-        )
-      ) {
+      const summary = threadSummarySchema.parse(
+        await request({
+          context: input.context,
+          path,
+          query: { fields: 'id,messages(labelIds,internalDate)' },
+        }),
+      );
+      if (summary.id !== id) {
+        throw new Error('Gmail returned a different conversation.');
+      }
+      const messages = summary.messages.filter((message) => !excluded(message.labelIds));
+      if (!qualifies({ messages, labelId: input.labelId, cutoff })) {
         continue;
       }
       thread = threadSchema.parse(
@@ -120,7 +131,7 @@ async function readRecords(input: {
       throw error;
     }
     thread.messages = thread.messages.filter((message) => !excluded(message.labelIds));
-    if (thread.messages.some((message) => message.labelIds.includes(input.labelId))) {
+    if (qualifies({ messages: thread.messages, labelId: input.labelId, cutoff })) {
       records.push(await threadRecord({ context: input.context, account: input.account, thread }));
     }
   }
@@ -141,7 +152,7 @@ async function backfill(input: { context: SyncContext; checkpoint: Position }) {
         path: '/users/me/threads',
         query: {
           maxResults: PAGE_SIZE,
-          // The connector serializes scalar query values. Gmail accepts a single labelIds value.
+          // A recent reply and the label can be on different messages. Check dates on the thread.
           labelIds: checkpoint.labelId!,
           includeSpamTrash: false,
           ...(checkpoint.pageToken ? { pageToken: checkpoint.pageToken } : {}),

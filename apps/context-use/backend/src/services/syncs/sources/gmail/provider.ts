@@ -1,6 +1,11 @@
 import type { SyncProvider } from '../../catalog.ts';
 import { gmailThreads } from './definition.ts';
-import { GMAIL_ERRORS, GMAIL_READONLY_SCOPE, GMAIL_SYNC_LABEL } from './models.ts';
+import {
+  GMAIL_ERRORS,
+  GMAIL_READONLY_SCOPE,
+  GMAIL_SYNC_LABEL,
+  GMAIL_SYNC_LOOKBACK_MONTHS,
+} from './models.ts';
 
 export const gmailProvider = {
   id: 'gmail',
@@ -13,7 +18,7 @@ export const gmailProvider = {
   syncs: [
     {
       name: 'Email conversations',
-      description: `Threads with the ${GMAIL_SYNC_LABEL} label.`,
+      description: `Threads with the ${GMAIL_SYNC_LABEL} label and activity in the last ${GMAIL_SYNC_LOOKBACK_MONTHS} months.`,
       registration: gmailThreads,
       invalidCheckpointCode: GMAIL_ERRORS.resyncRequired,
       errorMessages: {

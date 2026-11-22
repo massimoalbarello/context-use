@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, setSystemTime, test } from 'bun:test';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
@@ -14,6 +14,9 @@ import {
   initialHistory,
   message,
 } from './fixture.ts';
+
+beforeEach(() => setSystemTime(new Date('2026-11-30T12:00:00Z')));
+afterEach(() => setSystemTime());
 
 test('Gmail commits its boundary before backfill, resumes native pages, then polls only mailbox-wide history', async () => {
   const source = gmailFixture();
@@ -55,6 +58,61 @@ test('Gmail commits its boundary before backfill, resumes native pages, then pol
       maxResults: 10,
       startHistoryId: completedHistory,
     });
+  } finally {
+    await f.close();
+  }
+});
+
+test('Gmail skips old threads and imports the whole conversation when an unlabelled reply reaches the cutoff', async () => {
+  setSystemTime(new Date('2026-08-31T12:00:00Z'));
+  const source = gmailFixture();
+  const original = {
+    ...attachedMessage(),
+    internalDate: String(Date.parse('2026-02-28T11:59:59.999Z')),
+  };
+  const spam = message({
+    id: 'spam',
+    text: 'Spam',
+    labels: ['SPAM'],
+    date: '2026-08-30T12:00:00Z',
+  });
+  source.thread = { ...source.thread, messages: [original, spam] };
+  const f = await fixture({ registration: gmailThreads, provider: source.provider });
+  try {
+    await f.finish();
+    expect(f.records).toHaveLength(0);
+    expect(source.downloads).toHaveLength(0);
+    expect(source.requests.filter(({ query }) => query.format === 'full')).toHaveLength(0);
+
+    source.historyPages = [
+      {
+        history: [{ messagesAdded: [{ message: { threadId: 'thread-one' } }] }],
+        historyId: '9007199254740993020',
+      },
+    ];
+    source.thread = {
+      ...source.thread,
+      messages: [
+        original,
+        message({ id: 'reply', labels: [], text: 'Received', date: '2026-02-28T12:00:00Z' }),
+      ],
+    };
+    f.queue();
+    await f.finish();
+    expect(f.records).toHaveLength(1);
+    expect(f.records[0]).toMatchObject({
+      createdAt: '2026-02-28T11:59:59.999Z',
+      updatedAt: '2026-02-28T12:00:00.000Z',
+      content: { body: expect.stringContaining('Received') },
+    });
+    expect(f.deliveries[0]!.assets).toHaveLength(2);
+
+    setSystemTime(new Date('2026-09-01T12:00:00Z'));
+    source.requests.length = 0;
+    f.queue();
+    await f.finish();
+    expect(f.records).toHaveLength(1);
+    expect(source.requests.filter(({ query }) => query.format === 'full')).toHaveLength(0);
   } finally {
     await f.close();
   }

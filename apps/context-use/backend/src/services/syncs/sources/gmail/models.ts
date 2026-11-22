@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const GMAIL_SYNC_LABEL = 'context-use';
+export const GMAIL_SYNC_LOOKBACK_MONTHS = 6;
 export const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 export const GMAIL_ERRORS = {
   labelMissing: 'gmail_label_missing',
@@ -52,6 +53,9 @@ const messageSchema = z.object({
 export const threadSchema = z.object({
   id: nativeId,
   messages: z.array(messageSchema).min(1),
+});
+export const threadSummarySchema = threadSchema.extend({
+  messages: z.array(messageSchema.pick({ labelIds: true, internalDate: true })).min(1),
 });
 export type Message = z.infer<typeof messageSchema>;
 export const recordSchema = z.strictObject({

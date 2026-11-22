@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { afterEach, beforeEach, expect, setSystemTime, test } from 'bun:test';
 import { join } from 'node:path';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
@@ -15,6 +15,9 @@ import { unusedAssetFacesService } from '../../../support/app.ts';
 import { account, attachedMessage, gmailFixture, message, sentAt } from './fixture.ts';
 
 const scope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };
+beforeEach(() => setSystemTime(new Date('2026-11-30T12:00:00Z')));
+afterEach(() => setSystemTime());
+
 test('Gmail updates one conversation per sync and keeps earlier imports when a sync is recreated', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
