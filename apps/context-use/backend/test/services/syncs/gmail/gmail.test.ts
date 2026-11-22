@@ -34,9 +34,9 @@ test('Gmail commits its boundary before backfill, resumes native pages, then pol
     expect(
       source.requests.filter(({ path }) => path === '/users/me/threads').map(({ query }) => query),
     ).toEqual([
-      { maxResults: 10, includeSpamTrash: false, labelIds: ['Label_context'] },
-      { maxResults: 10, includeSpamTrash: false, labelIds: ['Label_context'], pageToken: '1' },
-      { maxResults: 10, includeSpamTrash: false, labelIds: ['Label_context'], pageToken: '2' },
+      { maxResults: 10, includeSpamTrash: false, labelIds: 'Label_context' },
+      { maxResults: 10, includeSpamTrash: false, labelIds: 'Label_context', pageToken: '1' },
+      { maxResults: 10, includeSpamTrash: false, labelIds: 'Label_context', pageToken: '2' },
     ]);
     expect(
       source.requests.find(({ path }) => path === '/users/me/history')?.query.startHistoryId,
@@ -79,6 +79,41 @@ test('a failed nested attachment commits no partial conversation or cursor and s
     expect(f.records).toHaveLength(1);
     expect(f.deliveries[0]!.assets).toHaveLength(2);
     expect(source.downloads.every((id) => id === 'invoice-bytes')).toBe(true);
+  } finally {
+    await f.close();
+  }
+});
+
+test('single-part attachments and empty text messages import together', async () => {
+  const source = gmailFixture();
+  source.thread = {
+    ...source.thread,
+    messages: [
+      {
+        ...message({ id: 'file', text: '' }),
+        payload: {
+          partId: '',
+          filename: 'invoice.pdf',
+          mimeType: 'application/pdf',
+          body: { attachmentId: 'invoice-bytes' },
+        },
+      },
+      {
+        ...message({ id: 'empty', text: '' }),
+        payload: { mimeType: 'text/plain', body: { size: 0 } },
+      },
+    ],
+  };
+  const f = await fixture({ registration: gmailThreads, provider: source.provider });
+  try {
+    await f.finish();
+    expect(f.records).toHaveLength(1);
+    expect(f.records[0]).toMatchObject({
+      content: { body: expect.stringContaining('## Message 2') },
+    });
+    expect(f.deliveries[0]!.assets).toEqual([
+      expect.objectContaining({ name: 'invoice.pdf', size: 'Attachment bytes'.length }),
+    ]);
   } finally {
     await f.close();
   }

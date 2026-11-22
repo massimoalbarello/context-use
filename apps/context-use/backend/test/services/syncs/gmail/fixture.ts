@@ -69,7 +69,7 @@ export function attachedMessage(): JsonObject {
               partId: '1.1',
               mimeType: 'application/pdf',
               filename: 'invoice.pdf',
-              body: { attachmentId: 'invoice-bytes' },
+              body: { attachmentId: 'invoice-bytes', data: '' },
             },
           ],
         },

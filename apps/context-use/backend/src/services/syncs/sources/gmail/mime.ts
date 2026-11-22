@@ -16,22 +16,25 @@ function attachment(part: MessagePart) {
   return Boolean(
     part.filename ||
       part.mimeType.startsWith('image/') ||
-      /^attachment\b/i.test(header({ part: part, name: 'content-disposition' })),
+      /^attachment\b/i.test(header({ part, name: 'content-disposition' })),
   );
 }
 async function readPart(input: { context: SyncContext; messageId: string; part: MessagePart }) {
-  if (input.part.body?.data !== undefined) {
-    return decode(input.part.body.data);
-  }
-  const attachmentId = input.part.body?.attachmentId;
-  if (!attachmentId || !input.context.provider.download) {
+  const body = input.part.body;
+  if (!body?.attachmentId) {
+    if (body?.data !== undefined || body?.size === 0) {
+      return decode(body.data ?? '');
+    }
     throw new Error('Gmail omitted MIME content.');
+  }
+  if (!input.context.provider.download) {
+    throw new Error('Gmail attachment download is unavailable.');
   }
   const stream = await input.context.provider.download({
     id: 'gmail.download_attachment',
     input: {
       messageId: input.messageId,
-      attachmentId,
+      attachmentId: body.attachmentId,
       fileName: input.part.filename || 'message-part',
       mimeType: input.part.mimeType,
     },
@@ -45,10 +48,13 @@ export async function messageContent(input: {
 }) {
   const refs: Record<string, AssetRef> = {};
   const attachments: Attachment[] = [];
-  const bodies: { type: string; text: string }[] = [];
+  const bodies: Record<'text/html' | 'text/plain', string[]> = {
+    'text/html': [],
+    'text/plain': [],
+  };
   const visit = async (part: MessagePart) => {
     if (attachment(part)) {
-      if (!part.partId) {
+      if (!part.partId && part !== input.message.payload) {
         throw new Error('Gmail attachment has no stable MIME part identity.');
       }
       const bytes = await readPart({ ...input, messageId: input.message.id, part });
@@ -58,7 +64,7 @@ export async function messageContent(input: {
       if (Object.hasOwn(refs, key)) {
         throw new Error('Gmail repeated an attachment part identity.');
       }
-      const name = part.filename || `Inline image ${part.partId}`;
+      const name = part.filename || `Attachment ${part.partId}`.trimEnd();
       refs[key] = await input.context.assets.capture({
         id,
         version,
@@ -69,26 +75,23 @@ export async function messageContent(input: {
       attachments.push({
         name,
         file: assetPlaceholder(key),
-        contentId: header({ part: part, name: 'content-id' }).replace(/^<|>$/g, ''),
+        contentId: header({ part, name: 'content-id' }).replace(/^<|>$/g, ''),
       });
       return;
     }
     if (part.mimeType === 'text/plain' || part.mimeType === 'text/html') {
       const bytes = await readPart({ ...input, messageId: input.message.id, part });
-      bodies.push({ type: part.mimeType, text: bodyText({ part, bytes }) });
+      bodies[part.mimeType].push(bodyText({ part, bytes }));
     }
-    for (const child of part.parts ?? []) {
+    for (const child of part.parts) {
       await visit(child);
     }
   };
   await visit(input.message.payload);
-  const html = bodies
-    .filter((body) => body.type === 'text/html')
-    .map((body) => body.text)
-    .join('\n');
-  const plain = bodies
-    .filter((body) => body.type === 'text/plain')
-    .map((body) => body.text)
-    .join('\n');
-  return { refs, attachments, html, plain };
+  return {
+    refs,
+    attachments,
+    html: bodies['text/html'].join('\n'),
+    plain: bodies['text/plain'].join('\n'),
+  };
 }

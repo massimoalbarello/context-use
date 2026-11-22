@@ -4,8 +4,9 @@ import { parseHTML } from 'linkedom';
 import TurndownService from 'turndown';
 import type { Attachment } from './mime.ts';
 
+const textConverter = new TurndownService();
 export function markdownText(value: string) {
-  return new TurndownService()
+  return textConverter
     .escape(value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'))
     .replaceAll('\n', ' ');
 }
@@ -13,6 +14,9 @@ const quotedText = (value: string) =>
   value
     .replace(/^\s*(?:>\s*)+/gm, '')
     .replace(/^\s*\|?[\s|:-]+\|?\s*$/gm, '')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&')
     .replace(/[*_`#|\\]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -55,25 +59,6 @@ function flattenLayoutTables(document: EmailDocument) {
     table.replaceWith(content);
   }
 }
-function removePrevious(input: { document: EmailDocument; previous: string[] }) {
-  const previous = input.previous.map(quotedText);
-  const converter = new TurndownService();
-  converter.use(tables);
-  // Remove copies of preceding messages, preserving answers inserted inside quote containers.
-  for (const quote of input.document.querySelectorAll(
-    'blockquote,.gmail_quote,.yahoo_quoted,.protonmail_quote',
-  )) {
-    for (const element of [...quote.querySelectorAll('p,div,li'), quote].reverse()) {
-      if (!element.isConnected) {
-        continue;
-      }
-      const text = quotedText(converter.turndown(element.outerHTML));
-      if (alreadyQuoted({ previous, text })) {
-        element.remove();
-      }
-    }
-  }
-}
 function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[] }) {
   for (const image of input.document.querySelectorAll('img')) {
     const cid = image.getAttribute('src')?.replace(/^cid:/i, '');
@@ -91,18 +76,18 @@ function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[
     }
   }
 }
-function htmlMarkdown(input: { html: string; attachments: Attachment[]; previous: string[] }) {
+function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
   const { document } = parseHTML(`<html><body>${input.html}</body></html>`);
   removeHidden(document);
   flattenLayoutTables(document);
-  removePrevious({ document, previous: input.previous });
+  for (const quote of document.querySelectorAll('.gmail_quote,.yahoo_quoted,.protonmail_quote')) {
+    const block = document.createElement('blockquote');
+    block.append(...quote.childNodes);
+    quote.replaceWith(block);
+  }
   rewriteMedia({ document, attachments: input.attachments });
   const converter = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
   converter.use(tables);
-  converter.addRule('emailQuotes', {
-    filter: 'blockquote',
-    replacement: (content) => `\n\n${content}\n\n`,
-  });
   converter.addRule('messageHeadings', {
     filter: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
     // biome-ignore lint/complexity/useMaxParams: Turndown supplies the content and DOM node.
@@ -117,20 +102,19 @@ export function readableBody(input: {
   attachments: Attachment[];
   previous: string[];
 }) {
-  const converter = new TurndownService();
-  converter.use(tables);
-  const markdown = input.html.trim()
-    ? htmlMarkdown(input)
-    : input.plain
-        .split('\n')
-        .map((line) =>
-          /^\s*>/.test(line)
-            ? line
-            : converter.escape(
-                line.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'),
-              ),
-        )
-        .join('\n');
+  const html = input.html.trim() && htmlMarkdown(input);
+  const markdown =
+    html ||
+    input.plain
+      .split('\n')
+      .map((line) => {
+        const prefix = /^[ \t]*(?:>[ \t]*)+/.exec(line)?.[0] ?? '';
+        return prefix + markdownText(line.slice(prefix.length));
+      })
+      .join('\n');
+  if (!input.previous.length || !/^\s*>/m.test(markdown)) {
+    return { body: markdown.trim(), original: input.plain || markdown };
+  }
   const previous = input.previous.map(quotedText);
   // Only remove quoted content already present in this conversation. Forwarded material and
   // fresh quotations still belong to their message, as do signatures and inline answers.
@@ -139,23 +123,19 @@ export function readableBody(input: {
     .getFragments()
     .map((fragment) => {
       const content = fragment.getContent();
-      if (!fragment.isQuoted() || !previous.length) {
+      if (!fragment.isQuoted()) {
         return content;
       }
-      return content
-        .split('\n')
-        .filter((line) => {
-          const text = quotedText(line);
-          if (!text) {
-            return true;
-          }
-          // The parser marks localized attribution lines as quoted, too.
-          const attribution = !/^\s*>/.test(line) && text.endsWith(':');
-          return !attribution && !alreadyQuoted({ previous, text });
-        })
-        .join('\n');
+      const lines = content.split('\n');
+      const kept = lines.filter((line) => !alreadyQuoted({ previous, text: quotedText(line) }));
+      if (kept.length === lines.length) {
+        return content;
+      }
+      // The parser groups the attribution with the quoted lines it introduces.
+      const quote = kept.filter((line) => /^\s*>/.test(line) || !line.trimEnd().endsWith(':'));
+      return quote.some((line) => quotedText(line)) ? quote.join('\n') : '';
     })
     .join('\n')
     .trim();
-  return { body, original: input.plain || converter.turndown(input.html) };
+  return { body, original: input.plain || markdown };
 }

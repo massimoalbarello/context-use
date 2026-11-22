@@ -141,7 +141,8 @@ async function backfill(input: { context: SyncContext; checkpoint: Position }) {
         path: '/users/me/threads',
         query: {
           maxResults: PAGE_SIZE,
-          labelIds: [checkpoint.labelId!],
+          // The connector serializes scalar query values. Gmail accepts a single labelIds value.
+          labelIds: checkpoint.labelId!,
           includeSpamTrash: false,
           ...(checkpoint.pageToken ? { pageToken: checkpoint.pageToken } : {}),
         },

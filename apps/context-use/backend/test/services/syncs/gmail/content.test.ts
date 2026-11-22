@@ -29,18 +29,40 @@ test('HTML quote removal preserves new answers inside and outside quoted contain
   expect(result.body).not.toContain('When can we meet');
 });
 
+test('line-broken HTML quotes keep inline answers and remove earlier messages', () => {
+  const result = readableBody({
+    html: '<div class="gmail_quote">Amount due: £120.50<br>Paid today.<br>When can we meet?</div>',
+    plain: '',
+    attachments: [],
+    previous: ['Amount due: £120.50\nWhen can we meet?'],
+  });
+  expect(result.body).toContain('Paid today.');
+  expect(result.body).not.toContain('Amount due');
+  expect(result.body).not.toContain('When can we meet');
+});
+
+test('plain text remains available when the HTML alternative contains only decoration', () => {
+  const result = readableBody({
+    html: '<img src="https://example.invalid/pixel">',
+    plain: 'Your total is £42.',
+    attachments: [],
+    previous: [],
+  });
+  expect(result.body).toBe('Your total is £42.');
+});
+
 test('plain-text replies keep inline answers and signatures while removing repeated quotes', () => {
   const result = readableBody({
     html: '',
     plain:
-      'Answers below.\n\nOn Nov 1, Alex wrote:\n> First question?\n\nFirst answer.\n\n> Second question?\n\nSecond answer.\n\nRegards,\nSam',
+      'Answers below.\n\nOn Nov 1, Alex wrote:\n> R&D budget < £20?\n\nFirst answer.\n\n> Second question?\n\nSecond answer.\n\nRegards,\nSam',
     attachments: [],
-    previous: ['First question?\nSecond question?'],
+    previous: ['R&D budget < £20?\nSecond question?'],
   });
   expect(result.body).toContain('First answer.');
   expect(result.body).toContain('Second answer.');
   expect(result.body).toContain('Sam');
-  expect(result.body).not.toContain('First question');
+  expect(result.body).not.toContain('budget');
   expect(result.body).not.toContain('Alex wrote');
 });
 

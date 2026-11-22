@@ -25,25 +25,24 @@ export const initialCheckpoint: z.infer<typeof checkpointSchema> = {
   historyId: null,
 };
 
-export interface MessagePart {
-  partId: string;
-  filename: string;
-  mimeType: string;
-  headers: { name: string; value: string }[];
-  body?: { attachmentId?: string; data?: string };
-  parts?: MessagePart[];
-}
-export const partSchema: z.ZodType<MessagePart> = z.lazy(() =>
-  z.object({
-    partId: z.string().default(''),
-    filename: z.string().default(''),
-    mimeType: z.string().default('application/octet-stream'),
-    headers: z.array(z.object({ name: z.string(), value: z.string() })).default([]),
-    body: z.object({ attachmentId: nativeId.optional(), data: z.string().optional() }).optional(),
-    parts: z.array(partSchema).optional(),
-  }),
-);
-export const messageSchema = z.object({
+const partSchema = z.object({
+  partId: z.string().default(''),
+  filename: z.string().default(''),
+  mimeType: z.string().default('application/octet-stream'),
+  headers: z.array(z.object({ name: z.string(), value: z.string() })).default([]),
+  body: z
+    .object({
+      attachmentId: nativeId.optional(),
+      data: z.string().optional(),
+      size: z.int().nonnegative().optional(),
+    })
+    .optional(),
+  get parts(): z.ZodDefault<z.ZodArray<typeof partSchema>> {
+    return z.array(partSchema).default([]);
+  },
+});
+export type MessagePart = z.infer<typeof partSchema>;
+const messageSchema = z.object({
   id: nativeId,
   threadId: nativeId,
   internalDate: z.string().regex(/^\d+$/),
