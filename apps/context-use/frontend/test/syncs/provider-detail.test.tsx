@@ -42,6 +42,7 @@ test('Authorization separates configured app status from account connection and 
         onAction={() => {}}
         onConnect={connect}
         onReauthorize={() => {}}
+        onSaveApiKey={() => Promise.resolve()}
         onSaveApp={() => {
           setProvider({
             ...provider,
@@ -114,6 +115,7 @@ test.each(['connected', 'error'] as const)(
       appError: null,
       authorizationFailed: false,
       onAction: () => {},
+      onSaveApiKey: () => Promise.resolve(),
       onConnect: () => {},
       onReauthorize: reauthorize,
       onSaveApp: () => Promise.resolve(),
@@ -150,30 +152,53 @@ test.each(['connected', 'error'] as const)(
   },
 );
 
-test('automatic Granola authorization offers account connection without an OAuth app form', async () => {
-  const provider = providerFixture();
-  provider.id = 'granola';
-  provider.name = 'Granola';
-  provider.oauthApp = { ...provider.oauthApp, createAppUrl: null, automaticRegistration: true };
-  const connect = mock(() => {});
-  const view = render(
+test('Granola uses an API key form and clears submitted keys on success and failure', async () => {
+  const provider = {
+    ...providerFixture(),
+    id: 'granola',
+    name: 'Granola',
+    oauthApp: null,
+    apiKeySetupUrl: 'https://docs.granola.ai/help-center/sharing/integrations/granola-api',
+  };
+  const save = mock(() => Promise.resolve());
+  const props = {
+    provider,
+    tab: 'authorization' as const,
+    onTabChange: () => {},
+    pending: false,
+    error: null,
+    appError: null,
+    authorizationFailed: false,
+    onAction: () => {},
+    onConnect: () => {},
+    onReauthorize: () => {},
+    onSaveApiKey: save,
+    onSaveApp: () => Promise.resolve(),
+  };
+  const view = render(<ProviderDetail {...props} />);
+  const user = userEvent.setup({ document });
+  expect(view.queryByRole('region', { name: 'OAuth app' })).toBeNull();
+  expect(view.queryByRole('button', { name: 'Connect account' })).toBeNull();
+  await user.click(view.getByRole('button', { name: 'Save API key' }));
+  expect(save).not.toHaveBeenCalled();
+  await user.type(view.getByLabelText('API key'), 'synthetic-key');
+  await user.click(view.getByRole('button', { name: 'Save API key' }));
+  await waitFor(() => expect(save).toHaveBeenCalledWith('synthetic-key'));
+  expect((view.getByLabelText('API key') as HTMLInputElement).value).toBe('');
+  view.rerender(<ProviderDetail {...props} pending />);
+  expect((view.getByRole('button', { name: 'Save API key' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  expect((view.getByLabelText('API key') as HTMLInputElement).disabled).toBe(true);
+  view.rerender(
     <ProviderDetail
-      provider={provider}
-      tab="authorization"
-      onTabChange={() => {}}
-      pending={false}
-      error={null}
-      appError={null}
-      authorizationFailed={false}
-      onAction={() => {}}
-      onConnect={connect}
-      onReauthorize={() => {}}
-      onSaveApp={() => Promise.resolve()}
+      {...props}
+      onSaveApiKey={() => Promise.reject(new Error('Invalid key'))}
+      appError={new Error('Check the key access.')}
     />,
   );
-  expect(view.queryByRole('region', { name: 'OAuth app' })).toBeNull();
-  expect(view.queryByRole('button', { name: 'Set up OAuth app' })).toBeNull();
-  expect(view.queryByLabelText('Client ID')).toBeNull();
-  await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Connect account' }));
-  expect(connect).toHaveBeenCalledTimes(1);
+  await user.type(view.getByLabelText('API key'), 'rejected-secret');
+  await user.click(view.getByRole('button', { name: 'Save API key' }));
+  await waitFor(() => expect((view.getByLabelText('API key') as HTMLInputElement).value).toBe(''));
+  expect(view.getByRole('alert').textContent).toBe('Check the key access.');
 });

@@ -10,7 +10,8 @@ export interface SyncProvider {
   id: string;
   name: string;
   description: string;
-  oauth: { createAppUrl: string | null; authorizationOptionIds?: string[] };
+  oauth: { createAppUrl: string | null; authorizationOptionIds?: string[] } | null;
+  apiKeySetupUrl?: string;
   syncs: readonly ContextSync[];
 }
 

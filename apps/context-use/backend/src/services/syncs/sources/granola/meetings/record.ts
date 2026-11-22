@@ -1,21 +1,24 @@
 import type { SyncRecord } from '@context-use/open-sync/record';
 import type { z } from 'zod';
 import { RecordInputSchema } from '#backend/models/records/model.ts';
-import { meetingIdSchema } from './identity.ts';
-import type { detailResponseSchema } from './models.ts';
+import { meetingIdFromUrl } from './identity.ts';
+import type { noteSchema } from './models.ts';
 
-export function granolaRecord(meeting: z.infer<typeof detailResponseSchema>['meetings'][number]) {
+export function granolaRecord(meeting: z.infer<typeof noteSchema>) {
+  const date = meeting.calendar_event?.scheduled_start_time ?? null;
   const data = {
     title: meeting.title,
-    notes: meeting.summary,
-    date: meeting.date ?? null,
-    sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt.catch(null).parse(meeting.date),
-    attendees: meeting.attendees ?? '',
+    notes: meeting.summary_markdown ?? meeting.summary_text,
+    date,
+    sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt.parse(date),
+    attendees: meeting.attendees
+      .map(({ name, email }) => (name?.trim() ? `${name} <${email}>` : email))
+      .join(', '),
   };
   return {
     operation: 'upsert',
     kind: 'meeting',
-    id: meetingIdSchema.parse(meeting.id),
+    id: meetingIdFromUrl(meeting.web_url),
     preview: meeting.title?.trim() || 'Untitled Granola meeting',
     content: {
       format: 'markdown',
@@ -26,6 +29,7 @@ export function granolaRecord(meeting: z.infer<typeof detailResponseSchema>['mee
       ].join('\n\n'),
     },
     data,
-    // MCP meeting dates are not note creation/update timestamps.
+    createdAt: meeting.created_at,
+    updatedAt: meeting.updated_at,
   } satisfies SyncRecord;
 }

@@ -1,7 +1,10 @@
 import type { SyncProvider } from '../../src/queries/managed-syncs';
-export function providerFixture(): SyncProvider {
+export function providerFixture(): SyncProvider & {
+  oauthApp: NonNullable<SyncProvider['oauthApp']>;
+} {
   return {
     id: 'github',
+    apiKeySetupUrl: null,
     name: 'GitHub',
     description: 'Bring your authored pull requests into Context Use.',
     oauthApp: {

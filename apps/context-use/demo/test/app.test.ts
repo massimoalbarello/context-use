@@ -333,13 +333,10 @@ test(
           expect.objectContaining({
             id: 'granola',
             name: 'Granola',
-            oauthApp: expect.objectContaining({
-              configured: false,
-              createAppUrl: null,
-              callbackUrl: 'http://demo.test/api/open-sync/oauth/callback',
-            }),
+            oauthApp: null,
+            apiKeySetupUrl: expect.stringMatching(/^https:\/\//),
             account: { name: null, status: 'disconnected' },
-            syncs: [expect.objectContaining({ key: 'granola.meetings', state: 'setup-required' })],
+            syncs: [expect.objectContaining({ key: 'granola.meetings', state: 'disconnected' })],
           }),
           expect.objectContaining({
             id: 'youtube',
@@ -502,6 +499,7 @@ test(
         const deniedPaths = [
           '/api/syncs/managed/providers/github/app',
           '/api/syncs/managed/providers/github/connect',
+          '/api/syncs/managed/providers/granola/api-key',
           '/api/syncs/managed/github.pull-requests',
           '/api/open-sync/oauth/callback',
           '/api/publications/page/pictures-of-me-and-our-pocket-devices',

@@ -9,12 +9,15 @@ export const ManagedSyncListSchema = t.Array(
     id: t.String(),
     name: t.String(),
     description: t.String(),
-    oauthApp: t.Object({
-      configured: t.Boolean(),
-      callbackUrl: t.String(),
-      createAppUrl: t.Nullable(t.String()),
-      automaticRegistration: t.Boolean(),
-    }),
+    apiKeySetupUrl: t.Nullable(t.String()),
+    oauthApp: t.Nullable(
+      t.Object({
+        configured: t.Boolean(),
+        callbackUrl: t.String(),
+        createAppUrl: t.Nullable(t.String()),
+        automaticRegistration: t.Boolean(),
+      }),
+    ),
     account: t.Object({
       name: t.Nullable(t.String()),
       status: t.UnionEnum(['disconnected', 'connected', 'error']),
@@ -53,4 +56,12 @@ export const OAuthAppBodySchema = t.Object(
 );
 export const ActionBodySchema = t.Object({
   action: t.UnionEnum(MANAGED_SYNC_ACTIONS),
+});
+export const ApiKeyBodySchema = t.Object({
+  apiKey: t.String({
+    minLength: 1,
+    maxLength: 4096,
+    pattern: '^\\S+$',
+    error: 'Enter a valid API key.',
+  }),
 });

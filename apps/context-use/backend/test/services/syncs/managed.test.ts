@@ -152,7 +152,7 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
     await runtime.tick();
     const failed = (await service.list(actor))[0]!;
     expect(failed.syncs[0]?.state).toBe('error');
-    expect(failed.oauthApp.configured).toBe(true);
+    expect(failed.oauthApp?.configured).toBe(true);
     expect(failed.account.name).toBe('octocat');
     expect(failed.syncs[0]?.message).toBe(
       'This sync could not finish. Automatic retries continue.',

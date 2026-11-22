@@ -5,13 +5,12 @@ export const granolaProvider = {
   id: 'granola',
   name: 'Granola',
   description: 'Bring your meeting notes into Context Use.',
-  oauth: {
-    createAppUrl: null,
-  },
+  oauth: null,
+  apiKeySetupUrl: 'https://docs.granola.ai/help-center/sharing/integrations/granola-api',
   syncs: [
     {
       name: 'Meetings',
-      description: 'Notes from the last 30 days.',
+      description: 'All meeting notes accessible to your API key.',
       registration: granolaMeetings,
     },
   ],

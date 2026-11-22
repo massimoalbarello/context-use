@@ -64,7 +64,6 @@ import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
 import { localRecordDestination } from '#backend/services/syncs/destinations/local/definition.ts';
 import { syncEventLogger } from '#backend/services/syncs/logging.ts';
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
-import { granolaClientRegistration } from '#backend/services/syncs/sources/granola/oauth.ts';
 import { syncProviders } from '#backend/services/syncs/sources/index.ts';
 
 const BYTES_PER_KIBIBYTE = 1024;
@@ -197,7 +196,6 @@ try {
       Promise.resolve(scope.actorId === OWNER_USER_ID && scope.actorId === scope.ownerId),
     authorizationRedirect: ({ service, outcome }) =>
       syncProviderLocation({ providerId: service, outcome }),
-    oauthClientRegistrations: { granola: granolaClientRegistration({ fetch }) },
     definitions: catalog.definitions,
     destinationTypes: {
       [LOCAL_RECORD_DESTINATION]: localRecordDestination({

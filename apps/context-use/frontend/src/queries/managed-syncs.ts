@@ -55,6 +55,17 @@ export async function connectSyncProvider(providerId: string) {
   }
   return data;
 }
+export async function configureSyncApiKey(input: { providerId: string; apiKey: string }) {
+  const { error } = await api.api.syncs.managed
+    .providers({ providerId: input.providerId })
+    ['api-key'].post({
+      apiKey: input.apiKey,
+      changeMessage: 'Configured sync provider API key',
+    });
+  if (error) {
+    throw new Error(apiErrorMessage(error));
+  }
+}
 export async function reauthorizeSyncProvider(providerId: string) {
   const { data, error } = await api.api.syncs.managed.providers({ providerId }).reauthorize.post({
     changeMessage: 'Reauthorized a sync provider',

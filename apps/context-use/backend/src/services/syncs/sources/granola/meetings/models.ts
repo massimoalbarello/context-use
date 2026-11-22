@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { RecordInputSchema } from '#backend/models/records/model.ts';
-import { meetingIdSchema } from './identity.ts';
 
 export const meetingSchema = z.strictObject({
   title: z.string().nullable(),
@@ -9,23 +8,28 @@ export const meetingSchema = z.strictObject({
   sourceOccurredAt: RecordInputSchema.shape.sourceOccurredAt,
   attendees: z.string(),
 });
-// Empty by design: the OAuth action exposes one unpaginated last-30-days listing,
-// with no update token. Every detail batch finishes in this step, so there is no
-// position, pending ID list, or timestamp to resume. The next poll rechecks the listing.
-export const checkpointSchema = z.strictObject({});
+// An existing MCP sync has an empty checkpoint and starts its API backfill at page one.
+export const checkpointSchema = z.strictObject({ cursor: z.string().min(1).nullable().optional() });
+export const noteIdSchema = z.string().regex(/^not_[a-zA-Z0-9]{14}$/);
 export const responseSchema = z.object({
-  meetings: z.array(
-    z.object({
-      id: meetingIdSchema,
-      title: z.string().nullable(),
-      summary: z.string().optional(),
-      date: z.string().optional(),
-      attendees: z.string().optional(),
-    }),
+  notes: z.array(
+    z.object({ id: noteIdSchema, deleted_at: z.iso.datetime({ offset: true }).nullable() }),
   ),
+  hasMore: z.boolean(),
+  cursor: z.string().min(1).nullable(),
 });
-// Listing previews may omit summaries; complete details must distinguish empty notes
-// from missing notes so a partial response cannot erase an earlier delivered summary.
-export const detailResponseSchema = responseSchema.extend({
-  meetings: z.array(responseSchema.shape.meetings.element.extend({ summary: z.string() })),
+// Require complete content so a partial response cannot erase a delivered summary.
+export const noteSchema = z.object({
+  id: noteIdSchema,
+  web_url: z.url(),
+  title: z.string().nullable(),
+  summary_text: z.string(),
+  summary_markdown: z.string().nullable(),
+  created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true }),
+  deleted_at: z.iso.datetime({ offset: true }).nullable(),
+  calendar_event: z
+    .object({ scheduled_start_time: z.iso.datetime({ offset: true }).nullable() })
+    .nullable(),
+  attendees: z.array(z.object({ name: z.string().nullable(), email: z.string() })),
 });

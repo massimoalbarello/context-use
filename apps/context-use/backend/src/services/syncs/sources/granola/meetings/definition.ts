@@ -7,7 +7,7 @@ export const granolaMeetings = {
   definition: {
     id: 'granola.meetings',
     name: 'Granola meetings',
-    provider: { service: 'granola', actions: ['granola.list_meetings', 'granola.get_meetings'] },
+    provider: { service: 'granola', actions: [], proxyPaths: ['/v1/notes', '/v1/notes/:id'] },
     configSchema: { type: 'object', additionalProperties: false },
     checkpointSchema: JSON.parse(JSON.stringify(z.toJSONSchema(checkpointSchema))),
     initialCheckpoint: {},

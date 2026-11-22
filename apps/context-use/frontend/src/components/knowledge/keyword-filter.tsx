@@ -108,7 +108,7 @@ export function KeywordFilter({
       />
       {(draft || value) && (
         <Button
-          className="absolute top-1/2 right-1 size-7 -translate-y-1/2"
+          className="absolute inset-y-0 right-1 my-auto size-7"
           aria-label="Clear search"
           type="button"
           size="icon"
