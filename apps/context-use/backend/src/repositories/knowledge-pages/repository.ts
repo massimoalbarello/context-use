@@ -723,9 +723,8 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       order === 'timeline'
         ? this.sql`
         case
-          when revision."temporal_coverage" is not null
-            and revision."temporal_end_exclusive_ms" is null then 0
-          when revision."temporal_coverage" is not null then 1
+          when revision."temporal_coverage" is null then 0
+          when revision."temporal_end_exclusive_ms" is null then 1
           else 2
         end,
         case when revision."temporal_coverage" is not null

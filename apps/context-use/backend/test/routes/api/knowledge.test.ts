@@ -692,7 +692,7 @@ Every observation changes the next action.`,
     );
     expect(mentioningPagesResponse.status).toBe(StatusMap.OK);
     expect(await mentioningPagesResponse.json()).toMatchObject({
-      items: [expect.objectContaining({ readableId: 'current-programme' })],
+      items: [expect.objectContaining({ readableId: 'alpha-principles' })],
       total: 3,
       nextOffset: 1,
     });
@@ -703,7 +703,7 @@ Every observation changes the next action.`,
       }),
     );
     expect(await nextMentions.json()).toMatchObject({
-      items: [{ readableId: 'operating-rhythm' }, { readableId: 'alpha-principles' }],
+      items: [{ readableId: 'current-programme' }, { readableId: 'operating-rhythm' }],
       total: 3,
       nextOffset: null,
     });
