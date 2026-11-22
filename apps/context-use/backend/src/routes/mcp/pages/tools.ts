@@ -3,9 +3,13 @@ import { z } from 'zod';
 import { MAX_KNOWLEDGE_PAGE_CHARACTERS } from '#backend/models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
-import { pageAddress, pageReadableId } from '#backend/models/readable-ids/addresses.ts';
+import {
+  entityReadableId,
+  pageAddress,
+  pageReadableId,
+} from '#backend/models/readable-ids/addresses.ts';
 import { withChangeMessage } from '#backend/routes/change-message.ts';
-import { PageAddressSchema } from '#backend/routes/mcp/coordinates.ts';
+import { EntityAddressSchema, PageAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
   KnowledgePageListOutputSchema,
   McpKnowledgePageSchema,
@@ -204,13 +208,13 @@ export function registerKnowledgePageTools({
     {
       title: 'List knowledge pages',
       description:
-        'List active knowledge pages without searching. Pass nextCursor unchanged to continue the list.',
-      inputSchema: McpListInputSchema,
+        'List active knowledge pages, optionally limited to those mentioning an exact entity address. Pass nextCursor unchanged to continue the list.',
+      inputSchema: McpListInputSchema.extend({ mentioningEntity: EntityAddressSchema.optional() }),
       outputSchema: KnowledgePageListOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
-    async ({ cursor, limit = DEFAULT_MCP_LIST_LIMIT }) => {
-      const decoded = decodeMcpCursor({ cursor, list: 'knowledge_pages' });
+    async ({ cursor, mentioningEntity, limit = DEFAULT_MCP_LIST_LIMIT }) => {
+      const decoded = decodeMcpCursor({ cursor, list: 'knowledge_pages', scope: mentioningEntity });
       if (decoded.state === 'invalid') {
         return mcpToolError({
           code: 'invalid_cursor',
@@ -221,11 +225,19 @@ export function registerKnowledgePageTools({
         ownerId: principal.ownerId,
         limit,
         offset: decoded.offset,
+        ...(mentioningEntity && {
+          entityReadableId: entityReadableId(mentioningEntity),
+          order: 'timeline',
+        }),
       });
       return mcpToolSuccess({
         items: page.items.map(mcpKnowledgePageSummary),
         total: page.total,
-        nextCursor: encodeMcpCursor({ list: 'knowledge_pages', offset: page.nextOffset }),
+        nextCursor: encodeMcpCursor({
+          list: 'knowledge_pages',
+          scope: mentioningEntity,
+          offset: page.nextOffset,
+        }),
       });
     },
   );

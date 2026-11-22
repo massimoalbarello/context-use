@@ -141,7 +141,6 @@ async function withAssetsApp(
         assets: assetsRepository,
         onPersonPortraitAvailable: unusedAssetFacesService.preparePortrait,
         entities: new EntitiesRepository(database),
-        pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,

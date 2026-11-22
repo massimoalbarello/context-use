@@ -72,7 +72,6 @@ const unusedEntitiesService: EntitiesServiceContract = {
   removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
-  detail: unexpectedCall,
   update: unexpectedCall,
   unarchive: unexpectedCall,
   archive: unexpectedCall,

@@ -56,7 +56,6 @@ async function renderEntity({ isPublic = false, statusError = false } = {}) {
     image: asset('cached-portrait'),
     createdAt: timestamp,
     updatedAt: timestamp,
-    pages: [],
   };
   const state = {
     publication: {
@@ -131,6 +130,7 @@ async function renderEntity({ isPublic = false, statusError = false } = {}) {
         });
   }
   const handlers: Record<string, (request: Request) => Response | Promise<Response>> = {
+    '/api/pages': () => Response.json({ items: [], total: 0, nextOffset: null }),
     '/api/entities/studio': () =>
       state.entityError
         ? Response.json({ error: 'Entity unavailable' }, { status: 503 })

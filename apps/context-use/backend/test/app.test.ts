@@ -70,7 +70,6 @@ test('createApp uses supplied dependencies without production bootstrap', async 
     removeImage: unexpectedCall,
     create: unexpectedCall,
     list: unexpectedCall,
-    detail: unexpectedCall,
     update: unexpectedCall,
     unarchive: unexpectedCall,
     archive: unexpectedCall,

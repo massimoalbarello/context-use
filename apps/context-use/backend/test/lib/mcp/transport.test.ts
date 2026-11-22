@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { createMcpTransport } from '#backend/lib/mcp/transport.ts';
-import type { EntityDetail } from '#backend/models/entities/model.ts';
+import type { Entity } from '#backend/models/entities/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import {
   createContextUseMcpServer,
@@ -27,7 +27,7 @@ function unexpectedCall(): never {
   throw new Error('Unexpected service call');
 }
 
-const entity: EntityDetail = {
+const entity: Entity = {
   archivedAt: null,
   publicId: null,
   publishedAt: null,
@@ -38,18 +38,16 @@ const entity: EntityDetail = {
   entityType: null,
   isSelf: false,
   image: null,
-  pages: [],
   createdAt: NOW,
   updatedAt: NOW,
 };
 
 const entitiesService: EntitiesServiceContract = {
-  preview: unexpectedCall,
+  preview: async () => entity,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
-  detail: async () => entity,
   update: unexpectedCall,
   unarchive: unexpectedCall,
   archive: unexpectedCall,

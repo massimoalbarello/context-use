@@ -138,6 +138,7 @@ export class KnowledgePagesService {
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
     entityReadableId?: string;
+    order?: 'timeline';
   }) {
     return this.pages.list(input);
   }

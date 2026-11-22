@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { ENTITY_MENTIONS_PAGE_SIZE, ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
 import { AssetImage, AssetPreviewContent } from '../components/assets/asset-preview-content';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { EntityPageSections } from '../components/entities/entity-page-sections';
@@ -65,6 +65,17 @@ export function EntityPreview({
   client: PagesClient;
   onOpen: (address: string) => void;
 }) {
+  const mentions = useInfiniteQuery({
+    queryKey: [...resourceQueryKey(entity.address), 'mentioning-pages'],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      client.mentioningPages({
+        address: entity.address,
+        cursor: pageParam,
+        limit: ENTITY_MENTIONS_PAGE_SIZE,
+      }),
+    getNextPageParam: (batch) => batch.nextCursor,
+  });
   return (
     <section className="grid gap-5">
       <p className="text-muted-foreground text-sm">
@@ -91,20 +102,19 @@ export function EntityPreview({
           )
         }
       />
-      {entity.pages.length > 0 && (
-        <EntityPageSections
-          pages={entity.pages}
-          renderPage={(page) => (
-            <button
-              type="button"
-              className={resourceCardVariants({ className: 'w-full' })}
-              onClick={() => onOpen(page.address)}
-            >
-              <KnowledgePageCardContent page={page} />
-            </button>
-          )}
-        />
-      )}
+
+      <EntityPageSections
+        query={mentions}
+        renderPage={(page) => (
+          <button
+            type="button"
+            className={resourceCardVariants({ className: 'w-full' })}
+            onClick={() => onOpen(page.address)}
+          >
+            <KnowledgePageCardContent page={page} />
+          </button>
+        )}
+      />
     </section>
   );
 }

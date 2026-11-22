@@ -1,6 +1,6 @@
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
-import { type UseQueryResult, useQuery } from '@tanstack/react-query';
+import { type UseQueryResult, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
 import { useArchiveEntity } from '../../lib/hooks/use-archive-entity';
@@ -8,6 +8,7 @@ import { useEntity } from '../../lib/hooks/use-entity';
 import { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import { useUpdateEntity } from '../../lib/hooks/use-update-entity';
 import type { EntityDetail as Entity } from '../../queries/entities';
+import { entityPagesQueryOptions } from '../../queries/pages';
 import { publicationStatusQueryOptions } from '../../queries/publications';
 import { EntityIdentityEditor } from '../entities/entity-identity-editor';
 import { EntityImageEditor } from '../entities/entity-image-editor';
@@ -77,7 +78,10 @@ function EntityDetailContent({ entity, onArchived }: { entity: Entity; onArchive
   const approval = usePublicationApproval();
   const [editing, setEditing] = useState(false);
   const [archiveConflict, setArchiveConflict] = useState<'publication' | 'mentions' | null>(null);
-  const hasInboundUsages = entity.pages.length > 0;
+  const mentions = useInfiniteQuery(
+    entityPagesQueryOptions({ entityReadableId: entity.readableId, order: 'timeline' }),
+  );
+  const hasInboundUsages = (mentions.data?.pages[0]?.total ?? 0) > 0;
   const isPublic = !publication.isError && publication.data?.publishedAt != null;
 
   return (
@@ -165,7 +169,7 @@ function EntityDetailContent({ entity, onArchived }: { entity: Entity; onArchive
         className={cn('grid items-start gap-8', entity.entityType === 'person' && 'md:grid-cols-2')}
       >
         <EntityPageSections
-          pages={entity.pages}
+          query={mentions}
           renderPage={(page) => <KnowledgePageLink page={page} presentation="card" />}
         />
         {entity.entityType === 'person' && <PersonImages readableId={entity.readableId} />}

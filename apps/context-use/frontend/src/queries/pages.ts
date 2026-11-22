@@ -1,4 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import { ENTITY_MENTIONS_PAGE_SIZE } from '#backend/models/entities/model.ts';
 import type { KnowledgePageIntervalFilter } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { ResourceStatus, UnarchiveResult } from '#backend/models/resource-archiving/model.ts';
@@ -207,13 +208,19 @@ export function pagesQueryOptions({
   });
 }
 
-export function entityPagesQueryOptions(entityReadableId: string) {
+export function entityPagesQueryOptions({
+  entityReadableId,
+  order,
+}: {
+  entityReadableId: string;
+  order?: 'timeline';
+}) {
   return infiniteQueryOptions({
-    queryKey: [...pagesListQueryKey, { entityReadableId }],
+    queryKey: [...pagesListQueryKey, { entityReadableId, order }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await api.api.pages.get({
-        query: { entityReadableId, offset: pageParam },
+        query: { entityReadableId, order, offset: pageParam, limit: ENTITY_MENTIONS_PAGE_SIZE },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

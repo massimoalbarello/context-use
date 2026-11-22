@@ -1,12 +1,15 @@
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { z } from 'zod';
 import { McpAssetSchema } from '#backend/routes/mcp/assets/model.ts';
-import { McpEntityDetailSchema } from '#backend/routes/mcp/entities/detail-model.ts';
+import { McpEntitySchema } from '#backend/routes/mcp/entities/model.ts';
 import {
   SearchHypermediaInputSchema,
   SearchHypermediaOutputSchema,
 } from '#backend/routes/mcp/hypermedia-retrieval/model.ts';
-import { McpKnowledgePageSchema } from '#backend/routes/mcp/pages/model.ts';
+import {
+  KnowledgePageListOutputSchema,
+  McpKnowledgePageSchema,
+} from '#backend/routes/mcp/pages/model.ts';
 import { internalLink } from '../lib/internal-link';
 import type { CreatePageVariables } from '../queries/pages';
 
@@ -18,7 +21,7 @@ export function pickerInput(input: SearchInput) {
   return { ...input, limit: Math.min(input.limit ?? PICKER_LIMIT, PICKER_LIMIT) };
 }
 
-export type Entity = z.infer<typeof McpEntityDetailSchema>;
+export type Entity = z.infer<typeof McpEntitySchema>;
 export type Asset = z.infer<typeof McpAssetSchema>;
 export type Page = z.infer<typeof McpKnowledgePageSchema>;
 
@@ -29,7 +32,7 @@ const resourceReaders = {
   },
   entity: {
     tool: 'read_entity',
-    schema: McpEntityDetailSchema.transform((value) => ({ kind: 'entity', value }) as const),
+    schema: McpEntitySchema.transform((value) => ({ kind: 'entity', value }) as const),
   },
   asset: {
     tool: 'read_asset',
@@ -136,6 +139,22 @@ export class PagesClient {
     const reader = resourceReaders[kind];
     const result = await this.call({ name: reader.tool, args: { address } });
     return reader.schema.parse(result.structuredContent);
+  }
+
+  async mentioningPages({
+    address,
+    cursor,
+    limit,
+  }: {
+    address: string;
+    cursor: string | null;
+    limit: number;
+  }) {
+    const result = await this.call({
+      name: 'list_knowledge_pages',
+      args: { mentioningEntity: address, limit, cursor: cursor ?? undefined },
+    });
+    return KnowledgePageListOutputSchema.parse(result.structuredContent);
   }
 
   async readAsset(address: string) {

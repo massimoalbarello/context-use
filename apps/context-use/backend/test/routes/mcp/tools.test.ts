@@ -125,7 +125,6 @@ const unusedEntitiesService: EntitiesServiceContract = {
   preview: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
-  detail: unexpectedCall,
   update: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
@@ -1137,11 +1136,43 @@ test('MCP lists are owner-scoped, bounded, cursor-paginated, and reject invalid 
   });
 });
 
+test('mention cursors continue the same entity and cannot be reused for another list', async () => {
+  const mentioningEntity = 'context-use://entity/luca-bianchi';
+  await withMcpClient({
+    pagesService: {
+      ...unusedPagesService,
+      list: ({ entityReadableId, ownerId, limit, offset, order }) => {
+        expect({ entityReadableId, ownerId, limit, order }).toEqual({
+          entityReadableId: 'luca-bianchi',
+          ownerId: principal.ownerId,
+          limit: 1,
+          order: 'timeline',
+        });
+        return Promise.resolve({ items: [page], total: 2, nextOffset: offset === 0 ? 1 : null });
+      },
+    },
+    run: async (client) => {
+      const name = 'list_knowledge_pages';
+      const first = await client.callTool({ name, arguments: { mentioningEntity, limit: 1 } });
+      const { nextCursor: cursor } = first.structuredContent as { nextCursor: string };
+      expect(typeof cursor).toBe('string');
+      const next = await client.callTool({
+        name,
+        arguments: { mentioningEntity, cursor, limit: 1 },
+      });
+      expect(next.structuredContent).toMatchObject({ total: 2, nextCursor: null });
+      for (const args of [{ cursor }, { cursor, mentioningEntity: 'context-use://entity/other' }]) {
+        expect(errorCode(await client.callTool({ name, arguments: args }))).toBe('invalid_cursor');
+      }
+    },
+  });
+});
+
 test('exact typed reads preserve owner-scoped not-found indistinguishability', async () => {
   const owners: string[] = [];
   const entitiesService: EntitiesServiceContract = {
     ...unusedEntitiesService,
-    detail: ({ ownerId }) => {
+    preview: ({ ownerId }) => {
       owners.push(ownerId);
       return Promise.resolve(null);
     },
@@ -1820,7 +1851,6 @@ test('resource results carry current owner-scoped publication status through sea
     const entitiesService = new EntitiesService({
       entities: new EntitiesRepository(database),
       assets,
-      pages,
       onPersonPortraitAvailable: async () => {},
     });
     const assetsService = new AssetsService({ assets, storage, faces: unusedAssetFacesService });
@@ -1986,10 +2016,10 @@ test('resource results carry current owner-scoped publication status through sea
               ]);
               expect(
                 await read({
-                  name: 'read_entity',
-                  arguments: { address: 'context-use://entity/awareness-person' },
+                  name: 'list_knowledge_pages',
+                  arguments: { mentioningEntity: 'context-use://entity/awareness-person' },
                 }),
-              ).toMatchObject({ pages: [expect.objectContaining({ publication: expected })] });
+              ).toMatchObject({ items: [expect.objectContaining({ publication: expected })] });
               expect(
                 await read({
                   name: 'read_asset',

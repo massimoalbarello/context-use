@@ -152,7 +152,6 @@ async function fixture({ automatic = true } = {}) {
   const entities = new EntitiesService({
     assets: assetsRepository,
     entities: entitiesRepository,
-    pages: pagesRepository,
     onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
   });
   const auth: Auth = {
@@ -1250,7 +1249,7 @@ test('face and portrait mutations roll back together with their link changes', a
     }),
   ).rejects.toThrow('Test link failure');
   expect(
-    (await context.entities.detail({ ownerId: OWNER, readableId: person.readableId }))!.image
+    (await context.entities.preview({ ownerId: OWNER, readableId: person.readableId }))!.image
       ?.readableId,
   ).toBe(portrait.readableId);
   expect(await context.reference(person)).not.toBeNull();

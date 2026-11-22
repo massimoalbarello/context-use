@@ -7,18 +7,20 @@ export function InfiniteScrollTrigger({
   error,
   loadMore,
   idleContent,
+  autoLoad = true,
 }: {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   error?: Error | null;
   loadMore: () => Promise<unknown>;
   idleContent?: ReactNode;
+  autoLoad?: boolean;
 }) {
   const markerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const marker = markerRef.current;
-    if (!marker || !hasNextPage || isFetchingNextPage || error) {
+    if (!autoLoad || !marker || !hasNextPage || isFetchingNextPage || error) {
       return;
     }
 
@@ -36,7 +38,7 @@ export function InfiniteScrollTrigger({
     observer.observe(marker);
 
     return () => observer.disconnect();
-  }, [error, hasNextPage, isFetchingNextPage, loadMore]);
+  }, [autoLoad, error, hasNextPage, isFetchingNextPage, loadMore]);
 
   if (!(hasNextPage || isFetchingNextPage || error)) {
     return null;

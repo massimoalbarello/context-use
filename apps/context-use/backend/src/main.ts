@@ -127,7 +127,6 @@ try {
     assets: assetsRepository,
     onPersonPortraitAvailable: (input) => facesService.preparePortrait(input),
     entities: entitiesRepository,
-    pages: pagesRepository,
   });
   const healthService = new HealthService(new HealthRepository(database));
   const ownerRegistrationService = new OwnerRegistrationService(

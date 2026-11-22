@@ -605,22 +605,6 @@ export interface ICountKnowledgePagesResult {
     total: number;
 }
 
-/** Result of query `ListKnowledgePagesByEntity`. */
-export interface IListKnowledgePagesByEntityResult {
-    id: string;
-    readableId: string;
-    revisionNumber: number;
-    title: string;
-    excerpt: string;
-    temporalCoverage: string | null;
-    publicId: string | null;
-    publishedAt: string | null;
-    archivedAt: string | null;
-    publishedRevisionNumber: number | null;
-    createdAt: string;
-    updatedAt: string;
-}
-
 /** Result of query `FindKnowledgePageRevisionsByNumber`. */
 export interface IFindKnowledgePageRevisionsByNumberResult {
     revisionNumber: number;
@@ -1311,7 +1295,6 @@ export interface Queries {
     ListPendingPageRevisionDeletions: IListPendingPageRevisionDeletionsResult;
     ListKnowledgePages: IListKnowledgePagesResult;
     CountKnowledgePages: ICountKnowledgePagesResult;
-    ListKnowledgePagesByEntity: IListKnowledgePagesByEntityResult;
     FindKnowledgePageRevisionsByNumber: IFindKnowledgePageRevisionsByNumberResult;
     FindKnowledgePage: IFindKnowledgePageResult;
     FindKnowledgePageUnarchiveTarget: IFindKnowledgePageUnarchiveTargetResult;

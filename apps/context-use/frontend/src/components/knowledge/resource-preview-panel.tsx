@@ -176,7 +176,7 @@ function EntityPreview({ readableId, publicationStatus, onClose, onExpand }: Pre
 }
 
 function EntityMentioningPages({ readableId }: { readableId: string }) {
-  const query = useInfiniteQuery(entityPagesQueryOptions(readableId));
+  const query = useInfiniteQuery(entityPagesQueryOptions({ entityReadableId: readableId }));
   const pages = query.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section className="grid gap-2" aria-label="Mentioned in">

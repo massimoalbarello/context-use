@@ -33,7 +33,6 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
     entityType: 'person',
     isSelf: onboarding,
     image: null,
-    pages: [],
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -107,6 +106,8 @@ async function creationWorld({ onboarding = false, failImage = false, failUpload
         return Response.json({ items: [asset], total: 1, nextOffset: null });
       case '/api/entities':
         return Response.json({ items: [entity], total: 1, nextOffset: null });
+      case '/api/pages':
+        return Response.json({ items: [], total: 0, nextOffset: null });
       case '/api/entities/alice':
         return Response.json(entity);
       default:
