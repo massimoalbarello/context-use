@@ -1,31 +1,28 @@
 import { Button } from '@repo/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { Page, PagesClient, SearchInput } from './client';
+import type { Page, PagesClient } from './client';
 import { PageDetail } from './page-detail';
 import { PageEditor } from './page-editor';
-import { PageSearch } from './page-search';
-import { resourceQueryKey, searchQueryKey } from './queries';
+import { resourceQueryKey } from './queries';
 import { AssetPreview, EntityPreview } from './resource-preview';
 import { useContentSize, WidgetLoading } from './widget-loading';
 
 export function PagesApp({
   client,
   initialAddress,
-  initialSearch,
   initialNotice = '',
 }: {
   client: PagesClient;
   initialAddress?: string;
-  initialSearch?: SearchInput;
   initialNotice?: string;
 }) {
   const [path, setPath] = useState<string[]>(initialAddress ? [initialAddress] : []);
   const [editing, setEditing] = useState(false);
-  const [query, setQuery] = useState(initialSearch?.query ?? '');
   const [notice, setNotice] = useState(initialNotice);
   const queryClient = useQueryClient();
   const address = path.at(-1);
+  useContentSize({ client, ready: !address });
   const open = (next: string) => {
     setNotice('');
     setEditing(false);
@@ -33,7 +30,6 @@ export function PagesApp({
   };
   const saved = (page: Page) => {
     queryClient.setQueryData(resourceQueryKey(page.address), { kind: 'page', value: page });
-    void queryClient.invalidateQueries({ queryKey: searchQueryKey });
     setEditing(false);
     setNotice('Page saved.');
   };
@@ -41,29 +37,16 @@ export function PagesApp({
     <main className="mx-auto max-w-3xl p-4 sm:p-6">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-border border-b pb-4">
         <span className="font-semibold text-sm">context-use</span>
-        {!!address && !editing && (
-          <div className="flex gap-2">
-            {path.length > 1 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPath(path.slice(0, -1));
-                  setNotice('');
-                }}
-              >
-                Back
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPath([]);
-                setNotice('');
-              }}
-            >
-              Search
-            </Button>
-          </div>
+        {path.length > 1 && !editing && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPath(path.slice(0, -1));
+              setNotice('');
+            }}
+          >
+            Back
+          </Button>
         )}
       </header>
       {notice && (
@@ -71,15 +54,7 @@ export function PagesApp({
           {notice}
         </p>
       )}
-      {!address ? (
-        <PageSearch
-          client={client}
-          onPage={open}
-          query={query}
-          setQuery={setQuery}
-          filters={initialSearch}
-        />
-      ) : (
+      {address && (
         <ResourceDetail
           key={address}
           address={address}

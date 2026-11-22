@@ -4,23 +4,11 @@ import { McpAssetSchema } from '#backend/routes/mcp/assets/model.ts';
 import { PreviewAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import { McpEntitySchema } from '#backend/routes/mcp/entities/model.ts';
 import {
-  SearchHypermediaInputSchema,
-  SearchHypermediaOutputSchema,
-} from '#backend/routes/mcp/hypermedia-retrieval/model.ts';
-import {
   KnowledgePageListOutputSchema,
   McpKnowledgePageSchema,
 } from '#backend/routes/mcp/pages/model.ts';
 import { internalLink } from '../lib/internal-link';
 import type { CreatePageVariables } from '../queries/pages';
-
-export type SearchHit = z.infer<typeof SearchHypermediaOutputSchema>['results'][number];
-export type SearchInput = z.infer<typeof SearchHypermediaInputSchema>;
-const PICKER_LIMIT = 10;
-
-export function pickerInput(input: SearchInput) {
-  return { ...input, limit: Math.min(input.limit ?? PICKER_LIMIT, PICKER_LIMIT) };
-}
 
 export type Entity = z.infer<typeof McpEntitySchema>;
 export type Asset = z.infer<typeof McpAssetSchema>;
@@ -57,11 +45,9 @@ export function launchResource(result: {
   structuredContent?: unknown;
 }) {
   const meta = result._meta;
-  const search = SearchHypermediaInputSchema.safeParse(meta?.search).data;
   const page = resourceReaders.page.schema.safeParse(meta?.page).data;
   return {
     address: page?.value.address ?? PreviewAddressSchema.safeParse(meta?.address).data,
-    search: search && pickerInput(search),
     page,
   };
 }
@@ -85,6 +71,23 @@ export class PageToolError extends Error {
   }
 }
 
+function toolFailure(result: { structuredContent?: unknown; isError?: boolean }) {
+  const failure = ToolErrorSchema.safeParse(result.structuredContent);
+  if (failure.success) {
+    return new PageToolError(failure.data.error);
+  }
+  if (result.isError) {
+    return new Error('The page operation failed. Try again.');
+  }
+  if (
+    z
+      .object({ code: z.literal('hypermedia_curation_guide_required') })
+      .safeParse(result.structuredContent).success
+  ) {
+    return new Error('The curation guide changed. Try again to use the current guide.');
+  }
+}
+
 export class PagesClient {
   constructor(
     readonly app: Pick<App, 'callServerTool' | 'openLink' | 'setupSizeChangedNotifications'>,
@@ -92,26 +95,11 @@ export class PagesClient {
 
   private async call({ name, args = {} }: { name: string; args?: Record<string, unknown> }) {
     const result = await this.app.callServerTool({ name, arguments: args });
-    const failure = ToolErrorSchema.safeParse(result.structuredContent);
-    if (failure.success) {
-      throw new PageToolError(failure.data.error);
-    }
-    if (result.isError) {
-      throw new Error('The page operation failed. Try again.');
-    }
-    if (
-      z
-        .object({ code: z.literal('hypermedia_curation_guide_required') })
-        .safeParse(result.structuredContent).success
-    ) {
-      throw new Error('The curation guide changed. Try again to use the current guide.');
+    const failure = toolFailure(result);
+    if (failure) {
+      throw failure;
     }
     return result;
-  }
-
-  async search(input: SearchInput) {
-    const result = await this.call({ name: 'search_hypermedia', args: input });
-    return SearchHypermediaOutputSchema.parse(result.structuredContent);
   }
 
   async resource(address: string) {
@@ -180,10 +168,10 @@ export class PagesClient {
   }
 }
 
-export function initialNotice(result: { structuredContent?: unknown }) {
-  const failure = ToolErrorSchema.safeParse(result.structuredContent);
-  if (failure.success) {
-    return new PageToolError(failure.data.error).message;
+export function initialNotice(result: { structuredContent?: unknown; isError?: boolean }) {
+  const failure = toolFailure(result);
+  if (failure) {
+    return failure.message;
   }
   if (z.object({ archived: z.literal(true) }).safeParse(result.structuredContent).success) {
     return 'Page archived. You can restore it from the Archived filter in Context Use.';

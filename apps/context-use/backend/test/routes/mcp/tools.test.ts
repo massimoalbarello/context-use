@@ -222,7 +222,6 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
-        'open_search_picker',
         'open_resource',
         'read_record',
       ]);
@@ -396,7 +395,6 @@ test('page tools expose a self-contained MCP app without owner data in the resou
         'create_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
-        'open_search_picker',
         'open_resource',
       ]);
       for (const address of [
@@ -435,7 +433,7 @@ test('page tools expose a self-contained MCP app without owner data in the resou
   });
 });
 
-test('an ambiguous page request opens ranked choices scoped to the authenticated owner', async () => {
+test('page discovery returns owner-scoped matches to the agent', async () => {
   await withMcpClient({
     retrievalService: {
       search: (input) => {
@@ -458,10 +456,6 @@ test('an ambiguous page request opens ranked choices scoped to the authenticated
         arguments: { query: 'notes', resourceTypes: ['knowledge_page'], limit: 10 },
       });
       expect(result._meta?.search).toBeUndefined();
-      const search = { query: 'notes', resourceTypes: ['knowledge_page'] };
-      const picker = await client.callTool({ name: 'open_search_picker', arguments: search });
-      expect(picker._meta?.search).toEqual(search);
-      expect(picker.structuredContent).toBeUndefined();
       expect(result.structuredContent).toMatchObject({
         results: [{ address: `context-use://page/${page.readableId}` }],
       });

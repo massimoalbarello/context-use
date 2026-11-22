@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
 import { initialNotice, launchResource, PagesClient } from './client';
 import { PagesApp } from './pages-app';
-import { resourceQueryKey, searchQueryKey } from './queries';
+import { resourceQueryKey } from './queries';
 import { WidgetLoading } from './widget-loading';
 import '../styles.css';
 
@@ -13,32 +13,27 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 });
 const root = createRoot(document.getElementById('root')!);
-let mounted = false;
 let connected = false;
 let received: Parameters<NonNullable<App['ontoolresult']>>[0] | undefined;
 function renderResult() {
   if (!connected || !received) {
     return;
   }
-  const { address, search, page } = launchResource(received);
+  const { address, page } = launchResource(received);
   if (page) {
     queryClient.setQueryData(resourceQueryKey(page.value.address), page);
   }
-  if (mounted && !search) {
-    void queryClient.invalidateQueries({ queryKey: searchQueryKey });
-  }
+  const notice = initialNotice(received);
   root.render(
     <QueryClientProvider client={queryClient}>
       <PagesApp
-        key={JSON.stringify([address, search])}
+        key={address ?? notice}
         client={client}
-        initialSearch={search}
         initialAddress={address}
-        initialNotice={initialNotice(received)}
+        initialNotice={notice}
       />
     </QueryClientProvider>,
   );
-  mounted = true;
 }
 function theme(value?: string) {
   if (value === 'dark' || value === 'light') {

@@ -3,7 +3,7 @@ import type { App } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { launchResource, type Page, PagesClient, type SearchInput } from '../../src/mcp-app/client';
+import { initialNotice, launchResource, type Page, PagesClient } from '../../src/mcp-app/client';
 import { PagesApp } from '../../src/mcp-app/pages-app';
 import { resourceQueryKey } from '../../src/mcp-app/queries';
 
@@ -48,7 +48,7 @@ function setup({
   }
   render(
     <QueryClientProvider client={queryClient}>
-      <PagesApp client={client} initialAddress={initial?.address} />
+      <PagesApp client={client} initialAddress={initial?.address ?? page.address} />
     </QueryClientProvider>,
   );
   return userEvent.setup();
@@ -71,19 +71,17 @@ test('opens an explicitly presented address or saved page and ignores discovery 
   });
 });
 
-test('launches the picker with its search filters and a ten-result limit', () => {
-  const search: SearchInput = {
-    query: 'Notes',
-    resourceTypes: ['knowledge_page'],
-    visibility: 'private',
-  };
-  expect(launchResource({ _meta: { search } }).search).toEqual({ ...search, limit: 10 });
+test('shows an outcome when a page write returns without a preview address', () => {
+  expect(initialNotice(success({ archived: true }))).toContain('Page archived');
+  expect(initialNotice(success({ code: 'hypermedia_curation_guide_required' }))).toContain(
+    'curation guide changed',
+  );
 });
 
-test('holds the iframe height during search and resumes sizing for an empty result', async () => {
+test('holds the iframe height until the selected page loads', async () => {
   const request = Promise.withResolvers<Awaited<ReturnType<App['callServerTool']>>>();
   let sizing = false;
-  const user = setup({
+  setup({
     call: () => request.promise,
     observeSize: () => {
       sizing = true;
@@ -92,39 +90,19 @@ test('holds the iframe height during search and resumes sizing for an empty resu
       };
     },
   });
-  expect(sizing).toBe(true);
-  await user.type(screen.getByRole('searchbox'), 'notes{Enter}');
-  await screen.findByText('Searching');
+  await screen.findByText('Loading preview');
   expect(sizing).toBe(false);
-  request.resolve(success({ results: [], truncated: false }));
-  await screen.findByText('No matches.');
+  request.resolve(success(page));
+  await screen.findByRole('heading', { name: 'Notes' });
   expect(sizing).toBe(true);
 });
 
 test('validates and saves through the host when native form submission is unavailable', async () => {
   const markdownWithSetextTitle = 'Notes\n=====\n\nThings to remember.';
   let saved = page;
-  const searchQueries: unknown[] = [];
   const user = setup({
     call: ({ name, arguments: args }) => {
       switch (name) {
-        case 'search_hypermedia':
-          searchQueries.push(args);
-          return Promise.resolve(
-            success({
-              results:
-                args?.query === 'remember'
-                  ? [
-                      {
-                        ...page,
-                        resourceType: 'knowledge_page',
-                        matchExcerpt: 'Things to remember.',
-                      },
-                    ]
-                  : [],
-              truncated: false,
-            }),
-          );
         case 'read_hypermedia_curation_guide':
           return Promise.resolve(success({ guide_version: 'current-guide' }));
         case 'update_knowledge_page':
@@ -148,21 +126,6 @@ test('validates and saves through the host when native form submission is unavai
       }
     },
   });
-  const search = screen.getByRole('searchbox', { name: 'Search Context Use' });
-  expect(searchQueries).toHaveLength(0);
-  expect(screen.queryByRole('list')).toBeNull();
-  await user.type(search, 'missing{Enter}');
-  await screen.findByText('No matches.');
-  await user.clear(search);
-  expect(screen.queryByText('No matches.')).toBeNull();
-  await user.type(search, 'remember{Enter}');
-  await user.click(await screen.findByRole('button', { name: /Notes Things to remember/ }));
-  expect(searchQueries).toEqual(
-    ['missing', 'remember'].map((query) => ({
-      query,
-      limit: 10,
-    })),
-  );
   await user.click(await screen.findByRole('button', { name: 'Edit page' }));
   const markdown = await screen.findByRole('textbox', { name: 'Page content (Markdown)' });
   // A host iframe can allow scripts while blocking native form submission.
@@ -242,8 +205,8 @@ test('requires confirmation to edit a public page', async () => {
     false,
   );
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
-  await user.click(screen.getByRole('button', { name: 'Search' }));
-  expect(screen.getByRole('searchbox')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+  expect(screen.queryByRole('searchbox')).toBeNull();
   expect(screen.queryByRole('list')).toBeNull();
 });
 
