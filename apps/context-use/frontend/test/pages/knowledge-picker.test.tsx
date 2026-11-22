@@ -2,6 +2,7 @@ import { afterEach, expect, spyOn, test } from 'bun:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { KnowledgePageMarkdownInput } from '../../src/components/pages/knowledge-link-textarea';
 import { KnowledgePageForm } from '../../src/components/pages/knowledge-page-form';
 import type { api } from '../../src/lib/api';
 
@@ -61,6 +62,7 @@ function setup(search: (url: URL) => Promise<Response>) {
   render(
     <QueryClientProvider client={client}>
       <KnowledgePageForm
+        markdownInput={(input) => <KnowledgePageMarkdownInput {...input} />}
         initialValues={{ markdown: '# Evidence\n\n', temporalCoverage: null }}
         pending={false}
         error={null}

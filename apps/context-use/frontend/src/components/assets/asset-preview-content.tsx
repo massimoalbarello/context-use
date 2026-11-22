@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { assetTypeLabel, formatAssetSize } from '../../lib/asset-presentation';
 
 export function AssetPreviewContent({
@@ -19,4 +19,8 @@ export function AssetPreviewContent({
       {children}
     </section>
   );
+}
+
+export function AssetImage({ alt, ...props }: ComponentProps<'img'> & { alt: string }) {
+  return <img alt={alt} decoding="async" style={{ aspectRatio: 'auto 16 / 9' }} {...props} />;
 }

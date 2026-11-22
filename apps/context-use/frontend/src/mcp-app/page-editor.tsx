@@ -1,11 +1,10 @@
 import { Button } from '@repo/ui/button';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PageForm } from '../components/pages/page-form';
-import { PageMarkdownTextarea } from '../components/pages/page-markdown-textarea';
+import { KnowledgePageForm, PageMarkdownTextarea } from '../components/pages/knowledge-page-form';
 import { FieldLabel } from '../components/ui/field';
 import { type Page, type PagesClient, PageToolError } from './client';
-import { PageMarkdown } from './page-markdown';
+import { PageMarkdown } from './page-detail';
 import { resourceQueryKey } from './queries';
 
 export function PageEditor({
@@ -35,7 +34,7 @@ export function PageEditor({
   const submitDisabled = page.publication.isPublic && !confirmedPublicEdit;
   const error = save.error;
   return (
-    <PageForm
+    <KnowledgePageForm
       onCancel={onCancel}
       pending={save.isPending}
       submitDisabled={submitDisabled}
@@ -52,7 +51,6 @@ export function PageEditor({
           </>
         )
       }
-      duplicateTitle={false}
       initialValues={page}
       onSubmit={(values) => save.mutate({ page, ...values })}
       header={({ intervalField, actions }) => (

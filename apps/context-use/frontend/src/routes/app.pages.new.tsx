@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { DetailHeader, DetailShell } from '../components/knowledge/detail-shell';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
+import { KnowledgePageMarkdownInput } from '../components/pages/knowledge-link-textarea';
 import { KnowledgePageForm } from '../components/pages/knowledge-page-form';
+import { DuplicateResourceNameError } from '../lib/api-error';
 import { useCreatePage } from '../lib/hooks/use-create-page';
 
 export const Route = createFileRoute('/app/pages/new')({
@@ -15,8 +17,10 @@ function NewPageRoute() {
   return (
     <DetailShell className="max-w-5xl gap-5">
       <KnowledgePageForm
+        markdownInput={(input) => <KnowledgePageMarkdownInput {...input} />}
         pending={createPage.isPending}
-        error={createPage.error}
+        error={createPage.error?.message}
+        duplicateTitle={createPage.error instanceof DuplicateResourceNameError}
         submitLabel="Create page"
         header={({ intervalField }) => (
           <DetailHeader className="gap-1">

@@ -197,7 +197,7 @@ test('requires confirmation to edit a public page', async () => {
 });
 
 test('renders untrusted Markdown without running HTML or fetching remote images', async () => {
-  const { PageMarkdown } = await import('../../src/mcp-app/page-markdown');
+  const { PageMarkdown } = await import('../../src/mcp-app/page-detail');
   const opened: string[] = [];
   const user = userEvent.setup();
   render(

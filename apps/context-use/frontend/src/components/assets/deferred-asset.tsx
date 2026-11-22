@@ -1,5 +1,4 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-export const markdownAssetMediaClass = 'max-h-[36rem] w-full rounded-xl bg-muted object-contain';
 
 export function DeferredAsset({
   className,

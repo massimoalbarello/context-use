@@ -6,7 +6,7 @@ import { AssetCardContent } from '../components/assets/asset-link';
 import { EntityCardContent } from '../components/entities/entity-link';
 import { KeywordFilter } from '../components/knowledge/keyword-filter';
 import { ResourceList, resourceCardVariants } from '../components/knowledge/resource-list';
-import { KnowledgePageCardContent } from '../components/pages/knowledge-page-card-content';
+import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
 import { PublicBadge } from '../components/publications/publication-appearance';
 import { isEmbeddableAsset } from '../lib/asset-presentation';
 import type { PagesClient, WidgetSearch } from './client';

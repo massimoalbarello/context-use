@@ -4,7 +4,7 @@ import { lazy, type ReactNode, Suspense, useState } from 'react';
 import { assetContentUrl, isEmbeddableAsset, isVideoAsset } from '../../lib/asset-presentation';
 import { MAX_DOCUMENT_PREVIEW_BYTES } from '../../lib/document-preview';
 import { assetDocumentQueryOptions } from '../../queries/assets';
-import { AssetImage } from './asset-image';
+import { AssetImage } from './asset-preview-content';
 import { AssetPreviewFallback } from './asset-preview-fallback';
 import { PdfPreviewLoading } from './pdf-preview-loading';
 

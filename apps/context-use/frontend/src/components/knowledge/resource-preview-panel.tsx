@@ -16,12 +16,12 @@ import { EntityAvatar } from '../entities/entity-link';
 import { EntityProfile } from '../entities/entity-profile';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
-import { RelatedPageList } from '../pages/related-page-list';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
 import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
 import { ArchivedStatus } from './archived-resource-detail';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
+import { RelatedPageList } from './resource-list';
 import { ResourceScrollArea } from './resource-scroll-area';
 
 function focusPreviewPanel(panel: HTMLElement | null) {

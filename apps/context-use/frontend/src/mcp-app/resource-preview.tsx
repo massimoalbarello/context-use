@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
-import { AssetImage } from '../components/assets/asset-image';
-import { AssetPreviewContent } from '../components/assets/asset-preview-content';
+import { AssetImage, AssetPreviewContent } from '../components/assets/asset-preview-content';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { EntityPageSections } from '../components/entities/entity-page-sections';
 import { EntityProfile } from '../components/entities/entity-profile';
 import { resourceCardVariants } from '../components/knowledge/resource-list';
-import { KnowledgePageCardContent } from '../components/pages/knowledge-page-card-content';
+import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
 import { isEmbeddableAsset } from '../lib/asset-presentation';
 import type { Asset, Entity, PagesClient } from './client';
 

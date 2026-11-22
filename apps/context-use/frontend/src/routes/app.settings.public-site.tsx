@@ -8,7 +8,7 @@ import {
 } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { KnowledgePageCardContent } from '../components/pages/knowledge-page-card-content';
+import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
 import { ViewPublicLink } from '../components/publications/publication-appearance';
 import {
   AlertDialog,

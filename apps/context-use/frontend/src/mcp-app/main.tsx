@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { initialNotice, initialPage, launchResource, PagesClient } from './client';
 import { PagesApp } from './pages-app';
 import { resourceQueryKey, searchQueryKey } from './queries';
-import './styles.css';
+import '../styles.css';
 
 const app = new App({ name: 'Context Use', version: '1.0.0' });
 const client = new PagesClient(app);

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { RelatedPageList } from '../pages/related-page-list';
+import { RelatedPageList } from '../knowledge/resource-list';
 import { Badge } from '../ui/badge';
 
 export function EntityPageSections<Page extends { readableId: string }>({

@@ -16,6 +16,7 @@ import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../knowledge/resource-detail-heading';
 import { ResourceList } from '../knowledge/resource-list';
 import { WorkspaceResourceError } from '../knowledge/workspace-resource-error';
+import { KnowledgePageMarkdownInput } from '../pages/knowledge-link-textarea';
 import { KnowledgePageForm } from '../pages/knowledge-page-form';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
@@ -26,7 +27,7 @@ import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { hasUnpublishedRevisions } from './knowledge-page-card-content';
+import { hasUnpublishedRevisions } from './knowledge-page-link';
 import { PagePublicationReview } from './page-publication-review';
 
 type PageView = 'preview' | 'links' | 'revisions';
@@ -304,6 +305,7 @@ function KnowledgePageDetailContent({
     <DetailShell className={editing ? 'gap-4' : 'gap-0'} data-editing={editing}>
       {editing ? (
         <KnowledgePageForm
+          markdownInput={(input) => <KnowledgePageMarkdownInput {...input} />}
           key={page.revisionNumber}
           initialValues={page}
           onCancel={() => {
@@ -311,7 +313,7 @@ function KnowledgePageDetailContent({
             setEditing(false);
           }}
           pending={updatePage.isPending}
-          error={updatePage.error}
+          error={updatePage.error?.message}
           header={({ intervalField, actions }) => (
             <DetailHeader>
               <ResourceDetailHeading actions={actions} context={intervalField}>

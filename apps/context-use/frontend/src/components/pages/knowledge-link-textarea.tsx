@@ -1,23 +1,27 @@
 import { Button } from '@repo/ui/button';
 import { cn } from '@repo/ui/class-names';
 import { Popover, PopoverContent } from '@repo/ui/popover';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import getCaretCoordinates from 'textarea-caret';
-import type { KnowledgeSuggestion } from '../../queries/knowledge-suggestions';
+import {
+  type KnowledgeSuggestion,
+  knowledgeSuggestionsQueryOptions,
+} from '../../queries/knowledge-suggestions';
 import { AssetCardContent } from '../assets/asset-link';
 import { EntityCardContent } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { RecordCardContent } from '../records/record-link';
 import { Badge } from '../ui/badge';
+import { FieldDescription } from '../ui/field';
 import {
   type ActiveKnowledgeLink,
   findActiveKnowledgeLink,
   insertKnowledgeLink,
   type KnowledgeLinkTarget,
 } from './knowledge-link';
-import { KnowledgePageCardContent } from './knowledge-page-card-content';
-import type { MarkdownInputProps } from './page-form';
-import { PageMarkdownTextarea } from './page-markdown-textarea';
+import { type MarkdownInputProps, PageMarkdownTextarea } from './knowledge-page-form';
+import { KnowledgePageCardContent } from './knowledge-page-link';
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
   if (suggestion.kind === 'entity') {
@@ -343,5 +347,28 @@ export function KnowledgeLinkTextarea({
         </PopoverContent>
       </Popover>
     </fieldset>
+  );
+}
+
+export function KnowledgePageMarkdownInput(props: MarkdownInputProps) {
+  const [query, setQuery] = useState<string | null>(null);
+  const suggestions = useQuery(knowledgeSuggestionsQueryOptions(query ?? ''));
+  return (
+    <>
+      <KnowledgeLinkTextarea
+        {...props}
+        suggestions={suggestions.data?.suggestions ?? []}
+        loading={suggestions.isPending}
+        error={suggestions.error}
+        totalMatches={suggestions.data?.totalMatches ?? 0}
+        truncated={suggestions.data?.truncated ?? false}
+        onRetry={() => void suggestions.refetch()}
+        onQueryChange={setQuery}
+      />
+      <FieldDescription>
+        Keep one coherent idea here. Type @ to mention an entity, reference a page or record, or use
+        an asset; use H2 or lower headings for linkable sections.
+      </FieldDescription>
+    </>
   );
 }
