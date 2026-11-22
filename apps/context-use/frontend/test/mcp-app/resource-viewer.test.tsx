@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { initialNotice, launchResource, McpAppClient, type Page } from '../../src/mcp-app/client';
 import { resourceQueryKey } from '../../src/mcp-app/queries';
 import { ResourceViewer } from '../../src/mcp-app/resource-viewer';
+import { mockViewport } from '../support/viewport';
 
 const page: Page = {
   address: 'context-use://page/notes',
@@ -126,6 +127,58 @@ test('renders a private CSV using the download capability returned by read_asset
     });
   } finally {
     fetch.mockRestore();
+  }
+});
+
+test('visible audio and video embeds request a download only for the selected clip', async () => {
+  const viewport = mockViewport();
+  const address = (kind: string) => `context-use://asset/${kind}-clip`;
+  const clips = ['audio', 'video'];
+  const embeddedPage = {
+    ...page,
+    markdown: ['# Notes', ...clips.map((kind) => `![${kind} clip](${address(kind)})`)].join('\n\n'),
+  };
+  const downloads: unknown[] = [];
+  try {
+    const user = setup({
+      call: ({ name, arguments: args }) => {
+        if (name === 'read_knowledge_page') {
+          return Promise.resolve(success(embeddedPage));
+        }
+        expect(name).toBe('read_asset');
+        if (args?.includeDownload) {
+          downloads.push(args.address);
+          return Promise.resolve(failure({ code: 'unavailable', message: 'Clip unavailable' }));
+        }
+        const kind = args?.address === address('audio') ? 'audio' : 'video';
+        return Promise.resolve(
+          success({
+            address: address(kind),
+            readableId: `${kind}-clip`,
+            name: `${kind} clip`,
+            mediaType: kind === 'audio' ? 'audio/wav' : 'video/webm',
+            extension: null,
+            sizeBytes: 256,
+            publication: { isPublic: false },
+            createdAt: page.createdAt,
+            updatedAt: page.updatedAt,
+            usages: [],
+            depicts: [],
+          }),
+        );
+      },
+    });
+    for (const kind of clips) {
+      await screen.findByRole('button', { name: `Load ${kind} · ${kind} clip` });
+    }
+    expect(downloads).toEqual([]);
+    for (const kind of clips) {
+      await user.click(screen.getByRole('button', { name: `Load ${kind} · ${kind} clip` }));
+      expect(downloads.at(-1)).toBe(address(kind));
+    }
+    expect(downloads).toEqual(clips.map(address));
+  } finally {
+    viewport.restore();
   }
 });
 

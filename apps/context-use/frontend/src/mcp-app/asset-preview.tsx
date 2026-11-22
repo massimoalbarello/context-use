@@ -1,3 +1,4 @@
+import { Button } from '@repo/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { assetPreviewKind } from '#backend/models/assets/presentation.ts';
@@ -149,6 +150,7 @@ export function AssetEmbed({
   linked: boolean;
   onOpen?: (address: string) => void;
 }) {
+  const [loadedAddress, setLoadedAddress] = useState<string>();
   const query = useQuery({
     queryKey: resourceQueryKey(address),
     queryFn: () => client.readAsset(address),
@@ -164,6 +166,13 @@ export function AssetEmbed({
   const label = alt || query.data.value.name;
   if (linked && kind !== 'image') {
     return <span>{label}</span>;
+  }
+  if ((kind === 'audio' || kind === 'video') && loadedAddress !== address) {
+    return (
+      <Button type="button" variant="outline" onClick={() => setLoadedAddress(address)}>
+        Load {kind} · {label}
+      </Button>
+    );
   }
   const media = (
     <PreviewMedia result={query.data} client={client} alt={label} className="w-full bg-muted" />
