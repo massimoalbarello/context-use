@@ -6,14 +6,11 @@ import { FieldDescription } from '../ui/field';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
 import { type MarkdownInputProps, PageForm, type PageFormLayout } from './page-form';
 
-export type { KnowledgePageFormValues } from './page-form';
-
 function MarkdownInput(props: MarkdownInputProps) {
   const [query, setQuery] = useState<string | null>(null);
   const suggestions = useQuery(knowledgeSuggestionsQueryOptions(query ?? ''));
   return (
     <>
-      <span className="sr-only">Knowledge page content</span>
       <KnowledgeLinkTextarea
         {...props}
         suggestions={suggestions.data?.suggestions ?? []}

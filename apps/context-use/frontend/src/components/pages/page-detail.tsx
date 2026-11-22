@@ -5,7 +5,6 @@ import { useArchivePage } from '../../lib/hooks/use-archive-page';
 import { usePage } from '../../lib/hooks/use-page';
 import { usePublicationApproval } from '../../lib/hooks/use-publication-approval';
 import { useUpdatePage } from '../../lib/hooks/use-update-page';
-import { temporalCoverageExpression } from '../../lib/temporal-coverage';
 import type { KnowledgePage } from '../../queries/pages';
 import { publicationStatusQueryOptions } from '../../queries/publications';
 import { AssetLink } from '../assets/asset-link';
@@ -27,11 +26,10 @@ import { PublicationStatus } from '../publications/publication-status';
 import { RecordLink } from '../records/record-link';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { hasUnpublishedRevisions } from './knowledge-page-card-content';
 import { PagePublicationReview } from './page-publication-review';
 
 type PageView = 'preview' | 'links' | 'revisions';
-
-const PAGE_EDIT_FORM_ID = 'knowledge-page-edit-form';
 
 function isPageView(value: unknown): value is PageView {
   return value === 'preview' || value === 'links' || value === 'revisions';
@@ -221,11 +219,13 @@ function KnowledgePageDetailContent({
   const isPublic = !publication.isError && publication.data?.publishedAt != null;
   const publishedRevision =
     publication.data?.resourceType === 'page' ? publication.data.publishedRevisionNumber : null;
-  const hasUnpublishedRevisions = isPublic && publishedRevision !== page.revisionNumber;
   const publicationContext = (
     <PagePublicationContext
       publication={publication}
-      hasUnpublishedRevisions={hasUnpublishedRevisions}
+      hasUnpublishedRevisions={hasUnpublishedRevisions({
+        revisionNumber: page.revisionNumber,
+        publishedRevisionNumber: publishedRevision,
+      })}
       onOpenRevisions={() => onViewChange({ view: 'revisions' })}
     />
   );
@@ -247,18 +247,6 @@ function KnowledgePageDetailContent({
             }
           : null
       }
-    />
-  );
-  const editActions = (
-    <ResourceDetailActions
-      mode="edit"
-      resource="page"
-      form={PAGE_EDIT_FORM_ID}
-      pending={updatePage.isPending}
-      onCancel={() => {
-        updatePage.reset();
-        setEditing(false);
-      }}
     />
   );
   const viewActions = (
@@ -317,18 +305,16 @@ function KnowledgePageDetailContent({
       {editing ? (
         <KnowledgePageForm
           key={page.revisionNumber}
-          initialValues={{
-            markdown: page.markdown,
-            temporalCoverage: page.temporalCoverage
-              ? temporalCoverageExpression(page.temporalCoverage)
-              : null,
+          initialValues={page}
+          onCancel={() => {
+            updatePage.reset();
+            setEditing(false);
           }}
-          formId={PAGE_EDIT_FORM_ID}
           pending={updatePage.isPending}
           error={updatePage.error}
-          header={(intervalField) => (
+          header={({ intervalField, actions }) => (
             <DetailHeader>
-              <ResourceDetailHeading actions={editActions} context={intervalField}>
+              <ResourceDetailHeading actions={actions} context={intervalField}>
                 Knowledge page
               </ResourceDetailHeading>
               <p className="text-muted-foreground text-sm">

@@ -1,10 +1,9 @@
 import { Button } from '@repo/ui/button';
 import { useMutation } from '@tanstack/react-query';
-import { useId, useState } from 'react';
-import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
+import { useState } from 'react';
 import { PageForm } from '../components/pages/page-form';
+import { PageMarkdownTextarea } from '../components/pages/page-markdown-textarea';
 import { FieldLabel } from '../components/ui/field';
-import { Textarea } from '../components/ui/textarea';
 import { type Page, type PagesClient, PageToolError } from './client';
 import { PageMarkdown } from './page-markdown';
 
@@ -19,7 +18,6 @@ export function PageEditor({
   onSaved: (page: Page) => void;
   onCancel: () => void;
 }) {
-  const formId = useId();
   const [preview, setPreview] = useState(false);
   const [confirmedPublicEdit, setConfirmedPublicEdit] = useState(false);
   const save = useMutation({
@@ -30,7 +28,7 @@ export function PageEditor({
   const error = save.error;
   return (
     <PageForm
-      formId={formId}
+      onCancel={onCancel}
       pending={save.isPending}
       submitDisabled={submitDisabled}
       error={
@@ -49,27 +47,17 @@ export function PageEditor({
       duplicateTitle={
         !page && error instanceof PageToolError && error.code === 'page_title_conflict'
       }
-      initialValues={{
-        markdown: page?.markdown ?? '# \n\n',
-        temporalCoverage: page?.temporalCoverage ?? null,
-      }}
+      initialValues={page}
       onSubmit={(values) => save.mutate({ ...values, page })}
-      header={(interval) => (
+      header={({ intervalField, actions }) => (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="font-semibold text-xl">{page ? 'Edit page' : 'New page'}</h1>
             <fieldset disabled={save.isPending} className="flex gap-2">
-              <ResourceDetailActions
-                mode="edit"
-                resource="page"
-                pending={save.isPending}
-                saveDisabled={submitDisabled}
-                form={formId}
-                onCancel={onCancel}
-              />
+              {actions}
             </fieldset>
           </div>
-          {interval}
+          {intervalField}
           {page?.publication.isPublic && (
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -96,10 +84,9 @@ export function PageEditor({
         ) : (
           <>
             <FieldLabel htmlFor={id}>Page content (Markdown)</FieldLabel>
-            <Textarea
+            <PageMarkdownTextarea
               id={id}
               name={name}
-              className="min-h-72 font-mono"
               value={value}
               aria-invalid={invalid}
               disabled={save.isPending}

@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
+import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
+import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-label';
 import { type Page, type PagesClient, PageToolError } from './client';
 import { PageMarkdown } from './page-markdown';
 import { pageQueryKey, pagesQueryKey } from './queries';
@@ -52,13 +54,11 @@ export function PageDetail({
   const page = detail.data;
   return (
     <section className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-muted-foreground text-sm">
-          Revision {page.revisionNumber}
-          {page.publication.isPublic ? ' · Public' : ' · Private'}
-          {page.temporalCoverage ? ` · ${page.temporalCoverage}` : ''}
-        </span>
-        <div className="flex gap-2">
+      <ResourceDetailHeading
+        context={
+          page.temporalCoverage && <TemporalCoverageLabel expression={page.temporalCoverage} />
+        }
+        actions={
           <ResourceDetailActions
             mode="view"
             resource="page"
@@ -73,8 +73,10 @@ export function PageDetail({
               onConfirm={() => archive.mutate()}
             />
           </ResourceDetailActions>
-        </div>
-      </div>
+        }
+      >
+        Revision {page.revisionNumber} · {page.publication.isPublic ? 'Public' : 'Private'}
+      </ResourceDetailHeading>
       {archive.error && (
         <div role="alert" className="grid gap-2 text-sm">
           <p>{archive.error.message}</p>

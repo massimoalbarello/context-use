@@ -1,27 +1,9 @@
 import { cn } from '@repo/ui/class-names';
-import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
-import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
 import { remarkTables } from '#backend/models/markdown/tables.ts';
+import { headingId } from './markdown-heading';
 import { markdownTableComponents } from './markdown-table';
-
-export function markdownTextContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(markdownTextContent).join('');
-  }
-  if (isValidElement<{ children?: ReactNode }>(node)) {
-    return markdownTextContent(node.props.children);
-  }
-  return '';
-}
-
-function headingId(children: ReactNode) {
-  return normalizeKnowledgeHeadingId(markdownTextContent(children));
-}
 
 const markdownComponents: Components = {
   ...markdownTableComponents,

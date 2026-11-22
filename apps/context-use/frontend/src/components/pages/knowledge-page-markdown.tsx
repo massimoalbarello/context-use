@@ -9,7 +9,8 @@ import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown'
 import { EntityLink } from '../entities/entity-link';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
-import { markdownTextContent, PageProse } from './page-prose';
+import { markdownTextContent } from './markdown-heading';
+import { PageProse } from './page-prose';
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
 type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;

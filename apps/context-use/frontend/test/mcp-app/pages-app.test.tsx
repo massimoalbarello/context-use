@@ -50,7 +50,8 @@ const failure = ({ code, message }: { code: string; message: string }) => ({
   isError: true,
 });
 
-test('creates a page through the host and opens its saved content', async () => {
+test('validates and saves through the host when native form submission is unavailable', async () => {
+  const markdownWithSetextTitle = 'Notes\n=====\n\nThings to remember.';
   let saved = false;
   const user = setup({
     call: ({ name, arguments: args }) => {
@@ -64,7 +65,7 @@ test('creates a page through the host and opens its saved content', async () => 
         case 'create_knowledge_page':
           expect(args).toMatchObject({
             guide_version: 'current-guide',
-            markdown: page.markdown,
+            markdown: markdownWithSetextTitle,
             temporalCoverage: '2026',
             changeMessage: 'First draft',
           });
@@ -83,10 +84,15 @@ test('creates a page through the host and opens its saved content', async () => 
   await screen.findByText(/No pages yet/);
   await user.click(screen.getByRole('button', { name: 'New page' }));
   const markdown = screen.getByRole('textbox', { name: 'Page content (Markdown)' });
+  // A host iframe can allow scripts while blocking native form submission.
+  (markdown as HTMLTextAreaElement).form!.addEventListener('submit', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
   await user.clear(markdown);
   await user.click(screen.getByRole('button', { name: 'Save page' }));
-  await screen.findByText('Start with one H1 title and add content below it.');
-  await user.type(markdown, page.markdown);
+  await screen.findByText(/must start with one H1 title/);
+  await user.type(markdown, markdownWithSetextTitle);
   await user.type(screen.getByRole('textbox', { name: 'Interval (optional)' }), '2026');
   await user.type(
     screen.getByRole('textbox', { name: 'Change summary (optional)' }),

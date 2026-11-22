@@ -9,7 +9,6 @@ import { EntityCardContent } from '../entities/entity-link';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { RecordCardContent } from '../records/record-link';
 import { Badge } from '../ui/badge';
-import { Textarea } from '../ui/textarea';
 import {
   type ActiveKnowledgeLink,
   findActiveKnowledgeLink,
@@ -17,6 +16,8 @@ import {
   type KnowledgeLinkTarget,
 } from './knowledge-link';
 import { KnowledgePageCardContent } from './knowledge-page-card-content';
+import type { MarkdownInputProps } from './page-form';
+import { PageMarkdownTextarea } from './page-markdown-textarea';
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
   if (suggestion.kind === 'entity') {
@@ -94,19 +95,13 @@ export function KnowledgeLinkTextarea({
   onBlur,
   onChange,
   onQueryChange,
-}: {
-  id: string;
-  name: string;
-  value: string;
+}: MarkdownInputProps & {
   suggestions: KnowledgeSuggestion[];
   loading: boolean;
   error: Error | null;
   totalMatches: number;
   truncated: boolean;
   onRetry: () => void;
-  invalid: boolean;
-  onBlur: () => void;
-  onChange: (value: string) => void;
   onQueryChange: (query: string | null) => void;
 }) {
   const listId = useId();
@@ -188,11 +183,10 @@ export function KnowledgeLinkTextarea({
         }
       }}
     >
-      <Textarea
+      <PageMarkdownTextarea
         ref={textareaRef}
         id={id}
         name={name}
-        rows={12}
         value={value}
         onBlur={onBlur}
         onScroll={(event) =>
@@ -256,8 +250,6 @@ export function KnowledgeLinkTextarea({
         aria-haspopup="listbox"
         aria-invalid={invalid}
         role="combobox"
-        spellCheck
-        className="block min-h-64 resize-y font-mono leading-relaxed md:min-h-72"
       />
       <Popover
         open={suggestionsOpen}

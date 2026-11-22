@@ -1,4 +1,5 @@
 import { PageProse } from '../components/pages/page-prose';
+import { internalLink } from '../lib/internal-link';
 
 export function PageMarkdown({
   markdown,
@@ -23,7 +24,7 @@ export function PageMarkdown({
       <PageProse
         markdown={markdown}
         link={({ href, children }) =>
-          href?.startsWith('context-use://page/') && onPage ? (
+          href && internalLink(href)?.kind === 'page' && onPage ? (
             <button
               type="button"
               className="text-left underline underline-offset-4"

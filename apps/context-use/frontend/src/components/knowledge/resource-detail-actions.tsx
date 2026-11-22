@@ -1,5 +1,5 @@
 import { Button } from '@repo/ui/button';
-import type { ReactNode } from 'react';
+import type { MouseEventHandler, ReactNode } from 'react';
 
 type ResourceName = 'entity' | 'page' | 'asset' | 'OAuth app' | 'passkey';
 
@@ -17,6 +17,7 @@ type ResourceDetailActionsProps = { resource: ResourceName } & (
       pending: boolean;
       onCancel: () => void;
       form?: string;
+      onSaveClick?: MouseEventHandler<HTMLButtonElement>;
     }
 );
 
@@ -31,6 +32,7 @@ export function ResourceDetailActions(props: ResourceDetailActionsProps) {
           size="lg"
           type="submit"
           form={props.form}
+          onClick={props.onSaveClick}
           disabled={props.pending || props.saveDisabled}
         >
           {props.pending ? 'Saving…' : `Save ${props.resource}`}

@@ -1,29 +1,17 @@
 import { InlineEntity } from '@repo/ui/inline-entity';
 import { ReadingLink } from '@repo/ui/reading-link';
-import { isValidElement, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
-import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
 import { remarkTables } from '#backend/models/markdown/tables.ts';
+import { headingId } from '#frontend/components/pages/markdown-heading.ts';
 import { markdownTableComponents } from '#frontend/components/pages/markdown-table.tsx';
-
-function headingText(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(headingText).join('');
-  }
-  return isValidElement<{ children?: ReactNode }>(node) ? headingText(node.props.children) : '';
-}
 
 const headings: Components = Object.fromEntries(
   (['h2', 'h3', 'h4', 'h5', 'h6'] as const).map((Tag) => [
     Tag,
-    ({ children }: { children?: ReactNode }) => (
-      <Tag id={normalizeKnowledgeHeadingId(headingText(children))}>{children}</Tag>
-    ),
+    ({ children }: { children?: ReactNode }) => <Tag id={headingId(children)}>{children}</Tag>,
   ]),
 );
 

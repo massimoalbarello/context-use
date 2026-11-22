@@ -5,6 +5,7 @@ import {
   McpKnowledgePageSchema,
   McpKnowledgePageSummarySchema,
 } from '#backend/routes/mcp/pages/model.ts';
+import type { CreatePageVariables } from '../queries/pages';
 
 export type Page = z.infer<typeof McpKnowledgePageSchema>;
 export type PageSummary = z.infer<typeof McpKnowledgePageSummarySchema>;
@@ -70,13 +71,7 @@ export class PagesClient {
     return z.object({ guide_version: z.string() }).parse(result.structuredContent).guide_version;
   }
 
-  async save(input: {
-    page?: Page;
-    markdown: string;
-    temporalCoverage?: string | null;
-    changeMessage?: string;
-    allowDuplicate?: boolean;
-  }) {
+  async save(input: CreatePageVariables & { page?: Page }) {
     const { page, changeMessage, ...values } = input;
     const result = await this.call({
       name: page ? 'update_knowledge_page' : 'create_knowledge_page',

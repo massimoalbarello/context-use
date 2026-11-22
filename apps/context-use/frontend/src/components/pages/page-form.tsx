@@ -1,26 +1,23 @@
 import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
-import type { ReactNode } from 'react';
+import type { ReactNode, SyntheticEvent } from 'react';
 import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
+import {
+  InvalidKnowledgePageMarkdownError,
+  parseKnowledgePageWriteMarkdown,
+} from '#backend/models/knowledge-pages/markdown.ts';
 import {
   MAX_TEMPORAL_COVERAGE_LENGTH,
   parseTemporalCoverage,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import { submitThenChangeValidation } from '../../lib/form-validation';
-import { temporalCoverageMutation } from '../../lib/temporal-coverage';
+import { temporalCoverageExpression, temporalCoverageMutation } from '../../lib/temporal-coverage';
+import type { CreatePageVariables, KnowledgePage } from '../../queries/pages';
+import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
 
-export type KnowledgePageFormValues = {
-  markdown: string;
-  temporalCoverage: string | null;
-};
-
-type KnowledgePageFormSubmission = Omit<KnowledgePageFormValues, 'temporalCoverage'> & {
-  temporalCoverage?: string | null;
-  allowDuplicate?: boolean;
-  changeMessage?: string;
-};
+const NEW_PAGE = { markdown: '# A focused idea\n\n', temporalCoverage: null };
 
 export type MarkdownInputProps = {
   id: string;
@@ -32,11 +29,11 @@ export type MarkdownInputProps = {
 };
 
 export type PageFormLayout = {
-  initialValues: KnowledgePageFormValues;
+  initialValues?: Pick<KnowledgePage, 'markdown' | 'temporalCoverage'>;
   pending: boolean;
-  header: (intervalField: ReactNode) => ReactNode;
-  onSubmit: (values: KnowledgePageFormSubmission) => void;
-} & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
+  header: (slots: { intervalField: ReactNode; actions: ReactNode }) => ReactNode;
+  onSubmit: (values: CreatePageVariables) => void;
+} & ({ submitLabel: string; onCancel?: never } | { onCancel: () => void; submitLabel?: never });
 
 type PageFormProps = PageFormLayout & {
   error: ReactNode;
@@ -46,9 +43,15 @@ type PageFormProps = PageFormLayout & {
 };
 
 function validateMarkdown({ value }: { value: string }): string | undefined {
-  return /^\s*# .+\n[\s\S]*\S/.test(value)
-    ? undefined
-    : 'Start with one H1 title and add content below it.';
+  try {
+    parseKnowledgePageWriteMarkdown(value.trim());
+    return undefined;
+  } catch (error) {
+    if (error instanceof InvalidKnowledgePageMarkdownError) {
+      return error.message;
+    }
+    throw error;
+  }
 }
 
 function validateTemporalCoverage({ value }: { value: string }): string | undefined {
@@ -65,8 +68,8 @@ function validateTemporalCoverage({ value }: { value: string }): string | undefi
 }
 
 export function PageForm({
-  initialValues,
-  formId,
+  initialValues = NEW_PAGE,
+  onCancel,
   pending,
   error,
   duplicateTitle,
@@ -76,17 +79,20 @@ export function PageForm({
   submitLabel,
   onSubmit,
 }: PageFormProps) {
+  const initialInterval = initialValues.temporalCoverage
+    ? temporalCoverageExpression(initialValues.temporalCoverage)
+    : null;
   const form = useForm({
     defaultValues: {
       markdown: initialValues.markdown,
-      temporalCoverage: initialValues.temporalCoverage ?? '',
+      temporalCoverage: initialInterval ?? '',
       allowDuplicate: false,
       changeMessage: '',
     },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
       const temporalCoverage = temporalCoverageMutation({
-        initial: initialValues.temporalCoverage,
+        initial: initialInterval,
         current: value.temporalCoverage,
       });
       return onSubmit({
@@ -140,20 +146,34 @@ export function PageForm({
     </form.Field>
   );
 
+  function save(allowDuplicate: boolean) {
+    if (pending || submitDisabled) {
+      return;
+    }
+    form.setFieldValue('allowDuplicate', allowDuplicate);
+    void form.handleSubmit();
+  }
+
+  function submit(event: SyntheticEvent) {
+    event.preventDefault();
+    save(false);
+  }
+
   return (
-    <form
-      id={formId}
-      className="grid gap-5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (pending || submitDisabled) {
-          return;
-        }
-        form.setFieldValue('allowDuplicate', false);
-        void form.handleSubmit();
-      }}
-    >
-      {header(intervalField)}
+    <form className="grid gap-5" onSubmit={submit}>
+      {header({
+        intervalField,
+        actions: onCancel && (
+          <ResourceDetailActions
+            mode="edit"
+            resource="page"
+            pending={pending}
+            saveDisabled={submitDisabled}
+            onCancel={onCancel}
+            onSaveClick={submit}
+          />
+        ),
+      })}
       <FieldGroup>
         <form.Field name="markdown" validators={{ onDynamic: validateMarkdown }}>
           {(field) => (
@@ -198,6 +218,7 @@ export function PageForm({
               className="justify-self-start"
               size="lg"
               type="submit"
+              onClick={submit}
               disabled={pending || submitDisabled}
             >
               {pending ? 'Saving…' : submitLabel}
@@ -208,10 +229,7 @@ export function PageForm({
               variant="outline"
               type="button"
               disabled={pending || submitDisabled}
-              onClick={() => {
-                form.setFieldValue('allowDuplicate', true);
-                void form.handleSubmit();
-              }}
+              onClick={() => save(true)}
             >
               Use this title anyway
             </Button>
