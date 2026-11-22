@@ -47,7 +47,18 @@ function removeHidden(document: EmailDocument) {
   }
 }
 function flattenLayoutTables(document: EmailDocument) {
-  for (const table of [...document.querySelectorAll('table[role="presentation"]')].reverse()) {
+  for (const table of document.querySelectorAll('table')) {
+    // Newsletter templates often use unmarked, nested tables or rows of spacer cells.
+    if (!table.matches('[role="presentation"],[role="none"]') && !table.querySelector('table')) {
+      const dataRows = [...table.querySelectorAll('tr')].filter(
+        (row) =>
+          [...row.children].filter((cell) => cell.matches('th,td') && cell.textContent?.trim())
+            .length >= 2,
+      );
+      if (dataRows.length >= 2) {
+        continue;
+      }
+    }
     const content = document.createElement('div');
     for (const cell of table.querySelectorAll('caption,td,th')) {
       if (cell.closest('table') === table) {
@@ -96,6 +107,21 @@ function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
   });
   return converter.turndown(document.body.innerHTML);
 }
+// Outlook embeds these envelope fields as prose in forwarded messages.
+function forwardedField(labels: string) {
+  return String.raw`(?:\*\*)?(?:${labels})(?:\*\*)?:(?:\*\*)?[ \t]*([^\n]+)`;
+}
+const forwardedEnvelope = new RegExp(
+  '^' +
+    [
+      forwardedField('From|Da'),
+      forwardedField('Sent|Inviato'),
+      forwardedField('To|A'),
+      `(?:${forwardedField('Cc')}\\n+)?${forwardedField('Subject|Oggetto')}`,
+    ].join('\\n+'),
+  'gim',
+);
+
 export function readableBody(input: {
   html: string;
   plain: string;
@@ -103,7 +129,7 @@ export function readableBody(input: {
   previous: string[];
 }) {
   const html = input.html.trim() && htmlMarkdown(input);
-  const markdown =
+  const converted =
     html ||
     input.plain
       .split('\n')
@@ -112,6 +138,7 @@ export function readableBody(input: {
         return prefix + markdownText(line.slice(prefix.length));
       })
       .join('\n');
+  const markdown = converted.replace(forwardedEnvelope, 'Forwarded from $1 · $5');
   if (!input.previous.length || !/^\s*>/m.test(markdown)) {
     return { body: markdown.trim(), original: input.plain || markdown };
   }

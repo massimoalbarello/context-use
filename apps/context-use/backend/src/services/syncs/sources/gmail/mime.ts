@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { type AssetRef, assetPlaceholder } from '@context-use/open-sync/assets';
 import type { SyncContext } from '@context-use/open-sync/definition';
 import { getStreamAsArrayBuffer } from 'get-stream';
@@ -10,7 +11,12 @@ function bodyText(input: { part: MessagePart; bytes: Uint8Array }) {
     /charset\s*=\s*["']?([^\s;"']+)/i.exec(
       header({ part: input.part, name: 'content-type' }),
     )?.[1] ?? 'utf-8';
-  return new TextDecoder(charset).decode(input.bytes);
+  const decoder = new TextDecoder(charset);
+  // Gmail can return UTF-8 bytes while retaining the sender's original single-byte charset.
+  if (/^(windows-125|iso-8859-)/.test(decoder.encoding) && isUtf8(input.bytes)) {
+    return new TextDecoder().decode(input.bytes);
+  }
+  return decoder.decode(input.bytes);
 }
 function attachment(part: MessagePart) {
   return Boolean(

@@ -142,6 +142,37 @@ test('a failed nested attachment commits no partial conversation or cursor and s
   }
 });
 
+test('Gmail renders accents in normalized UTF-8 and original Latin-1 MIME parts', async () => {
+  const source = gmailFixture();
+  const parts = [
+    Buffer.from('martedì è pronto', 'utf8'),
+    Buffer.from('caffè già pagato', 'latin1'),
+  ];
+  source.thread = {
+    ...source.thread,
+    messages: Array.from(parts.entries(), ([index, bytes]) => ({
+      ...message({ id: String(index), text: '' }),
+      payload: {
+        mimeType: 'text/plain',
+        headers: [{ name: 'Content-Type', value: 'text/plain; charset=iso-8859-1' }],
+        body: { data: bytes.toString('base64url') },
+      },
+    })),
+  };
+  const f = await fixture({ registration: gmailThreads, provider: source.provider });
+  try {
+    await f.finish();
+    const record = f.records[0]!;
+    if (record.operation !== 'upsert') {
+      throw new Error('Expected an imported thread');
+    }
+    expect(record.content?.body).toContain('martedì è pronto');
+    expect(record.content?.body).toContain('caffè già pagato');
+  } finally {
+    await f.close();
+  }
+});
+
 test('single-part attachments and empty text messages import together', async () => {
   const source = gmailFixture();
   source.thread = {
@@ -167,7 +198,7 @@ test('single-part attachments and empty text messages import together', async ()
     await f.finish();
     expect(f.records).toHaveLength(1);
     expect(f.records[0]).toMatchObject({
-      content: { body: expect.stringContaining('## Message 2') },
+      content: { body: expect.stringContaining('*No new message text.*') },
     });
     expect(f.deliveries[0]!.assets).toEqual([
       expect.objectContaining({ name: 'invoice.pdf', size: 'Attachment bytes'.length }),

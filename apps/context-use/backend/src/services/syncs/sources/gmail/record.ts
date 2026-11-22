@@ -6,6 +6,22 @@ import { markdownText, readableBody } from './content.ts';
 import { messageContent } from './mime.ts';
 import { header, type threadSchema } from './models.ts';
 
+const sentTime = new Intl.DateTimeFormat('en-GB', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'UTC',
+});
+
+function senderName(from: string) {
+  const mailbox = /^(.*?)\s*<([^<>]+)>$/.exec(from.trim());
+  return (
+    mailbox?.[1]?.trim().replace(/^"(.*)"$/, '$1') ||
+    mailbox?.[2] ||
+    from.trim() ||
+    'Unknown sender'
+  );
+}
+
 export async function threadRecord(input: {
   context: SyncContext;
   account: string;
@@ -24,32 +40,26 @@ export async function threadRecord(input: {
   const sections: string[] = [];
   const previous: string[] = [];
   let previousSubject = subject;
-  for (const [index, message] of messages.entries()) {
+  for (const message of messages) {
     const content = await messageContent({ ...input, message });
     const readable = readableBody({ ...content, previous });
     previous.push(readable.original);
     Object.assign(assetRefs, content.refs);
     const currentSubject = header({ part: message.payload, name: 'subject' }).trim();
+    const sender = senderName(header({ part: message.payload, name: 'from' }));
+    const attachmentLinks = content.attachments.map(
+      (asset) => `- [${markdownText(asset.name)}](${asset.file})`,
+    );
     const section = [
-      `## Message ${index + 1} — ${markdownText(header({ part: message.payload, name: 'from' }) || 'Unknown sender')}`,
-      `Sent: ${new Date(Number(message.internalDate)).toISOString()}`,
-      `To: ${markdownText(header({ part: message.payload, name: 'to' }))}`,
-      ...(header({ part: message.payload, name: 'cc' })
-        ? [`Cc: ${markdownText(header({ part: message.payload, name: 'cc' }))}`]
-        : []),
-      ...(currentSubject && currentSubject !== previousSubject
-        ? [`Subject: ${markdownText(currentSubject)}`]
-        : []),
-      readable.body || '*No new message text.*',
-      ...(content.attachments.length
-        ? [
-            '### Attachments',
-            ...content.attachments.map((asset) => `- [${markdownText(asset.name)}](${asset.file})`),
-          ]
-        : []),
+      `**${markdownText(sender)}** · ${sentTime.format(Number(message.internalDate))} UTC`,
+      currentSubject &&
+        currentSubject !== previousSubject &&
+        `Subject: ${markdownText(currentSubject)}`,
+      readable.body || (!attachmentLinks.length && '*No new message text.*'),
+      attachmentLinks.join('\n'),
     ];
     previousSubject = currentSubject || previousSubject;
-    sections.push(section.join('\n\n'));
+    sections.push(section.filter(Boolean).join('\n\n'));
   }
   const first = new Date(Number(messages[0]!.internalDate)).toISOString();
   const last = new Date(Number(messages.at(-1)!.internalDate)).toISOString();
@@ -69,7 +79,7 @@ export async function threadRecord(input: {
     },
     content: {
       format: 'markdown',
-      body: [`[Open conversation in Gmail](${url})`, ...sections].join('\n\n---\n\n'),
+      body: [...sections, `[Open conversation in Gmail](${url})`].join('\n\n---\n\n'),
     },
     ...(Object.keys(assetRefs).length ? { assetRefs } : {}),
   };

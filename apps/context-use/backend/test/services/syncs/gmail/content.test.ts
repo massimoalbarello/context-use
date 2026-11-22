@@ -134,3 +134,29 @@ test('new quoted headings keep their meaning alongside information from outside 
   expect(result.body).toContain('New budget:');
   expect(result.body).toContain('Revenue: £123,000');
 });
+
+test('unmarked newsletter layout tables read as paragraphs, including their nested content', () => {
+  const result = readableBody({
+    html: '<table><tr><td>&nbsp;</td><td><table><tr><td><p>Your contract expires in 28 days.</p><p><a href="https://example.com/details">Review details</a></p></td></tr></table></td><td>&nbsp;</td></tr></table>',
+    plain: '',
+    attachments: [],
+    previous: [],
+  });
+  expect(result.body).toBe(
+    'Your contract expires in 28 days.\n\n[Review details](https://example.com/details)',
+  );
+});
+
+test('an embedded Outlook envelope becomes a short attribution above the forwarded text', () => {
+  const result = readableBody({
+    html: '<p>Buona giornata!</p><p><b>Da:</b> Office<br><b>Inviato:</b> martedì alle 09:43<br><b>A:</b> Team<br><b>Oggetto:</b> Fattura</p><p>In allegato la fattura.</p>',
+    plain: '',
+    attachments: [],
+    previous: [],
+  });
+  expect(result.body).toContain('Buona giornata!');
+  expect(result.body).toContain('Forwarded from Office');
+  expect(result.body).toContain('Fattura');
+  expect(result.body).toContain('In allegato la fattura.');
+  expect(result.body).not.toContain('Inviato:');
+});

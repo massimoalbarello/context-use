@@ -97,7 +97,8 @@ test('Gmail updates one conversation per sync and keeps earlier imports when a s
         );
         expect((await read())!.body).toContain('### Invoice');
         expect((await read())!.body).toMatch(/\| Services\s*\| £120\.50/);
-        expect((await read())!.body).toContain('### Attachments');
+        expect((await read())!.body).toStartWith('**Alex** · 1 Nov 2026');
+        expect((await read())!.body).not.toMatch(/## Message|^To:|^Cc:|^Sent:/m);
         expect((await read())!.body).not.toContain('open-sync-asset:');
         const imported = await assets.list({ ownerId: OWNER_USER_ID, limit: 20, offset: 0 });
         expect(imported.items).toHaveLength(2);
@@ -143,7 +144,7 @@ test('Gmail updates one conversation per sync and keeps earlier imports when a s
         ];
         runtime.api.runNow({ ...scope, id: sync.id });
         await finish();
-        expect((await read())!.body).toContain('## Message 2');
+        expect((await read())!.body).toContain('**Alex** · 2 Nov 2026');
         expect((await read())!.body).toContain('Paid in full.');
         expect((await read())!.sourceUpdatedAt).toBe('2026-11-02T10:00:00.000Z');
         const afterReply = await read();
@@ -187,7 +188,7 @@ test('Gmail updates one conversation per sync and keeps earlier imports when a s
           ownerId: OWNER_USER_ID,
           readableId: recreated.readableId,
         });
-        expect(newRecord!.body).toContain('### Attachments');
+        expect(newRecord!.body).toContain('[invoice.pdf]');
         expect(await read()).toEqual(original);
         const allAssets = await assets.list({ ownerId: OWNER_USER_ID, limit: 20, offset: 0 });
         expect(allAssets.items).toHaveLength(imported.items.length * copies.length);
