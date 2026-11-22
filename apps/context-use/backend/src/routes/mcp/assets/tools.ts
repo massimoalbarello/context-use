@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { assetAddress, assetReadableId } from '#backend/models/readable-ids/addresses.ts';
 import { withChangeMessage } from '#backend/routes/change-message.ts';
@@ -47,6 +48,12 @@ const CreateAssetUploadInputSchema = z.object({
 const AssetAddressInputSchema = z.object({ address: AssetAddressSchema });
 
 const ReadAssetInputSchema = AssetAddressInputSchema.extend({
+  includePreview: z
+    .boolean()
+    .optional()
+    .describe(
+      'Set true to include a display-sized MCP image for supported images. Metadata is returned for every asset type.',
+    ),
   includeDownload: z
     .boolean()
     .optional()
@@ -77,6 +84,52 @@ const ArchiveAssetOutputSchema = z.object({
 });
 
 const UpdateAssetOutputSchema = z.object({});
+
+const MAX_GIF_PREVIEW_BYTES = 524_288;
+const PREVIEW_EDGE = 960;
+
+async function imageContent({
+  assetsService,
+  ownerId,
+  asset,
+}: {
+  assetsService: AssetsServiceContract;
+  ownerId: string;
+  asset: { mediaType: string; readableId: string };
+}) {
+  if (!isEmbeddableAssetMedia(asset.mediaType)) {
+    return { type: 'text', text: 'Image preview unavailable for this file type.' } as const;
+  }
+  const file = await assetsService.content({ ownerId, readableId: asset.readableId });
+  if (!file) {
+    return null;
+  }
+  const { blob } = file;
+  try {
+    // The portable Bun image decoder cannot resize GIFs.
+    if (asset.mediaType === 'image/gif') {
+      if (blob.size > MAX_GIF_PREVIEW_BYTES) {
+        return { type: 'text', text: 'This animated image is too large to preview.' } as const;
+      }
+      return {
+        type: 'image',
+        mimeType: 'image/gif',
+        data: Buffer.from(await blob.arrayBuffer()).toString('base64'),
+      } as const;
+    }
+    const bytes = await new Bun.Image(blob, { maxPixels: 24_000_000 })
+      .resize(PREVIEW_EDGE, PREVIEW_EDGE, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 75 })
+      .bytes();
+    return {
+      type: 'image',
+      mimeType: 'image/webp',
+      data: Buffer.from(bytes).toString('base64'),
+    } as const;
+  } catch {
+    return { type: 'text', text: 'This image could not be previewed.' } as const;
+  }
+}
 
 const UPLOAD_INSTRUCTIONS =
   'Send the raw asset bytes as the request body. Do not base64-encode them or wrap them in JSON or multipart form data. Use this request once before expiresAt; its HTTP response is the final typed asset result.';
@@ -160,21 +213,27 @@ export function registerAssetTools({
     {
       title: 'Read asset',
       description:
-        'Read metadata, usages, and people this image depicts (detected or confirmed) for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them.',
+        'Read metadata, usages, and people this image depicts (detected or confirmed) for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them. Use this for background reading. To show this asset in chat, call open_resource.',
       inputSchema: ReadAssetInputSchema,
       outputSchema: ReadAssetOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
-    async ({ address, includeDownload = false }) => {
+    async ({ address, includeDownload = false, includePreview = false }) => {
       const readableId = assetReadableId(address);
       const asset = await assetsService.detail({ ownerId: principal.ownerId, readableId });
       if (!asset) {
         return mcpToolError({ code: 'not_found', message: 'Asset not found.' });
       }
+      const preview = includePreview
+        ? await imageContent({ assetsService, ownerId: principal.ownerId, asset })
+        : undefined;
+      if (preview === null) {
+        return mcpToolError({ code: 'not_found', message: 'Asset not found.' });
+      }
       const download = includeDownload
         ? transferCapabilities.issueDownload({ principal, readableId })
         : null;
-      return mcpToolSuccess({
+      const result = mcpToolSuccess({
         ...mcpAsset(asset),
         download: download
           ? {
@@ -188,6 +247,10 @@ export function registerAssetTools({
             }
           : null,
       });
+      if (preview) {
+        result.content.push(preview);
+      }
+      return result;
     },
   );
 

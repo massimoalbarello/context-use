@@ -33,7 +33,7 @@ import { expectNoInternalResourceIds } from '../../../support/public-api.ts';
 const NOW = '2026-09-01T12:00:00.000Z';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
 const PNG_BYTES = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP438AAAAQBAYDFKhhdAAAAAElFTkSuQmCC',
   'base64',
 );
 
@@ -72,7 +72,6 @@ const unusedEntitiesService: EntitiesServiceContract = {
   removeImage: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
-  detail: unexpectedCall,
   update: unexpectedCall,
   unarchive: unexpectedCall,
   archive: unexpectedCall,
@@ -138,6 +137,7 @@ async function withAssetMcp({
     transferCapabilities,
   });
   const server = createContextUseMcpServer({
+    instanceOrigin: 'https://context-use.example',
     recordsService: unusedMcpRecordsService,
     principal,
     assetsService,
@@ -342,6 +342,20 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       expect(downloadRequest.instructions).toContain('raw asset bytes');
       expect(downloadRequest.instructions).toContain('not JSON or base64');
       expect(downloadRequest.instructions).toContain('Content-Type and Content-Disposition');
+      const preflight = await transferController.handle(
+        new Request(downloadRequest.url, {
+          method: 'OPTIONS',
+          headers: {
+            origin: 'null',
+            'access-control-request-method': 'GET',
+            'access-control-request-headers': MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
+          },
+        }),
+      );
+      expect(preflight.status).toBe(StatusMap['No Content']);
+      expect(preflight.headers.get('access-control-allow-headers')).toBe(
+        MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
+      );
       const downloadResponse = await transferController.handle(
         new Request(downloadRequest.url, {
           method: downloadRequest.method,
@@ -349,6 +363,8 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
         }),
       );
       expect(downloadResponse.status).toBe(StatusMap.OK);
+      expect(downloadResponse.headers.get('access-control-allow-origin')).toBe('*');
+      expect(downloadResponse.headers.has('access-control-allow-credentials')).toBe(false);
       expect(downloadResponse.headers.get('content-type')).toBe('image/png');
       expect(downloadResponse.headers.get('content-disposition')).toStartWith('attachment;');
       expect(new Uint8Array(await downloadResponse.arrayBuffer())).toEqual(PNG_BYTES);
@@ -363,6 +379,19 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
         ).status,
       ).toBe(StatusMap['Not Found']);
 
+      const previewRequest = {
+        name: 'read_asset',
+        arguments: { address: created.address, includePreview: true },
+      };
+      const preview = await client.callTool(previewRequest);
+      expect(preview.structuredContent).toMatchObject({ address: created.address, download: null });
+      const image = preview.content.find((block) => block.type === 'image');
+      expect(image?.mimeType).toBe('image/webp');
+      if (!image) {
+        throw new Error('Expected MCP image content');
+      }
+      const pixels = new Bun.Image(Buffer.from(image.data, 'base64'));
+      expect(await pixels.metadata()).toMatchObject({ width: 1, height: 1 });
       const beforeArchive = successfulResult<AssetResult>(
         await client.callTool({
           name: 'read_asset',
@@ -392,6 +421,9 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
         arguments: { address: created.address },
       });
       expect(archivedRead.isError).toBe(true);
+      const archivedPreview = await client.callTool(previewRequest);
+      expect(archivedPreview.isError).toBe(true);
+      expect(archivedPreview.content.some((block) => block.type === 'image')).toBe(false);
       expect(archivedRead.structuredContent).toEqual({
         error: expect.objectContaining({ code: 'not_found' }),
       });
@@ -631,6 +663,7 @@ test('asset updates return no echoed state and archive blockers expose only publ
     baseUrl: new URL('https://context-use.example'),
   });
   const server = createContextUseMcpServer({
+    instanceOrigin: 'https://context-use.example',
     recordsService: unusedMcpRecordsService,
     principal,
     assetsService,

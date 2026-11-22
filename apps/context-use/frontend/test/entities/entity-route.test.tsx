@@ -4,11 +4,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Session } from '../../src/lib/auth';
-import type {
-  EntityDetail,
-  EntitySummary,
-  UpdateEntityVariables,
-} from '../../src/queries/entities';
+import type { EntitySummary, UpdateEntityVariables } from '../../src/queries/entities';
 import { type KnowledgeProfile, profileQueryOptions } from '../../src/queries/profile';
 import { sessionQueryOptions } from '../../src/queries/session';
 import { routeTree } from '../../src/routeTree.gen';
@@ -60,6 +56,9 @@ test('entity filters survive navigation, self stays a person, and other types ca
         const request = new Request(input, init);
         const url = new URL(request.url);
         requests.push(url);
+        if (url.pathname === '/api/pages' && url.searchParams.has('entityReadableId')) {
+          return Response.json({ items: [], total: 0, nextOffset: null });
+        }
         if (url.pathname === '/api/profile') {
           return Response.json(profile);
         }
@@ -103,8 +102,7 @@ test('entity filters survive navigation, self stays a person, and other types ca
           updates.push(body);
           Object.assign(entity, body);
         }
-        const detail: EntityDetail = { ...entity, pages: [] };
-        return Response.json(detail);
+        return Response.json(entity);
       },
       { preconnect: globalThis.fetch.preconnect },
     ),

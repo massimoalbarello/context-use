@@ -2,7 +2,6 @@ import { Elysia, StatusMap, t } from 'elysia';
 import type { Auth } from '#backend/lib/auth/better-auth.ts';
 import { createAuthPlugin } from '#backend/lib/auth/plugin.ts';
 import { ErrorResponseSchema } from '#backend/lib/errors.ts';
-import type { EntityDetail } from '#backend/models/entities/model.ts';
 import { changeMessagePlugin } from '#backend/routes/api/change-message.ts';
 import {
   EntityParamsSchema,
@@ -14,25 +13,12 @@ import {
   UpdateEntityBodySchema,
 } from '#backend/routes/api/entities/model.ts';
 import {
-  KnowledgePageSummarySchema,
-  pageSummaryResponse,
-} from '#backend/routes/api/pages/model.ts';
-import {
   ResourceInUseResponseSchema,
   resourceInUseResponse,
   UnarchiveBlockedSchema,
 } from '#backend/routes/api/resource-archiving/model.ts';
 import { ResourceReadQuerySchema } from '#backend/routes/api/resource-archiving/state-model.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
-
-const EntityDetailSchema = t.Object({
-  ...EntitySchema.properties,
-  pages: t.Array(KnowledgePageSummarySchema),
-});
-
-function entityDetailResponse(entity: EntityDetail) {
-  return { ...entityResponse(entity), pages: entity.pages.map(pageSummaryResponse) };
-}
 
 export function createEntityReadableIdController({
   auth,
@@ -51,21 +37,21 @@ export function createEntityReadableIdController({
     .get(
       '/entities/:entityReadableId',
       async ({ params, query, user, status }) => {
-        const entity = await entitiesService.detail({
+        const entity = await entitiesService.preview({
           ownerId: user.id,
           readableId: params.entityReadableId,
           includeArchived: query.includeArchived,
         });
         return entity
-          ? status(StatusMap.OK, entityDetailResponse(entity))
+          ? status(StatusMap.OK, entityResponse(entity))
           : status(StatusMap['Not Found'], { error: 'Entity not found' });
       },
       {
-        detail: { tags: ['Entities'], summary: 'Read an entity and its knowledge pages' },
+        detail: { tags: ['Entities'], summary: 'Read an entity' },
         params: EntityParamsSchema,
         query: ResourceReadQuerySchema,
         response: {
-          [StatusMap.OK]: EntityDetailSchema,
+          [StatusMap.OK]: EntitySchema,
           [StatusMap['Not Found']]: ErrorResponseSchema,
         },
       },

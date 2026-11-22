@@ -2,60 +2,56 @@ import { cn } from '@repo/ui/class-names';
 import { Link } from '@tanstack/react-router';
 import { File, Image as ImageIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { assetContentUrl, assetTypeLabel, isEmbeddableAsset } from '../../lib/asset-presentation';
+import {
+  assetContentUrl,
+  assetTypeLabel,
+  formatAssetSize,
+  isEmbeddableAsset,
+} from '../../lib/asset-presentation';
 import type { AssetSummary } from '../../queries/assets';
 import { resourceCardVariants } from '../knowledge/resource-list';
 import { useResourceLink } from '../knowledge/resource-navigation';
 import { PublicBadge } from '../publications/publication-appearance';
 import { Badge } from '../ui/badge';
 
-const BYTES_PER_KIBIBYTE = 1024;
-const KIBIBYTES_PER_MEBIBYTE = 1024;
-const BYTES_PER_MEBIBYTE = BYTES_PER_KIBIBYTE * KIBIBYTES_PER_MEBIBYTE;
-
 type AssetName = Pick<AssetSummary, 'readableId' | 'name'>;
-type AssetIdentity = Pick<
-  AssetSummary,
-  'readableId' | 'name' | 'mediaType' | 'extension' | 'sizeBytes'
-> &
-  Partial<Pick<AssetSummary, 'archivedAt' | 'publishedAt'>>;
+type AssetIdentity = Pick<AssetSummary, 'readableId' | 'name' | 'mediaType' | 'extension'> &
+  Partial<Pick<AssetSummary, 'archivedAt' | 'publishedAt' | 'sizeBytes'>>;
 
 type AssetLinkProps =
   | { asset: AssetName; presentation: 'inline'; active?: never; children?: ReactNode }
   | { asset: AssetIdentity; presentation: 'card'; active?: boolean; children?: never };
 
-export function formatAssetSize(sizeBytes: number): string {
-  if (sizeBytes < BYTES_PER_KIBIBYTE) {
-    return `${sizeBytes} B`;
-  }
-  if (sizeBytes < BYTES_PER_MEBIBYTE) {
-    return `${(sizeBytes / BYTES_PER_KIBIBYTE).toFixed(1)} KB`;
-  }
-  return `${(sizeBytes / BYTES_PER_MEBIBYTE).toFixed(1)} MB`;
-}
-
-export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
+export function AssetCardContent({
+  asset,
+  thumbnail,
+}: {
+  asset: AssetIdentity;
+  thumbnail?: ReactNode;
+}) {
   const embeddable = isEmbeddableAsset(asset);
   return (
     <>
       <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted text-muted-foreground">
-        {embeddable ? (
-          <img
-            className="size-full object-cover"
-            src={assetContentUrl({
-              readableId: asset.readableId,
-              includeArchived: !!asset.archivedAt,
-            })}
-            alt=""
-          />
-        ) : (
-          <File className="size-5 stroke-[1.4]" aria-hidden="true" />
-        )}
+        {thumbnail ??
+          (embeddable ? (
+            <img
+              className="size-full object-cover"
+              src={assetContentUrl({
+                readableId: asset.readableId,
+                includeArchived: !!asset.archivedAt,
+              })}
+              alt=""
+            />
+          ) : (
+            <File className="size-5 stroke-[1.4]" aria-hidden="true" />
+          ))}
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
         <strong className="truncate font-semibold text-sm">{asset.name}</strong>
         <small className="truncate text-muted-foreground text-xs">
-          {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
+          {assetTypeLabel(asset)}
+          {asset.sizeBytes != null && ` · ${formatAssetSize(asset.sizeBytes)}`}
         </small>
       </span>
       {asset.archivedAt ? (
@@ -67,6 +63,15 @@ export function AssetCardContent({ asset }: { asset: AssetIdentity }) {
   );
 }
 
+export function InlineAsset({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <ImageIcon className="mr-1 inline size-4" aria-hidden="true" />
+      {children}
+    </>
+  );
+}
+
 export function AssetLink({ asset, presentation, active, children }: AssetLinkProps) {
   const resourceLink = useResourceLink({ kind: 'asset', readableId: asset.readableId });
   if (presentation === 'inline') {
@@ -74,12 +79,11 @@ export function AssetLink({ asset, presentation, active, children }: AssetLinkPr
       <Link
         onClick={resourceLink.onClick}
         preload={resourceLink.preload}
-        className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
+        className="font-medium text-foreground underline decoration-foreground/35 underline-offset-4"
         to="/app/assets/$id"
         params={{ id: asset.readableId }}
       >
-        <ImageIcon className="size-4" aria-hidden="true" />
-        {children ?? asset.name}
+        <InlineAsset>{children ?? asset.name}</InlineAsset>
       </Link>
     );
   }

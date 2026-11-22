@@ -60,7 +60,6 @@ async function renderResourceBrowser({
     image: null,
     createdAt: timestamp,
     updatedAt: timestamp,
-    pages: [],
   };
   const asset: Asset = {
     archivedAt: null,
@@ -120,7 +119,7 @@ async function renderResourceBrowser({
   if (archivedResource) {
     archived[archivedResource].archivedAt = timestamp;
   }
-  entity.pages = [
+  const mentionedPages = [
     {
       archivedAt: null,
       publishedAt: null,
@@ -134,7 +133,7 @@ async function renderResourceBrowser({
       updatedAt: page.updatedAt,
     },
   ];
-  asset.usages = [{ kind: 'page', page: entity.pages[0]!, presentation: 'embed' }];
+  asset.usages = [{ kind: 'page', page: mentionedPages[0]!, presentation: 'embed' }];
   const session: Session = {
     session: {
       id: 'session',

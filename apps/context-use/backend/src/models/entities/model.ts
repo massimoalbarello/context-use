@@ -1,5 +1,4 @@
 import type { AssetSummary } from '#backend/models/assets/model.ts';
-import type { KnowledgePageSummary } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationStatus } from '#backend/models/publications/model.ts';
 import type { ResourceArchiveState } from '#backend/models/resource-archiving/model.ts';
 
@@ -53,7 +52,3 @@ export type EntityReference = Pick<
   | 'publicId'
   | 'publishedAt'
 >;
-
-export interface EntityDetail extends Entity {
-  pages: KnowledgePageSummary[];
-}

@@ -1,0 +1,97 @@
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
+import { EntityAvatar } from '../components/entities/entity-link';
+import { EntityPageSections } from '../components/entities/entity-page-sections';
+import { EntityProfile } from '../components/entities/entity-profile';
+import { resourceCardVariants } from '../components/knowledge/resource-list';
+import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
+import { ENTITY_MENTIONS_PAGE_SIZE } from '../queries/entity-mentions';
+import type { Entity, McpAppClient } from './client';
+import { resourceQueryKey } from './queries';
+
+function previewQuery({ client, address }: { client: McpAppClient; address: string }) {
+  return {
+    queryKey: resourceQueryKey(address),
+    queryFn: () => client.readAsset(address),
+    select: (result: Awaited<ReturnType<McpAppClient['readAsset']>>) => result.imageSrc,
+    staleTime: Infinity,
+  };
+}
+export function PreviewPortrait({
+  client,
+  address,
+  name,
+  size,
+  className,
+}: {
+  client: McpAppClient;
+  address: string;
+  name: string;
+  size?: 'sm';
+  className?: string;
+}) {
+  const image = useQuery(previewQuery({ client, address }));
+  return <EntityAvatar entity={{ name }} imageSrc={image.data} size={size} className={className} />;
+}
+export function EntityPreview({
+  entity,
+  client,
+  onOpen,
+}: {
+  entity: Entity;
+  client: McpAppClient;
+  onOpen: (address: string) => void;
+}) {
+  const mentions = useInfiniteQuery({
+    queryKey: [...resourceQueryKey(entity.address), 'mentioning-pages'],
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      client.mentioningPages({
+        address: entity.address,
+        cursor: pageParam,
+        limit: ENTITY_MENTIONS_PAGE_SIZE,
+      }),
+    getNextPageParam: (batch) => batch.nextCursor,
+  });
+  return (
+    <section className="grid gap-5">
+      <p className="text-muted-foreground text-sm">
+        {entity.entityType ? ENTITY_TYPE_LABELS[entity.entityType] : 'Entity'}
+      </p>
+      <EntityProfile
+        entity={entity}
+        portrait={
+          entity.imageAddress ? (
+            <button
+              type="button"
+              aria-label={`Open portrait of ${entity.name}`}
+              onClick={() => onOpen(entity.imageAddress!)}
+            >
+              <PreviewPortrait
+                client={client}
+                address={entity.imageAddress}
+                name={entity.name}
+                className="size-24 rounded-full object-cover"
+              />
+            </button>
+          ) : (
+            <EntityAvatar entity={entity} className="size-24 text-3xl" />
+          )
+        }
+      />
+
+      <EntityPageSections
+        query={mentions}
+        renderPage={(page) => (
+          <button
+            type="button"
+            className={resourceCardVariants({ className: 'w-full' })}
+            onClick={() => onOpen(page.address)}
+          >
+            <KnowledgePageCardContent page={page} />
+          </button>
+        )}
+      />
+    </section>
+  );
+}

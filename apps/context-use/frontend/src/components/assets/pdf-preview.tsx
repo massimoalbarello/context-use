@@ -3,19 +3,28 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { AssetPreviewFallback } from './asset-preview-fallback';
 import { PdfPreviewLoading } from './pdf-preview-loading';
 
-const PDF_OPTIONS = {
-  cMapUrl: '/pdfjs/cmaps/',
-  cMapPacked: true,
-  standardFontDataUrl: '/pdfjs/standard_fonts/',
-  wasmUrl: '/pdfjs/wasm/',
-};
-
-export function createPdfPreview() {
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
-  return PdfPreview;
+export function createPdfPreview(origin = '') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${origin}/pdfjs/pdf.worker.min.mjs`;
+  const options = {
+    cMapUrl: `${origin}/pdfjs/cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `${origin}/pdfjs/standard_fonts/`,
+    wasmUrl: `${origin}/pdfjs/wasm/`,
+  };
+  return function ConfiguredPdfPreview(props: { bytes: Uint8Array; name: string }) {
+    return <PdfPreview {...props} options={options} />;
+  };
 }
 
-function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
+function PdfPreview({
+  bytes,
+  name,
+  options,
+}: {
+  bytes: Uint8Array;
+  name: string;
+  options: NonNullable<React.ComponentProps<typeof Document>['options']>;
+}) {
   const file = useMemo(() => ({ data: bytes.slice() }), [bytes]);
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -43,7 +52,7 @@ function PdfPreview({ bytes, name }: { bytes: Uint8Array; name: string }) {
           <Document
             className="flex flex-1 flex-col"
             file={file}
-            options={PDF_OPTIONS}
+            options={options}
             suspense={false}
             error={fallback}
             loading={<PdfPreviewLoading />}

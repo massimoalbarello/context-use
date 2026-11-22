@@ -19,35 +19,27 @@ type KnowledgePageIdentity = KnowledgePageName &
     >
   >;
 
-function hasUnpublishedRevisions(page: KnowledgePageIdentity) {
+type PageRevisions = Pick<KnowledgePageIdentity, 'revisionNumber' | 'publishedRevisionNumber'>;
+
+export function hasUnpublishedRevisions({
+  revisionNumber,
+  publishedRevisionNumber,
+}: PageRevisions) {
   return (
-    page.publishedAt != null &&
-    page.publishedRevisionNumber != null &&
-    page.revisionNumber != null &&
-    page.publishedRevisionNumber !== page.revisionNumber
+    revisionNumber != null &&
+    publishedRevisionNumber != null &&
+    publishedRevisionNumber !== revisionNumber
   );
 }
 
-type KnowledgePageLinkProps =
-  | {
-      page: KnowledgePageName;
-      presentation: 'inline';
-      fragment?: string;
-      active?: never;
-      children?: ReactNode;
-    }
-  | {
-      page: KnowledgePageIdentity;
-      presentation: 'card';
-      fragment?: string;
-      active?: boolean;
-      children?: never;
-    };
+export function PageRevisionBadge(props: PageRevisions) {
+  return hasUnpublishedRevisions(props) ? <UnpublishedRevisionsBadge /> : <PublicBadge />;
+}
 
 export function KnowledgePageCardContent({
   page,
   fragment,
-  publicationStatus,
+  publicationStatus = page.publishedAt != null && <PageRevisionBadge {...page} />,
 }: {
   page: KnowledgePageIdentity;
   fragment?: string;
@@ -83,13 +75,26 @@ export function KnowledgePageCardContent({
         )}
       </span>
       {page.archivedAt && <Badge variant="secondary">Archived</Badge>}
-      {publicationStatus !== undefined
-        ? publicationStatus
-        : page.publishedAt != null &&
-          (hasUnpublishedRevisions(page) ? <UnpublishedRevisionsBadge /> : <PublicBadge />)}
+      {publicationStatus}
     </>
   );
 }
+
+type KnowledgePageLinkProps =
+  | {
+      page: KnowledgePageName;
+      presentation: 'inline';
+      fragment?: string;
+      active?: never;
+      children?: ReactNode;
+    }
+  | {
+      page: KnowledgePageIdentity;
+      presentation: 'card';
+      fragment?: string;
+      active?: boolean;
+      children?: never;
+    };
 
 export function KnowledgePageLink({
   page,

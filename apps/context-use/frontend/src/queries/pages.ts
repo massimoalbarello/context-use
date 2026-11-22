@@ -5,6 +5,7 @@ import type { ResourceStatus, UnarchiveResult } from '#backend/models/resource-a
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
+import { ENTITY_MENTIONS_PAGE_SIZE } from './entity-mentions';
 import { searchHypermedia } from './hypermedia-search';
 
 export type KnowledgePagePage = NonNullable<Awaited<ReturnType<typeof api.api.pages.get>>['data']>;
@@ -207,13 +208,19 @@ export function pagesQueryOptions({
   });
 }
 
-export function entityPagesQueryOptions(entityReadableId: string) {
+export function entityPagesQueryOptions({
+  entityReadableId,
+  order,
+}: {
+  entityReadableId: string;
+  order?: 'timeline';
+}) {
   return infiniteQueryOptions({
-    queryKey: [...pagesListQueryKey, { entityReadableId }],
+    queryKey: [...pagesListQueryKey, { entityReadableId, order }],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await api.api.pages.get({
-        query: { entityReadableId, offset: pageParam },
+        query: { entityReadableId, order, offset: pageParam, limit: ENTITY_MENTIONS_PAGE_SIZE },
       });
       if (error) {
         throw new Error(apiErrorMessage(error));

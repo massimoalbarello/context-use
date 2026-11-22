@@ -1,43 +1,58 @@
 import { Button } from '@repo/ui/button';
 import { useForm } from '@tanstack/react-form';
-import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useState } from 'react';
+import type { ComponentProps, ReactNode, SyntheticEvent } from 'react';
 import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
+import {
+  InvalidKnowledgePageMarkdownError,
+  parseKnowledgePageWriteMarkdown,
+} from '#backend/models/knowledge-pages/markdown.ts';
 import {
   MAX_TEMPORAL_COVERAGE_LENGTH,
   parseTemporalCoverage,
 } from '#backend/models/knowledge-pages/temporal-coverage.ts';
-import { DuplicateResourceNameError } from '../../lib/api-error';
 import { submitThenChangeValidation } from '../../lib/form-validation';
-import { temporalCoverageMutation } from '../../lib/temporal-coverage';
-import { knowledgeSuggestionsQueryOptions } from '../../queries/knowledge-suggestions';
+import { temporalCoverageExpression, temporalCoverageMutation } from '../../lib/temporal-coverage';
+import type { CreatePageVariables, KnowledgePage } from '../../queries/pages';
+import { ResourceDetailActions } from '../knowledge/resource-detail-actions';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
 import { Input } from '../ui/input';
-import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
+import { Textarea } from '../ui/textarea';
 
-export type KnowledgePageFormValues = {
-  markdown: string;
-  temporalCoverage: string | null;
+const NEW_PAGE = { markdown: '# A focused idea\n\n', temporalCoverage: null };
+
+export type MarkdownInputProps = {
+  id: string;
+  name: string;
+  value: string;
+  invalid: boolean;
+  onBlur: () => void;
+  onChange: (value: string) => void;
 };
 
-type KnowledgePageFormSubmission = Omit<KnowledgePageFormValues, 'temporalCoverage'> & {
-  temporalCoverage?: string | null;
-  allowDuplicate?: boolean;
-  changeMessage?: string;
-};
-
-type KnowledgePageFormProps = {
-  initialValues: KnowledgePageFormValues;
+type PageFormLayout = {
+  initialValues?: Pick<KnowledgePage, 'markdown' | 'temporalCoverage'>;
   pending: boolean;
-  error: Error | null;
-  header: (intervalField: ReactNode) => ReactNode;
-  onSubmit: (values: KnowledgePageFormSubmission) => void;
-} & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
+  header: (slots: { intervalField: ReactNode; actions: ReactNode }) => ReactNode;
+  onSubmit: (values: CreatePageVariables) => void;
+} & ({ submitLabel: string; onCancel?: never } | { onCancel: () => void; submitLabel?: never });
+
+type PageFormProps = PageFormLayout & {
+  error: ReactNode;
+  duplicateTitle?: boolean;
+  submitDisabled?: boolean;
+  markdownInput: (props: MarkdownInputProps) => ReactNode;
+};
 
 function validateMarkdown({ value }: { value: string }): string | undefined {
-  return /^\s*# .+\n[\s\S]*\S/.test(value)
-    ? undefined
-    : 'Start with one H1 title and add content below it.';
+  try {
+    parseKnowledgePageWriteMarkdown(value.trim());
+    return undefined;
+  } catch (error) {
+    if (error instanceof InvalidKnowledgePageMarkdownError) {
+      return error.message;
+    }
+    throw error;
+  }
 }
 
 function validateTemporalCoverage({ value }: { value: string }): string | undefined {
@@ -54,30 +69,34 @@ function validateTemporalCoverage({ value }: { value: string }): string | undefi
 }
 
 export function KnowledgePageForm({
-  initialValues,
-  formId,
+  initialValues = NEW_PAGE,
+  onCancel,
   pending,
   error,
+  duplicateTitle,
+  submitDisabled,
+  markdownInput,
   header,
   submitLabel,
   onSubmit,
-}: KnowledgePageFormProps) {
-  const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
-  const suggestions = useQuery(knowledgeSuggestionsQueryOptions(knowledgeQuery ?? ''));
+}: PageFormProps) {
+  const initialInterval = initialValues.temporalCoverage
+    ? temporalCoverageExpression(initialValues.temporalCoverage)
+    : null;
   const form = useForm({
     defaultValues: {
       markdown: initialValues.markdown,
-      temporalCoverage: initialValues.temporalCoverage ?? '',
+      temporalCoverage: initialInterval ?? '',
       allowDuplicate: false,
       changeMessage: '',
     },
     validationLogic: submitThenChangeValidation,
     onSubmit: ({ value }) => {
       const temporalCoverage = temporalCoverageMutation({
-        initial: initialValues.temporalCoverage,
+        initial: initialInterval,
         current: value.temporalCoverage,
       });
-      onSubmit({
+      return onSubmit({
         markdown: value.markdown.trim(),
         changeMessage: value.changeMessage.trim() || undefined,
         ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
@@ -85,7 +104,6 @@ export function KnowledgePageForm({
       });
     },
   });
-  const duplicateTitle = error instanceof DuplicateResourceNameError;
   const intervalField = (
     <form.Field name="temporalCoverage" validators={{ onDynamic: validateTemporalCoverage }}>
       {(field) => (
@@ -98,6 +116,7 @@ export function KnowledgePageForm({
               className="rounded-full bg-muted/55"
               id={field.name}
               name={field.name}
+              disabled={pending}
               maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
               placeholder="Add interval"
               value={field.state.value}
@@ -110,6 +129,7 @@ export function KnowledgePageForm({
               <Button
                 className="h-auto shrink-0 px-0 py-0 text-xs"
                 type="button"
+                disabled={pending}
                 variant="link"
                 onClick={() => field.handleChange('')}
               >
@@ -127,41 +147,46 @@ export function KnowledgePageForm({
     </form.Field>
   );
 
+  function save(allowDuplicate: boolean) {
+    if (pending || submitDisabled) {
+      return;
+    }
+    form.setFieldValue('allowDuplicate', allowDuplicate);
+    void form.handleSubmit();
+  }
+
+  function submit(event: SyntheticEvent) {
+    event.preventDefault();
+    save(false);
+  }
+
   return (
-    <form
-      id={formId}
-      className="grid gap-5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        form.setFieldValue('allowDuplicate', false);
-        void form.handleSubmit();
-      }}
-    >
-      {header(intervalField)}
+    <form className="grid gap-5" onSubmit={submit}>
+      {header({
+        intervalField,
+        actions: onCancel && (
+          <ResourceDetailActions
+            mode="edit"
+            resource="page"
+            pending={pending}
+            saveDisabled={submitDisabled}
+            onCancel={onCancel}
+            onSaveClick={submit}
+          />
+        ),
+      })}
       <FieldGroup>
         <form.Field name="markdown" validators={{ onDynamic: validateMarkdown }}>
           {(field) => (
             <Field data-invalid={field.state.meta.errors.length > 0}>
-              <span className="sr-only">Knowledge page content</span>
-              <KnowledgeLinkTextarea
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                suggestions={suggestions.data?.suggestions ?? []}
-                loading={suggestions.isPending}
-                error={suggestions.error}
-                totalMatches={suggestions.data?.totalMatches ?? 0}
-                truncated={suggestions.data?.truncated ?? false}
-                onRetry={() => void suggestions.refetch()}
-                invalid={field.state.meta.errors.length > 0}
-                onBlur={field.handleBlur}
-                onChange={field.handleChange}
-                onQueryChange={setKnowledgeQuery}
-              />
-              <FieldDescription>
-                Keep one coherent idea here. Type @ to mention an entity, reference a page or
-                record, or use an asset; use H2 or lower headings for linkable sections.
-              </FieldDescription>
+              {markdownInput({
+                id: field.name,
+                name: field.name,
+                value: field.state.value,
+                invalid: field.state.meta.errors.length > 0,
+                onBlur: field.handleBlur,
+                onChange: field.handleChange,
+              })}
               <FieldError>{field.state.meta.errors[0]}</FieldError>
             </Field>
           )}
@@ -173,6 +198,7 @@ export function KnowledgePageForm({
               <Input
                 id="page-change-message"
                 value={field.state.value}
+                disabled={pending}
                 maxLength={MAX_CHANGE_MESSAGE_LENGTH}
                 placeholder="What changed and why?"
                 onBlur={field.handleBlur}
@@ -184,22 +210,27 @@ export function KnowledgePageForm({
         </form.Field>
       </FieldGroup>
 
-      {error && <FieldError>{error.message}</FieldError>}
+      {error && <FieldError>{error}</FieldError>}
 
-      {submitLabel && (
+      {(submitLabel || duplicateTitle) && (
         <div className="flex flex-wrap items-center gap-3">
-          <Button className="justify-self-start" size="lg" type="submit" disabled={pending}>
-            {pending ? 'Saving…' : submitLabel}
-          </Button>
+          {submitLabel && (
+            <Button
+              className="justify-self-start"
+              size="lg"
+              type="submit"
+              onClick={submit}
+              disabled={pending || submitDisabled}
+            >
+              {pending ? 'Saving…' : submitLabel}
+            </Button>
+          )}
           {duplicateTitle && (
             <Button
               variant="outline"
               type="button"
-              disabled={pending}
-              onClick={() => {
-                form.setFieldValue('allowDuplicate', true);
-                void form.handleSubmit();
-              }}
+              disabled={pending || submitDisabled}
+              onClick={() => save(true)}
             >
               Use this title anyway
             </Button>
@@ -207,5 +238,16 @@ export function KnowledgePageForm({
         </div>
       )}
     </form>
+  );
+}
+
+export function PageMarkdownTextarea(props: ComponentProps<typeof Textarea>) {
+  return (
+    <Textarea
+      rows={12}
+      spellCheck
+      className="block min-h-64 resize-y font-mono leading-relaxed md:min-h-72"
+      {...props}
+    />
   );
 }

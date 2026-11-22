@@ -15,11 +15,8 @@ import { Badge } from '../ui/badge';
 type EntityName = Pick<EntitySummary, 'readableId' | 'name'> & {
   image?: EntitySummary['image'];
 };
-type EntityIdentity = Pick<
-  EntitySummary,
-  'readableId' | 'name' | 'description' | 'entityType' | 'isSelf'
-> &
-  Partial<Pick<EntitySummary, 'archivedAt' | 'publishedAt'>> & {
+type EntityIdentity = Pick<EntitySummary, 'readableId' | 'name' | 'description' | 'entityType'> &
+  Partial<Pick<EntitySummary, 'archivedAt' | 'publishedAt' | 'isSelf'>> & {
     image?: EntitySummary['image'];
   };
 
@@ -41,10 +38,12 @@ type EntityLinkProps =
 
 export function EntityAvatar({
   entity,
+  imageSrc = entity.image ? assetContentUrl({ readableId: entity.image.readableId }) : undefined,
   size,
   className,
 }: {
   entity: { name: string; image?: { readableId: string } | null };
+  imageSrc?: string;
   size?: 'default' | 'sm' | 'lg';
   className?: string;
 }) {
@@ -54,9 +53,7 @@ export function EntityAvatar({
       className={cn('font-semibold text-xs uppercase', className)}
       aria-hidden="true"
     >
-      {entity.image && (
-        <AvatarImage src={assetContentUrl({ readableId: entity.image.readableId })} alt="" />
-      )}
+      {imageSrc && <AvatarImage src={imageSrc} alt="" />}
       <AvatarFallback>{entityInitial(entity.name)}</AvatarFallback>
     </Avatar>
   );

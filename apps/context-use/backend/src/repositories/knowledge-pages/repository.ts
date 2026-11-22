@@ -101,11 +101,8 @@ export interface KnowledgePagesRepositoryContract {
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
     entityReadableId?: string;
+    order?: 'timeline';
   }): Promise<Page<KnowledgePageSummary>>;
-  listByEntity(input: {
-    ownerId: string;
-    entityReadableId: string;
-  }): Promise<KnowledgePageSummary[]>;
   preview(input: { ownerId: string; readableId: string; includeArchived?: boolean }): Promise<{
     page: StoredKnowledgePage;
     mentions: Entity[];
@@ -708,6 +705,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     interval,
     temporalBounds,
     entityReadableId,
+    order,
   }: {
     ownerId: string;
     limit: number;
@@ -717,9 +715,30 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
     interval?: KnowledgePageIntervalFilter;
     temporalBounds?: TemporalBounds;
     entityReadableId?: string;
+    order?: 'timeline';
   }) {
     const filterStart = temporalBounds?.start ?? null;
     const filterEnd = temporalBounds?.end ?? null;
+    const ordering =
+      order === 'timeline'
+        ? this.sql`
+        case
+          when revision."temporal_coverage" is null then 0
+          when revision."temporal_end_exclusive_ms" is null then 1
+          else 2
+        end,
+        case when revision."temporal_coverage" is not null
+          and revision."temporal_end_exclusive_ms" is null
+          then revision."temporal_start_ms" end desc,
+        case when revision."temporal_coverage" is not null
+          and revision."temporal_end_exclusive_ms" is not null
+          then revision."temporal_end_exclusive_ms" end desc,
+        case when revision."temporal_coverage" is not null
+          then revision."temporal_start_ms" end desc,
+        revision."title" collate nocase,
+        page."readable_id"
+      `
+        : this.sql`page."updated_at" desc, page."readable_id"`;
     const rowsPromise = this.sql.ListKnowledgePages`
       /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
       select page."id", page."readable_id" as "readableId",
@@ -765,7 +784,7 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
             )
           )
         )
-      order by page."updated_at" desc, page."readable_id"
+      order by ${ordering}
       limit ${limit} offset ${offset}
     `;
     const countsPromise = this.sql.CountKnowledgePages`
@@ -812,54 +831,6 @@ export class KnowledgePagesRepository implements KnowledgePagesRepositoryContrac
       total: Number(counts[0]?.total ?? 0),
       offset,
     });
-  }
-
-  async listByEntity({
-    ownerId,
-    entityReadableId,
-  }: {
-    ownerId: string;
-    entityReadableId: string;
-  }): Promise<KnowledgePageSummary[]> {
-    const rows = await this.sql.ListKnowledgePagesByEntity`
-      /* @notNull id readableId revisionNumber title excerpt createdAt updatedAt */
-      select page."id", page."readable_id" as "readableId",
-        revision."revision_number" as "revisionNumber", revision."title", revision."excerpt",
-        revision."temporal_coverage" as "temporalCoverage",
-        page."public_id" as "publicId", page."published_at" as "publishedAt", page."archived_at" as "archivedAt",
-        (select published_revision."revision_number" from "knowledge_page_revision" published_revision
-          where published_revision."id" = page."published_revision_id"
-            and published_revision."owner_id" = page."owner_id"
-            and published_revision."page_id" = page."id") as "publishedRevisionNumber",
-        page."created_at" as "createdAt", page."updated_at" as "updatedAt"
-      from "entity" entity
-      join "knowledge_page_entity_mention" mention
-        on mention."target_entity_id" = entity."id" and mention."owner_id" = entity."owner_id"
-      join "knowledge_page" page
-        on page."current_revision_id" = mention."source_revision_id"
-       and page."owner_id" = mention."owner_id"
-      join "knowledge_page_revision" revision on revision."id" = page."current_revision_id"
-      where entity."owner_id" = ${ownerId} and entity."readable_id" = ${entityReadableId}
-        and entity."archived_at" is null and page."archived_at" is null
-      order by
-        case
-          when revision."temporal_coverage" is not null
-            and revision."temporal_end_exclusive_ms" is null then 0
-          when revision."temporal_coverage" is not null then 1
-          else 2
-        end,
-        case when revision."temporal_coverage" is not null
-          and revision."temporal_end_exclusive_ms" is null
-          then revision."temporal_start_ms" end desc,
-        case when revision."temporal_coverage" is not null
-          and revision."temporal_end_exclusive_ms" is not null
-          then revision."temporal_end_exclusive_ms" end desc,
-        case when revision."temporal_coverage" is not null
-          then revision."temporal_start_ms" end desc,
-        revision."title" collate nocase,
-        page."readable_id"
-    `;
-    return rows.map(summaryFrom);
   }
 
   async revisionsByNumber({

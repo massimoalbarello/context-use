@@ -2,7 +2,6 @@ import { Button } from '@repo/ui/button';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Expand, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { assetTypeLabel } from '../../lib/asset-presentation';
 import { useAssetPreview } from '../../lib/hooks/use-assets';
 import { useEntityPreview } from '../../lib/hooks/use-entity';
 import { usePagePreview } from '../../lib/hooks/use-page';
@@ -11,9 +10,10 @@ import type { ResourceSelection } from '../../lib/resource-selection';
 import { entityPagesQueryOptions } from '../../queries/pages';
 import { publicationStatusQueryOptions } from '../../queries/publications';
 import { AssetFileActions } from '../assets/asset-file-actions';
-import { formatAssetSize } from '../assets/asset-link';
 import { AssetMedia } from '../assets/asset-media';
+import { AssetPreviewContent } from '../assets/asset-preview-content';
 import { EntityAvatar } from '../entities/entity-link';
+import { EntityProfile } from '../entities/entity-profile';
 import { KnowledgePageLink } from '../pages/knowledge-page-link';
 import { KnowledgePageMarkdown } from '../pages/knowledge-page-markdown';
 import { TemporalCoverageLabel } from '../pages/temporal-coverage-label';
@@ -21,7 +21,7 @@ import { PublicationStatus } from '../publications/publication-status';
 import { ContextRecordMarkdown } from '../records/record-markdown';
 import { ArchivedStatus } from './archived-resource-detail';
 import { InfiniteScrollTrigger } from './infinite-scroll-trigger';
-import { ResourceList } from './resource-list';
+import { RelatedPageList } from './resource-list';
 import { ResourceScrollArea } from './resource-scroll-area';
 
 function focusPreviewPanel(panel: HTMLElement | null) {
@@ -161,11 +161,11 @@ function EntityPreview({ readableId, publicationStatus, onClose, onExpand }: Pre
         <PreviewError error={error} retry={refetch} />
       ) : entity ? (
         <div className="grid gap-5 py-2">
-          <EntityAvatar entity={entity} className="size-20 text-2xl" />
-          <div>
-            <h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>
-            <p className="mt-3 text-muted-foreground leading-relaxed">{entity.description}</p>
-          </div>
+          <EntityProfile
+            entity={entity}
+            portrait={<EntityAvatar entity={entity} className="size-20 text-2xl" />}
+            heading={<h2 className="font-semibold text-2xl tracking-tight">{entity.name}</h2>}
+          />
           {!entity.archivedAt && <EntityMentioningPages readableId={readableId} />}
         </div>
       ) : (
@@ -176,7 +176,7 @@ function EntityPreview({ readableId, publicationStatus, onClose, onExpand }: Pre
 }
 
 function EntityMentioningPages({ readableId }: { readableId: string }) {
-  const query = useInfiniteQuery(entityPagesQueryOptions(readableId));
+  const query = useInfiniteQuery(entityPagesQueryOptions({ entityReadableId: readableId }));
   const pages = query.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <section className="grid gap-2" aria-label="Mentioned in">
@@ -190,13 +190,10 @@ function EntityMentioningPages({ readableId }: { readableId: string }) {
           {pages.length === 0 ? (
             <PreviewStatus>No pages mention this entity yet.</PreviewStatus>
           ) : (
-            <ResourceList>
-              {pages.map((page) => (
-                <li key={page.readableId}>
-                  <KnowledgePageLink page={page} presentation="card" />
-                </li>
-              ))}
-            </ResourceList>
+            <RelatedPageList
+              pages={pages}
+              renderPage={(page) => <KnowledgePageLink page={page} presentation="card" />}
+            />
           )}
           <InfiniteScrollTrigger
             hasNextPage={query.hasNextPage}
@@ -251,14 +248,10 @@ function AssetPreview({ readableId, publicationStatus, onClose, onExpand }: Prev
       {error ? (
         <PreviewError error={error} retry={refetch} />
       ) : asset ? (
-        <div className="grid gap-5">
-          <h2 className="break-words font-semibold text-2xl">{asset.name}</h2>
-          <p className="text-muted-foreground text-sm">
-            {assetTypeLabel(asset)} · {formatAssetSize(asset.sizeBytes)}
-          </p>
+        <AssetPreviewContent asset={asset} heading="h2">
           <AssetMedia asset={asset} className="max-h-96 w-full rounded-lg object-contain" />
           <AssetFileActions readableId={asset.readableId} includeArchived={!!asset.archivedAt} />
-        </div>
+        </AssetPreviewContent>
       ) : (
         <PreviewStatus>Loading asset…</PreviewStatus>
       )}
@@ -287,13 +280,10 @@ function RecordPreview({ readableId, publicationStatus, onClose, onExpand }: Pre
           {record.backlinks.length > 0 && (
             <section className="grid gap-2 border-t pt-4">
               <h3 className="font-semibold">Referenced by</h3>
-              <ResourceList>
-                {record.backlinks.map((page) => (
-                  <li key={page.readableId}>
-                    <KnowledgePageLink page={page} presentation="card" />
-                  </li>
-                ))}
-              </ResourceList>
+              <RelatedPageList
+                pages={record.backlinks}
+                renderPage={(page) => <KnowledgePageLink page={page} presentation="card" />}
+              />
             </section>
           )}
         </div>

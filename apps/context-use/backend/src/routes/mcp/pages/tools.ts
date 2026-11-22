@@ -3,12 +3,16 @@ import { z } from 'zod';
 import { MAX_KNOWLEDGE_PAGE_CHARACTERS } from '#backend/models/knowledge-pages/model.ts';
 import { MAX_TEMPORAL_COVERAGE_LENGTH } from '#backend/models/knowledge-pages/temporal-coverage.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
-import { pageAddress, pageReadableId } from '#backend/models/readable-ids/addresses.ts';
-import { withChangeMessage } from '#backend/routes/change-message.ts';
-import { PageAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import {
+  entityReadableId,
+  pageAddress,
+  pageReadableId,
+} from '#backend/models/readable-ids/addresses.ts';
+import { withChangeMessage } from '#backend/routes/change-message.ts';
+import { EntityAddressSchema, PageAddressSchema } from '#backend/routes/mcp/coordinates.ts';
+import {
+  KnowledgePageListOutputSchema,
   McpKnowledgePageSchema,
-  McpKnowledgePageSummarySchema,
   mcpArchiveBlockers,
   mcpKnowledgePage,
   mcpKnowledgePageSummary,
@@ -26,6 +30,7 @@ import {
 } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
+import { MCP_APP_META } from '../app/register.ts';
 import {
   HYPERMEDIA_CURATION_GUIDE,
   HYPERMEDIA_CURATION_GUIDE_VERSION,
@@ -78,12 +83,6 @@ const UpdateKnowledgePageInputSchema = GuidedPageAddressInputSchema.extend({
   temporalCoverage: TemporalCoverageValueSchema.nullable()
     .optional()
     .describe(TEMPORAL_COVERAGE_UPDATE_DESCRIPTION),
-});
-
-const KnowledgePageListOutputSchema = z.object({
-  items: z.array(McpKnowledgePageSummarySchema),
-  total: z.number().int().nonnegative(),
-  nextCursor: z.string().nullable(),
 });
 
 const ArchiveKnowledgePageOutputSchema = z.object({
@@ -154,9 +153,10 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'create_knowledge_page',
     {
+      _meta: MCP_APP_META,
       title: 'Create knowledge page',
       description:
-        'Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
+        'Before creating a page, use search_hypermedia to find relevant existing pages to link. Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
       inputSchema: withChangeMessage(CreateKnowledgePageInputSchema),
       outputSchema: GuidedCreateKnowledgePageOutputSchema,
       annotations: MCP_WRITE_TOOL_ANNOTATIONS,
@@ -173,10 +173,13 @@ export function registerKnowledgePageTools({
         ...input,
       });
       if (result.state === 'saved') {
-        return mcpToolSuccess({
-          address: pageAddress(result.page.readableId),
-          revisionNumber: result.page.revisionNumber,
-        });
+        return {
+          ...mcpToolSuccess({
+            address: pageAddress(result.page.readableId),
+            revisionNumber: result.page.revisionNumber,
+          }),
+          _meta: { page: mcpKnowledgePage(result.page) },
+        };
       }
       if (result.state === 'title_conflict') {
         return mcpToolError({
@@ -205,13 +208,13 @@ export function registerKnowledgePageTools({
     {
       title: 'List knowledge pages',
       description:
-        'List active knowledge pages without searching. Pass nextCursor unchanged to continue the list.',
-      inputSchema: McpListInputSchema,
+        'List active knowledge pages, optionally limited to those mentioning an exact entity address. Pass nextCursor unchanged to continue the list.',
+      inputSchema: McpListInputSchema.extend({ mentioningEntity: EntityAddressSchema.optional() }),
       outputSchema: KnowledgePageListOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
-    async ({ cursor, limit = DEFAULT_MCP_LIST_LIMIT }) => {
-      const decoded = decodeMcpCursor({ cursor, list: 'knowledge_pages' });
+    async ({ cursor, mentioningEntity, limit = DEFAULT_MCP_LIST_LIMIT }) => {
+      const decoded = decodeMcpCursor({ cursor, list: 'knowledge_pages', scope: mentioningEntity });
       if (decoded.state === 'invalid') {
         return mcpToolError({
           code: 'invalid_cursor',
@@ -222,11 +225,19 @@ export function registerKnowledgePageTools({
         ownerId: principal.ownerId,
         limit,
         offset: decoded.offset,
+        ...(mentioningEntity && {
+          entityReadableId: entityReadableId(mentioningEntity),
+          order: 'timeline',
+        }),
       });
       return mcpToolSuccess({
         items: page.items.map(mcpKnowledgePageSummary),
         total: page.total,
-        nextCursor: encodeMcpCursor({ list: 'knowledge_pages', offset: page.nextOffset }),
+        nextCursor: encodeMcpCursor({
+          list: 'knowledge_pages',
+          scope: mentioningEntity,
+          offset: page.nextOffset,
+        }),
       });
     },
   );
@@ -235,7 +246,8 @@ export function registerKnowledgePageTools({
     'read_knowledge_page',
     {
       title: 'Read knowledge page',
-      description: 'Read one active knowledge page by its exact canonical page address.',
+      description:
+        'Read one active knowledge page by its exact canonical page address. Use this for background reading. To show this page in chat, call open_resource.',
       inputSchema: PageAddressInputSchema,
       outputSchema: McpKnowledgePageSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
@@ -254,6 +266,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'update_knowledge_page',
     {
+      _meta: MCP_APP_META,
       title: 'Update knowledge page',
       description: `Create a new revision of one knowledge page. Updating a public page requires explicit user confirmation. Prefer creating a new private page unless the user explicitly wants to modify the public page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
       inputSchema: withChangeMessage(UpdateKnowledgePageInputSchema),
@@ -282,7 +295,10 @@ export function registerKnowledgePageTools({
         temporalCoverage,
       });
       if (result.state === 'saved') {
-        return mcpToolSuccess({ revisionNumber: result.page.revisionNumber });
+        return {
+          ...mcpToolSuccess({ revisionNumber: result.page.revisionNumber }),
+          _meta: { page: mcpKnowledgePage(result.page) },
+        };
       }
       if (result.state === 'revision_conflict') {
         return mcpToolError({
@@ -309,6 +325,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'archive_knowledge_page',
     {
+      _meta: MCP_APP_META,
       title: 'Archive knowledge page',
       description:
         'Archive one knowledge page. This is destructive and succeeds only when no active inbound references block it.',

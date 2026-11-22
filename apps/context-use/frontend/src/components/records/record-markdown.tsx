@@ -1,9 +1,9 @@
-import { cn } from '@repo/ui/class-names';
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { internalLink } from '../../lib/internal-link';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
+import { markdownBodyComponents } from '../markdown/markdown-body';
 
 export function externalRecordUrl(url: string): string {
   try {
@@ -42,6 +42,7 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
         skipHtml
         urlTransform={(url) => (internalLink(url)?.kind === 'asset' ? url : externalRecordUrl(url))}
         components={{
+          ...markdownBodyComponents,
           a: ({ href, children }) => <ContextRecordLink href={href}>{children}</ContextRecordLink>,
           img: ({ src, alt, className, node }) => {
             const asset = src ? internalLink(src) : null;
@@ -69,28 +70,6 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
           h4: ({ children }) => <h4 className="mt-8 font-semibold text-xl">{children}</h4>,
           h5: ({ children }) => <h5 className="mt-8 font-semibold text-xl">{children}</h5>,
           h6: ({ children }) => <h6 className="mt-8 font-semibold text-xl">{children}</h6>,
-          p: ({ children }) => <p className="my-5 text-[1.05rem] leading-8">{children}</p>,
-          ul: ({ children }) => (
-            <ul className="my-5 list-disc pl-6 text-[1.05rem] leading-8">{children}</ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="my-5 list-decimal pl-6 text-[1.05rem] leading-8">{children}</ol>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
-              {children}
-            </blockquote>
-          ),
-          code: ({ className, children }) => (
-            <code className={cn('rounded bg-muted px-1.5 py-0.5 font-mono text-sm', className)}>
-              {children}
-            </code>
-          ),
-          pre: ({ children }) => (
-            <pre className="overflow-x-auto rounded-lg bg-foreground p-4 text-background [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
-              {children}
-            </pre>
-          ),
         }}
       >
         {markdown}

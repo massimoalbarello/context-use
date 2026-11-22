@@ -1,23 +1,13 @@
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import { wgslVitePlugin } from '@vgpu/wgsl/loader-vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, normalizePath } from 'vite';
+import { defaultAllowedOrigins, defineConfig, normalizePath } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { DEFAULT_BACKEND_PORT, DEFAULT_FRONTEND_PORT } from '#backend/lib/runtime-config.ts';
-
-const require = createRequire(import.meta.url);
-const pdfjsDirectory = dirname(
-  createRequire(require.resolve('react-pdf/package.json')).resolve('pdfjs-dist/package.json'),
-);
-const pdfjsLegacyEntry = normalizePath(
-  createRequire(require.resolve('react-pdf/package.json')).resolve(
-    'pdfjs-dist/legacy/build/pdf.mjs',
-  ),
-);
+import { pdfjsDirectory, pdfjsLegacyEntry } from '../scripts/pdfjs-build.ts';
 
 const BACKEND_ORIGIN = `http://localhost:${process.env.PORT || DEFAULT_BACKEND_PORT}`;
 const MCP_TRANSPORT_PROXY_CONTEXT = '^/mcp/?(?:\\?.*)?$';
@@ -39,6 +29,8 @@ export default defineConfig({
   server: {
     port: Number(process.env.FRONTEND_PORT || DEFAULT_FRONTEND_PORT),
     strictPort: true,
+    // Let the transfer endpoint answer its own sandbox preflight.
+    cors: { origin: defaultAllowedOrigins, preflightContinue: true },
     // Vite is the public origin in development. Better Auth's BASE_URL points here, so preserve
     // the browser's Origin header while proxying instead of pretending it came from the backend.
     proxy: {
@@ -58,6 +50,16 @@ export default defineConfig({
     },
   },
   plugins: [
+    {
+      name: 'pdfjs-preview-cors',
+      configureServer(server) {
+        // biome-ignore lint/complexity/useMaxParams: Connect middleware receives request, response, and next.
+        server.middlewares.use('/pdfjs/', (_req, res, next) => {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          next();
+        });
+      },
+    },
     viteStaticCopy({
       targets: [
         {

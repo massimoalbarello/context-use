@@ -1,7 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
-import type { EntityDetail } from '#backend/models/entities/model.ts';
+import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/presentation.ts';
 import {
   MAX_ENTITY_DESCRIPTION_LENGTH,
   MAX_ENTITY_NAME_LENGTH,
@@ -21,11 +20,7 @@ import {
   McpEntityTypeSchema,
   mcpEntity,
 } from '#backend/routes/mcp/entities/model.ts';
-import {
-  McpKnowledgePageSummarySchema,
-  mcpArchiveBlockers,
-  mcpKnowledgePageSummary,
-} from '#backend/routes/mcp/pages/model.ts';
+import { mcpArchiveBlockers } from '#backend/routes/mcp/pages/model.ts';
 import {
   DEFAULT_MCP_LIST_LIMIT,
   decodeMcpCursor,
@@ -98,17 +93,6 @@ const ArchiveEntityOutputSchema = z.object({
   archived: z.literal(true),
   address: EntityAddressSchema,
 });
-
-const McpEntityDetailSchema = McpEntitySchema.extend({
-  pages: z.array(McpKnowledgePageSummarySchema),
-});
-
-function mcpEntityDetail(entity: EntityDetail) {
-  return {
-    ...mcpEntity(entity),
-    pages: entity.pages.map(mcpKnowledgePageSummary),
-  };
-}
 
 function entityImageError({
   state,
@@ -269,18 +253,19 @@ export function registerEntityTools({
     'read_entity',
     {
       title: 'Read entity',
-      description: 'Read one active entity by its exact canonical entity address.',
+      description:
+        'Read one active entity by its exact canonical entity address. Use list_knowledge_pages with mentioningEntity to retrieve the pages that mention it. Use this for background reading. To show this entity in chat, call open_resource.',
       inputSchema: EntityAddressInputSchema,
-      outputSchema: McpEntityDetailSchema,
+      outputSchema: McpEntitySchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,
     },
     async ({ address }) => {
-      const entity = await entitiesService.detail({
+      const entity = await entitiesService.preview({
         ownerId: principal.ownerId,
         readableId: entityReadableId(address),
       });
       return entity
-        ? mcpToolSuccess(mcpEntityDetail(entity))
+        ? mcpToolSuccess(mcpEntity(entity))
         : mcpToolError({ code: 'not_found', message: 'Entity not found.' });
     },
   );

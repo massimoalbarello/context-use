@@ -1,10 +1,5 @@
-import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
-import type {
-  Entity,
-  EntityDetail,
-  EntityType,
-  EntityTypeFilter,
-} from '#backend/models/entities/model.ts';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/presentation.ts';
+import type { Entity, EntityType, EntityTypeFilter } from '#backend/models/entities/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import {
@@ -15,30 +10,25 @@ import {
 import type { ResourceStatus } from '#backend/models/resource-archiving/model.ts';
 import type { AssetsRepositoryContract } from '#backend/repositories/assets/repository.ts';
 import type { EntityRepositoryContract } from '#backend/repositories/entities/repository.ts';
-import type { KnowledgePagesRepositoryContract } from '#backend/repositories/knowledge-pages/repository.ts';
 
 type PersonPortraitAvailable = (input: { ownerId: string; readableId: string }) => Promise<void>;
 
 export class EntitiesService {
   private readonly assets: Pick<AssetsRepositoryContract, 'find'>;
   private readonly entities: EntityRepositoryContract;
-  private readonly pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
   private readonly onPersonPortraitAvailable: PersonPortraitAvailable;
 
   constructor({
     assets,
     entities,
-    pages,
     onPersonPortraitAvailable,
   }: {
     assets: Pick<AssetsRepositoryContract, 'find'>;
     entities: EntityRepositoryContract;
-    pages: Pick<KnowledgePagesRepositoryContract, 'listByEntity'>;
     onPersonPortraitAvailable: PersonPortraitAvailable;
   }) {
     this.assets = assets;
     this.entities = entities;
-    this.pages = pages;
     this.onPersonPortraitAvailable = onPersonPortraitAvailable;
   }
 
@@ -86,26 +76,6 @@ export class EntitiesService {
 
   preview(input: { ownerId: string; readableId: string; includeArchived?: boolean }) {
     return this.entities.find(input);
-  }
-
-  async detail({
-    ownerId,
-    readableId,
-    includeArchived,
-  }: {
-    ownerId: string;
-    readableId: string;
-    includeArchived?: boolean;
-  }): Promise<EntityDetail | null> {
-    const entity = await this.entities.find({ ownerId, readableId, includeArchived });
-    if (!entity) {
-      return null;
-    }
-    const pages = await this.pages.listByEntity({
-      ownerId,
-      entityReadableId: readableId,
-    });
-    return { ...entity, pages };
   }
 
   async update(input: {
@@ -199,13 +169,5 @@ export class EntitiesService {
 
 export type EntitiesServiceContract = Pick<
   EntitiesService,
-  | 'create'
-  | 'list'
-  | 'detail'
-  | 'preview'
-  | 'update'
-  | 'setImage'
-  | 'removeImage'
-  | 'archive'
-  | 'unarchive'
+  'create' | 'list' | 'preview' | 'update' | 'setImage' | 'removeImage' | 'archive' | 'unarchive'
 >;

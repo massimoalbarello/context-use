@@ -62,7 +62,6 @@ export function createDemoResources({
       assets,
       onPersonPortraitAvailable: (input) => faces.preparePortrait(input),
       entities,
-      pages,
     }),
     historyService: new HistoryService(new HistoryRepository(database)),
     healthService: new HealthService(new HealthRepository(database)),

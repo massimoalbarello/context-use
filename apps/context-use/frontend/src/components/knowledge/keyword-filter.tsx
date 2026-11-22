@@ -83,7 +83,13 @@ export function KeywordFilter({
         placeholder={placeholder}
         maxLength={maxLength}
         value={draft}
-        onChange={(event) => setDraft(event.currentTarget.value)}
+        onChange={(event) => {
+          const next = event.currentTarget.value;
+          setDraft(next);
+          if (!next && value) {
+            onApply('');
+          }
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
             event.preventDefault();

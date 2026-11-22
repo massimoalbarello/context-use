@@ -155,7 +155,6 @@ test('entity and page APIs maintain owner-scoped knowledge and references', asyn
         assets: assetsRepository,
         onPersonPortraitAvailable: unusedAssetFacesService.preparePortrait,
         entities: entitiesRepository,
-        pages: pagesRepository,
       }),
       healthService: new HealthService(new HealthRepository(database)),
       mcpClientAuthorizationsService: unusedMcpClientAuthorizationsService,
@@ -684,22 +683,29 @@ Every observation changes the next action.`,
     const temporalEntityDetailResponse = await app.handle(
       jsonRequest({ method: 'GET', path: '/entities/temporal-subject' }),
     );
-    const temporalEntityDetail = (await temporalEntityDetailResponse.json()) as {
-      pages: Array<{ readableId: string }>;
-    };
-    expect(temporalEntityDetail.pages.map(({ readableId }) => readableId)).toEqual([
-      'current-programme',
-      'operating-rhythm',
-      'alpha-principles',
-    ]);
+    expect(await temporalEntityDetailResponse.json()).not.toHaveProperty('pages');
     const mentioningPagesResponse = await app.handle(
-      jsonRequest({ method: 'GET', path: '/pages?entityReadableId=temporal-subject&limit=1' }),
+      jsonRequest({
+        method: 'GET',
+        path: '/pages?entityReadableId=temporal-subject&order=timeline&limit=1',
+      }),
     );
     expect(mentioningPagesResponse.status).toBe(StatusMap.OK);
     expect(await mentioningPagesResponse.json()).toMatchObject({
       items: [expect.objectContaining({ readableId: 'alpha-principles' })],
       total: 3,
       nextOffset: 1,
+    });
+    const nextMentions = await app.handle(
+      jsonRequest({
+        method: 'GET',
+        path: '/pages?entityReadableId=temporal-subject&order=timeline&offset=1&limit=2',
+      }),
+    );
+    expect(await nextMentions.json()).toMatchObject({
+      items: [{ readableId: 'current-programme' }, { readableId: 'operating-rhythm' }],
+      total: 3,
+      nextOffset: null,
     });
     const missingEntityPages = await app.handle(
       jsonRequest({ method: 'GET', path: '/pages?entityReadableId=missing-entity' }),
@@ -863,11 +869,7 @@ Revise the current knowledge instead of appending snapshots.`,
     );
     expect(entityDetailResponse.status).toBe(StatusMap.OK);
     expectNoInternalResourceIds(await entityDetailResponse.clone().json());
-    expect(
-      ((await entityDetailResponse.json()) as { pages: Array<{ readableId: string }> }).pages.map(
-        ({ readableId }) => readableId,
-      ),
-    ).toEqual(['growth-playbook']);
+    expect(await entityDetailResponse.json()).not.toHaveProperty('pages');
 
     expect(
       await entitiesRepository.archive({

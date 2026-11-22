@@ -109,6 +109,7 @@ export const KnowledgePageListSchema = t.Object({
 export const KnowledgePageListQuerySchema = t.Object({
   status: t.Optional(ResourceStatusSchema),
   entityReadableId: t.Optional(ReadableIdSchema),
+  order: t.Optional(t.Literal('timeline')),
   visibility: t.Optional(PublicationVisibilitySchema),
   ...PaginationQuerySchema.properties,
   interval: t.Optional(

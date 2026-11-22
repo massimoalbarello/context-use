@@ -138,6 +138,19 @@ export function createAssetTransferController({
         detail: { hide: true },
       },
     )
+    .options(
+      MCP_ASSET_DOWNLOAD_ROUTE_PATH,
+      () =>
+        new Response(null, {
+          status: StatusMap['No Content'],
+          headers: {
+            'access-control-allow-origin': '*',
+            'access-control-allow-methods': 'GET',
+            'access-control-allow-headers': MCP_ASSET_TRANSFER_CAPABILITY_HEADER,
+          },
+        }),
+      { detail: { hide: true } },
+    )
     .get(
       MCP_ASSET_DOWNLOAD_ROUTE_PATH,
       async ({ params, request }) => {
@@ -172,7 +185,13 @@ export function createAssetTransferController({
             },
           );
         }
-        return assetContentResponse({ asset: content.asset, blob: content.blob, inline: false });
+        const response = assetContentResponse({
+          asset: content.asset,
+          blob: content.blob,
+          inline: false,
+        });
+        response.headers.set('access-control-allow-origin', '*');
+        return response;
       },
       {
         params: CapabilityParamsSchema,

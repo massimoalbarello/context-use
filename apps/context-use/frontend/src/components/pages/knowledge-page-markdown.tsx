@@ -1,75 +1,34 @@
-import { cn } from '@repo/ui/class-names';
 import { ReadingLink } from '@repo/ui/reading-link';
-import { createContext, isValidElement, type ReactNode, useContext } from 'react';
-import ReactMarkdown, {
-  type Components,
-  defaultUrlTransform,
-  type ExtraProps,
-} from 'react-markdown';
-import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
-import { normalizeKnowledgeHeadingId } from '#backend/models/markdown/headings.ts';
-import { remarkTables } from '#backend/models/markdown/tables.ts';
-import { internalLink } from '../../lib/internal-link';
 import type { AssetPreview } from '../../queries/assets';
 import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
 import { EntityLink } from '../entities/entity-link';
+import { markdownTextContent } from '../markdown/markdown-heading';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
-import { markdownTableComponents } from './markdown-table';
+import { type PageLinkProps, PageProse } from './page-prose';
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;
 type RecordReference = Pick<KnowledgePage['recordReferences'][number], 'readableId' | 'available'>;
 
-const MarkdownReferences = createContext<{
-  mentions: EntityMention[];
-  recordReferences: RecordReference[];
-  assets: ReadonlyMap<string, AssetPreview>;
-}>({ mentions: [], recordReferences: [], assets: new Map() });
-
-function textContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(textContent).join('');
-  }
-  if (isValidElement<{ children?: ReactNode }>(node)) {
-    return textContent(node.props.children);
-  }
-  return '';
-}
-
-export function knowledgeHeadingId(children: ReactNode): string {
-  return normalizeKnowledgeHeadingId(textContent(children));
-}
-
-export function entityMentionFrom({
-  readableId,
-  name,
+function MarkdownLink({
+  href,
+  target,
+  children,
   mentions,
-}: {
-  readableId: string;
-  name: string;
-  mentions: EntityMention[];
-}): EntityMention {
-  return (
-    mentions.find((entity) => entity.readableId === readableId) ?? { readableId, name, image: null }
-  );
-}
-
-function MarkdownLink({ href, children }: { href?: string; children?: ReactNode }) {
-  const { mentions, recordReferences } = useContext(MarkdownReferences);
-  const target = href ? internalLink(href) : null;
+  recordReferences,
+}: PageLinkProps & { mentions: EntityMention[]; recordReferences: RecordReference[] }) {
   if (target?.kind === 'entity') {
     return (
       <EntityLink
-        entity={entityMentionFrom({
-          readableId: target.readableId,
-          name: textContent(children),
-          mentions,
-        })}
+        entity={
+          mentions.find((item) => item.readableId === target.readableId) ?? {
+            readableId: target.readableId,
+            name: markdownTextContent(children),
+            image: null,
+          }
+        }
         presentation="inline"
       >
         {children}
@@ -90,7 +49,7 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
     }
     return (
       <RecordLink
-        record={{ readableId: target.readableId, title: textContent(children) }}
+        record={{ readableId: target.readableId, title: markdownTextContent(children) }}
         presentation="inline"
       >
         {children}
@@ -100,7 +59,7 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
   if (target?.kind === 'page') {
     return (
       <KnowledgePageLink
-        page={{ readableId: target.readableId, title: textContent(children) }}
+        page={{ readableId: target.readableId, title: markdownTextContent(children) }}
         presentation="inline"
         fragment={target.fragment}
       >
@@ -122,89 +81,6 @@ function MarkdownLink({ href, children }: { href?: string; children?: ReactNode 
   );
 }
 
-function MarkdownImage({
-  src,
-  alt,
-  className,
-  node,
-}: ExtraProps & {
-  src?: string;
-  alt?: string;
-  className?: string;
-}) {
-  const { assets } = useContext(MarkdownReferences);
-  const target = src ? internalLink(src) : null;
-  if (target?.kind !== 'asset') {
-    return null;
-  }
-  return (
-    <AssetMarkdownEmbed
-      readableId={target.readableId}
-      asset={assets.get(target.readableId)}
-      alt={alt}
-      className={className}
-      linked={Boolean(node?.properties['data-asset-linked'])}
-    />
-  );
-}
-
-const markdownComponents: Components = {
-  ...markdownTableComponents,
-  a: MarkdownLink,
-  img: MarkdownImage,
-  h1: ({ children }) => <h1 className="mb-7 font-semibold text-4xl tracking-tight">{children}</h1>,
-  h2: ({ children }) => (
-    <h2
-      className="mt-10 scroll-mt-24 border-border border-b pb-2 font-semibold text-2xl tracking-tight"
-      id={knowledgeHeadingId(children)}
-    >
-      {children}
-    </h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="mt-8 scroll-mt-24 font-semibold text-xl" id={knowledgeHeadingId(children)}>
-      {children}
-    </h3>
-  ),
-  h4: ({ children }) => (
-    <h4 className="mt-8 scroll-mt-24 font-semibold text-xl" id={knowledgeHeadingId(children)}>
-      {children}
-    </h4>
-  ),
-  h5: ({ children }) => (
-    <h5 className="mt-8 scroll-mt-24 font-semibold text-xl" id={knowledgeHeadingId(children)}>
-      {children}
-    </h5>
-  ),
-  h6: ({ children }) => (
-    <h6 className="mt-8 scroll-mt-24 font-semibold text-xl" id={knowledgeHeadingId(children)}>
-      {children}
-    </h6>
-  ),
-  p: ({ children }) => <p className="my-5 text-[1.05rem] leading-8">{children}</p>,
-  ul: ({ children }) => (
-    <ul className="my-5 list-disc pl-6 text-[1.05rem] leading-8">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="my-5 list-decimal pl-6 text-[1.05rem] leading-8">{children}</ol>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
-      {children}
-    </blockquote>
-  ),
-  code: ({ className, children }) => (
-    <code className={cn('rounded bg-muted px-1.5 py-0.5 font-mono text-sm', className)}>
-      {children}
-    </code>
-  ),
-  pre: ({ children }) => (
-    <pre className="overflow-x-auto rounded-lg bg-foreground p-4 text-background [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
-      {children}
-    </pre>
-  ),
-};
-
 export function KnowledgePageMarkdown({
   markdown,
   mentions = [],
@@ -216,26 +92,22 @@ export function KnowledgePageMarkdown({
   recordReferences?: RecordReference[];
   assets?: AssetPreview[];
 }) {
+  const assetsById = new Map(assets.map((asset) => [asset.readableId, asset]));
   return (
-    <MarkdownReferences
-      value={{
-        mentions,
-        recordReferences,
-        assets: new Map(assets.map((asset) => [asset.readableId, asset])),
-      }}
-    >
-      <article className="py-3 md:py-5">
-        <ReactMarkdown
-          remarkPlugins={[remarkTables, remarkAssetLayout]}
-          skipHtml
-          urlTransform={(url) =>
-            url.startsWith('context-use://') ? url : defaultUrlTransform(url)
-          }
-          components={markdownComponents}
-        >
-          {markdown}
-        </ReactMarkdown>
-      </article>
-    </MarkdownReferences>
+    <PageProse
+      markdown={markdown}
+      renderLink={(props) => (
+        <MarkdownLink {...props} mentions={mentions} recordReferences={recordReferences} />
+      )}
+      renderAsset={({ readableId, alt, linked, className }) => (
+        <AssetMarkdownEmbed
+          readableId={readableId}
+          asset={assetsById.get(readableId)}
+          alt={alt}
+          linked={linked}
+          className={className}
+        />
+      )}
+    />
   );
 }

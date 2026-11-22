@@ -9,7 +9,7 @@ import { createSqliteDatabase } from '#backend/db/client.ts';
 import { runMigrations } from '#backend/db/migrate.ts';
 import { OWNER_SYNTHETIC_EMAIL, OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { LocalStorage } from '#backend/lib/storage/local-storage.ts';
-import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/media.ts';
+import { EMBEDDABLE_ASSET_MEDIA_TYPES } from '#backend/models/assets/presentation.ts';
 import type { Entity } from '#backend/models/entities/model.ts';
 import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
 import { parseKnowledgePageMarkdown } from '#backend/models/knowledge-pages/markdown.ts';
@@ -125,7 +125,6 @@ const unusedEntitiesService: EntitiesServiceContract = {
   preview: unexpectedCall,
   create: unexpectedCall,
   list: unexpectedCall,
-  detail: unexpectedCall,
   update: unexpectedCall,
   setImage: unexpectedCall,
   removeImage: unexpectedCall,
@@ -165,6 +164,7 @@ async function withMcpClient<T>({
   run: (client: Client) => Promise<T>;
 }): Promise<T> {
   const server = createContextUseMcpServer({
+    instanceOrigin: 'https://context-use.example',
     recordsService,
     principal: actor,
     assetsService,
@@ -223,6 +223,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'open_resource',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -277,6 +278,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'cursor',
       );
       const searchInput = tools.find(({ name }) => name === 'search_hypermedia')!.inputSchema;
+      expect(searchInput.required).toContain('query');
       const searchFields = searchInput.properties as Record<
         string,
         { description?: string; properties?: Record<string, { description?: string }> }
@@ -343,7 +345,10 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         },
       });
       expect(tools.find(({ name }) => name === 'read_asset')?.inputSchema).toMatchObject({
-        properties: { address: { pattern: expect.any(String) } },
+        properties: {
+          address: { pattern: expect.any(String) },
+          includePreview: { type: 'boolean' },
+        },
       });
       expect(
         tools.find(({ name }) => name === 'create_asset_upload')?.inputSchema,
@@ -374,6 +379,92 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
           expect(properties).not.toHaveProperty('guide_version');
         }
       }
+    },
+  });
+});
+
+test('page tools expose a self-contained MCP app without owner data in the resource', async () => {
+  await withMcpClient({
+    run: async (client) => {
+      const { tools } = await client.listTools();
+      const { resources } = await client.listResources();
+      const uri = resources[0]!.uri;
+      expect(uri).toMatch(/^ui:\/\/context-use\/workspace-[a-f0-9]{64}\.html$/);
+      expect(tools.filter((tool) => tool._meta?.ui).map((tool) => tool.name)).toEqual([
+        'create_knowledge_page',
+        'update_knowledge_page',
+        'archive_knowledge_page',
+        'open_resource',
+      ]);
+      for (const address of [
+        'context-use://page/notes#summary',
+        'context-use://entity/steve-jobs',
+        'context-use://asset/original-ipod-photo',
+      ]) {
+        const result = await client.callTool({ name: 'open_resource', arguments: { address } });
+        expect(result.isError).not.toBe(true);
+        expect(result._meta).toEqual({ address });
+        expect(result.structuredContent).toBeUndefined();
+      }
+      for (const tool of tools.filter((item) => item._meta?.ui)) {
+        expect(tool._meta?.ui).toMatchObject({ resourceUri: uri });
+      }
+      expect(resources).toMatchObject([
+        {
+          uri,
+          mimeType: 'text/html;profile=mcp-app',
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: ['https://context-use.example'],
+                resourceDomains: ['https://context-use.example'],
+              },
+            },
+          },
+        },
+      ]);
+      const resource = await client.readResource({ uri });
+      const content = resource.contents[0]!;
+      expect(content.mimeType).toBe('text/html;profile=mcp-app');
+      expect('text' in content).toBe(true);
+      if (!('text' in content)) {
+        throw new Error('Expected HTML resource');
+      }
+      expect(content.text).toContain('<!doctype html>');
+      expect(content.text).not.toMatch(/<script[^>]+src=/);
+      expect(content.text).not.toContain(INTERNAL_PAGE_ID);
+      expect(content.text).not.toContain(principal.ownerId);
+      expect(content.text).not.toContain(page.markdown);
+    },
+  });
+});
+
+test('page discovery returns owner-scoped matches to the agent', async () => {
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input).toMatchObject({
+          ownerId: principal.ownerId,
+          query: 'notes',
+          resourceTypes: ['knowledge_page'],
+          limit: 10,
+        });
+        return Promise.resolve({
+          results: [{ resourceType: 'knowledge_page', knowledgePage: page, matchExcerpt: null }],
+          totalMatches: 1,
+          truncated: false,
+        });
+      },
+    },
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'search_hypermedia',
+        arguments: { query: 'notes', resourceTypes: ['knowledge_page'], limit: 10 },
+      });
+      expect(result._meta?.search).toBeUndefined();
+      expect(result.structuredContent).toMatchObject({
+        results: [{ address: `context-use://page/${page.readableId}` }],
+      });
     },
   });
 });
@@ -528,6 +619,11 @@ test('MCP search rejects invalid filters before reaching retrieval', async () =>
       },
     },
     run: async (client) => {
+      for (const args of [{}, { query: '' }, { query: '   ' }]) {
+        expect(
+          (await client.callTool({ name: 'search_hypermedia', arguments: args })).isError,
+        ).toBe(true);
+      }
       for (const filters of [
         { interval: 'all' },
         { assetKind: 'image' },
@@ -844,6 +940,17 @@ test('successful create and update tools return only newly needed coordinates an
         },
       });
       expect(updatedPage.structuredContent).toEqual({ revisionNumber: 2 });
+      for (const result of [createdPage, updatedPage]) {
+        expect(result._meta).toMatchObject({
+          page: {
+            address: 'context-use://page/growth-playbook',
+            markdown: page.markdown,
+            revisionNumber: 2,
+          },
+        });
+        expectNoInternalResourceIds(result._meta);
+        expect(JSON.stringify(result.content)).not.toContain(page.markdown);
+      }
     },
   });
 });
@@ -1042,11 +1149,43 @@ test('MCP lists are owner-scoped, bounded, cursor-paginated, and reject invalid 
   });
 });
 
+test('mention cursors continue the same entity and cannot be reused for another list', async () => {
+  const mentioningEntity = 'context-use://entity/luca-bianchi';
+  await withMcpClient({
+    pagesService: {
+      ...unusedPagesService,
+      list: ({ entityReadableId, ownerId, limit, offset, order }) => {
+        expect({ entityReadableId, ownerId, limit, order }).toEqual({
+          entityReadableId: 'luca-bianchi',
+          ownerId: principal.ownerId,
+          limit: 1,
+          order: 'timeline',
+        });
+        return Promise.resolve({ items: [page], total: 2, nextOffset: offset === 0 ? 1 : null });
+      },
+    },
+    run: async (client) => {
+      const name = 'list_knowledge_pages';
+      const first = await client.callTool({ name, arguments: { mentioningEntity, limit: 1 } });
+      const { nextCursor: cursor } = first.structuredContent as { nextCursor: string };
+      expect(typeof cursor).toBe('string');
+      const next = await client.callTool({
+        name,
+        arguments: { mentioningEntity, cursor, limit: 1 },
+      });
+      expect(next.structuredContent).toMatchObject({ total: 2, nextCursor: null });
+      for (const args of [{ cursor }, { cursor, mentioningEntity: 'context-use://entity/other' }]) {
+        expect(errorCode(await client.callTool({ name, arguments: args }))).toBe('invalid_cursor');
+      }
+    },
+  });
+});
+
 test('exact typed reads preserve owner-scoped not-found indistinguishability', async () => {
   const owners: string[] = [];
   const entitiesService: EntitiesServiceContract = {
     ...unusedEntitiesService,
-    detail: ({ ownerId }) => {
+    preview: ({ ownerId }) => {
       owners.push(ownerId);
       return Promise.resolve(null);
     },
@@ -1725,7 +1864,6 @@ test('resource results carry current owner-scoped publication status through sea
     const entitiesService = new EntitiesService({
       entities: new EntitiesRepository(database),
       assets,
-      pages,
       onPersonPortraitAvailable: async () => {},
     });
     const assetsService = new AssetsService({ assets, storage, faces: unusedAssetFacesService });
@@ -1891,10 +2029,10 @@ test('resource results carry current owner-scoped publication status through sea
               ]);
               expect(
                 await read({
-                  name: 'read_entity',
-                  arguments: { address: 'context-use://entity/awareness-person' },
+                  name: 'list_knowledge_pages',
+                  arguments: { mentioningEntity: 'context-use://entity/awareness-person' },
                 }),
-              ).toMatchObject({ pages: [expect.objectContaining({ publication: expected })] });
+              ).toMatchObject({ items: [expect.objectContaining({ publication: expected })] });
               expect(
                 await read({
                   name: 'read_asset',

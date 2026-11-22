@@ -24,29 +24,36 @@ type McpListKind = 'assets' | 'entities' | 'knowledge_pages';
 
 const CursorPayloadSchema = z.object({
   version: z.literal(1),
+  scope: z.string().optional(),
   list: z.union([z.literal('assets'), z.literal('entities'), z.literal('knowledge_pages')]),
   offset: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 });
 
 export function encodeMcpCursor({
   list,
+  scope,
   offset,
 }: {
   list: McpListKind;
+  scope?: string;
   offset: number | null;
 }): string | null {
   if (offset === null) {
     return null;
   }
-  return Buffer.from(JSON.stringify({ version: 1, list, offset }), 'utf8').toString('base64url');
+  return Buffer.from(JSON.stringify({ version: 1, list, scope, offset }), 'utf8').toString(
+    'base64url',
+  );
 }
 
 export function decodeMcpCursor({
   cursor,
   list,
+  scope,
 }: {
   cursor: string | undefined;
   list: McpListKind;
+  scope?: string;
 }): { state: 'valid'; offset: number } | { state: 'invalid' } {
   if (!cursor) {
     return { state: 'valid', offset: 0 };
@@ -57,7 +64,7 @@ export function decodeMcpCursor({
       return { state: 'invalid' };
     }
     const payload = CursorPayloadSchema.parse(JSON.parse(decoded.toString('utf8')));
-    return payload.list === list
+    return payload.list === list && payload.scope === scope
       ? { state: 'valid', offset: payload.offset }
       : { state: 'invalid' };
   } catch {

@@ -1,4 +1,4 @@
-import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
+import { isEmbeddableAssetMedia, isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 export function assetContentUrl({
   readableId,
   includeArchived = false,
@@ -20,7 +20,7 @@ export function assetDownloadUrl({
 }
 
 export function isEmbeddableAsset(asset: { mediaType: string }): boolean {
-  return ['image/gif', 'image/jpeg', 'image/png', 'image/webp'].includes(asset.mediaType);
+  return isEmbeddableAssetMedia(asset.mediaType);
 }
 
 export function isVideoAsset(asset: { mediaType: string }): boolean {
@@ -32,4 +32,18 @@ export function assetTypeLabel(asset: { mediaType: string; extension?: string | 
     return asset.extension.toUpperCase();
   }
   return asset.mediaType === 'application/octet-stream' ? 'File' : asset.mediaType;
+}
+
+const BYTES_PER_KIBIBYTE = 1024;
+const KIBIBYTES_PER_MEBIBYTE = 1024;
+const BYTES_PER_MEBIBYTE = BYTES_PER_KIBIBYTE * KIBIBYTES_PER_MEBIBYTE;
+
+export function formatAssetSize(sizeBytes: number): string {
+  if (sizeBytes < BYTES_PER_KIBIBYTE) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < BYTES_PER_MEBIBYTE) {
+    return `${(sizeBytes / BYTES_PER_KIBIBYTE).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / BYTES_PER_MEBIBYTE).toFixed(1)} MB`;
 }

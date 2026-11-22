@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
+import { detectAssetMedia } from '#backend/models/assets/media.ts';
 import {
-  detectAssetMedia,
   EMBEDDABLE_ASSET_MEDIA_TYPES,
   isEmbeddableAssetMedia,
-} from '#backend/models/assets/media.ts';
+} from '#backend/models/assets/presentation.ts';
 
 describe('asset media detection', () => {
   test('falls back to a non-executable attachment type for unknown bytes', async () => {

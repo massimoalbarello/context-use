@@ -94,6 +94,7 @@ export function createPagesController({
           visibility: query.visibility,
           interval: query.interval,
           entityReadableId: query.entityReadableId,
+          order: query.order,
           temporalBounds,
         };
         const page = await pagesService.list(input);
