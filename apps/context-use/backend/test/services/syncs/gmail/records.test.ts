@@ -89,7 +89,9 @@ test('Gmail updates one conversation per sync and keeps earlier imports when a s
           sourceOccurredAt: sentAt,
           sourceUpdatedAt: sentAt,
         });
-        expect((await read())!.source.url).toContain('mail.google.com');
+        expect((await read())!.body).toContain(
+          `[Open conversation in Gmail](https://mail.google.com/mail/?authuser=${encodeURIComponent(account)}#all/thread-one)`,
+        );
         expect((await read())!.body).toContain('### Invoice');
         expect((await read())!.body).toMatch(/\| Services\s*\| £120\.50/);
         expect((await read())!.body).toContain('### Attachments');

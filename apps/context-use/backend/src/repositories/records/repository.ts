@@ -88,16 +88,12 @@ function existingWriteState({
   }
   const record = input.value?.record;
   const sourceUpdatedAt = record?.sourceUpdatedAt ?? input.deletion?.sourceUpdatedAt;
-  // Earlier sync deliveries omitted the source URL. A retry of that same revision
-  // acknowledges the original write; a later revision can populate the URL.
-  const replayWithoutStoredUrl =
-    current.sourceUrl === null && input.sync?.revision === current.syncRevision;
   const unchanged = Boolean(
     record &&
       !current.deletedAt &&
       current.contentHash === input.value?.contentHash &&
       current.title === record.title &&
-      (current.sourceUrl === record.source.url || replayWithoutStoredUrl) &&
+      current.sourceUrl === record.source.url &&
       current.sourceCreatedAt === record.sourceCreatedAt &&
       current.sourceOccurredAt === record.sourceOccurredAt &&
       current.sourceUpdatedAt === record.sourceUpdatedAt,
