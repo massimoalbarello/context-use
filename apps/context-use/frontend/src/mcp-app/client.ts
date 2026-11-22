@@ -73,17 +73,20 @@ export class PagesClient {
   async save(input: {
     page?: Page;
     markdown: string;
-    temporalCoverage: string | null;
+    temporalCoverage?: string | null;
+    changeMessage?: string;
     allowDuplicate?: boolean;
   }) {
-    const { page, ...values } = input;
+    const { page, changeMessage, ...values } = input;
     const result = await this.call({
       name: page ? 'update_knowledge_page' : 'create_knowledge_page',
       args: {
         ...values,
         ...(page ? { address: page.address, expectedRevisionNumber: page.revisionNumber } : {}),
         guide_version: await this.guideVersion(),
-        changeMessage: page ? 'Edited page in Context Use app' : 'Created page in Context Use app',
+        changeMessage:
+          changeMessage ??
+          (page ? 'Edited page in Context Use app' : 'Created page in Context Use app'),
       },
     });
     return McpKnowledgePageSchema.parse(result._meta?.page);

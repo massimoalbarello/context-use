@@ -65,7 +65,8 @@ test('creates a page through the host and opens its saved content', async () => 
           expect(args).toMatchObject({
             guide_version: 'current-guide',
             markdown: page.markdown,
-            temporalCoverage: null,
+            temporalCoverage: '2026',
+            changeMessage: 'First draft',
           });
           saved = true;
           return Promise.resolve({
@@ -83,7 +84,14 @@ test('creates a page through the host and opens its saved content', async () => 
   await user.click(screen.getByRole('button', { name: 'New page' }));
   const markdown = screen.getByRole('textbox', { name: 'Page content (Markdown)' });
   await user.clear(markdown);
+  await user.click(screen.getByRole('button', { name: 'Save page' }));
+  await screen.findByText('Start with one H1 title and add content below it.');
   await user.type(markdown, page.markdown);
+  await user.type(screen.getByRole('textbox', { name: 'Interval (optional)' }), '2026');
+  await user.type(
+    screen.getByRole('textbox', { name: 'Change summary (optional)' }),
+    'First draft',
+  );
   await user.click(screen.getByRole('button', { name: 'Preview' }));
   expect(screen.getByRole('heading', { name: 'Notes' })).toBeTruthy();
   await user.click(screen.getByRole('button', { name: 'Save page' }));
@@ -167,6 +175,7 @@ test('continues opaque pagination and can navigate to an archive blocker', async
     address: 'context-use://page/blocker',
     readableId: 'blocker',
     title: 'Blocker',
+    publication: { isPublic: true, publishedRevisionNumber: 1 },
     markdown: '# Blocker\n\nReference to notes.',
   };
   const user = setup({
@@ -198,7 +207,7 @@ test('continues opaque pagination and can navigate to an archive blocker', async
     },
   });
   await user.click(await screen.findByRole('button', { name: 'Load more pages' }));
-  await screen.findByRole('button', { name: /Blocker Things/ });
+  await screen.findByRole('button', { name: /Blocker Things.*Public/ });
   expect(loads).toBe(2);
   await user.click(screen.getByRole('button', { name: /Notes Things/ }));
   await user.click(await screen.findByRole('button', { name: 'Archive' }));

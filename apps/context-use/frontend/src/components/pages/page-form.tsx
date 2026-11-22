@@ -1,0 +1,223 @@
+import { Button } from '@repo/ui/button';
+import { useForm } from '@tanstack/react-form';
+import type { ReactNode } from 'react';
+import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
+import {
+  MAX_TEMPORAL_COVERAGE_LENGTH,
+  parseTemporalCoverage,
+} from '#backend/models/knowledge-pages/temporal-coverage.ts';
+import { submitThenChangeValidation } from '../../lib/form-validation';
+import { temporalCoverageMutation } from '../../lib/temporal-coverage';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
+import { Input } from '../ui/input';
+
+export type KnowledgePageFormValues = {
+  markdown: string;
+  temporalCoverage: string | null;
+};
+
+type KnowledgePageFormSubmission = Omit<KnowledgePageFormValues, 'temporalCoverage'> & {
+  temporalCoverage?: string | null;
+  allowDuplicate?: boolean;
+  changeMessage?: string;
+};
+
+export type MarkdownInputProps = {
+  id: string;
+  name: string;
+  value: string;
+  invalid: boolean;
+  onBlur: () => void;
+  onChange: (value: string) => void;
+};
+
+export type PageFormLayout = {
+  initialValues: KnowledgePageFormValues;
+  pending: boolean;
+  header: (intervalField: ReactNode) => ReactNode;
+  onSubmit: (values: KnowledgePageFormSubmission) => void;
+} & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
+
+type PageFormProps = PageFormLayout & {
+  error: ReactNode;
+  duplicateTitle: boolean;
+  submitDisabled?: boolean;
+  markdownInput: (props: MarkdownInputProps) => ReactNode;
+};
+
+function validateMarkdown({ value }: { value: string }): string | undefined {
+  return /^\s*# .+\n[\s\S]*\S/.test(value)
+    ? undefined
+    : 'Start with one H1 title and add content below it.';
+}
+
+function validateTemporalCoverage({ value }: { value: string }): string | undefined {
+  const normalized = value.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  try {
+    parseTemporalCoverage(normalized);
+    return undefined;
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Enter a supported interval.';
+  }
+}
+
+export function PageForm({
+  initialValues,
+  formId,
+  pending,
+  error,
+  duplicateTitle,
+  submitDisabled,
+  markdownInput,
+  header,
+  submitLabel,
+  onSubmit,
+}: PageFormProps) {
+  const form = useForm({
+    defaultValues: {
+      markdown: initialValues.markdown,
+      temporalCoverage: initialValues.temporalCoverage ?? '',
+      allowDuplicate: false,
+      changeMessage: '',
+    },
+    validationLogic: submitThenChangeValidation,
+    onSubmit: ({ value }) => {
+      const temporalCoverage = temporalCoverageMutation({
+        initial: initialValues.temporalCoverage,
+        current: value.temporalCoverage,
+      });
+      return onSubmit({
+        markdown: value.markdown.trim(),
+        changeMessage: value.changeMessage.trim() || undefined,
+        ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
+        allowDuplicate: value.allowDuplicate || undefined,
+      });
+    },
+  });
+  const intervalField = (
+    <form.Field name="temporalCoverage" validators={{ onDynamic: validateTemporalCoverage }}>
+      {(field) => (
+        <Field className="w-56 gap-1" data-invalid={field.state.meta.errors.length > 0}>
+          <FieldLabel className="sr-only" htmlFor={field.name}>
+            Interval (optional)
+          </FieldLabel>
+          <div className="flex items-center gap-2">
+            <Input
+              className="rounded-full bg-muted/55"
+              id={field.name}
+              name={field.name}
+              disabled={pending}
+              maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
+              placeholder="Add interval"
+              value={field.state.value}
+              aria-describedby={`${field.name}-help`}
+              aria-invalid={field.state.meta.errors.length > 0}
+              onBlur={field.handleBlur}
+              onChange={(event) => field.handleChange(event.target.value)}
+            />
+            {field.state.value && (
+              <Button
+                className="h-auto shrink-0 px-0 py-0 text-xs"
+                type="button"
+                disabled={pending}
+                variant="link"
+                onClick={() => field.handleChange('')}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          <FieldDescription className="sr-only" id={`${field.name}-help`}>
+            Add when the page's subject occurred or applied, such as 2025 or 2025-03/2025-08. Leave
+            blank when no useful interval is known.
+          </FieldDescription>
+          <FieldError>{field.state.meta.errors[0]}</FieldError>
+        </Field>
+      )}
+    </form.Field>
+  );
+
+  return (
+    <form
+      id={formId}
+      className="grid gap-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (pending || submitDisabled) {
+          return;
+        }
+        form.setFieldValue('allowDuplicate', false);
+        void form.handleSubmit();
+      }}
+    >
+      {header(intervalField)}
+      <FieldGroup>
+        <form.Field name="markdown" validators={{ onDynamic: validateMarkdown }}>
+          {(field) => (
+            <Field data-invalid={field.state.meta.errors.length > 0}>
+              {markdownInput({
+                id: field.name,
+                name: field.name,
+                value: field.state.value,
+                invalid: field.state.meta.errors.length > 0,
+                onBlur: field.handleBlur,
+                onChange: field.handleChange,
+              })}
+              <FieldError>{field.state.meta.errors[0]}</FieldError>
+            </Field>
+          )}
+        </form.Field>
+        <form.Field name="changeMessage">
+          {(field) => (
+            <Field>
+              <FieldLabel htmlFor="page-change-message">Change summary (optional)</FieldLabel>
+              <Input
+                id="page-change-message"
+                value={field.state.value}
+                disabled={pending}
+                maxLength={MAX_CHANGE_MESSAGE_LENGTH}
+                placeholder="What changed and why?"
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+              />
+              <FieldDescription>Shown in History alongside the changes.</FieldDescription>
+            </Field>
+          )}
+        </form.Field>
+      </FieldGroup>
+
+      {error && <FieldError>{error}</FieldError>}
+
+      {(submitLabel || duplicateTitle) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {submitLabel && (
+            <Button
+              className="justify-self-start"
+              size="lg"
+              type="submit"
+              disabled={pending || submitDisabled}
+            >
+              {pending ? 'Saving…' : submitLabel}
+            </Button>
+          )}
+          {duplicateTitle && (
+            <Button
+              variant="outline"
+              type="button"
+              disabled={pending || submitDisabled}
+              onClick={() => {
+                form.setFieldValue('allowDuplicate', true);
+                void form.handleSubmit();
+              }}
+            >
+              Use this title anyway
+            </Button>
+          )}
+        </div>
+      )}
+    </form>
+  );
+}

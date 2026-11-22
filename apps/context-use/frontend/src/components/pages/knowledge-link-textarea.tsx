@@ -16,7 +16,7 @@ import {
   insertKnowledgeLink,
   type KnowledgeLinkTarget,
 } from './knowledge-link';
-import { KnowledgePageCardContent } from './knowledge-page-link';
+import { KnowledgePageCardContent } from './knowledge-page-card-content';
 
 function suggestionId(suggestion: KnowledgeSuggestion): string {
   if (suggestion.kind === 'entity') {

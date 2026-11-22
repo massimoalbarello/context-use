@@ -2,6 +2,7 @@ import { Button } from '@repo/ui/button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ResourceArchiveAction } from '../components/knowledge/resource-archive-action';
+import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
 import { type Page, type PagesClient, PageToolError } from './client';
 import { PageMarkdown } from './page-markdown';
 import { pageQueryKey, pagesQueryKey } from './queries';
@@ -58,16 +59,20 @@ export function PageDetail({
           {page.temporalCoverage ? ` · ${page.temporalCoverage}` : ''}
         </span>
         <div className="flex gap-2">
-          <Button disabled={archive.isPending || detail.isFetching} onClick={() => onEdit(page)}>
-            Edit page
-          </Button>
-          <ResourceArchiveAction
+          <ResourceDetailActions
+            mode="view"
             resource="page"
-            blocked={false}
-            pending={archive.isPending}
-            onBlocked={() => {}}
-            onConfirm={() => archive.mutate()}
-          />
+            editDisabled={archive.isPending || detail.isFetching}
+            onEdit={() => onEdit(page)}
+          >
+            <ResourceArchiveAction
+              resource="page"
+              blocked={false}
+              pending={archive.isPending}
+              onBlocked={() => {}}
+              onConfirm={() => archive.mutate()}
+            />
+          </ResourceDetailActions>
         </div>
       </div>
       {archive.error && (

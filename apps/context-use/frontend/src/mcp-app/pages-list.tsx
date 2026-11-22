@@ -1,7 +1,15 @@
 import { Button } from '@repo/ui/button';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
 import { useState } from 'react';
+import {
+  ResourceList,
+  ResourceListEmpty,
+  resourceCardVariants,
+} from '../components/knowledge/resource-list';
+import {
+  KnowledgePageCardContent,
+  PageRevisionBadge,
+} from '../components/pages/knowledge-page-card-content';
 import { Input } from '../components/ui/input';
 import type { PagesClient } from './client';
 import { pagesQueryKey } from './queries';
@@ -46,31 +54,38 @@ export function PagesList({
         </div>
       )}
       {pages.isSuccess && !items.length && (
-        <p>
-          No pages yet. Create a page here, or ask your assistant to save something from this
-          conversation.
-        </p>
+        <ResourceListEmpty title="No pages yet.">
+          Create a page here, or ask your assistant to save something from this conversation.
+        </ResourceListEmpty>
       )}
-      {items.length > 0 && !filtered.length && <p>No loaded pages match this filter.</p>}
-      <ul className="grid gap-2">
+      {items.length > 0 && !filtered.length && (
+        <ResourceListEmpty title="No loaded pages match this filter.">
+          Change the filter to find a page.
+        </ResourceListEmpty>
+      )}
+      <ResourceList className="gap-2">
         {filtered.map((page) => (
           <li key={page.address}>
             <button
               type="button"
-              className="flex w-full gap-3 rounded-lg p-3 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+              className={resourceCardVariants({ className: 'w-full' })}
               onClick={() => onPage(page.address)}
             >
-              <FileText aria-hidden="true" className="mt-1 size-5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0">
-                <span className="block font-medium">{page.title}</span>
-                <span className="mt-1 line-clamp-2 block text-muted-foreground text-sm">
-                  {page.excerpt}
-                </span>
-              </span>
+              <KnowledgePageCardContent
+                page={page}
+                publicationStatus={
+                  page.publication.isPublic && (
+                    <PageRevisionBadge
+                      revisionNumber={page.revisionNumber}
+                      publishedRevisionNumber={page.publication.publishedRevisionNumber}
+                    />
+                  )
+                }
+              />
             </button>
           </li>
         ))}
-      </ul>
+      </ResourceList>
       {pages.hasNextPage && (
         <Button
           variant="outline"

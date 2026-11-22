@@ -1,211 +1,46 @@
-import { Button } from '@repo/ui/button';
-import { useForm } from '@tanstack/react-form';
 import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useState } from 'react';
-import { MAX_CHANGE_MESSAGE_LENGTH } from '#backend/models/history/model.ts';
-import {
-  MAX_TEMPORAL_COVERAGE_LENGTH,
-  parseTemporalCoverage,
-} from '#backend/models/knowledge-pages/temporal-coverage.ts';
+import { useState } from 'react';
 import { DuplicateResourceNameError } from '../../lib/api-error';
-import { submitThenChangeValidation } from '../../lib/form-validation';
-import { temporalCoverageMutation } from '../../lib/temporal-coverage';
 import { knowledgeSuggestionsQueryOptions } from '../../queries/knowledge-suggestions';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '../ui/field';
-import { Input } from '../ui/input';
+import { FieldDescription } from '../ui/field';
 import { KnowledgeLinkTextarea } from './knowledge-link-textarea';
+import { type MarkdownInputProps, PageForm, type PageFormLayout } from './page-form';
 
-export type KnowledgePageFormValues = {
-  markdown: string;
-  temporalCoverage: string | null;
-};
+export type { KnowledgePageFormValues } from './page-form';
 
-type KnowledgePageFormSubmission = Omit<KnowledgePageFormValues, 'temporalCoverage'> & {
-  temporalCoverage?: string | null;
-  allowDuplicate?: boolean;
-  changeMessage?: string;
-};
-
-type KnowledgePageFormProps = {
-  initialValues: KnowledgePageFormValues;
-  pending: boolean;
-  error: Error | null;
-  header: (intervalField: ReactNode) => ReactNode;
-  onSubmit: (values: KnowledgePageFormSubmission) => void;
-} & ({ submitLabel: string; formId?: never } | { formId: string; submitLabel?: never });
-
-function validateMarkdown({ value }: { value: string }): string | undefined {
-  return /^\s*# .+\n[\s\S]*\S/.test(value)
-    ? undefined
-    : 'Start with one H1 title and add content below it.';
-}
-
-function validateTemporalCoverage({ value }: { value: string }): string | undefined {
-  const normalized = value.trim();
-  if (!normalized) {
-    return undefined;
-  }
-  try {
-    parseTemporalCoverage(normalized);
-    return undefined;
-  } catch (error) {
-    return error instanceof Error ? error.message : 'Enter a supported interval.';
-  }
-}
-
-export function KnowledgePageForm({
-  initialValues,
-  formId,
-  pending,
-  error,
-  header,
-  submitLabel,
-  onSubmit,
-}: KnowledgePageFormProps) {
-  const [knowledgeQuery, setKnowledgeQuery] = useState<string | null>(null);
-  const suggestions = useQuery(knowledgeSuggestionsQueryOptions(knowledgeQuery ?? ''));
-  const form = useForm({
-    defaultValues: {
-      markdown: initialValues.markdown,
-      temporalCoverage: initialValues.temporalCoverage ?? '',
-      allowDuplicate: false,
-      changeMessage: '',
-    },
-    validationLogic: submitThenChangeValidation,
-    onSubmit: ({ value }) => {
-      const temporalCoverage = temporalCoverageMutation({
-        initial: initialValues.temporalCoverage,
-        current: value.temporalCoverage,
-      });
-      onSubmit({
-        markdown: value.markdown.trim(),
-        changeMessage: value.changeMessage.trim() || undefined,
-        ...(temporalCoverage === undefined ? {} : { temporalCoverage }),
-        allowDuplicate: value.allowDuplicate || undefined,
-      });
-    },
-  });
-  const duplicateTitle = error instanceof DuplicateResourceNameError;
-  const intervalField = (
-    <form.Field name="temporalCoverage" validators={{ onDynamic: validateTemporalCoverage }}>
-      {(field) => (
-        <Field className="w-56 gap-1" data-invalid={field.state.meta.errors.length > 0}>
-          <FieldLabel className="sr-only" htmlFor={field.name}>
-            Interval (optional)
-          </FieldLabel>
-          <div className="flex items-center gap-2">
-            <Input
-              className="rounded-full bg-muted/55"
-              id={field.name}
-              name={field.name}
-              maxLength={MAX_TEMPORAL_COVERAGE_LENGTH}
-              placeholder="Add interval"
-              value={field.state.value}
-              aria-describedby={`${field.name}-help`}
-              aria-invalid={field.state.meta.errors.length > 0}
-              onBlur={field.handleBlur}
-              onChange={(event) => field.handleChange(event.target.value)}
-            />
-            {field.state.value && (
-              <Button
-                className="h-auto shrink-0 px-0 py-0 text-xs"
-                type="button"
-                variant="link"
-                onClick={() => field.handleChange('')}
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-          <FieldDescription className="sr-only" id={`${field.name}-help`}>
-            Add when the page's subject occurred or applied, such as 2025 or 2025-03/2025-08. Leave
-            blank when no useful interval is known.
-          </FieldDescription>
-          <FieldError>{field.state.meta.errors[0]}</FieldError>
-        </Field>
-      )}
-    </form.Field>
-  );
-
+function MarkdownInput(props: MarkdownInputProps) {
+  const [query, setQuery] = useState<string | null>(null);
+  const suggestions = useQuery(knowledgeSuggestionsQueryOptions(query ?? ''));
   return (
-    <form
-      id={formId}
-      className="grid gap-5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        form.setFieldValue('allowDuplicate', false);
-        void form.handleSubmit();
-      }}
-    >
-      {header(intervalField)}
-      <FieldGroup>
-        <form.Field name="markdown" validators={{ onDynamic: validateMarkdown }}>
-          {(field) => (
-            <Field data-invalid={field.state.meta.errors.length > 0}>
-              <span className="sr-only">Knowledge page content</span>
-              <KnowledgeLinkTextarea
-                id={field.name}
-                name={field.name}
-                value={field.state.value}
-                suggestions={suggestions.data?.suggestions ?? []}
-                loading={suggestions.isPending}
-                error={suggestions.error}
-                totalMatches={suggestions.data?.totalMatches ?? 0}
-                truncated={suggestions.data?.truncated ?? false}
-                onRetry={() => void suggestions.refetch()}
-                invalid={field.state.meta.errors.length > 0}
-                onBlur={field.handleBlur}
-                onChange={field.handleChange}
-                onQueryChange={setKnowledgeQuery}
-              />
-              <FieldDescription>
-                Keep one coherent idea here. Type @ to mention an entity, reference a page or
-                record, or use an asset; use H2 or lower headings for linkable sections.
-              </FieldDescription>
-              <FieldError>{field.state.meta.errors[0]}</FieldError>
-            </Field>
-          )}
-        </form.Field>
-        <form.Field name="changeMessage">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor="page-change-message">Change summary (optional)</FieldLabel>
-              <Input
-                id="page-change-message"
-                value={field.state.value}
-                maxLength={MAX_CHANGE_MESSAGE_LENGTH}
-                placeholder="What changed and why?"
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-              />
-              <FieldDescription>Shown in History alongside the changes.</FieldDescription>
-            </Field>
-          )}
-        </form.Field>
-      </FieldGroup>
+    <>
+      <span className="sr-only">Knowledge page content</span>
+      <KnowledgeLinkTextarea
+        {...props}
+        suggestions={suggestions.data?.suggestions ?? []}
+        loading={suggestions.isPending}
+        error={suggestions.error}
+        totalMatches={suggestions.data?.totalMatches ?? 0}
+        truncated={suggestions.data?.truncated ?? false}
+        onRetry={() => void suggestions.refetch()}
+        onQueryChange={setQuery}
+      />
+      <FieldDescription>
+        Keep one coherent idea here. Type @ to mention an entity, reference a page or record, or use
+        an asset; use H2 or lower headings for linkable sections.
+      </FieldDescription>
+    </>
+  );
+}
 
-      {error && <FieldError>{error.message}</FieldError>}
+type WebPageFormProps = PageFormLayout & { error: Error | null };
 
-      {submitLabel && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button className="justify-self-start" size="lg" type="submit" disabled={pending}>
-            {pending ? 'Saving…' : submitLabel}
-          </Button>
-          {duplicateTitle && (
-            <Button
-              variant="outline"
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                form.setFieldValue('allowDuplicate', true);
-                void form.handleSubmit();
-              }}
-            >
-              Use this title anyway
-            </Button>
-          )}
-        </div>
-      )}
-    </form>
+export function KnowledgePageForm({ error, ...props }: WebPageFormProps) {
+  return (
+    <PageForm
+      {...props}
+      error={error?.message}
+      duplicateTitle={!!props.submitLabel && error instanceof DuplicateResourceNameError}
+      markdownInput={(input) => <MarkdownInput {...input} />}
+    />
   );
 }

@@ -7,10 +7,8 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { cleanup, render, screen } from '@testing-library/react';
-import {
-  KnowledgePageCardContent,
-  KnowledgePageLink,
-} from '../../src/components/pages/knowledge-page-link';
+import { KnowledgePageCardContent } from '../../src/components/pages/knowledge-page-card-content';
+import { KnowledgePageLink } from '../../src/components/pages/knowledge-page-link';
 
 afterEach(cleanup);
 
