@@ -98,9 +98,6 @@ function existingWriteState({
       current.sourceOccurredAt === record.sourceOccurredAt &&
       current.sourceUpdatedAt === record.sourceUpdatedAt,
   );
-  if (input.sync?.overwrite) {
-    return unchanged ? 'unchanged' : null;
-  }
   if (input.sync) {
     return syncedWriteState({ current, input, unchanged });
   }

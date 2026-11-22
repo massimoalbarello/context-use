@@ -1,4 +1,5 @@
 import { assetKey } from '@context-use/open-sync/assets';
+import type { SyncRegistration } from '@context-use/open-sync/definition';
 import type { Deliverable, DeliveryResult, DestinationType } from '@context-use/open-sync/delivery';
 import type { AssetImport } from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
@@ -11,10 +12,9 @@ import {
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
 
-import type { LocalSyncRegistration } from '../../catalog.ts';
 import { importedAssetReadableId, mapRecordAssets } from './record-assets.ts';
 
-// Validate all rewritten records before publishing the first one.
+// Validate all rewritten records before publishing any; each publication commits its own revision.
 function deliveredRecords(input: {
   deliverable: Deliverable;
   provider: string;
@@ -68,17 +68,15 @@ export function localRecordDestination(input: {
     sync: RecordSyncRevision;
     change: ChangeContext;
   }): Promise<RecordWriteResult>;
-  definitions: readonly LocalSyncRegistration[];
+  definitions: readonly SyncRegistration[];
 }): DestinationType {
   async function publish({
     deliverable,
     provider,
-    sourceNamespace,
     signal,
   }: {
     deliverable: Deliverable;
     provider: string;
-    sourceNamespace?: string;
     signal: AbortSignal;
   }): Promise<DeliveryResult> {
     const change = { clientName: provider, message: `Synced record from ${provider}` };
@@ -92,11 +90,7 @@ export function localRecordDestination(input: {
       const result = await input.importAsset({
         asset: {
           ownerId: deliverable.ownerId,
-          readableId: importedAssetReadableId({
-            ownerId: deliverable.ownerId,
-            syncId: sourceNamespace ?? deliverable.syncId,
-            asset,
-          }),
+          readableId: importedAssetReadableId({ ...deliverable, asset }),
           name: asset.name,
           sizeBytes: asset.size,
           contentHash: asset.sha256,
@@ -113,26 +107,17 @@ export function localRecordDestination(input: {
       }
       imported.set(assetKey(asset), { readableId: result.readableId, name: asset.name });
     }
-    return publishRecords({
-      deliverable,
-      provider,
-      sourceNamespace,
-      assets: imported,
-      signal,
-      change,
-    });
+    return publishRecords({ deliverable, provider, assets: imported, signal, change });
   }
   async function publishRecords({
     deliverable,
     provider,
-    sourceNamespace,
     assets,
     signal,
     change,
   }: {
     deliverable: Deliverable;
     provider: string;
-    sourceNamespace?: string;
     assets: ReadonlyMap<string, { readableId: string; name: string }>;
     signal: AbortSignal;
     change: ChangeContext;
@@ -151,9 +136,7 @@ export function localRecordDestination(input: {
       const result = await input.upsertRecord({
         ownerId: deliverable.ownerId,
         record,
-        sync: sourceNamespace
-          ? { syncId: sourceNamespace, revision, overwrite: true }
-          : { syncId: deliverable.syncId, revision },
+        sync: { syncId: deliverable.syncId, revision },
         change,
       });
       if (result.state === 'conflict') {
@@ -181,13 +164,7 @@ export function localRecordDestination(input: {
         return { status: 'rejected', code: 'invalid_source' };
       }
       try {
-        return await publish({
-          deliverable,
-          provider,
-          sourceNamespace:
-            registration.recordIdentity === 'source' ? `source:${provider}` : undefined,
-          signal,
-        });
+        return await publish({ deliverable, provider, signal });
       } catch (error) {
         if (error instanceof RecordPublicationConflictError) {
           return { status: 'rejected', code: 'publication_conflict' };

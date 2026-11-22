@@ -1,10 +1,9 @@
+import type { SyncRegistration } from '@context-use/open-sync/definition';
 import { z } from 'zod';
-import type { LocalSyncRegistration } from '../../catalog.ts';
 import { checkpointSchema, initialCheckpoint, recordSchema } from './models.ts';
 import { step } from './threads.ts';
 
 export const gmailThreads = {
-  recordIdentity: 'source',
   definition: {
     id: 'gmail.threads',
     name: 'Gmail conversations',
@@ -25,4 +24,4 @@ export const gmailThreads = {
     },
   },
   load: () => ({ step }),
-} satisfies LocalSyncRegistration;
+} satisfies SyncRegistration;

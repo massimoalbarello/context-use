@@ -15,7 +15,7 @@ import { unusedAssetFacesService } from '../../../support/app.ts';
 import { account, attachedMessage, gmailFixture, message, sentAt } from './fixture.ts';
 
 const scope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };
-test('Gmail records and assets survive recreated syncs; replies and removals replace the same owned conversation', async () => {
+test('Gmail updates one conversation per sync and keeps earlier imports when a sync is recreated', async () => {
   await withRecordTestDatabase({
     run: async (input) => {
       await input.database`insert into "auth_user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt") values (${OWNER_USER_ID}, 'Owner', 'owner@example.invalid', 1, ${sentAt}, ${sentAt})`;
@@ -43,7 +43,7 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
         connector: { bind: () => Promise.resolve(source.provider) },
         destinationTypes: { local: destination },
       };
-      let runtime = createSyncRuntime(options);
+      const runtime = createSyncRuntime(options);
       const create = () =>
         runtime.api.createSync({
           ...scope,
@@ -113,26 +113,10 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
         await runtime.api.resync({ ...scope, id: sync.id });
         await finish();
         expect((await read())!.body).toContain('Invoice received.');
-        // Recreating the sync restarts its delivery counter. Its first snapshot must still replace
-        // this conversation even when the latest message timestamp is unchanged.
-        source.thread = {
-          ...source.thread,
-          messages: [attachedMessage(), message({ id: 'reply', text: 'Invoice approved.' })],
-        };
-        await runtime.api.removeSync({ ...scope, id: sync.id });
-        await runtime.close();
-        runtime = createSyncRuntime(options);
-        sync = await create();
-        await finish();
         expect((await list()).items).toHaveLength(1);
-        expect((await list()).items[0]!.readableId).toBe(saved.readableId);
         expect(
-          (await assets.list({ ownerId: OWNER_USER_ID, limit: 20, offset: 0 })).items
-            .map((asset) => asset.readableId)
-            .sort(),
-        ).toEqual(imported.items.map((asset) => asset.readableId).sort());
-        expect((await read())!.body).toContain('Invoice approved.');
-        expect((await read())!.body).not.toContain('Invoice received.');
+          (await assets.list({ ownerId: OWNER_USER_ID, limit: 20, offset: 0 })).items,
+        ).toHaveLength(2);
         source.thread = {
           ...source.thread,
           historyId: '9007199254740993020',
@@ -185,11 +169,26 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
             (await assets.detail({ ownerId: OWNER_USER_ID, readableId: asset.readableId }))!.usages,
           ).toHaveLength(0);
         }
-        source.account = 'second@example.com';
+        const original = await read();
+        source.thread = { ...source.thread, messages: [attachedMessage()] };
         await runtime.api.removeSync({ ...scope, id: sync.id });
         sync = await create();
         await finish();
-        expect((await list()).items).toHaveLength(2);
+        const copies = (await list()).items;
+        expect(copies).toHaveLength(2);
+        expect(copies.map((copy) => copy.source.id)).toEqual([saved.source.id, saved.source.id]);
+        const recreated = copies.find((copy) => copy.readableId !== saved.readableId)!;
+        const newRecord = await records.findResource({
+          ownerId: OWNER_USER_ID,
+          readableId: recreated.readableId,
+        });
+        expect(newRecord!.body).toContain('### Attachments');
+        expect(await read()).toEqual(original);
+        const allAssets = await assets.list({ ownerId: OWNER_USER_ID, limit: 20, offset: 0 });
+        expect(allAssets.items).toHaveLength(imported.items.length * copies.length);
+        for (const asset of imported.items) {
+          expect(newRecord!.body).not.toContain(`context-use://asset/${asset.readableId}`);
+        }
       } finally {
         await runtime.close();
       }
