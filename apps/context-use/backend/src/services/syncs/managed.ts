@@ -27,6 +27,7 @@ function managedState(input: {
   connectionActive: boolean;
   configuredSync: ConfiguredSync | undefined;
   queue: Queue;
+  errorMessage?: string;
 }): { state: ManagedSyncState; message: string } {
   if (!input.configured) {
     return { state: 'setup-required', message: 'Set up your OAuth app to get started.' };
@@ -37,9 +38,11 @@ function managedState(input: {
   if (!input.configuredSync.enabled) {
     return {
       state: 'paused',
-      message: input.configuredSync.errorCode
-        ? 'Syncing paused after a provider error. Check your account access before resuming.'
-        : 'Automatic syncing is paused. Your records are kept.',
+      message:
+        input.errorMessage ??
+        (input.configuredSync.errorCode
+          ? 'Syncing paused after a provider error. Check your account access before resuming.'
+          : 'Automatic syncing is paused. Your records are kept.'),
     };
   }
   if (input.queue.blocked.length) {
@@ -133,6 +136,9 @@ export class ManagedSyncsService {
             provider: provider.id,
             kinds: Object.keys(sync.registration.definition.kinds),
             ...managedState({
+              errorMessage: configuredSync?.errorCode
+                ? sync.errorMessages?.[configuredSync.errorCode]
+                : undefined,
               configured:
                 !provider.oauth ||
                 oauth?.configured === true ||
@@ -161,6 +167,7 @@ export class ManagedSyncsService {
                   automaticRegistration: oauth.automaticRegistration === true,
                   callbackUrl: oauth.expectedRedirectUri,
                   createAppUrl: provider.oauth.createAppUrl,
+                  setupInstructions: provider.oauth.setupInstructions,
                 }
               : null,
           account: {
@@ -193,6 +200,7 @@ export class ManagedSyncsService {
           ...scope,
           service: provider.id,
           values: { clientId: input.clientId, clientSecret: input.clientSecret },
+          requestedScopes: provider.oauth?.requestedScopes,
         });
       } catch {
         throw new BadRequestError(
@@ -339,13 +347,16 @@ export class ManagedSyncsService {
       throw new NotFoundError('Connect your account first.');
     }
     if (input.action === 'run' || input.action === 'resync') {
-      if (!configuredSync.enabled) {
+      if (!configuredSync.enabled && input.action === 'run') {
         throw new BadRequestError('Resume the sync first.');
       }
       for (const id of this.queue({ ...scope, syncId: configuredSync.id }).blocked) {
         this.input.sync.api.retryDelivery({ ...scope, syncId: configuredSync.id, id });
       }
       if (input.action === 'resync') {
+        if (!configuredSync.enabled) {
+          await this.input.sync.api.setEnabled({ ...scope, id: configuredSync.id, enabled: true });
+        }
         await this.input.sync.api.resync({ ...scope, id: configuredSync.id });
       } else {
         this.input.sync.api.runNow({ ...scope, id: configuredSync.id });

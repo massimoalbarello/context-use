@@ -64,25 +64,23 @@ export function ManagedSyncCard(input: {
               <ArrowUpRight aria-hidden="true" />
             </Link>
             {sync.state !== 'paused' && (
-              <>
-                <Button
-                  variant="outline"
-                  disabled={input.pending || sync.state === 'syncing'}
-                  onClick={() => input.onAction('run')}
-                >
-                  <RefreshCw aria-hidden="true" />
-                  Sync now
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={input.pending || sync.state === 'syncing'}
-                  onClick={() => input.onAction('resync')}
-                >
-                  <History aria-hidden="true" />
-                  Reprocess history
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                disabled={input.pending || sync.state === 'syncing'}
+                onClick={() => input.onAction('run')}
+              >
+                <RefreshCw aria-hidden="true" />
+                Sync now
+              </Button>
             )}
+            <Button
+              variant="outline"
+              disabled={input.pending || sync.state === 'syncing'}
+              onClick={() => input.onAction('resync')}
+            >
+              <History aria-hidden="true" />
+              Reprocess history
+            </Button>
             <Button
               variant="ghost"
               disabled={input.pending}
@@ -92,11 +90,10 @@ export function ManagedSyncCard(input: {
               {sync.state === 'paused' ? 'Resume' : 'Pause'}
             </Button>
           </div>
-          {sync.state !== 'paused' && (
-            <p className="text-muted-foreground text-sm">
-              Reprocess history fetches available source history again and updates saved records.
-            </p>
-          )}
+          <p className="text-muted-foreground text-sm">
+            Reprocess history fetches available source history again and updates saved records.
+            {sync.state === 'paused' && ' It also resumes automatic syncing.'}
+          </p>
         </>
       )}
     </section>

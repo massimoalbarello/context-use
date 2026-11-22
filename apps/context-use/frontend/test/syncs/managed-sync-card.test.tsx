@@ -64,7 +64,11 @@ test('paused syncs explain why they stopped and offer Resume without a disabled 
   expect((await view.findByRole('status')).textContent).toBe(sync.message);
   expect(view.queryByText('Every 30 minutes')).toBeNull();
   expect(view.queryByRole('button', { name: 'Sync now' })).toBeNull();
-  expect(view.queryByRole('button', { name: 'Reprocess history' })).toBeNull();
+  await userEvent
+    .setup({ document })
+    .click(view.getByRole('button', { name: 'Reprocess history' }));
+  expect(action).toHaveBeenCalledWith('resync');
+  expect(view.getByText(/It also resumes automatic syncing/)).toBeTruthy();
   await userEvent.setup({ document }).click(view.getByRole('button', { name: 'Resume' }));
   expect(action).toHaveBeenCalledWith('resume');
 });

@@ -5,12 +5,18 @@ export interface ContextSync {
   name: string;
   description: string;
   registration: SyncRegistration;
+  errorMessages?: Readonly<Record<string, string>>;
 }
 export interface SyncProvider {
   id: string;
   name: string;
   description: string;
-  oauth: { createAppUrl: string | null; authorizationOptionIds?: string[] } | null;
+  oauth: {
+    createAppUrl: string | null;
+    authorizationOptionIds?: string[];
+    requestedScopes?: string[];
+    setupInstructions?: string;
+  } | null;
   apiKeySetupUrl?: string;
   syncs: readonly ContextSync[];
 }

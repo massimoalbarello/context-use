@@ -16,6 +16,7 @@ export const ManagedSyncListSchema = t.Array(
         callbackUrl: t.String(),
         createAppUrl: t.Nullable(t.String()),
         automaticRegistration: t.Boolean(),
+        setupInstructions: t.Optional(t.String()),
       }),
     ),
     account: t.Object({

@@ -86,6 +86,11 @@ export function ProviderDetail(input: {
               />
             ) : (
               <>
+                {provider.oauthApp?.setupInstructions && (
+                  <p className="max-w-xl text-muted-foreground text-sm">
+                    {provider.oauthApp.setupInstructions}
+                  </p>
+                )}
                 <OAuthAppPanel
                   provider={provider}
                   pending={input.pending}

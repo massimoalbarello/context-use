@@ -8,6 +8,7 @@ import {
   type RecordInput,
   RecordInputSchema,
   RecordPublicationConflictError,
+  RecordSourceRevisionSchema,
   type RecordSyncRevision,
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
@@ -25,8 +26,20 @@ function deliveredRecords(input: {
     if (record.operation !== 'upsert' || !record.content) {
       return null;
     }
+    const nativeRevision = RecordSourceRevisionSchema.optional().safeParse(
+      record.data.sourceRevision,
+    );
+    if (!nativeRevision.success) {
+      return null;
+    }
+    const sourceRevision = nativeRevision.data;
     const parsed = RecordInputSchema.safeParse({
-      source: { provider: input.provider, kind: record.kind, id: record.id },
+      source: {
+        provider: input.provider,
+        kind: record.kind,
+        id: record.id,
+        ...(sourceRevision ? { url: record.data.url } : {}),
+      },
       title: record.preview,
       body: mapRecordAssets({
         body: record.content.body,
@@ -40,7 +53,7 @@ function deliveredRecords(input: {
     if (!parsed.success) {
       return null;
     }
-    records.push({ record: parsed.data, revision: record.revision });
+    records.push({ record: parsed.data, revision: record.revision, sourceRevision });
   }
   return records;
 }
@@ -85,7 +98,17 @@ export function localRecordDestination(input: {
       const result = await input.importAsset({
         asset: {
           ownerId: deliverable.ownerId,
-          readableId: importedAssetReadableId({ ...deliverable, asset }),
+          readableId: importedAssetReadableId({
+            ...deliverable,
+            asset,
+            syncId: deliverable.records.every(
+              (record) =>
+                record.operation === 'upsert' &&
+                RecordSourceRevisionSchema.safeParse(record.data.sourceRevision).success,
+            )
+              ? `source:${provider}`
+              : deliverable.syncId,
+          }),
           name: asset.name,
           sizeBytes: asset.size,
           contentHash: asset.sha256,
@@ -126,12 +149,16 @@ export function localRecordDestination(input: {
     if (!records) {
       return { status: 'rejected', code: 'invalid_record' };
     }
-    for (const { record, revision } of records) {
+    for (const { record, revision, sourceRevision } of records) {
       signal.throwIfAborted();
       const result = await input.upsertRecord({
         ownerId: deliverable.ownerId,
         record,
-        sync: { syncId: deliverable.syncId, revision },
+        sync: {
+          syncId: sourceRevision ? `source:${provider}` : deliverable.syncId,
+          revision,
+          ...(sourceRevision ? { sourceRevision } : {}),
+        },
         change,
       });
       if (result.state === 'conflict') {

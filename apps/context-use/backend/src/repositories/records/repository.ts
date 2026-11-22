@@ -123,6 +123,19 @@ function syncedWriteState(input: {
   unchanged: boolean;
 }) {
   const revision = input.input.sync!.revision;
+  const sourceRevision = input.input.sync!.sourceRevision;
+  if (sourceRevision !== undefined) {
+    if (input.current.sourceRevision === null) {
+      return 'conflict';
+    }
+    if (BigInt(sourceRevision) < BigInt(input.current.sourceRevision)) {
+      return 'stale';
+    }
+    if (input.unchanged) {
+      return 'unchanged';
+    }
+    return BigInt(sourceRevision) === BigInt(input.current.sourceRevision) ? 'conflict' : null;
+  }
   if (revision < input.current.syncRevision) {
     return 'stale';
   }
@@ -137,9 +150,14 @@ async function advanceSyncRevision(input: {
   write: WriteRecordInput;
   current: Queries['FindCurrentRecord'];
 }) {
-  if (input.write.sync && input.write.sync.revision > input.current.syncRevision) {
+  if (
+    input.write.sync &&
+    (input.write.sync.sourceRevision !== undefined ||
+      input.write.sync.revision > input.current.syncRevision)
+  ) {
     await input.db.AdvanceRecordSyncRevision`
-      update "record" set "sync_revision" = ${input.write.sync.revision}
+      update "record" set "sync_revision" = ${input.write.sync.revision},
+        "source_revision" = ${input.write.sync.sourceRevision ?? null}
       where "owner_id" = ${input.write.ownerId} and "readable_id" = ${input.current.readableId}
     `;
   }
@@ -213,14 +231,14 @@ async function publishRecord({
   const sourceUpdatedAt = (record ?? input.deletion!).sourceUpdatedAt;
   const sync = input.sync ?? { syncId: '', revision: 0 };
   await db.WriteRecord`
-    insert into "record" ("owner_id", "sync_id", "sync_revision", "readable_id", "provider", "kind", "source_id", "source_url", "title",
+    insert into "record" ("owner_id", "sync_id", "sync_revision", "source_revision", "readable_id", "provider", "kind", "source_id", "source_url", "title",
       "source_created_at", "source_updated_at", "source_occurred_at", "deleted_at", "storage_key", "content_hash", "size_bytes", "created_at", "updated_at")
-    values (${input.ownerId}, ${sync.syncId}, ${sync.revision}, ${readableId}, ${source.provider}, ${source.kind}, ${source.id}, ${record?.source.url ?? null},
+    values (${input.ownerId}, ${sync.syncId}, ${sync.revision}, ${input.sync?.sourceRevision ?? null}, ${readableId}, ${source.provider}, ${source.kind}, ${source.id}, ${record?.source.url ?? null},
       ${record?.title ?? null}, ${record?.sourceCreatedAt ?? null}, ${sourceUpdatedAt}, ${record?.sourceOccurredAt ?? null},
       ${input.deletion ? input.receivedAt : null}, ${input.value?.storageKey ?? null}, ${input.value?.contentHash ?? null},
       ${input.value?.sizeBytes ?? null}, ${input.receivedAt}, ${input.receivedAt})
     on conflict ("owner_id", "sync_id", "provider", "kind", "source_id") do update set
-      "sync_revision" = excluded."sync_revision", "source_url" = excluded."source_url", "title" = excluded."title",
+      "sync_revision" = excluded."sync_revision", "source_revision" = excluded."source_revision", "source_url" = excluded."source_url", "title" = excluded."title",
       "source_created_at" = excluded."source_created_at", "source_updated_at" = excluded."source_updated_at",
       "source_occurred_at" = excluded."source_occurred_at",
       "deleted_at" = excluded."deleted_at", "storage_key" = excluded."storage_key", "content_hash" = excluded."content_hash",
@@ -265,7 +283,7 @@ async function writeRecord({
     select "readable_id" as "readableId", "title", "source_updated_at" as "sourceUpdatedAt",
       "source_url" as "sourceUrl", "source_created_at" as "sourceCreatedAt",
       "source_occurred_at" as "sourceOccurredAt",
-      "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision", "published_at" as "publishedAt"
+      "content_hash" as "contentHash", "deleted_at" as "deletedAt", "sync_revision" as "syncRevision", "source_revision" as "sourceRevision", "published_at" as "publishedAt"
     from "record" where "owner_id" = ${input.ownerId} and "provider" = ${source.provider}
       and "kind" = ${source.kind} and "source_id" = ${source.id} and "sync_id" = ${sync.syncId}
   `;

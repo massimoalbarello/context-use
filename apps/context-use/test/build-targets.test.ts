@@ -116,11 +116,18 @@ test(
     ).toEqual([]);
     expect(catalogFiles.sort()).toEqual([
       'github.json',
+      'gmail.json',
       'googlecalendar.json',
       'granola.json',
       'youtube.json',
     ]);
-    expect(catalogProviders.sort()).toEqual(['github', 'googlecalendar', 'granola', 'youtube']);
+    expect(catalogProviders.sort()).toEqual([
+      'github',
+      'gmail',
+      'googlecalendar',
+      'granola',
+      'youtube',
+    ]);
     const connectorProviders = instance.flatMap((path) => {
       const match = path.match(/\/open-connector\/src\/providers\/([^/]+)\//);
       return match ? [match[1]!] : [];
@@ -129,6 +136,7 @@ test(
     // googleads and googledrive; those providers' catalogs and executors stay excluded.
     expect([...new Set(connectorProviders)].sort()).toEqual([
       'github',
+      'gmail',
       'googleads',
       'googlecalendar',
       'googledrive',

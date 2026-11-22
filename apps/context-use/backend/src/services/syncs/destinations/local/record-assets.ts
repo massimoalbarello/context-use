@@ -2,6 +2,10 @@ import { type AssetRef, assetKey, resolveAssetReference } from '@context-use/ope
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import { markdownLinks } from '#backend/models/markdown/links.ts';
+import {
+  markdownTableOptions,
+  markdownTableSerialization,
+} from '#backend/models/markdown/tables.ts';
 import { assetAddress } from '#backend/models/readable-ids/addresses.ts';
 
 export function importedAssetReadableId(input: {
@@ -23,7 +27,7 @@ export function mapRecordAssets(input: {
   assetRefs: Readonly<Record<string, AssetRef>>;
   assets: ReadonlyMap<string, { readableId: string; name: string }>;
 }): string {
-  const tree = fromMarkdown(input.body);
+  const tree = fromMarkdown(input.body, markdownTableOptions);
   const links = markdownLinks(tree);
   const linked = new Set<string>();
   const replacements = new Map<string, string>();
@@ -68,5 +72,5 @@ export function mapRecordAssets(input: {
       ],
     });
   }
-  return linked.size ? toMarkdown(tree) : input.body;
+  return linked.size ? toMarkdown(tree, markdownTableSerialization) : input.body;
 }

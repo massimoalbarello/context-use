@@ -2,8 +2,10 @@ import { cn } from '@repo/ui/class-names';
 import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
+import { remarkTables } from '#backend/models/markdown/tables.ts';
 import { internalLink } from '../../lib/internal-link';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
+import { markdownTableComponents } from '../pages/markdown-table';
 
 export function externalRecordUrl(url: string): string {
   try {
@@ -38,10 +40,11 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
   return (
     <article className="py-3 md:py-5" aria-label={label}>
       <ReactMarkdown
-        remarkPlugins={[remarkAssetLayout]}
+        remarkPlugins={[remarkTables, remarkAssetLayout]}
         skipHtml
         urlTransform={(url) => (internalLink(url)?.kind === 'asset' ? url : externalRecordUrl(url))}
         components={{
+          ...markdownTableComponents,
           a: ({ href, children }) => <ContextRecordLink href={href}>{children}</ContextRecordLink>,
           img: ({ src, alt, className, node }) => {
             const asset = src ? internalLink(src) : null;
