@@ -25,6 +25,7 @@ import { ViewPublicLink } from '../publications/publication-appearance';
 import { PublicationReviewDialog } from '../publications/publication-review-dialog';
 import { PublicationStatus } from '../publications/publication-status';
 import { Badge } from '../ui/badge';
+import { EntityProfile } from './entity-profile';
 export function EntityDetail({ id, onArchived }: { id: string; onArchived: () => void }) {
   const { data: entity, error, refetch } = useEntity(id);
 
@@ -142,15 +143,10 @@ function EntityDetailContent({ entity, onArchived }: { entity: Entity; onArchive
             {entity.entityType ? ENTITY_TYPE_LABELS[entity.entityType] : 'Entity'}{' '}
             {entity.isSelf && <Badge variant="secondary">You</Badge>}
           </ResourceDetailHeading>
-          <div className="flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:flex-row sm:items-start">
-            <EntityAvatar entity={entity} className="size-24 text-3xl" />
-            <div className="min-w-0 flex-1">
-              <ResourceName>{entity.name}</ResourceName>
-              <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-                {entity.description}
-              </p>
-            </div>
-          </div>
+          <EntityProfile
+            entity={entity}
+            portrait={<EntityAvatar entity={entity} className="size-24 text-3xl" />}
+          />
         </DetailHeader>
       )}
 

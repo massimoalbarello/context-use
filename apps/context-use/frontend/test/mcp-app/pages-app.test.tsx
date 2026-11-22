@@ -5,7 +5,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type Page, PagesClient } from '../../src/mcp-app/client';
 import { PagesApp } from '../../src/mcp-app/pages-app';
-import { pageQueryKey } from '../../src/mcp-app/queries';
+import { resourceQueryKey } from '../../src/mcp-app/queries';
 
 const page: Page = {
   address: 'context-use://page/notes',
@@ -32,7 +32,7 @@ function setup({ initial = null, call }: { initial?: Page | null; call: App['cal
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   if (initial) {
-    queryClient.setQueryData(pageQueryKey(initial.address), initial);
+    queryClient.setQueryData(resourceQueryKey(initial.address), { kind: 'page', value: initial });
   }
   render(
     <QueryClientProvider client={queryClient}>
@@ -57,10 +57,11 @@ test('validates and saves through the host when native form submission is unavai
   const user = setup({
     call: ({ name, arguments: args }) => {
       switch (name) {
-        case 'search_hypermedia':
+        case 'open_resource_search':
           searchQueries.push(args);
           return Promise.resolve(
             success({
+              query: args?.query,
               results:
                 args?.query === 'remember'
                   ? [
@@ -97,22 +98,21 @@ test('validates and saves through the host when native form submission is unavai
       }
     },
   });
-  const search = screen.getByRole('searchbox', { name: 'Search pages' });
+  const search = screen.getByRole('searchbox', { name: 'Search pages, entities, and assets' });
   expect(searchQueries).toHaveLength(0);
   expect(screen.queryByRole('list')).toBeNull();
   await user.type(search, 'missing{Enter}');
-  await screen.findByText('No matching pages.');
+  await screen.findByText('No matches.');
   await user.clear(search);
-  expect(screen.queryByText('No matching pages.')).toBeNull();
+  expect(screen.queryByText('No matches.')).toBeNull();
   await user.type(search, 'remember{Enter}');
   await user.click(await screen.findByRole('button', { name: /Notes Things to remember/ }));
   expect(searchQueries).toEqual(
     ['missing', 'remember'].map((query) => ({
       query,
-      resourceTypes: ['knowledge_page'],
-      limit: 5,
     })),
   );
+  await user.click(await screen.findByRole('button', { name: 'Edit page' }));
   const markdown = await screen.findByRole('textbox', { name: 'Page content (Markdown)' });
   // A host iframe can allow scripts while blocking native form submission.
   (markdown as HTMLTextAreaElement).form!.addEventListener('submit', (event) => {
@@ -191,7 +191,7 @@ test('requires confirmation to edit a public page', async () => {
     false,
   );
   await user.click(screen.getByRole('button', { name: 'Cancel' }));
-  await user.click(screen.getByRole('button', { name: 'Search pages' }));
+  await user.click(screen.getByRole('button', { name: 'Search' }));
   expect(screen.getByRole('searchbox')).toBeTruthy();
   expect(screen.queryByRole('list')).toBeNull();
 });

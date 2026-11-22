@@ -4,6 +4,7 @@ import { lazy, type ReactNode, Suspense, useState } from 'react';
 import { assetContentUrl, isEmbeddableAsset, isVideoAsset } from '../../lib/asset-presentation';
 import { MAX_DOCUMENT_PREVIEW_BYTES } from '../../lib/document-preview';
 import { assetDocumentQueryOptions } from '../../queries/assets';
+import { AssetImage } from './asset-image';
 import { AssetPreviewFallback } from './asset-preview-fallback';
 import { PdfPreviewLoading } from './pdf-preview-loading';
 
@@ -51,12 +52,10 @@ function AssetMediaContent({
   }
   if (isEmbeddableAsset(asset)) {
     return (
-      <img
+      <AssetImage
         className={className}
         src={contentUrl}
         alt={asset.name}
-        decoding="async"
-        style={{ aspectRatio: 'auto 16 / 9' }}
         onError={() => setFailed(true)}
       />
     );

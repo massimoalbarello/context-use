@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @import "@repo/ui/theme.css";
+@import "../components/pages/markdown-media.css";
 @source "./";
 @source "../components";
 @source "../../../../../packages/ui/src/components";

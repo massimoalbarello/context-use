@@ -43,7 +43,7 @@ export function createContextUseMcpServer({
   registerEntityTools({ server, principal, entitiesService, profilesService });
   registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
-  registerPagesApp({ server });
+  registerPagesApp({ server, principal, retrievalService });
   registerRecordTools({ server, principal, recordsService });
   return server;
 }

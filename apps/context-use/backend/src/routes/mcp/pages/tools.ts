@@ -26,7 +26,7 @@ import {
 } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
-import { PAGES_APP_META } from './app.ts';
+import { PAGES_APP_META } from './app-meta.ts';
 import {
   HYPERMEDIA_CURATION_GUIDE,
   HYPERMEDIA_CURATION_GUIDE_VERSION,

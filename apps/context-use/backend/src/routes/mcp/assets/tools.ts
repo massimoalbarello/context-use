@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { isEmbeddableAssetMedia } from '#backend/models/assets/media.ts';
 import { MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import type { McpClientAuthorizationPrincipal } from '#backend/models/mcp-client-authorizations/model.ts';
 import { assetAddress, assetReadableId } from '#backend/models/readable-ids/addresses.ts';
@@ -28,6 +29,7 @@ import {
 } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
+import { PAGES_APP_META } from '../pages/app-meta.ts';
 
 const AssetNameSchema = z
   .string()
@@ -77,6 +79,9 @@ const ArchiveAssetOutputSchema = z.object({
 });
 
 const UpdateAssetOutputSchema = z.object({});
+
+const MAX_GIF_PREVIEW_BYTES = 524_288;
+const PREVIEW_EDGE = 960;
 
 const UPLOAD_INSTRUCTIONS =
   'Send the raw asset bytes as the request body. Do not base64-encode them or wrap them in JSON or multipart form data. Use this request once before expiresAt; its HTTP response is the final typed asset result.';
@@ -158,6 +163,7 @@ export function registerAssetTools({
   server.registerTool(
     'read_asset',
     {
+      _meta: PAGES_APP_META,
       title: 'Read asset',
       description:
         'Read metadata, usages, and people this image depicts (detected or confirmed) for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them.',
@@ -188,6 +194,57 @@ export function registerAssetTools({
             }
           : null,
       });
+    },
+  );
+
+  server.registerTool(
+    'read_asset_image_preview',
+    {
+      title: 'Load image preview',
+      description: 'Load a display-sized preview of an active image asset for the widget.',
+      inputSchema: z.object({ address: AssetAddressSchema }),
+      annotations: MCP_READ_TOOL_ANNOTATIONS,
+      _meta: { ui: { visibility: ['app'] } },
+    },
+    async ({ address }) => {
+      const file = await assetsService.content({
+        ownerId: principal.ownerId,
+        readableId: assetReadableId(address),
+      });
+      if (!file || !isEmbeddableAssetMedia(file.asset.mediaType)) {
+        return mcpToolError({ code: 'preview_unavailable', message: 'Image preview unavailable.' });
+      }
+      try {
+        // GIF is not supported by the portable Bun image decoder.
+        if (file.asset.mediaType === 'image/gif') {
+          if (file.blob.size > MAX_GIF_PREVIEW_BYTES) {
+            return mcpToolError({
+              code: 'preview_unavailable',
+              message: 'This animated image is too large to preview.',
+            });
+          }
+          return {
+            content: [],
+            _meta: {
+              mimeType: 'image/gif',
+              data: Buffer.from(await file.blob.arrayBuffer()).toString('base64'),
+            },
+          };
+        }
+        const bytes = await new Bun.Image(file.blob, { maxPixels: 24_000_000 })
+          .resize(PREVIEW_EDGE, PREVIEW_EDGE, { fit: 'inside', withoutEnlargement: true })
+          .webp({ quality: 75 })
+          .bytes();
+        return {
+          content: [],
+          _meta: { mimeType: 'image/webp', data: Buffer.from(bytes).toString('base64') },
+        };
+      } catch {
+        return mcpToolError({
+          code: 'preview_unavailable',
+          message: 'This image could not be previewed.',
+        });
+      }
     },
   );
 

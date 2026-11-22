@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useContext } from 'react';
 import { assetContentUrl } from '../../lib/asset-presentation';
 import { type AssetPreview, assetPreviewQueryOptions } from '../../queries/assets';
 import { ResourceNavigation } from '../knowledge/resource-navigation';
 import { AssetLink } from './asset-link';
 import { AssetMedia } from './asset-media';
 import { AssetPreviewFallback } from './asset-preview-fallback';
+import { AssetEmbedPlaceholder, DeferredAsset } from './deferred-asset';
 
 export function AssetMarkdownLink({
   readableId,
@@ -44,44 +45,14 @@ export function AssetMarkdownEmbed(props: EmbedProps) {
   if (props.asset?.mediaType.startsWith('audio/')) {
     return null;
   }
-  return <DeferredAssetEmbed key={props.readableId} {...props} />;
-}
-
-function DeferredAssetEmbed({ className, ...props }: EmbedProps) {
-  const markerRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const marker = markerRef.current;
-    if (!marker || visible) {
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      {
-        root: marker.closest('[data-collection-scroll], [data-resource-scroll]'),
-        rootMargin: '160px 0px',
-      },
-    );
-    observer.observe(marker);
-    return () => observer.disconnect();
-  }, [visible]);
   return (
-    <div className={`${className ?? 'markdown-asset'} empty:hidden`} ref={markerRef}>
-      {visible ? (
-        props.asset ? (
-          <AssetEmbedMedia {...props} asset={props.asset} />
-        ) : (
-          <FetchedAssetEmbed {...props} />
-        )
+    <DeferredAsset key={props.readableId} className={props.className}>
+      {props.asset ? (
+        <AssetEmbedMedia {...props} asset={props.asset} />
       ) : (
-        <AssetEmbedPlaceholder />
+        <FetchedAssetEmbed {...props} />
       )}
-    </div>
+    </DeferredAsset>
   );
 }
 
@@ -117,16 +88,5 @@ function AssetEmbedMedia({ asset, alt, linked }: EmbedProps & { asset: AssetPrev
         </AssetPreviewFallback>
       }
     />
-  );
-}
-
-function AssetEmbedPlaceholder() {
-  return (
-    <div
-      className="flex aspect-video items-center justify-center rounded-xl bg-muted text-muted-foreground text-sm"
-      role="status"
-    >
-      Loading media…
-    </div>
   );
 }

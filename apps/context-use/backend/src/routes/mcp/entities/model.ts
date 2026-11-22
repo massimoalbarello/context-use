@@ -6,8 +6,12 @@ import {
   type Entity,
   type EntityReference,
 } from '#backend/models/entities/model.ts';
-import { entityAddress } from '#backend/models/readable-ids/addresses.ts';
-import { EntityAddressSchema, McpReadableIdSchema } from '#backend/routes/mcp/coordinates.ts';
+import { assetAddress, entityAddress } from '#backend/models/readable-ids/addresses.ts';
+import {
+  AssetAddressSchema,
+  EntityAddressSchema,
+  McpReadableIdSchema,
+} from '#backend/routes/mcp/coordinates.ts';
 import { McpPublicationSchema, mcpPublication } from '#backend/routes/mcp/publications/model.ts';
 
 export const McpEntityTypeSchema = z
@@ -31,6 +35,7 @@ export const McpEntityReferenceSchema = z.object({
 });
 
 export const McpEntitySchema = McpEntityReferenceSchema.extend({
+  imageAddress: AssetAddressSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -50,6 +55,7 @@ export function mcpEntityReference(entity: EntityReference) {
 export function mcpEntity(entity: Entity) {
   return {
     ...mcpEntityReference(entity),
+    imageAddress: entity.image ? assetAddress(entity.image.readableId) : undefined,
     createdAt: entity.createdAt,
     updatedAt: entity.updatedAt,
   };

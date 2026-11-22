@@ -1,2 +1,2 @@
-export const pagesQueryKey = ['mcp-pages'] as const;
-export const pageQueryKey = (address: string | undefined) => ['mcp-page', address] as const;
+export const searchQueryKey = ['mcp-search'] as const;
+export const resourceQueryKey = (address: string) => ['mcp-resource', address] as const;

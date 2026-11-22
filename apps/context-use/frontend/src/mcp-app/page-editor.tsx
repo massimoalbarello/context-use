@@ -6,7 +6,7 @@ import { PageMarkdownTextarea } from '../components/pages/page-markdown-textarea
 import { FieldLabel } from '../components/ui/field';
 import { type Page, type PagesClient, PageToolError } from './client';
 import { PageMarkdown } from './page-markdown';
-import { pageQueryKey } from './queries';
+import { resourceQueryKey } from './queries';
 
 export function PageEditor({
   client,
@@ -28,7 +28,7 @@ export function PageEditor({
     onSuccess: onSaved,
     onError: (error) => {
       if (error instanceof PageToolError && error.code === 'revision_conflict') {
-        void queryClient.invalidateQueries({ queryKey: pageQueryKey(page.address) });
+        void queryClient.invalidateQueries({ queryKey: resourceQueryKey(page.address) });
       }
     },
   });
@@ -86,7 +86,7 @@ export function PageEditor({
       )}
       markdownInput={({ id, name, value, invalid, onBlur, onChange }) =>
         preview ? (
-          <PageMarkdown markdown={value} />
+          <PageMarkdown markdown={value} mentions={page.mentions} client={client} />
         ) : (
           <>
             <FieldLabel htmlFor={id}>Page content (Markdown)</FieldLabel>

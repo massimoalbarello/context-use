@@ -33,7 +33,7 @@ import { expectNoInternalResourceIds } from '../../../support/public-api.ts';
 const NOW = '2026-09-01T12:00:00.000Z';
 const INTERNAL_CLIENT_AUTHORIZATION_ID = '01900000-0000-7000-8000-000000000003';
 const PNG_BYTES = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z5sAAAAASUVORK5CYII=',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP438AAAAQBAYDFKhhdAAAAAElFTkSuQmCC',
   'base64',
 );
 
@@ -363,6 +363,15 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
         ).status,
       ).toBe(StatusMap['Not Found']);
 
+      const previewRequest = {
+        name: 'read_asset_image_preview',
+        arguments: { address: created.address },
+      };
+      const preview = await client.callTool(previewRequest);
+      expect(preview.content).toEqual([]);
+      expect(preview._meta?.mimeType).toBe('image/webp');
+      const pixels = new Bun.Image(Buffer.from(String(preview._meta?.data), 'base64'));
+      expect(await pixels.metadata()).toMatchObject({ width: 1, height: 1 });
       const beforeArchive = successfulResult<AssetResult>(
         await client.callTool({
           name: 'read_asset',
@@ -392,6 +401,9 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
         arguments: { address: created.address },
       });
       expect(archivedRead.isError).toBe(true);
+      const archivedPreview = await client.callTool(previewRequest);
+      expect(archivedPreview.isError).toBe(true);
+      expect(archivedPreview._meta?.data).toBeUndefined();
       expect(archivedRead.structuredContent).toEqual({
         error: expect.objectContaining({ code: 'not_found' }),
       });

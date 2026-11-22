@@ -209,6 +209,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'create_asset_upload',
         'list_assets',
         'read_asset',
+        'read_asset_image_preview',
         'update_asset',
         'archive_asset',
         'create_entity',
@@ -223,7 +224,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
-        'open_page_search',
+        'open_resource_search',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -383,13 +384,18 @@ test('page tools expose a self-contained MCP app without owner data in the resou
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
-      const uri = 'ui://context-use/page-search.html';
-      expect(await client.callTool({ name: 'open_page_search', arguments: {} })).toMatchObject({
-        content: [],
+      const uri = 'ui://context-use/workspace-search.html';
+      expect(await client.callTool({ name: 'open_resource_search', arguments: {} })).toMatchObject({
+        structuredContent: { query: '', results: [], truncated: false },
+      });
+      expect(tools.find((t) => t.name === 'read_asset_image_preview')?._meta).toMatchObject({
+        ui: { visibility: ['app'] },
       });
       for (const name of [
+        'read_entity',
+        'read_asset',
         'create_knowledge_page',
-        'open_page_search',
+        'open_resource_search',
         'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
@@ -418,6 +424,37 @@ test('page tools expose a self-contained MCP app without owner data in the resou
       expect(content.text).not.toContain(INTERNAL_PAGE_ID);
       expect(content.text).not.toContain(principal.ownerId);
       expect(content.text).not.toContain(page.markdown);
+    },
+  });
+});
+
+test('an ambiguous page request opens ranked choices scoped to the authenticated owner', async () => {
+  await withMcpClient({
+    retrievalService: {
+      search: (input) => {
+        expect(input).toMatchObject({
+          ownerId: principal.ownerId,
+          query: 'notes',
+          resourceTypes: ['knowledge_page'],
+          limit: 10,
+        });
+        return Promise.resolve({
+          results: [{ resourceType: 'knowledge_page', knowledgePage: page, matchExcerpt: null }],
+          totalMatches: 1,
+          truncated: false,
+        });
+      },
+    },
+    run: async (client) => {
+      const result = await client.callTool({
+        name: 'open_resource_search',
+        arguments: { query: 'notes', resourceType: 'knowledge_page' },
+      });
+      expect(result.structuredContent).toMatchObject({
+        query: 'notes',
+        resourceType: 'knowledge_page',
+        results: [{ address: `context-use://page/${page.readableId}` }],
+      });
     },
   });
 });

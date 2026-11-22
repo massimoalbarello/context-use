@@ -8,13 +8,13 @@ import { PageMarkdown } from './page-markdown';
 export function PageDetail({
   client,
   address,
-  onPage,
+  onOpen,
   onEdit,
   page,
 }: {
   client: PagesClient;
   address: string;
-  onPage: (address: string) => void;
+  onOpen: (address: string) => void;
   onEdit: () => void;
   page: Page;
 }) {
@@ -33,7 +33,9 @@ export function PageDetail({
       <PageMarkdown
         fragment={address.split('#')[1]}
         markdown={page.markdown}
-        onPage={onPage}
+        client={client}
+        mentions={page.mentions}
+        onOpen={onOpen}
         onExternal={(url) => {
           void client.app
             .openLink({ url })

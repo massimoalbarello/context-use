@@ -21,11 +21,7 @@ import {
   McpEntityTypeSchema,
   mcpEntity,
 } from '#backend/routes/mcp/entities/model.ts';
-import {
-  McpKnowledgePageSummarySchema,
-  mcpArchiveBlockers,
-  mcpKnowledgePageSummary,
-} from '#backend/routes/mcp/pages/model.ts';
+import { mcpArchiveBlockers, mcpKnowledgePageSummary } from '#backend/routes/mcp/pages/model.ts';
 import {
   DEFAULT_MCP_LIST_LIMIT,
   decodeMcpCursor,
@@ -40,6 +36,8 @@ import {
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
+import { PAGES_APP_META } from '../pages/app-meta.ts';
+import { McpEntityDetailSchema } from './detail-model.ts';
 
 const ENTITY_IMAGE_MEDIA_TYPES = EMBEDDABLE_ASSET_MEDIA_TYPES.join(', ');
 const ENTITY_IMAGE_UPDATE_DESCRIPTION = `For imageAssetAddress, omit it to preserve the current image; send null to clear it; or provide a value referencing an existing asset with a supported media type (${ENTITY_IMAGE_MEDIA_TYPES}) to replace it.`;
@@ -97,10 +95,6 @@ const UpdateEntityOutputSchema = z.object({});
 const ArchiveEntityOutputSchema = z.object({
   archived: z.literal(true),
   address: EntityAddressSchema,
-});
-
-const McpEntityDetailSchema = McpEntitySchema.extend({
-  pages: z.array(McpKnowledgePageSummarySchema),
 });
 
 function mcpEntityDetail(entity: EntityDetail) {
@@ -268,6 +262,7 @@ export function registerEntityTools({
   server.registerTool(
     'read_entity',
     {
+      _meta: PAGES_APP_META,
       title: 'Read entity',
       description: 'Read one active entity by its exact canonical entity address.',
       inputSchema: EntityAddressInputSchema,
