@@ -33,7 +33,6 @@ export interface SyncProviderSummary {
     callbackUrl: string;
     createAppUrl: string | null;
     automaticRegistration: boolean;
-    setupInstructions?: string;
   } | null;
   account: { name: string | null; status: 'disconnected' | 'connected' | 'error' };
   syncs: ManagedSyncSummary[];

@@ -167,7 +167,6 @@ export class ManagedSyncsService {
                   automaticRegistration: oauth.automaticRegistration === true,
                   callbackUrl: oauth.expectedRedirectUri,
                   createAppUrl: provider.oauth.createAppUrl,
-                  setupInstructions: provider.oauth.setupInstructions,
                 }
               : null,
           account: {

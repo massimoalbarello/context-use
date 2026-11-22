@@ -15,7 +15,6 @@ export interface SyncProvider {
     createAppUrl: string | null;
     authorizationOptionIds?: string[];
     requestedScopes?: string[];
-    setupInstructions?: string;
   } | null;
   apiKeySetupUrl?: string;
   syncs: readonly ContextSync[];
