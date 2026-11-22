@@ -17,7 +17,7 @@
       "!apps/context-use/backend/src/queries.gen.ts",
       "!apps/context-use/backend/src/routes/public/styles.gen.ts",
       "!apps/context-use/frontend/src/routeTree.gen.ts",
-      "!apps/context-use/backend/src/routes/mcp/pages/app-html.gen.ts"
+      "!apps/context-use/backend/src/routes/mcp/app/html.gen.ts"
     ]
   },
   "formatter": {

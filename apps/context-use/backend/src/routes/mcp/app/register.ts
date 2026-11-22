@@ -3,12 +3,13 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { PreviewAddressSchema } from '../coordinates.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '../tool-annotations.ts';
-import { pagesAppHtml, pagesAppUri } from './app-html.gen.ts';
-import { PAGES_APP_META } from './app-meta.ts';
+import { mcpAppHtml, mcpAppUri } from './html.gen.ts';
+
+export const MCP_APP_META = { ui: { resourceUri: mcpAppUri } };
 
 const resourceMeta = { ui: { csp: { connectDomains: [], resourceDomains: [] } } };
 
-export function registerPagesApp(server: McpServer): void {
+export function registerMcpApp(server: McpServer): void {
   server.registerTool(
     'open_resource',
     {
@@ -17,7 +18,7 @@ export function registerPagesApp(server: McpServer): void {
         'Display a specific page, entity, or asset to the user in chat, for example when asked to show a photo or open a page for editing. Use a known canonical address. For discovery or to answer a question, use the read tools. If several items match, offer their titles in chat before opening one.',
       inputSchema: z.object({ address: PreviewAddressSchema }),
       annotations: MCP_READ_TOOL_ANNOTATIONS,
-      _meta: PAGES_APP_META,
+      _meta: MCP_APP_META,
     },
     ({ address }) => ({
       content: [{ type: 'text', text: `Opening ${address} in Context Use.` }],
@@ -27,7 +28,7 @@ export function registerPagesApp(server: McpServer): void {
   registerAppResource(
     server,
     'Context Use',
-    pagesAppUri,
+    mcpAppUri,
     {
       description: 'View pages, entities, and assets, and edit a selected page.',
       _meta: resourceMeta,
@@ -35,9 +36,9 @@ export function registerPagesApp(server: McpServer): void {
     () => ({
       contents: [
         {
-          uri: pagesAppUri,
+          uri: mcpAppUri,
           mimeType: RESOURCE_MIME_TYPE,
-          text: pagesAppHtml,
+          text: mcpAppHtml,
           _meta: resourceMeta,
         },
       ],

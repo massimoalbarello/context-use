@@ -30,7 +30,7 @@ import {
 } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
-import { PAGES_APP_META } from './app-meta.ts';
+import { MCP_APP_META } from '../app/register.ts';
 import {
   HYPERMEDIA_CURATION_GUIDE,
   HYPERMEDIA_CURATION_GUIDE_VERSION,
@@ -153,7 +153,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'create_knowledge_page',
     {
-      _meta: PAGES_APP_META,
+      _meta: MCP_APP_META,
       title: 'Create knowledge page',
       description:
         'Before creating a page, use search_hypermedia to find relevant existing pages to link. Create one versioned knowledge page from complete Markdown. Internal links must use canonical context-use addresses.',
@@ -266,7 +266,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'update_knowledge_page',
     {
-      _meta: PAGES_APP_META,
+      _meta: MCP_APP_META,
       title: 'Update knowledge page',
       description: `Create a new revision of one knowledge page. Updating a public page requires explicit user confirmation. Prefer creating a new private page unless the user explicitly wants to modify the public page. expectedRevisionNumber is required to prevent overwriting concurrent changes. ${TEMPORAL_COVERAGE_UPDATE_DESCRIPTION}`,
       inputSchema: withChangeMessage(UpdateKnowledgePageInputSchema),
@@ -325,7 +325,7 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'archive_knowledge_page',
     {
-      _meta: PAGES_APP_META,
+      _meta: MCP_APP_META,
       title: 'Archive knowledge page',
       description:
         'Archive one knowledge page. This is destructive and succeeds only when no active inbound references block it.',

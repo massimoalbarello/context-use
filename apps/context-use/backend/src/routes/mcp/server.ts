@@ -6,11 +6,11 @@ import type { HypermediaRetrievalServiceContract } from '#backend/services/hyper
 import type { KnowledgePagesServiceContract } from '#backend/services/knowledge-pages/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
 import type { RecordResourcesServiceContract } from '#backend/services/records/service.ts';
+import { registerMcpApp } from './app/register.ts';
 import { registerAssetTools } from './assets/tools.ts';
 import type { AssetTransferCapabilitiesContract } from './assets/transfer-capabilities.ts';
 import { registerEntityTools } from './entities/tools.ts';
 import { registerHypermediaRetrievalTools } from './hypermedia-retrieval/tools.ts';
-import { registerPagesApp } from './pages/app.ts';
 import { registerKnowledgePageTools } from './pages/tools.ts';
 import { registerRecordTools } from './records/tools.ts';
 
@@ -43,7 +43,7 @@ export function createContextUseMcpServer({
   registerEntityTools({ server, principal, entitiesService, profilesService });
   registerHypermediaRetrievalTools({ server, principal, retrievalService });
   registerKnowledgePageTools({ server, principal, pagesService });
-  registerPagesApp(server);
+  registerMcpApp(server);
   registerRecordTools({ server, principal, recordsService });
   return server;
 }
