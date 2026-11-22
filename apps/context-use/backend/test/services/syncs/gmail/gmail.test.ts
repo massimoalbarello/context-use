@@ -156,8 +156,9 @@ test('Gmail downloads attached files and visible images while skipping signature
     body: { attachmentId: cid },
   });
   const html = [
+    '<img src="cid:banner" alt="courtyard.jpg">',
     '<p>See the chart and <a href="CID:detail">detail</a>.</p><img src="cid:chart" alt="Revenue">',
-    '<div data-smartmail="gmail_signature">Sales team<img src="cid:logo"><img src="cid:chart"><img src="cid:attached"></div>',
+    '<div data-smartmail="gmail_signature">Sales team<a href="cid:contact">Contact card</a><img src="cid:logo"><img src="cid:chart"><img src="cid:attached"></div>',
     '<img src="cid:pixel" width="1" height="1"><span hidden><img src="cid:tile"></span>',
     '<a href="https://www.instagram.com/company/"><img src="cid:social" alt="Instagram"></a>',
     '<a href="https://example.com"><img src="cid:brand" alt="Company logo"></a>',
@@ -189,9 +190,20 @@ test('Gmail downloads attached files and visible images while skipping signature
               'fb',
               'video',
               'results',
-              'standalone',
+              'banner',
+              'orphan',
             ].map((cid) => image({ cid })),
             image({ cid: 'attached', disposition: 'attachment' }),
+            {
+              ...image({ cid: 'contact', disposition: 'attachment' }),
+              filename: 'contact.vcf',
+              mimeType: 'text/vcard',
+            },
+            {
+              ...image({ cid: 'photo', disposition: 'attachment' }),
+              filename: 'image001.png',
+              headers: [{ name: 'Content-Disposition', value: 'attachment' }],
+            },
           ],
         },
       },
@@ -200,29 +212,24 @@ test('Gmail downloads attached files and visible images while skipping signature
   const f = await fixture({ registration: gmailThreads, provider: source.provider });
   try {
     await f.finish();
-    expect(source.downloads.toSorted()).toEqual([
-      'attached',
-      'chart',
-      'detail',
-      'results',
-      'standalone',
-    ]);
+    expect(source.downloads.toSorted()).toEqual(['chart', 'detail', 'photo']);
     const record = f.records[0]!;
     if (record.operation !== 'upsert') {
       throw new Error('Expected an imported thread');
     }
-    expect(record.content?.body).toContain('![Revenue]');
-    expect(record.content?.body).toContain('[detail](open-sync-asset:');
+    expect(record.content?.body).not.toContain('![');
+    expect(record.content?.body).toContain('See the chart and detail.');
+    expect(record.content?.body).toContain(
+      '[YouTube Revenue Breakdown](https://youtube.com/watch?v=results)',
+    );
     expect(record.content?.body).toContain('Original payment terms.');
     expect(record.content?.body).not.toMatch(
       /Sales team|logo.png|tile.png|pixel.png|instagram|brand.png/i,
     );
     expect(f.deliveries[0]!.assets.map((asset) => asset.name).toSorted()).toEqual([
-      'attached.png',
       'chart.png',
       'detail.png',
-      'results.png',
-      'standalone.png',
+      'image001.png',
     ]);
   } finally {
     await f.close();
@@ -285,7 +292,7 @@ test('single-part attachments and empty text messages import together', async ()
     await f.finish();
     expect(f.records).toHaveLength(1);
     expect(f.records[0]).toMatchObject({
-      content: { body: expect.stringContaining('*No new message text.*') },
+      content: { body: expect.stringContaining('**Attachments** · [invoice.pdf]') },
     });
     expect(f.deliveries[0]!.assets).toEqual([
       expect.objectContaining({ name: 'invoice.pdf', size: 'Attachment bytes'.length }),

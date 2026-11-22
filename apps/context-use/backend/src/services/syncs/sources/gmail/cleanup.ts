@@ -7,7 +7,7 @@ const signatureSelector =
   '.gmail_signature,[data-smartmail="gmail_signature"],.moz-signature,.MsoAutoSig,#Signature,#x_Signature,#AppleMailSignature,.AppleMailSignature,.protonmail_signature_block';
 
 export function cidReference(value: string | null) {
-  return value?.trim().match(/^cid:(.+)$/i)?.[1];
+  return value?.trim().match(/^cid:(.+)$/i)?.[1] ?? '';
 }
 function inlineContentIds(document: EmailDocument) {
   const ids = new Set<string>();
@@ -128,7 +128,7 @@ function removeHidden(document: EmailDocument) {
 }
 
 export function cleanEmailHtml(document: EmailDocument) {
-  const discardedContentIds = inlineContentIds(document);
+  const referencedContentIds = inlineContentIds(document);
   const signatures = [...document.querySelectorAll<HTMLElement>(signatureSelector)];
   const signatureText = signatures.map((signature) => signature.innerText).join(' ');
   for (const signature of signatures) {
@@ -137,24 +137,46 @@ export function cleanEmailHtml(document: EmailDocument) {
   removeHidden(document);
   removeSocialIconRows(document);
   removeDecorativeImages(document);
-  for (const id of inlineContentIds(document)) {
-    discardedContentIds.delete(id);
-  }
-  return { discardedContentIds, signatureText };
+  return { referencedContentIds, signatureText };
 }
 
 // A conventional signature can precede a reply, forward or postscript in the same MIME part.
 const nextSection =
-  /(?=^(?:[ \t]*>|On .+ wrote:|From:|Da:|Forwarded from |[- ]*(?:Forwarded message|Original Message|Messaggio inoltrato)[ -]*$|P\.?S\.?[:\s]))/im;
+  /(\n)(?=^(?:[ \t]*>|On .+ wrote:|From:|Da:|Forwarded from |[- ]*(?:Forwarded message|Original Message|Messaggio inoltrato)[ -]*$|P\.?S\.?[:\s]))/im;
 const shortSignOff =
-  /(?:^|\n)[ \t]*(?:[Bb]est [Rr]egards|[Kk]ind [Rr]egards|[Rr]egards|[Bb]est [Ww]ishes|[Cc]heers|[Cc]ordiali [Ss]aluti|[Ss]aluti)[,!]?[ \t]*(?:\n\s*|[ \t]+)\p{Lu}[\p{L}’'-]*(?:[ \t]+\p{Lu}[\p{L}’'-]*){0,3}[.!]?\s*$/u;
+  /(?:^|\n)[ \t]*(?:[Bb]est [Rr]egards|[Kk]ind [Rr]egards|[Rr]egards|[Bb]est [Ww]ishes|[Cc]heers|[Cc]ordiali [Ss]aluti|[Ss]aluti|[Cc]ordialmente|[Gg]razie|[Tt]hanks|[Tt]hank you)[,!]?[ \t]*(?:\n\s*|[ \t]+)(?:[Ll]o staff|\p{Lu}[\p{L}’'-]*(?:[ \t]+\p{Lu}[\p{L}’'-]*){0,3})[.!]?\s*$/u;
+const closing =
+  /^(?:a presto|cordialmente|cordiali saluti|distinti saluti|saluti|kind regards|best regards|regards|best wishes|cheers)[\s!,.]*$/i;
+const contact =
+  /^(?:(?:tel(?:ephone)?|telefono|mobile|mob\d*|cell|fax)[. :]+\+?\d|(?:https?:\/\/|<?www\.)|[\w.+-]+@[\w.-]+\.\w+)/i;
+const disclaimer =
+  /^(?:confidenziale:\s*quest[oa] (?:messaggio|e-?mail)|privacy:\s*legge\s+\d|confidentiality notice:\s*(?:this|the) (?:message|e-?mail)|(?:privo di virus|virus-free)\s*[.!]?\s*\[?www\.avast\.com)/i;
+
+function withoutBusinessFooter(section: string) {
+  const lines = section.split('\n');
+  const text = lines.map((line) => line.replace(/[*_\\]/g, '').trim());
+  const notice = text.findIndex((line) => disclaimer.test(line));
+  const end = notice < 0 ? lines.length : notice;
+  let footer = end;
+  const maxContactLineLength = 90;
+  for (const [index, line] of text.slice(0, end).entries()) {
+    if (closing.test(line)) {
+      footer = Math.min(index, footer);
+    } else if (footer < end && contact.test(line)) {
+      return lines.slice(0, footer).join('\n');
+    } else if (line.length > maxContactLineLength || /[.?]$/.test(line)) {
+      footer = end;
+    }
+  }
+  return lines.slice(0, end).join('\n');
+}
 export function withoutSignature(text: string) {
   return text
     .replaceAll('\r\n', '\n')
     .split(nextSection)
     .map((section) =>
-      section
-        .replace(/^-- [ \t]*$[\s\S]*/m, '')
+      withoutBusinessFooter(section)
+        .replace(/^\\?-- [ \t]*$[\s\S]*/m, '')
         .replace(
           /^(?:Sent from my (?:iPhone|iPad|Android)|Inviato da (?:iPhone|iPad)|Get Outlook for (?:iOS|Android))[.!]?[ \t]*$/gim,
           '',

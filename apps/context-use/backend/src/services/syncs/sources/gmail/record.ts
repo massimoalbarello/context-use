@@ -39,26 +39,29 @@ export async function threadRecord(input: {
   const assetRefs: Record<string, AssetRef> = {};
   const sections: string[] = [];
   const previous: string[] = [];
-  let previousSubject = subject;
+  const subjectText = (value: string) => value.replace(/^(?:(?:re|r|fw|fwd|i):\s*)+/i, '').trim();
+  let previousSubject = subjectText(subject);
   for (const message of messages) {
     const content = await messageContent({ ...input, message, previous });
     previous.push(content.original);
     Object.assign(assetRefs, content.refs);
     const currentSubject = header({ part: message.payload, name: 'subject' }).trim();
     const sender = senderName(header({ part: message.payload, name: 'from' }));
-    const attachmentLinks = content.attachments.map(
-      (asset) => `- [${markdownText(asset.name)}](${asset.file})`,
+    const files = content.attachments.map(
+      (asset) => `[${markdownText(asset.name)}](${asset.file})`,
     );
-    const section = [
-      `**${markdownText(sender)}** · ${sentTime.format(Number(message.internalDate))} UTC`,
+    const metadata = [
+      `${sentTime.format(Number(message.internalDate))} UTC`,
+      files.length && `**Attachments** · ${files.join(' · ')}`,
       currentSubject &&
-        currentSubject !== previousSubject &&
-        `Subject: ${markdownText(currentSubject)}`,
-      content.body || (!attachmentLinks.length && '*No new message text.*'),
-      attachmentLinks.join('\n'),
-    ];
-    previousSubject = currentSubject || previousSubject;
-    sections.push(section.filter(Boolean).join('\n\n'));
+        subjectText(currentSubject) !== previousSubject &&
+        `**Subject** · ${markdownText(currentSubject)}`,
+    ]
+      .filter(Boolean)
+      .join('  \n> ');
+    previousSubject = currentSubject ? subjectText(currentSubject) : previousSubject;
+    const heading = `> ### ${markdownText(sender)}\n>\n> ${metadata}`;
+    sections.push([heading, content.body].filter(Boolean).join('\n\n'));
   }
   const first = new Date(Number(messages[0]!.internalDate)).toISOString();
   const last = new Date(Number(messages.at(-1)!.internalDate)).toISOString();

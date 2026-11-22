@@ -67,14 +67,15 @@ test('plain-text replies keep inline answers while removing signatures and repea
   expect(result.body).not.toContain('Alex wrote');
 });
 
-test('inline image references point to stored assets and retain a readable body', () => {
+test('a described inline chart is available for the header and leaves the prose readable', () => {
   const result = readableBody({
     html: '<p>See the chart.</p><img src="cid:chart" alt="Revenue">',
     plain: '',
     attachments: [{ name: 'chart.png', contentId: 'chart', file: 'open-sync-asset:chart' }],
     previous: [],
   });
-  expect(result.body).toContain('![Revenue](open-sync-asset:chart)');
+  expect(result.body).toBe('See the chart.');
+  expect(result.bodyAssets.get('chart')).toBe('Revenue');
 });
 
 test('fresh quotations in an initial message retain information absent from the conversation', () => {
@@ -148,7 +149,7 @@ test('unmarked newsletter layout tables read as paragraphs, including their nest
   );
 });
 
-test('an embedded Outlook envelope becomes a short attribution above the forwarded text', () => {
+test('a forwarded message keeps the original prose without repeating the routing envelope', () => {
   const result = readableBody({
     html: '<p>Buona giornata!</p><p><b>Da:</b> Office<br><b>Inviato:</b> martedì alle 09:43<br><b>A:</b> Team<br><b>Oggetto:</b> Fattura</p><p>In allegato la fattura.</p>',
     plain: '',
@@ -156,8 +157,7 @@ test('an embedded Outlook envelope becomes a short attribution above the forward
     previous: [],
   });
   expect(result.body).toContain('Buona giornata!');
-  expect(result.body).toContain('Forwarded from Office');
-  expect(result.body).toContain('Fattura');
+  expect(result.body).not.toMatch(/Forwarded from|Office|Oggetto|Inviato/);
   expect(result.body).toContain('In allegato la fattura.');
   expect(result.body).not.toContain('Inviato:');
 });
@@ -207,7 +207,7 @@ test('nested Gmail replies drop earlier HTML, localized envelopes and copied inl
     previous: [original.original],
   });
   expect(reply.body).toBe('Can we meet Friday?');
-  expect(reply.discardedContentIds).toContain('copy');
+  expect(reply.bodyAssets.has('copy')).toBe(false);
 
   const last = readableBody({
     html: `<p>Friday works.</p><img src="cid:copy" alt="Seating plan"><div class="gmail_quote"><blockquote><p>Can we meet Friday?</p><p><b>Da:</b> Alex<br><b>A:</b> Pat<br><b>Cc:</b> Finance</p><p>Il giorno lunedì Alex ha scritto:</p>${quote}</blockquote></div>`,
@@ -215,8 +215,8 @@ test('nested Gmail replies drop earlier HTML, localized envelopes and copied inl
     attachments: [copiedChart],
     previous: [original.original, reply.original],
   });
-  expect(last.body).toBe('Friday works.\n\n![Seating plan](open-sync-asset:reply)');
-  expect(last.discardedContentIds).not.toContain('copy');
+  expect(last.body).toBe('Friday works.');
+  expect(last.bodyAssets.has('copy')).toBe(true);
 });
 
 test('unprefixed Outlook history is removed while standalone replies and new forwarded details survive', () => {
@@ -259,6 +259,35 @@ test('an image-only quotation with an ambiguous label keeps its own image', () =
     ...input,
     attachments: [{ name: 'photo.png', contentId: 'photo', file: 'open-sync-asset:second' }],
   });
-  expect(result.body).toContain('![](open-sync-asset:second)');
-  expect(result.discardedContentIds).not.toContain('photo');
+  expect(result.body).toBe('');
+  expect(result.bodyAssets.get('photo')).toBe('photo.png');
+});
+
+test('an unmarked business signature and boilerplate end at the postscript, including in quoted replies', () => {
+  const main = '<p>Offer for 50 guests: €140.00 each.</p><p>Call Tel. 123 to confirm.</p>';
+  const signature =
+    '<p>A presto !</p><p>Cordialmente</p><p>Alex Example</p><p>Venue<br>Via Example 1<br>Tel. 123<br>Fax 123</p><p>CONFIDENZIALE: Questo messaggio è riservato.</p><p>PRIVACY: Legge 123</p><p>Privo di virus.www.avast.com</p>';
+  const html = `${main}${signature}<p>P.S. The deposit is €250.</p><p>Grazie,</p><p>Alex</p>`;
+  const input = { attachments: [], plain: '', previous: [] };
+  const first = readableBody({ ...input, html });
+  expect(first.body).toBe(
+    'Offer for 50 guests: €140.00 each.\n\nCall Tel. 123 to confirm.\n\nP.S. The deposit is €250.',
+  );
+  const reply = readableBody({
+    ...input,
+    html: `<p>Confirmed.</p><blockquote>${html}</blockquote>`,
+    previous: [first.original],
+  });
+  expect(reply.body).toBe('Confirmed.');
+});
+
+test('privacy instructions in the message survive a separate boilerplate notice', () => {
+  const result = readableBody({
+    html: '',
+    previous: [],
+    attachments: [],
+    plain:
+      'Keep the receipt for 10 years.\nPrivacy: send your request by Friday.\nCONFIDENZIALE: Questo messaggio e gli allegati sono riservati.',
+  });
+  expect(result.body).toBe('Keep the receipt for 10 years.\nPrivacy: send your request by Friday.');
 });

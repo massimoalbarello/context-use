@@ -41,42 +41,72 @@ function flattenLayoutTables(document: EmailDocument) {
     table.replaceWith(content);
   }
 }
-function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[] }) {
-  const linked = new Set<Attachment>();
-  for (const image of input.document.querySelectorAll('img')) {
+function decorativeLink(input: { link: Element; descriptive: boolean }) {
+  return (
+    !cidReference(input.link.getAttribute('href')) &&
+    !input.link.textContent?.trim() &&
+    input.link.querySelectorAll('img').length === 1 &&
+    (!input.descriptive || URL.parse(input.link.getAttribute('href') ?? '')?.pathname === '/')
+  );
+}
+function imageAlt(image: Element) {
+  const alt = image.getAttribute('alt')?.trim() ?? '';
+  return !/\.(?:png|jpe?g|gif|webp|svg|bmp)$/i.test(alt) &&
+    !/^(?:image|photo|picture|immagine)(?:\s*\d+)?$|\b(?:logo|banner|spacer|signature)\b/i.test(alt)
+    ? alt
+    : '';
+}
+function rewriteImages(input: { document: EmailDocument; byCid: Map<string, Attachment> }) {
+  const images = [...input.document.querySelectorAll('img')];
+  const photoOnly = images.length === 1 && !input.document.body.textContent?.trim();
+  for (const image of images) {
     const cid = cidReference(image.getAttribute('src'));
-    const asset = input.attachments.find((item) => item.contentId && item.contentId === cid);
-    if (asset) {
-      linked.add(asset);
+    const asset = input.byCid.get(cid);
+    const alt = imageAlt(image);
+    const anchor = image.closest('a[href]');
+    // Template art often has an empty alt, the original filename, or the company's homepage.
+    const descriptive = Boolean(alt);
+    const photo =
+      photoOnly &&
+      !/^(?:image\d*|logo|banner|signature|Attachment [\d.]+)\b/i.test(asset?.name ?? '');
+    if (asset && (descriptive || photo) && !anchor) {
       image.setAttribute('src', asset.file);
+    } else if (anchor && decorativeLink({ link: anchor, descriptive })) {
+      anchor.remove();
     } else {
-      // External images often track opens; retain meaningful alternative text without fetching.
-      image.replaceWith(input.document.createTextNode(image.getAttribute('alt') ?? ''));
+      image.replaceWith(input.document.createTextNode(alt));
     }
   }
+}
+function rewriteLinks(input: { document: EmailDocument; byCid: Map<string, Attachment> }) {
   for (const link of input.document.querySelectorAll('a[href]')) {
     const href = link.getAttribute('href');
     const cid = cidReference(href);
-    const asset = cid && input.attachments.find((item) => item.contentId === cid);
+    const asset = input.byCid.get(cid);
     if (asset) {
-      linked.add(asset);
       link.setAttribute('href', asset.file);
+      if (!link.textContent?.trim()) {
+        link.textContent = asset.name;
+      }
     } else if (!/^(?:https?:|mailto:)/i.test(href ?? '')) {
       link.replaceWith(...link.childNodes);
     }
   }
-  return linked;
 }
 function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
   const { document } = parseHTML(`<html><body>${input.html}</body></html>`);
-  const { discardedContentIds, signatureText } = cleanEmailHtml(document);
+  const { referencedContentIds, signatureText } = cleanEmailHtml(document);
   flattenLayoutTables(document);
   for (const quote of document.querySelectorAll('.gmail_quote,.yahoo_quoted,.protonmail_quote')) {
     const block = document.createElement('blockquote');
     block.append(...quote.childNodes);
     quote.replaceWith(block);
   }
-  const linked = rewriteMedia({ document, attachments: input.attachments });
+  const byCid = new Map(
+    input.attachments.filter((asset) => asset.contentId).map((asset) => [asset.contentId, asset]),
+  );
+  rewriteImages({ document, byCid });
+  rewriteLinks({ document, byCid });
   const converter = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
   converter.use(tables);
   converter.addRule('messageHeadings', {
@@ -87,9 +117,8 @@ function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
   });
   return {
     markdown: converter.turndown(document.body.innerHTML),
-    discardedContentIds,
+    referencedContentIds,
     signatureText,
-    linked,
   };
 }
 // Outlook embeds these envelope fields as prose in forwarded messages.
@@ -107,6 +136,32 @@ const forwardedEnvelope = new RegExp(
   'gim',
 );
 
+function extractBodyAssets(input: { markdown: string; attachments: Attachment[] }) {
+  const bodyAssets = new Map<string, string>();
+  let body = input.markdown;
+  if (input.markdown.includes('open-sync-asset:')) {
+    // Identify inline files in the surviving text before moving their links into the message header.
+    const byFile = new Map(input.attachments.map((asset) => [asset.file, asset]));
+    for (const { node, target } of markdownLinks(fromMarkdown(input.markdown)).reverse()) {
+      const asset = byFile.get(target.url);
+      if (!asset || !node.position) {
+        continue;
+      }
+      const label =
+        node.type === 'link' && node.children.length
+          ? input.markdown.slice(
+              node.children[0]?.position?.start.offset,
+              node.children.at(-1)?.position?.end.offset,
+            )
+          : '';
+      bodyAssets.set(asset.contentId, node.type === 'image' ? node.alt || asset.name : asset.name);
+      body =
+        body.slice(0, node.position.start.offset) + label + body.slice(node.position.end.offset);
+    }
+  }
+  return { body, bodyAssets };
+}
+
 export function readableBody(input: {
   html: string;
   plain: string;
@@ -114,12 +169,11 @@ export function readableBody(input: {
   previous: string[];
 }) {
   const html = input.html.trim() ? htmlMarkdown(input) : undefined;
-  const discardedContentIds = html?.discardedContentIds ?? new Set<string>();
-  const plain = withoutSignature(input.plain);
+  const plain = input.plain.replaceAll('\r\n', '\n');
   const fallback =
     html?.signatureText && quoteKey(html.signatureText) === quoteKey(plain) ? '' : plain;
   const converted =
-    (html && withoutSignature(html.markdown)) ||
+    html?.markdown ||
     fallback
       .split('\n')
       .map((line) => {
@@ -127,15 +181,29 @@ export function readableBody(input: {
         return prefix + markdownText(line.slice(prefix.length));
       })
       .join('\n');
-  const markdown = converted.replace(forwardedEnvelope, 'Forwarded from $1 · $5');
-  const body = withoutThreadHistory({ markdown, previous: input.previous });
-  if (html?.linked.size && body !== markdown.trim()) {
-    const kept = new Set(markdownLinks(fromMarkdown(body)).map(({ target }) => target.url));
-    for (const asset of html.linked) {
-      if (!kept.has(asset.file)) {
-        discardedContentIds.add(asset.contentId);
-      }
-    }
-  }
-  return { body, original: markdown, discardedContentIds };
+  const envelopes = Array.from(
+    converted.matchAll(forwardedEnvelope),
+    (match) => `Forwarded from ${match[1]} · ${match[5]}`,
+  );
+  const original = converted.replace(forwardedEnvelope, 'Forwarded from $1 · $5');
+  const unique = withoutThreadHistory({ markdown: original, previous: input.previous });
+  const cleaned = withoutSignature(unique)
+    .split('\n')
+    .filter((line) => !envelopes.includes(line.trim()))
+    .join('\n');
+  const referencedContentIds = html?.referencedContentIds ?? new Set<string>();
+  const { body, bodyAssets } = extractBodyAssets({
+    markdown: cleaned,
+    attachments: input.attachments,
+  });
+  return {
+    body: body
+      .replace(/^([ \t]*>[ \t]*)+$/gm, '')
+      .replace(/^\**(?:\\_){4,}\**$/gm, '')
+      .replace(/\n[ \t\u00a0]*\n(?:[ \t\u00a0]*\n)+/g, '\n\n')
+      .trim(),
+    original,
+    referencedContentIds,
+    bodyAssets,
+  };
 }

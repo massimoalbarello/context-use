@@ -93,22 +93,25 @@ export async function messageContent(input: {
   const refs: Record<string, AssetRef> = {};
   const attachments: Attachment[] = [];
   for (const [key, { part, id, asset }] of parts) {
-    if (
+    const bodyLabel = readable.bodyAssets.get(asset.contentId);
+    const orphanInlineImage =
       part.mimeType.startsWith('image/') &&
-      readable.discardedContentIds.has(asset.contentId) &&
-      !explicitAttachment(part)
-    ) {
+      bodies['text/html'].length > 0 &&
+      (/^inline\b/i.test(header({ part, name: 'content-disposition' })) ||
+        (asset.contentId && /^(?:image\d+|outlook-[\w-]+)\.[a-z\d]+$/i.test(part.filename)));
+    if (!bodyLabel && (readable.referencedContentIds.has(asset.contentId) || orphanInlineImage)) {
       continue;
     }
+    const name = part.filename || bodyLabel || asset.name;
     const bytes = await readPart({ ...input, messageId: input.message.id, part });
     refs[key] = await input.context.assets.capture({
       id,
       version: new Bun.CryptoHasher('sha256').update(bytes).digest('hex'),
-      name: asset.name.slice(0, MAX_ASSET_NAME_LENGTH),
+      name: name.slice(0, MAX_ASSET_NAME_LENGTH),
       mediaType: part.mimeType,
       read: () => Promise.resolve(new Blob([bytes]).stream()),
     });
-    attachments.push(asset);
+    attachments.push({ ...asset, name });
   }
   return { refs, attachments, body: readable.body, original: readable.original };
 }
