@@ -4,9 +4,9 @@ import type { EntitySummary } from '../../queries/entities';
 import type { KnowledgePage } from '../../queries/pages';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
 import { EntityLink } from '../entities/entity-link';
+import { markdownTextContent } from '../markdown/markdown-heading';
 import { RecordLink } from '../records/record-link';
 import { KnowledgePageLink } from './knowledge-page-link';
-import { markdownTextContent } from './markdown-heading';
 import { type PageLinkProps, PageProse } from './page-prose';
 
 type EntityMention = Pick<EntitySummary, 'readableId' | 'name' | 'image'>;

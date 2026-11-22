@@ -2,7 +2,6 @@ import type { AssetSummary } from '#backend/models/assets/model.ts';
 import type { PublicationStatus } from '#backend/models/publications/model.ts';
 import type { ResourceArchiveState } from '#backend/models/resource-archiving/model.ts';
 
-export const ENTITY_MENTIONS_PAGE_SIZE = 10;
 export const MAX_ENTITY_NAME_LENGTH = 160;
 export const MIN_ENTITY_DESCRIPTION_LENGTH = 1;
 export const MAX_ENTITY_DESCRIPTION_LENGTH = 600;

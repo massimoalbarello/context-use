@@ -1,19 +1,19 @@
 import { Button } from '@repo/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { Page, PagesClient } from './client';
+import type { McpAppClient, Page } from './client';
 import { PageDetail } from './page-detail';
 import { PageEditor } from './page-editor';
 import { resourceQueryKey } from './queries';
 import { AssetPreview, EntityPreview } from './resource-preview';
 import { useContentSize, WidgetLoading } from './widget-loading';
 
-export function PagesApp({
+export function ResourceViewer({
   client,
   initialAddress,
   initialNotice = '',
 }: {
-  client: PagesClient;
+  client: McpAppClient;
   initialAddress?: string;
   initialNotice?: string;
 }) {
@@ -83,7 +83,7 @@ function ResourceDetail({
   onSaved,
 }: {
   address: string;
-  client: PagesClient;
+  client: McpAppClient;
   editing: boolean;
   onOpen: (address: string) => void;
   onEdit: () => void;

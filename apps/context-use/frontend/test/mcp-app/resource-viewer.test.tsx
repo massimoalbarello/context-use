@@ -3,9 +3,9 @@ import type { App } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { initialNotice, launchResource, type Page, PagesClient } from '../../src/mcp-app/client';
-import { PagesApp } from '../../src/mcp-app/pages-app';
+import { initialNotice, launchResource, McpAppClient, type Page } from '../../src/mcp-app/client';
 import { resourceQueryKey } from '../../src/mcp-app/queries';
+import { ResourceViewer } from '../../src/mcp-app/resource-viewer';
 
 const page: Page = {
   address: 'context-use://page/notes',
@@ -35,7 +35,7 @@ function setup({
   call: App['callServerTool'];
   observeSize?: App['setupSizeChangedNotifications'];
 }) {
-  const client = new PagesClient({
+  const client = new McpAppClient({
     callServerTool: call,
     setupSizeChangedNotifications: observeSize,
     openLink: () => Promise.resolve({}),
@@ -48,7 +48,7 @@ function setup({
   }
   render(
     <QueryClientProvider client={queryClient}>
-      <PagesApp client={client} initialAddress={initial?.address ?? page.address} />
+      <ResourceViewer client={client} initialAddress={initial?.address ?? page.address} />
     </QueryClientProvider>,
   );
   return userEvent.setup();

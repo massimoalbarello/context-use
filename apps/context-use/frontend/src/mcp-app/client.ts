@@ -59,7 +59,7 @@ const ToolErrorSchema = z.object({
   }),
 });
 
-export class PageToolError extends Error {
+export class McpToolError extends Error {
   readonly code: string;
   constructor(error: z.infer<typeof ToolErrorSchema>['error']) {
     super(
@@ -74,7 +74,7 @@ export class PageToolError extends Error {
 function toolFailure(result: { structuredContent?: unknown; isError?: boolean }) {
   const failure = ToolErrorSchema.safeParse(result.structuredContent);
   if (failure.success) {
-    return new PageToolError(failure.data.error);
+    return new McpToolError(failure.data.error);
   }
   if (result.isError) {
     return new Error('The page operation failed. Try again.');
@@ -88,7 +88,7 @@ function toolFailure(result: { structuredContent?: unknown; isError?: boolean })
   }
 }
 
-export class PagesClient {
+export class McpAppClient {
   constructor(
     readonly app: Pick<App, 'callServerTool' | 'openLink' | 'setupSizeChangedNotifications'>,
   ) {}

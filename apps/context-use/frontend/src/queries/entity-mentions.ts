@@ -1,0 +1,1 @@
+export const ENTITY_MENTIONS_PAGE_SIZE = 10;

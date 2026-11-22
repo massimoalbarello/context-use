@@ -1,11 +1,11 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { ENTITY_MENTIONS_PAGE_SIZE } from '#backend/models/entities/model.ts';
 import type { KnowledgePageIntervalFilter } from '#backend/models/knowledge-pages/model.ts';
 import type { PublicationVisibility } from '#backend/models/publications/model.ts';
 import type { ResourceStatus, UnarchiveResult } from '#backend/models/resource-archiving/model.ts';
 import { api } from '../lib/api';
 import { ApiStatus, apiErrorMessage, DuplicateResourceNameError } from '../lib/api-error';
 import { type CalendarDateRange, calendarDateRangeExpression } from '../lib/temporal-coverage';
+import { ENTITY_MENTIONS_PAGE_SIZE } from './entity-mentions';
 import { searchHypermedia } from './hypermedia-search';
 
 export type KnowledgePagePage = NonNullable<Awaited<ReturnType<typeof api.api.pages.get>>['data']>;

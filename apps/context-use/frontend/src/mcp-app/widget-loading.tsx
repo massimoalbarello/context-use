@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react';
-import type { PagesClient } from './client';
+import type { McpAppClient } from './client';
 
-export function useContentSize({ client, ready }: { client: PagesClient; ready: boolean }) {
+export function useContentSize({ client, ready }: { client: McpAppClient; ready: boolean }) {
   // Keep the host's previous iframe height until the destination has rendered.
   useLayoutEffect(() => {
     if (ready) {

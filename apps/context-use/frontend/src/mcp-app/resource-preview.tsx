@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { ENTITY_MENTIONS_PAGE_SIZE, ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
+import { ENTITY_TYPE_LABELS } from '#backend/models/entities/model.ts';
 import { AssetImage, AssetPreviewContent } from '../components/assets/asset-preview-content';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { EntityPageSections } from '../components/entities/entity-page-sections';
@@ -7,14 +7,15 @@ import { EntityProfile } from '../components/entities/entity-profile';
 import { resourceCardVariants } from '../components/knowledge/resource-list';
 import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
 import { isEmbeddableAsset } from '../lib/asset-presentation';
-import type { Asset, Entity, PagesClient } from './client';
+import { ENTITY_MENTIONS_PAGE_SIZE } from '../queries/entity-mentions';
+import type { Asset, Entity, McpAppClient } from './client';
 import { resourceQueryKey } from './queries';
 
-function previewQuery({ client, address }: { client: PagesClient; address: string }) {
+function previewQuery({ client, address }: { client: McpAppClient; address: string }) {
   return {
     queryKey: resourceQueryKey(address),
     queryFn: () => client.readAsset(address),
-    select: (result: Awaited<ReturnType<PagesClient['readAsset']>>) => result.imageSrc,
+    select: (result: Awaited<ReturnType<McpAppClient['readAsset']>>) => result.imageSrc,
     staleTime: Infinity,
   };
 }
@@ -25,7 +26,7 @@ export function PreviewPortrait({
   size,
   className,
 }: {
-  client: PagesClient;
+  client: McpAppClient;
   address: string;
   name: string;
   size?: 'sm';
@@ -40,7 +41,7 @@ export function PreviewImage({
   alt,
   className,
 }: {
-  client: PagesClient;
+  client: McpAppClient;
   address: string;
   alt: string;
   className?: string;
@@ -62,7 +63,7 @@ export function EntityPreview({
   onOpen,
 }: {
   entity: Entity;
-  client: PagesClient;
+  client: McpAppClient;
   onOpen: (address: string) => void;
 }) {
   const mentions = useInfiniteQuery({
@@ -119,7 +120,7 @@ export function EntityPreview({
   );
 }
 
-export function AssetPreview({ asset, client }: { asset: Asset; client: PagesClient }) {
+export function AssetPreview({ asset, client }: { asset: Asset; client: McpAppClient }) {
   return (
     <AssetPreviewContent asset={asset} heading="h1">
       {isEmbeddableAsset(asset) && (

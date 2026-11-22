@@ -1,14 +1,14 @@
 import { App, applyDocumentTheme } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import { initialNotice, launchResource, PagesClient } from './client';
-import { PagesApp } from './pages-app';
+import { initialNotice, launchResource, McpAppClient } from './client';
 import { resourceQueryKey } from './queries';
+import { ResourceViewer } from './resource-viewer';
 import { WidgetLoading } from './widget-loading';
 import '../styles.css';
 
 const app = new App({ name: 'Context Use', version: '1.0.0' }, {}, { autoResize: false });
-const client = new PagesClient(app);
+const client = new McpAppClient(app);
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 });
@@ -26,7 +26,7 @@ function renderResult() {
   const notice = initialNotice(received);
   root.render(
     <QueryClientProvider client={queryClient}>
-      <PagesApp
+      <ResourceViewer
         key={address ?? notice}
         client={client}
         initialAddress={address}

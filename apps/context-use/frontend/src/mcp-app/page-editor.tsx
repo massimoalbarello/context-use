@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KnowledgePageForm, PageMarkdownTextarea } from '../components/pages/knowledge-page-form';
 import { FieldLabel } from '../components/ui/field';
-import { type Page, type PagesClient, PageToolError } from './client';
+import { type McpAppClient, McpToolError, type Page } from './client';
 import { PageMarkdown } from './page-detail';
 import { resourceQueryKey } from './queries';
 
@@ -13,7 +13,7 @@ export function PageEditor({
   onSaved,
   onCancel,
 }: {
-  client: PagesClient;
+  client: McpAppClient;
   page: Page;
   onSaved: (page: Page) => void;
   onCancel: () => void;
@@ -23,10 +23,10 @@ export function PageEditor({
   const [confirmedPublicEdit, setConfirmedPublicEdit] = useState(false);
   const queryClient = useQueryClient();
   const save = useMutation({
-    mutationFn: (input: Parameters<PagesClient['save']>[0]) => client.save(input),
+    mutationFn: (input: Parameters<McpAppClient['save']>[0]) => client.save(input),
     onSuccess: onSaved,
     onError: (error) => {
-      if (error instanceof PageToolError && error.code === 'revision_conflict') {
+      if (error instanceof McpToolError && error.code === 'revision_conflict') {
         void queryClient.invalidateQueries({ queryKey: resourceQueryKey(page.address) });
       }
     },
@@ -42,7 +42,7 @@ export function PageEditor({
         error && (
           <>
             {error.message}
-            {error instanceof PageToolError && error.code === 'revision_conflict' && (
+            {error instanceof McpToolError && error.code === 'revision_conflict' && (
               <p>
                 Your draft is preserved. Copy it before cancelling, then reopen the latest page to
                 reconcile the changes.

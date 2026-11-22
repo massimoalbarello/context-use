@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { internalLink } from '../../lib/internal-link';
 import { AssetMarkdownEmbed, AssetMarkdownLink } from '../assets/asset-markdown';
-import { markdownBodyComponents } from '../pages/page-prose';
+import { markdownBodyComponents } from '../markdown/markdown-body';
 
 export function externalRecordUrl(url: string): string {
   try {

@@ -5,8 +5,8 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import { isVideoAssetMedia } from '#backend/models/assets/presentation.ts';
 import { remarkAssetLayout } from '#backend/models/markdown/asset-layout.ts';
 import { remarkTables } from '#backend/models/markdown/tables.ts';
-import { headingId } from '#frontend/components/pages/markdown-heading.ts';
-import { markdownTableComponents } from '#frontend/components/pages/markdown-table.tsx';
+import { headingId } from '#frontend/components/markdown/markdown-heading.ts';
+import { markdownTableComponents } from '#frontend/components/markdown/markdown-table.tsx';
 
 const headings: Components = Object.fromEntries(
   (['h2', 'h3', 'h4', 'h5', 'h6'] as const).map((Tag) => [

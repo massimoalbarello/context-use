@@ -2,10 +2,10 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "@repo/ui/theme.css";
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
-@import "../../../../frontend/src/components/pages/markdown-media.css"
+@import "../../../../frontend/src/components/markdown/markdown-media.css"
   layer(base);
 @source "../../../../../../packages/ui/src/components/reading";
-@source "../../../../frontend/src/components/pages/markdown-table.tsx";
+@source "../../../../frontend/src/components/markdown/markdown-table.tsx";
 @source "../../../../frontend/src/components/ui/table.tsx";
 @source "./*.tsx";
 

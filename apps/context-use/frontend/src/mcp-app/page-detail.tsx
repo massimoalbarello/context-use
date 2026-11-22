@@ -6,10 +6,10 @@ import { DeferredAsset } from '../components/assets/deferred-asset';
 import { EntityAvatar } from '../components/entities/entity-link';
 import { ResourceDetailActions } from '../components/knowledge/resource-detail-actions';
 import { ResourceDetailHeading } from '../components/knowledge/resource-detail-heading';
-import { markdownTextContent } from '../components/pages/markdown-heading';
+import { markdownTextContent } from '../components/markdown/markdown-heading';
 import { PageProse } from '../components/pages/page-prose';
 import { TemporalCoverageLabel } from '../components/pages/temporal-coverage-label';
-import type { Page, PagesClient } from './client';
+import type { McpAppClient, Page } from './client';
 import { PreviewImage, PreviewPortrait } from './resource-preview';
 
 export function PageDetail({
@@ -19,7 +19,7 @@ export function PageDetail({
   onEdit,
   page,
 }: {
-  client: PagesClient;
+  client: McpAppClient;
   address: string;
   onOpen: (address: string) => void;
   onEdit: () => void;
@@ -62,7 +62,7 @@ export function PageMarkdown({
   fragment,
 }: {
   markdown: string;
-  client?: PagesClient;
+  client?: McpAppClient;
   mentions?: Page['mentions'];
   onOpen?: (address: string) => void;
   onExternal?: (url: string) => void;
@@ -152,7 +152,7 @@ function EntityMention({
   mention,
   children,
 }: {
-  client?: PagesClient;
+  client?: McpAppClient;
   mention?: Page['mentions'][number];
   children: ReactNode;
 }) {
