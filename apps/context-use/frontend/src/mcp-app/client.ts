@@ -10,22 +10,43 @@ import type { CreatePageVariables } from '../queries/pages';
 export type WidgetSearch = z.infer<typeof WidgetSearchSchema>;
 export type Entity = z.infer<typeof McpEntityDetailSchema>;
 export type Asset = z.infer<typeof McpAssetSchema>;
-export function launchResource(result: { structuredContent?: unknown }) {
-  const search = WidgetSearchSchema.safeParse(result.structuredContent);
-  if (search.success) {
-    return { kind: 'search', data: search.data } as const;
-  }
-  const entity = McpEntityDetailSchema.safeParse(result.structuredContent);
-  if (entity.success) {
-    return { kind: 'entity', data: entity.data } as const;
-  }
-  const asset = McpAssetSchema.safeParse(result.structuredContent);
-  if (asset.success) {
-    return { kind: 'asset', data: asset.data } as const;
-  }
-  return null;
-}
 export type Page = z.infer<typeof McpKnowledgePageSchema>;
+
+const resourceReaders = {
+  page: {
+    tool: 'read_knowledge_page',
+    schema: McpKnowledgePageSchema.transform((value) => ({ kind: 'page', value }) as const),
+  },
+  entity: {
+    tool: 'read_entity',
+    schema: McpEntityDetailSchema.transform((value) => ({ kind: 'entity', value }) as const),
+  },
+  asset: {
+    tool: 'read_asset',
+    schema: McpAssetSchema.transform((value) => ({ kind: 'asset', value }) as const),
+  },
+};
+
+const launchSchema = z.union([
+  WidgetSearchSchema.transform((value) => ({ kind: 'search', value }) as const),
+  resourceReaders.page.schema,
+  resourceReaders.entity.schema,
+  resourceReaders.asset.schema,
+]);
+
+export function launchResource(result: {
+  structuredContent?: unknown;
+  _meta?: Record<string, unknown>;
+}) {
+  if (result._meta?.page != null) {
+    const page = resourceReaders.page.schema.safeParse(result._meta.page);
+    if (page.success) {
+      return page.data;
+    }
+  }
+  return launchSchema.safeParse(result.structuredContent).data;
+}
+
 const ToolErrorSchema = z.object({
   error: z.object({
     code: z.string(),
@@ -73,26 +94,13 @@ export class PagesClient {
   }
 
   async resource(address: string) {
-    switch (internalLink(address)?.kind) {
-      case 'entity':
-        return { kind: 'entity', value: await this.entity(address) } as const;
-      case 'asset':
-        return { kind: 'asset', value: await this.asset(address) } as const;
-      case 'page':
-        return { kind: 'page', value: await this.read(address) } as const;
-      default:
-        throw new Error('This resource cannot be previewed.');
+    const kind = internalLink(address)?.kind;
+    if (!kind || kind === 'record') {
+      throw new Error('This resource cannot be previewed.');
     }
-  }
-
-  private async entity(address: string) {
-    const result = await this.call({ name: 'read_entity', args: { address } });
-    return McpEntityDetailSchema.parse(result.structuredContent);
-  }
-
-  private async asset(address: string) {
-    const result = await this.call({ name: 'read_asset', args: { address } });
-    return McpAssetSchema.parse(result.structuredContent);
+    const reader = resourceReaders[kind];
+    const result = await this.call({ name: reader.tool, args: { address } });
+    return reader.schema.parse(result.structuredContent);
   }
 
   async image(address: string) {
@@ -101,11 +109,6 @@ export class PagesClient {
       .object({ mimeType: z.enum(['image/webp', 'image/gif']), data: z.string().min(1) })
       .parse(result._meta);
     return `data:${mimeType};base64,${data}`;
-  }
-
-  private async read(address: string) {
-    const result = await this.call({ name: 'read_knowledge_page', args: { address } });
-    return McpKnowledgePageSchema.parse(result.structuredContent);
   }
 
   private async guideVersion() {
@@ -132,14 +135,6 @@ export class PagesClient {
     });
     return McpKnowledgePageSchema.parse(result._meta?.page);
   }
-}
-
-export function initialPage(result: {
-  structuredContent?: unknown;
-  _meta?: Record<string, unknown>;
-}) {
-  const parsed = McpKnowledgePageSchema.safeParse(result._meta?.page ?? result.structuredContent);
-  return parsed.success ? parsed.data : null;
 }
 
 export function initialNotice(result: { structuredContent?: unknown }) {

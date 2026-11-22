@@ -1,7 +1,7 @@
 import { App, applyDocumentTheme } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import { initialNotice, initialPage, launchResource, PagesClient } from './client';
+import { initialNotice, launchResource, PagesClient } from './client';
 import { PagesApp } from './pages-app';
 import { resourceQueryKey, searchQueryKey } from './queries';
 import '../styles.css';
@@ -19,18 +19,12 @@ function renderResult() {
   if (!connected || !received) {
     return;
   }
-  const page = initialPage(received);
   const launch = launchResource(received);
-  const search = launch?.kind === 'search' ? launch.data : undefined;
-  const address = launch && launch.kind !== 'search' ? launch.data.address : page?.address;
-  if (page) {
-    queryClient.setQueryData(resourceQueryKey(page.address), { kind: 'page', value: page });
-  }
-  if (launch && launch.kind !== 'search') {
-    queryClient.setQueryData(resourceQueryKey(launch.data.address), {
-      kind: launch.kind,
-      value: launch.data,
-    });
+  const search = launch?.kind === 'search' ? launch.value : undefined;
+  const resource = launch?.kind === 'search' ? undefined : launch;
+  const address = resource?.value.address;
+  if (resource) {
+    queryClient.setQueryData(resourceQueryKey(resource.value.address), resource);
   }
   if (search) {
     queryClient.setQueryData([...searchQueryKey, search.query, search.resourceType], search);
@@ -43,7 +37,6 @@ function renderResult() {
       <PagesApp
         key={JSON.stringify([address, search?.query, search?.resourceType])}
         client={client}
-        initial={page}
         initialSearch={search}
         initialAddress={address}
         initialNotice={initialNotice(received)}

@@ -10,19 +10,16 @@ import { AssetPreview, EntityPreview } from './resource-preview';
 
 export function PagesApp({
   client,
-  initial,
   initialAddress,
   initialSearch,
   initialNotice = '',
 }: {
   client: PagesClient;
-  initial: Page | null;
   initialAddress?: string;
   initialSearch?: WidgetSearch;
   initialNotice?: string;
 }) {
-  const first = initialAddress ?? initial?.address;
-  const [path, setPath] = useState<string[]>(first ? [first] : []);
+  const [path, setPath] = useState<string[]>(initialAddress ? [initialAddress] : []);
   const [editing, setEditing] = useState(false);
   const [query, setQuery] = useState(initialSearch?.query ?? '');
   const [notice, setNotice] = useState(initialNotice);

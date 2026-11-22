@@ -3,7 +3,7 @@ import type { App } from '@modelcontextprotocol/ext-apps';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type Page, PagesClient } from '../../src/mcp-app/client';
+import { launchResource, type Page, PagesClient } from '../../src/mcp-app/client';
 import { PagesApp } from '../../src/mcp-app/pages-app';
 import { resourceQueryKey } from '../../src/mcp-app/queries';
 
@@ -36,7 +36,7 @@ function setup({ initial = null, call }: { initial?: Page | null; call: App['cal
   }
   render(
     <QueryClientProvider client={queryClient}>
-      <PagesApp client={client} initial={initial} />
+      <PagesApp client={client} initialAddress={initial?.address} />
     </QueryClientProvider>,
   );
   return userEvent.setup();
@@ -48,6 +48,13 @@ const success = (structuredContent: Record<string, unknown>) => ({
 const failure = ({ code, message }: { code: string; message: string }) => ({
   ...success({ error: { code, message } }),
   isError: true,
+});
+
+test('opens the same page from a read result and from a write receipt', () => {
+  const expected = { kind: 'page', value: page } as const;
+  expect(launchResource(success(page))).toEqual(expected);
+  expect(launchResource({ ...success({ revisionNumber: 1 }), _meta: { page } })).toEqual(expected);
+  expect(launchResource(success({ revisionNumber: 1 }))).toBeUndefined();
 });
 
 test('validates and saves through the host when native form submission is unavailable', async () => {
