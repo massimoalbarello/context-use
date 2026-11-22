@@ -384,7 +384,7 @@ test('page tools expose a self-contained MCP app without owner data in the resou
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
-      const uri = 'ui://context-use/workspace-search.html';
+      const uri = 'ui://context-use/workspace-search-v2.html';
       expect(await client.callTool({ name: 'open_resource_search', arguments: {} })).toMatchObject({
         structuredContent: { query: '', results: [], truncated: false },
       });

@@ -11,7 +11,7 @@ export function ResourceDetailHeading({
   context?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-11 flex-col items-start justify-between gap-3 md:flex-row md:flex-wrap md:items-center">
+    <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Eyebrow>{children}</Eyebrow>
         {context}
