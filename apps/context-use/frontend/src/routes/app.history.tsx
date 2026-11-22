@@ -56,10 +56,6 @@ function groupDailyHistory(entries: HistoryEntry[]) {
   const items: HistoryItemGroup[] = [];
   const resources = new Map<string, HistoryItemGroup>();
   for (const entry of entries) {
-    if (entry.resourceType === 'page' && entry.pageRevisionNumber === null) {
-      items.push({ entry, changes: [entry] });
-      continue;
-    }
     const key = `${entry.resourceType}:${entry.readableId}`;
     const group = resources.get(key);
     if (group) {
@@ -138,14 +134,7 @@ function HistoryItem({ entry, changes }: HistoryItemGroup) {
           </h3>
           <span className="text-muted-foreground text-xs">{resource.label}</span>
         </div>
-        <ol
-          aria-label={
-            entry.resourceType === 'page' && entry.pageRevisionNumber !== null
-              ? 'Revisions that day'
-              : 'Changes that day'
-          }
-          className="mt-3 space-y-3"
-        >
+        <ol aria-label="Changes that day" className="mt-3 space-y-3">
           {changes.map((change) => (
             <li
               key={change.sequence}
