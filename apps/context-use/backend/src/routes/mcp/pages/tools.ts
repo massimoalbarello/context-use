@@ -245,9 +245,9 @@ export function registerKnowledgePageTools({
   server.registerTool(
     'read_knowledge_page',
     {
-      _meta: PAGES_APP_META,
       title: 'Read knowledge page',
-      description: 'Read one active knowledge page by its exact canonical page address.',
+      description:
+        'Read one active knowledge page by its exact canonical page address. Use this for background reading. To show this page in chat, call open_resource.',
       inputSchema: PageAddressInputSchema,
       outputSchema: McpKnowledgePageSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,

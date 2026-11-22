@@ -29,7 +29,6 @@ import {
 } from '#backend/routes/mcp/tool-annotations.ts';
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { AssetsServiceContract } from '#backend/services/assets/service.ts';
-import { PAGES_APP_META } from '../pages/app-meta.ts';
 
 const AssetNameSchema = z
   .string()
@@ -212,10 +211,9 @@ export function registerAssetTools({
   server.registerTool(
     'read_asset',
     {
-      _meta: PAGES_APP_META,
       title: 'Read asset',
       description:
-        'Read metadata, usages, and people this image depicts (detected or confirmed) for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them.',
+        'Read metadata, usages, and people this image depicts (detected or confirmed) for one active asset by its exact address. Asset bytes are immutable; request a short-lived download only when bytes are needed, and do not infer unsupported identity, location, intent, or chronology from them. Use this for background reading. To show this asset in chat, call open_resource.',
       inputSchema: ReadAssetInputSchema,
       outputSchema: ReadAssetOutputSchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,

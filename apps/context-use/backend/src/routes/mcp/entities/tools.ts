@@ -35,7 +35,6 @@ import {
 import { mcpToolError, mcpToolSuccess } from '#backend/routes/mcp/tool-result.ts';
 import type { EntitiesServiceContract } from '#backend/services/entities/service.ts';
 import type { KnowledgeProfilesServiceContract } from '#backend/services/knowledge-profiles/service.ts';
-import { PAGES_APP_META } from '../pages/app-meta.ts';
 
 const ENTITY_IMAGE_MEDIA_TYPES = EMBEDDABLE_ASSET_MEDIA_TYPES.join(', ');
 const ENTITY_IMAGE_UPDATE_DESCRIPTION = `For imageAssetAddress, omit it to preserve the current image; send null to clear it; or provide a value referencing an existing asset with a supported media type (${ENTITY_IMAGE_MEDIA_TYPES}) to replace it.`;
@@ -253,10 +252,9 @@ export function registerEntityTools({
   server.registerTool(
     'read_entity',
     {
-      _meta: PAGES_APP_META,
       title: 'Read entity',
       description:
-        'Read one active entity by its exact canonical entity address. Use list_knowledge_pages with mentioningEntity to retrieve the pages that mention it.',
+        'Read one active entity by its exact canonical entity address. Use list_knowledge_pages with mentioningEntity to retrieve the pages that mention it. Use this for background reading. To show this entity in chat, call open_resource.',
       inputSchema: EntityAddressInputSchema,
       outputSchema: McpEntitySchema,
       annotations: MCP_READ_TOOL_ANNOTATIONS,

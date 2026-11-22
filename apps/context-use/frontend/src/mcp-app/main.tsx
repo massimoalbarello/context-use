@@ -20,12 +20,9 @@ function renderResult() {
   if (!connected || !received) {
     return;
   }
-  const launch = launchResource(received);
-  const search = launch?.kind === 'search' ? launch.value : undefined;
-  const resource = launch?.kind === 'search' ? undefined : launch;
-  const address = resource?.value.address;
-  if (resource) {
-    queryClient.setQueryData(resourceQueryKey(resource.value.address), resource);
+  const { address, search, page } = launchResource(received);
+  if (page) {
+    queryClient.setQueryData(resourceQueryKey(page.value.address), page);
   }
   if (mounted && !search) {
     void queryClient.invalidateQueries({ queryKey: searchQueryKey });

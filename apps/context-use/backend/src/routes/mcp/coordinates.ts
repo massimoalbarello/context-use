@@ -47,3 +47,9 @@ export const PageReferenceAddressSchema = z
   .describe(
     'Canonical knowledge-page address with an optional fragment, for example context-use://page/growth-playbook#priorities',
   );
+
+export const PreviewAddressSchema = z.union([
+  PageReferenceAddressSchema,
+  EntityAddressSchema,
+  AssetAddressSchema,
+]);

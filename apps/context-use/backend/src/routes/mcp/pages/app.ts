@@ -1,9 +1,11 @@
 import { RESOURCE_MIME_TYPE, registerAppResource } from '@modelcontextprotocol/ext-apps/server';
 import type { McpServer } from '@modelcontextprotocol/server';
+import { z } from 'zod';
+import { PreviewAddressSchema } from '../coordinates.ts';
 import { SearchHypermediaInputSchema } from '../hypermedia-retrieval/model.ts';
 import { MCP_READ_TOOL_ANNOTATIONS } from '../tool-annotations.ts';
-import { pagesAppHtml } from './app-html.gen.ts';
-import { PAGES_APP_META, PAGES_APP_URI } from './app-meta.ts';
+import { pagesAppHtml, pagesAppUri } from './app-html.gen.ts';
+import { PAGES_APP_META } from './app-meta.ts';
 
 const resourceMeta = { ui: { csp: { connectDomains: [], resourceDomains: [] } } };
 
@@ -23,10 +25,25 @@ export function registerPagesApp(server: McpServer): void {
       _meta: { search },
     }),
   );
+  server.registerTool(
+    'open_resource',
+    {
+      title: 'Open in Context Use',
+      description:
+        'Display a specific page, entity, or asset to the user in chat, for example when asked to show a photo or open a page for editing. Use a known canonical address. For discovery or to answer a question, use the read tools. When the user should choose a match, use open_search_picker.',
+      inputSchema: z.object({ address: PreviewAddressSchema }),
+      annotations: MCP_READ_TOOL_ANNOTATIONS,
+      _meta: PAGES_APP_META,
+    },
+    ({ address }) => ({
+      content: [{ type: 'text', text: `Opening ${address} in Context Use.` }],
+      _meta: { address },
+    }),
+  );
   registerAppResource(
     server,
     'Context Use',
-    PAGES_APP_URI,
+    pagesAppUri,
     {
       description: 'Search pages, entities, and assets and open their previews.',
       _meta: resourceMeta,
@@ -34,7 +51,7 @@ export function registerPagesApp(server: McpServer): void {
     () => ({
       contents: [
         {
-          uri: PAGES_APP_URI,
+          uri: pagesAppUri,
           mimeType: RESOURCE_MIME_TYPE,
           text: pagesAppHtml,
           _meta: resourceMeta,

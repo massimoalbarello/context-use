@@ -1,6 +1,7 @@
 import type { App } from '@modelcontextprotocol/ext-apps';
 import { z } from 'zod';
 import { McpAssetSchema } from '#backend/routes/mcp/assets/model.ts';
+import { PreviewAddressSchema } from '#backend/routes/mcp/coordinates.ts';
 import { McpEntitySchema } from '#backend/routes/mcp/entities/model.ts';
 import {
   SearchHypermediaInputSchema,
@@ -40,12 +41,6 @@ const resourceReaders = {
   },
 };
 
-const launchSchema = z.union([
-  resourceReaders.page.schema,
-  resourceReaders.entity.schema,
-  resourceReaders.asset.schema,
-]);
-
 type ToolContent = Awaited<ReturnType<App['callServerTool']>>['content'];
 
 function assetResult({ asset, content }: { asset: Asset; content?: ToolContent }) {
@@ -58,26 +53,17 @@ function assetResult({ asset, content }: { asset: Asset; content?: ToolContent }
 }
 
 export function launchResource(result: {
-  content?: ToolContent;
-  structuredContent?: unknown;
   _meta?: Record<string, unknown>;
+  structuredContent?: unknown;
 }) {
-  if (result._meta?.search != null) {
-    const input = SearchHypermediaInputSchema.safeParse(result._meta.search);
-    if (input.success) {
-      return { kind: 'search', value: pickerInput(input.data) } as const;
-    }
-  }
-  if (result._meta?.page != null) {
-    const page = resourceReaders.page.schema.safeParse(result._meta.page);
-    if (page.success) {
-      return page.data;
-    }
-  }
-  const resource = launchSchema.safeParse(result.structuredContent).data;
-  return resource?.kind === 'asset'
-    ? assetResult({ asset: resource.value, content: result.content })
-    : resource;
+  const meta = result._meta;
+  const search = SearchHypermediaInputSchema.safeParse(meta?.search).data;
+  const page = resourceReaders.page.schema.safeParse(meta?.page).data;
+  return {
+    address: page?.value.address ?? PreviewAddressSchema.safeParse(meta?.address).data,
+    search: search && pickerInput(search),
+    page,
+  };
 }
 
 const ToolErrorSchema = z.object({

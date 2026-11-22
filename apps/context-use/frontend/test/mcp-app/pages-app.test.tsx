@@ -62,11 +62,13 @@ const failure = ({ code, message }: { code: string; message: string }) => ({
   isError: true,
 });
 
-test('opens the same page from a read result and from a write receipt', () => {
-  const expected = { kind: 'page', value: page } as const;
-  expect(launchResource(success(page))).toEqual(expected);
-  expect(launchResource({ ...success({ revisionNumber: 1 }), _meta: { page } })).toEqual(expected);
-  expect(launchResource(success({ revisionNumber: 1 }))).toBeUndefined();
+test('opens an explicitly presented address or saved page and ignores discovery data', () => {
+  expect(launchResource(success(page)).address).toBeUndefined();
+  expect(launchResource({ _meta: { address: page.address } }).address).toBe(page.address);
+  expect(launchResource({ _meta: { page } })).toMatchObject({
+    address: page.address,
+    page: { kind: 'page', value: page },
+  });
 });
 
 test('launches the picker with its search filters and a ten-result limit', () => {
@@ -75,10 +77,7 @@ test('launches the picker with its search filters and a ten-result limit', () =>
     resourceTypes: ['knowledge_page'],
     visibility: 'private',
   };
-  expect(launchResource({ _meta: { search } })).toEqual({
-    kind: 'search',
-    value: { ...search, limit: 10 },
-  });
+  expect(launchResource({ _meta: { search } }).search).toEqual({ ...search, limit: 10 });
 });
 
 test('holds the iframe height during search and resumes sizing for an empty result', async () => {

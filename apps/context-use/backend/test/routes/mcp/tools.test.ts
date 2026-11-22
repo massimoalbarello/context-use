@@ -223,6 +223,7 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'update_knowledge_page',
         'archive_knowledge_page',
         'open_search_picker',
+        'open_resource',
         'read_record',
       ]);
       expect(tools.find(({ name }) => name === 'read_entity')?.annotations).toMatchObject({
@@ -385,25 +386,32 @@ test('page tools expose a self-contained MCP app without owner data in the resou
   await withMcpClient({
     run: async (client) => {
       const { tools } = await client.listTools();
-      const uri = 'ui://context-use/workspace-search.html';
+      const { resources } = await client.listResources();
+      const uri = resources[0]!.uri;
+      expect(uri).toMatch(/^ui:\/\/context-use\/workspace-[a-f0-9]{64}\.html$/);
       expect(await client.callTool({ name: 'search_hypermedia', arguments: {} })).toMatchObject({
         structuredContent: { results: [], truncated: false },
       });
-      expect(tools.find((tool) => tool.name === 'search_hypermedia')?._meta?.ui).toBeUndefined();
-      for (const name of [
-        'read_entity',
-        'read_asset',
+      expect(tools.filter((tool) => tool._meta?.ui).map((tool) => tool.name)).toEqual([
         'create_knowledge_page',
-        'open_search_picker',
-        'read_knowledge_page',
         'update_knowledge_page',
         'archive_knowledge_page',
+        'open_search_picker',
+        'open_resource',
+      ]);
+      for (const address of [
+        'context-use://page/notes#summary',
+        'context-use://entity/steve-jobs',
+        'context-use://asset/original-ipod-photo',
       ]) {
-        expect(tools.find((tool) => tool.name === name)?._meta).toMatchObject({
-          ui: { resourceUri: uri },
-        });
+        const result = await client.callTool({ name: 'open_resource', arguments: { address } });
+        expect(result.isError).not.toBe(true);
+        expect(result._meta).toEqual({ address });
+        expect(result.structuredContent).toBeUndefined();
       }
-      const { resources } = await client.listResources();
+      for (const tool of tools.filter((item) => item._meta?.ui)) {
+        expect(tool._meta?.ui).toMatchObject({ resourceUri: uri });
+      }
       expect(resources).toMatchObject([
         {
           uri,
