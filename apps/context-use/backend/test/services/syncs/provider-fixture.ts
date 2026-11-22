@@ -1,3 +1,4 @@
+import type { ProviderApi } from '@context-use/open-sync';
 import type { JsonObject } from '@context-use/open-sync/json';
 import type { SyncProvider } from '#backend/services/syncs/catalog.ts';
 import { now } from './github-fixture.ts';
@@ -44,5 +45,49 @@ export function fixtureProvider(id: string): SyncProvider {
         },
       },
     ],
+  };
+}
+
+export function connectedProviders(
+  connections: {
+    id: string;
+    service: string;
+    account: string;
+    status: string;
+    authType: 'oauth2';
+  }[],
+): ProviderApi {
+  function unexpected(): never {
+    throw new Error('Unexpected provider call');
+  }
+  return {
+    credentials: unexpected,
+    configure: unexpected,
+    start: unexpected,
+    connection: unexpected,
+    catalog: unexpected,
+    connections: () => Promise.resolve(connections),
+    status: ({ service }) =>
+      Promise.resolve({
+        provider: {
+          service,
+          displayName: service,
+          iconUrl: null,
+          categories: [],
+          scenario: '',
+          authTypes: ['oauth2'],
+        },
+        setup: {
+          service,
+          auth: [],
+          oauthClient: {
+            configured: true,
+            customClientAvailable: false,
+            expectedRedirectUri: 'https://host/api/open-sync/oauth/callback',
+            missingFields: [],
+          },
+        },
+        connections: connections.filter((connection) => connection.service === service),
+      }),
   };
 }

@@ -15,10 +15,9 @@ export const gmailProvider = {
       name: 'Email conversations',
       description: `Threads with the ${GMAIL_SYNC_LABEL} label.`,
       registration: gmailThreads,
+      invalidCheckpointCode: GMAIL_ERRORS.resyncRequired,
       errorMessages: {
         [GMAIL_ERRORS.labelMissing]: `Create the ${GMAIL_SYNC_LABEL} label in Gmail, then resume syncing.`,
-        [GMAIL_ERRORS.resyncRequired]:
-          'Gmail can no longer use its saved history. Choose Reprocess history to recover; saved records are kept.',
         [GMAIL_ERRORS.mailboxChanged]:
           'The connected Gmail mailbox changed. Reauthorize the original mailbox before resuming.',
       },

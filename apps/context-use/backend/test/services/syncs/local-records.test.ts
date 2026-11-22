@@ -352,7 +352,7 @@ test('npm engine immediately backfills native pages across restart, then polls o
           provider: 'github',
           kind: 'pull-request',
           id: 'PR_one',
-          url: null,
+          url: edited.url,
         });
         expect(resource?.sourceCreatedAt).toBe(now);
         expect(resource?.sourceUpdatedAt).toBe(updatedAt);
@@ -513,6 +513,13 @@ test('partial publication and a lost acknowledgement replay after restart withou
         upsertRecord: (value) => {
           if (failSecond && value.record.source.id === 'PR_two') {
             throw new Error('Storage unavailable');
+          }
+          // Reproduce a delivery committed by the previous destination before the upgrade.
+          if (loseAcknowledgement) {
+            return host.records.upsert({
+              ...value,
+              record: { ...value.record, source: { ...value.record.source, url: null } },
+            });
           }
           return host.records.upsert(value);
         },

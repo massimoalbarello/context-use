@@ -5,6 +5,7 @@ export interface ContextSync {
   name: string;
   description: string;
   registration: SyncRegistration;
+  invalidCheckpointCode?: string;
   errorMessages?: Readonly<Record<string, string>>;
 }
 export interface SyncProvider {

@@ -65,7 +65,7 @@ export async function threadRecord(input: {
       account: input.account,
       threadId: input.thread.id,
       sourceOccurredAt: first,
-      sourceUrl: url,
+      url,
     },
     content: {
       format: 'markdown',

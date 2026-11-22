@@ -133,11 +133,11 @@ test('managed connection is owner-scoped, starts once, and exposes pause/resume 
       state: 'paused',
       message: 'Automatic syncing is paused. Your records are kept.',
     });
-    await expect(
-      service.update({ ...actor, key: githubPullRequests.definition.id, action: 'run' }),
-    ).rejects.toThrow('Resume');
-    await service.update({ ...actor, key: githubPullRequests.definition.id, action: 'resync' });
-    expect(runtime.api.syncs(scope)[0]?.enabled).toBe(true);
+    for (const action of ['run', 'resync'] as const) {
+      await expect(
+        service.update({ ...actor, key: githubPullRequests.definition.id, action }),
+      ).rejects.toThrow('Resume');
+    }
     await expect(
       service.update({ actorId: 'other', key: githubPullRequests.definition.id, action: 'resync' }),
     ).rejects.toThrow('Forbidden');

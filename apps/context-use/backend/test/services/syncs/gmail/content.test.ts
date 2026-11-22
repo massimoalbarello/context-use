@@ -48,9 +48,7 @@ test('inline image references point to stored assets and retain a readable body'
   const result = readableBody({
     html: '<p>See the chart.</p><img src="cid:chart" alt="Revenue">',
     plain: '',
-    attachments: [
-      { name: 'chart.png', contentId: 'chart', file: 'open-sync-asset:chart', image: true },
-    ],
+    attachments: [{ name: 'chart.png', contentId: 'chart', file: 'open-sync-asset:chart' }],
     previous: [],
   });
   expect(result.body).toContain('![Revenue](open-sync-asset:chart)');

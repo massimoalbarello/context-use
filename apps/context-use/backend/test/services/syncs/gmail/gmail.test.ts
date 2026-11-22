@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test';
+import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
+import { SyncCatalog } from '#backend/services/syncs/catalog.ts';
+import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
 import { gmailThreads } from '#backend/services/syncs/sources/gmail/definition.ts';
+import { gmailProvider } from '#backend/services/syncs/sources/gmail/provider.ts';
 import { fixture } from '../engine-fixture.ts';
+import { connectedProviders } from '../provider-fixture.ts';
 import {
   account,
   attachedMessage,
@@ -169,7 +174,22 @@ test.each([HISTORY_NOT_FOUND, HISTORY_BAD_REQUEST])(
   'Gmail history rejection %s requires explicit recovery and never restarts the archive',
   async (status) => {
     const source = gmailFixture();
-    const f = await fixture({ registration: gmailThreads, provider: source.provider });
+    const f = await fixture({
+      registration: gmailThreads,
+      provider: source.provider,
+      ownerId: OWNER_USER_ID,
+    });
+    const actor = { actorId: OWNER_USER_ID };
+    const sync = { ...actor, key: gmailThreads.definition.id };
+    const service = new ManagedSyncsService({
+      catalog: new SyncCatalog([gmailProvider]),
+      sync: {
+        api: f.engine.api,
+        providers: connectedProviders([
+          { id: 'connection', service: 'gmail', account, status: 'active', authType: 'oauth2' },
+        ]),
+      },
+    });
     try {
       await f.finish();
       const checkpoint = f.saved.checkpoint;
@@ -186,15 +206,16 @@ test.each([HISTORY_NOT_FOUND, HISTORY_BAD_REQUEST])(
       expect(f.saved.checkpoint).toEqual(checkpoint);
       expect(f.saved.errorCode).toBe('gmail_checkpoint_invalid_resync_required');
       expect(source.requests.some(({ path }) => path === '/users/me/threads')).toBe(false);
+      expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('reprocess-required');
+      for (const action of ['resume', 'run'] as const) {
+        await expect(service.update({ ...sync, action })).rejects.toThrow('Reprocess history');
+      }
+      // Keep rejecting the old cursor. Only restarting the backfill can recover.
+      await service.update({ ...sync, action: 'resync' });
+      expect(f.saved.checkpoint.phase).toBe('initial');
       source.intercept = undefined;
-      await f.engine.api.setEnabled({
-        actorId: 'alice',
-        ownerId: 'alice',
-        id: f.saved.id,
-        enabled: true,
-      });
-      await f.engine.api.resync({ actorId: 'alice', ownerId: 'alice', id: f.saved.id });
       await f.finish();
+      expect((await service.list(actor))[0]?.syncs[0]?.state).toBe('ready');
       expect(new Set(f.records.map((record) => record.id)).size).toBe(1);
     } finally {
       await f.close();

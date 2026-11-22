@@ -1,5 +1,6 @@
 import type { SyncProvider } from '../../catalog.ts';
 import { youtubePlaylists } from './definition.ts';
+import { INVALID_CHECKPOINT_CODE } from './request.ts';
 
 export const youtubeProvider = {
   id: 'youtube',
@@ -10,6 +11,7 @@ export const youtubeProvider = {
     {
       name: 'Playlist videos',
       description: 'Videos saved to your playlists.',
+      invalidCheckpointCode: INVALID_CHECKPOINT_CODE,
       registration: youtubePlaylists,
     },
   ],

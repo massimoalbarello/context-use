@@ -1,6 +1,5 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import type { ProviderApi } from '@context-use/open-sync';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
@@ -12,7 +11,7 @@ import { localRecordDestination } from '#backend/services/syncs/destinations/loc
 import { ManagedSyncsService } from '#backend/services/syncs/managed.ts';
 import { withRecordTestDatabase } from '../../repositories/records/database.ts';
 import { now } from './github-fixture.ts';
-import { fixtureProvider } from './provider-fixture';
+import { connectedProviders, fixtureProvider } from './provider-fixture';
 
 function unexpected(): never {
   throw new Error('Unexpected provider call');
@@ -59,39 +58,9 @@ test('provider registrations share management and destination code while deliver
         status: 'active',
         authType: 'oauth2' as const,
       }));
-      const providers: ProviderApi = {
-        credentials: unexpected,
-        configure: unexpected,
-        start: unexpected,
-        connection: unexpected,
-        catalog: unexpected,
-        connections: () => Promise.resolve(connections),
-        status: ({ service }) =>
-          Promise.resolve({
-            provider: {
-              service,
-              displayName: service,
-              iconUrl: null,
-              categories: [],
-              scenario: '',
-              authTypes: ['oauth2'],
-            },
-            setup: {
-              service,
-              auth: [],
-              oauthClient: {
-                configured: true,
-                customClientAvailable: false,
-                expectedRedirectUri: 'https://host/api/open-sync/oauth/callback',
-                missingFields: [],
-              },
-            },
-            connections: connections.filter((connection) => connection.service === service),
-          }),
-      };
       const service = new ManagedSyncsService({
         catalog,
-        sync: { api: runtime.api, providers },
+        sync: { api: runtime.api, providers: connectedProviders(connections) },
       });
       const actor = { actorId: OWNER_USER_ID };
       const scope = { ...actor, ownerId: OWNER_USER_ID };

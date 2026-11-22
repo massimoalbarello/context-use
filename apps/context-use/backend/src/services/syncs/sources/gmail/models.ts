@@ -59,7 +59,7 @@ export const recordSchema = z.strictObject({
   account: nativeId,
   threadId: nativeId,
   sourceOccurredAt: z.iso.datetime({ offset: true }),
-  sourceUrl: z.url(),
+  url: z.url(),
 });
 export function excluded(labels: string[]) {
   return labels.includes('SPAM') || labels.includes('TRASH');

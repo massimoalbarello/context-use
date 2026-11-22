@@ -9,6 +9,7 @@ export const MANAGED_SYNC_STATES = [
   'ready',
   'syncing',
   'paused',
+  'reprocess-required',
   'error',
 ] as const;
 export type ManagedSyncState = (typeof MANAGED_SYNC_STATES)[number];

@@ -8,6 +8,7 @@ import {
   type RecordInput,
   RecordInputSchema,
   RecordPublicationConflictError,
+  RecordSourceSchema,
   type RecordSyncRevision,
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
@@ -30,7 +31,7 @@ function deliveredRecords(input: {
         provider: input.provider,
         kind: record.kind,
         id: record.id,
-        url: record.data.sourceUrl,
+        url: RecordSourceSchema.shape.url.safeParse(record.data.url).data,
       },
       title: record.preview,
       body: mapRecordAssets({

@@ -4,7 +4,7 @@ import { getStreamAsArrayBuffer } from 'get-stream';
 import { MAX_ASSET_BYTES, MAX_ASSET_NAME_LENGTH } from '#backend/models/assets/model.ts';
 import { decode, header, type Message, type MessagePart } from './models.ts';
 
-export type Attachment = { name: string; file: string; contentId: string; image: boolean };
+export type Attachment = { name: string; file: string; contentId: string };
 function bodyText(input: { part: MessagePart; bytes: Uint8Array }) {
   const charset =
     /charset\s*=\s*["']?([^\s;"']+)/i.exec(
@@ -12,18 +12,14 @@ function bodyText(input: { part: MessagePart; bytes: Uint8Array }) {
     )?.[1] ?? 'utf-8';
   return new TextDecoder(charset).decode(input.bytes);
 }
-export function attachment(part: MessagePart) {
+function attachment(part: MessagePart) {
   return Boolean(
     part.filename ||
       part.mimeType.startsWith('image/') ||
       /^attachment\b/i.test(header({ part: part, name: 'content-disposition' })),
   );
 }
-export async function readPart(input: {
-  context: SyncContext;
-  messageId: string;
-  part: MessagePart;
-}) {
+async function readPart(input: { context: SyncContext; messageId: string; part: MessagePart }) {
   if (input.part.body?.data !== undefined) {
     return decode(input.part.body.data);
   }
@@ -74,7 +70,6 @@ export async function messageContent(input: {
         name,
         file: assetPlaceholder(key),
         contentId: header({ part: part, name: 'content-id' }).replace(/^<|>$/g, ''),
-        image: part.mimeType.startsWith('image/'),
       });
       return;
     }

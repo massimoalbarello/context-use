@@ -1,5 +1,6 @@
 import type { SyncProvider } from '../../catalog.ts';
 import { googleCalendarEvents } from './definition.ts';
+import { INVALID_CHECKPOINT_CODE } from './request.ts';
 
 export const googleCalendarProvider = {
   id: 'googlecalendar',
@@ -10,6 +11,7 @@ export const googleCalendarProvider = {
     {
       name: 'Calendar events',
       description: 'Events from your calendars.',
+      invalidCheckpointCode: INVALID_CHECKPOINT_CODE,
       registration: googleCalendarEvents,
     },
   ],
