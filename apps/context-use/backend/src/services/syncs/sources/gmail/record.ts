@@ -6,12 +6,6 @@ import { markdownText, readableBody } from './content.ts';
 import { messageContent } from './mime.ts';
 import { header, type threadSchema } from './models.ts';
 
-// Native history orders mailbox changes; the low digits order rendering changes to the same
-// snapshot. Bump the format revision when changing the saved representation, so an explicit
-// reprocess can update it while older deliveries remain stale, even after sync recreation.
-const FORMAT_REVISION_BASE = 1_000_000n;
-const FORMAT_REVISION = 1n;
-
 export async function threadRecord(input: {
   context: SyncContext;
   account: string;
@@ -70,12 +64,8 @@ export async function threadRecord(input: {
     data: {
       account: input.account,
       threadId: input.thread.id,
-      sourceRevision: (
-        BigInt(input.thread.historyId) * FORMAT_REVISION_BASE +
-        FORMAT_REVISION
-      ).toString(),
       sourceOccurredAt: first,
-      url,
+      sourceUrl: url,
     },
     content: {
       format: 'markdown',

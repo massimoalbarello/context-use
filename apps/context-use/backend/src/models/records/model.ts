@@ -71,9 +71,7 @@ export type RecordPage = {
   items: RecordSummary[];
   nextOffset: number | null;
 };
-const MAX_SOURCE_REVISION_LENGTH = 128;
-export const RecordSourceRevisionSchema = z.string().regex(/^\d+$/).max(MAX_SOURCE_REVISION_LENGTH);
-export type RecordSyncRevision = { syncId: string; revision: number; sourceRevision?: string };
+export type RecordSyncRevision = { syncId: string; revision: number; overwrite?: true };
 export type RecordWriteResult = {
   state: 'created' | 'updated' | 'unchanged' | 'stale' | 'conflict';
   readableId: string;

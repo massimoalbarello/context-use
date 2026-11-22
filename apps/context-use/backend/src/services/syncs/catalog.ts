@@ -1,10 +1,12 @@
 import type { SyncRegistration } from '@context-use/open-sync/definition';
 import { NotFoundError } from '#backend/lib/errors.ts';
 
+export type LocalSyncRegistration = SyncRegistration & { recordIdentity?: 'source' };
+
 export interface ContextSync {
   name: string;
   description: string;
-  registration: SyncRegistration;
+  registration: LocalSyncRegistration;
   errorMessages?: Readonly<Record<string, string>>;
 }
 export interface SyncProvider {
@@ -21,7 +23,7 @@ export interface SyncProvider {
 }
 
 export class SyncCatalog {
-  readonly definitions: SyncRegistration[] = [];
+  readonly definitions: LocalSyncRegistration[] = [];
   constructor(readonly providers: readonly SyncProvider[]) {
     const identities = new Set<string>();
     for (const provider of providers) {

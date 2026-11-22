@@ -1,5 +1,4 @@
 import { assetKey } from '@context-use/open-sync/assets';
-import type { SyncRegistration } from '@context-use/open-sync/definition';
 import type { Deliverable, DeliveryResult, DestinationType } from '@context-use/open-sync/delivery';
 import type { AssetImport } from '#backend/models/assets/model.ts';
 import type { ChangeContext } from '#backend/models/history/model.ts';
@@ -8,14 +7,14 @@ import {
   type RecordInput,
   RecordInputSchema,
   RecordPublicationConflictError,
-  RecordSourceRevisionSchema,
   type RecordSyncRevision,
   type RecordWriteResult,
 } from '#backend/models/records/model.ts';
 
+import type { LocalSyncRegistration } from '../../catalog.ts';
 import { importedAssetReadableId, mapRecordAssets } from './record-assets.ts';
 
-// Validate all rewritten records before publishing any; each publication commits its own revision.
+// Validate all rewritten records before publishing the first one.
 function deliveredRecords(input: {
   deliverable: Deliverable;
   provider: string;
@@ -26,19 +25,12 @@ function deliveredRecords(input: {
     if (record.operation !== 'upsert' || !record.content) {
       return null;
     }
-    const nativeRevision = RecordSourceRevisionSchema.optional().safeParse(
-      record.data.sourceRevision,
-    );
-    if (!nativeRevision.success) {
-      return null;
-    }
-    const sourceRevision = nativeRevision.data;
     const parsed = RecordInputSchema.safeParse({
       source: {
         provider: input.provider,
         kind: record.kind,
         id: record.id,
-        ...(sourceRevision ? { url: record.data.url } : {}),
+        url: record.data.sourceUrl,
       },
       title: record.preview,
       body: mapRecordAssets({
@@ -53,7 +45,7 @@ function deliveredRecords(input: {
     if (!parsed.success) {
       return null;
     }
-    records.push({ record: parsed.data, revision: record.revision, sourceRevision });
+    records.push({ record: parsed.data, revision: record.revision });
   }
   return records;
 }
@@ -76,15 +68,17 @@ export function localRecordDestination(input: {
     sync: RecordSyncRevision;
     change: ChangeContext;
   }): Promise<RecordWriteResult>;
-  definitions: readonly SyncRegistration[];
+  definitions: readonly LocalSyncRegistration[];
 }): DestinationType {
   async function publish({
     deliverable,
     provider,
+    sourceNamespace,
     signal,
   }: {
     deliverable: Deliverable;
     provider: string;
+    sourceNamespace?: string;
     signal: AbortSignal;
   }): Promise<DeliveryResult> {
     const change = { clientName: provider, message: `Synced record from ${provider}` };
@@ -99,15 +93,9 @@ export function localRecordDestination(input: {
         asset: {
           ownerId: deliverable.ownerId,
           readableId: importedAssetReadableId({
-            ...deliverable,
+            ownerId: deliverable.ownerId,
+            syncId: sourceNamespace ?? deliverable.syncId,
             asset,
-            syncId: deliverable.records.every(
-              (record) =>
-                record.operation === 'upsert' &&
-                RecordSourceRevisionSchema.safeParse(record.data.sourceRevision).success,
-            )
-              ? `source:${provider}`
-              : deliverable.syncId,
           }),
           name: asset.name,
           sizeBytes: asset.size,
@@ -125,17 +113,26 @@ export function localRecordDestination(input: {
       }
       imported.set(assetKey(asset), { readableId: result.readableId, name: asset.name });
     }
-    return publishRecords({ deliverable, provider, assets: imported, signal, change });
+    return publishRecords({
+      deliverable,
+      provider,
+      sourceNamespace,
+      assets: imported,
+      signal,
+      change,
+    });
   }
   async function publishRecords({
     deliverable,
     provider,
+    sourceNamespace,
     assets,
     signal,
     change,
   }: {
     deliverable: Deliverable;
     provider: string;
+    sourceNamespace?: string;
     assets: ReadonlyMap<string, { readableId: string; name: string }>;
     signal: AbortSignal;
     change: ChangeContext;
@@ -149,16 +146,14 @@ export function localRecordDestination(input: {
     if (!records) {
       return { status: 'rejected', code: 'invalid_record' };
     }
-    for (const { record, revision, sourceRevision } of records) {
+    for (const { record, revision } of records) {
       signal.throwIfAborted();
       const result = await input.upsertRecord({
         ownerId: deliverable.ownerId,
         record,
-        sync: {
-          syncId: sourceRevision ? `source:${provider}` : deliverable.syncId,
-          revision,
-          ...(sourceRevision ? { sourceRevision } : {}),
-        },
+        sync: sourceNamespace
+          ? { syncId: sourceNamespace, revision, overwrite: true }
+          : { syncId: deliverable.syncId, revision },
         change,
       });
       if (result.state === 'conflict') {
@@ -186,7 +181,13 @@ export function localRecordDestination(input: {
         return { status: 'rejected', code: 'invalid_source' };
       }
       try {
-        return await publish({ deliverable, provider, signal });
+        return await publish({
+          deliverable,
+          provider,
+          sourceNamespace:
+            registration.recordIdentity === 'source' ? `source:${provider}` : undefined,
+          signal,
+        });
       } catch (error) {
         if (error instanceof RecordPublicationConflictError) {
           return { status: 'rejected', code: 'publication_conflict' };

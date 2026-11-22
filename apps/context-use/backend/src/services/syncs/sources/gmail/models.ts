@@ -52,16 +52,14 @@ export const messageSchema = z.object({
 });
 export const threadSchema = z.object({
   id: nativeId,
-  historyId,
   messages: z.array(messageSchema).min(1),
 });
 export type Message = z.infer<typeof messageSchema>;
 export const recordSchema = z.strictObject({
   account: nativeId,
   threadId: nativeId,
-  sourceRevision: historyId,
   sourceOccurredAt: z.iso.datetime({ offset: true }),
-  url: z.url(),
+  sourceUrl: z.url(),
 });
 export function excluded(labels: string[]) {
   return labels.includes('SPAM') || labels.includes('TRASH');

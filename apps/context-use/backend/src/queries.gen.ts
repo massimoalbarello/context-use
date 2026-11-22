@@ -1180,7 +1180,6 @@ export interface IFindCurrentRecordResult {
     contentHash: string | null;
     deletedAt: string | null;
     syncRevision: number;
-    sourceRevision: string | null;
     publishedAt: string | null;
 }
 

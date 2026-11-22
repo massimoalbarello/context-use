@@ -1,7 +1,5 @@
 import { expect, test } from 'bun:test';
 import { join } from 'node:path';
-import type { SyncContext } from '@context-use/open-sync/definition';
-import type { Deliverable } from '@context-use/open-sync/delivery';
 import { createSyncRuntime } from '@context-use/open-sync/engine';
 import { OWNER_USER_ID } from '#backend/lib/auth/owner-registration.ts';
 import { createLocalStorage } from '#backend/lib/storage/client.ts';
@@ -14,15 +12,7 @@ import { localRecordDestination } from '#backend/services/syncs/destinations/loc
 import { gmailThreads } from '#backend/services/syncs/sources/gmail/definition.ts';
 import { withRecordTestDatabase } from '../../../repositories/records/database.ts';
 import { unusedAssetFacesService } from '../../../support/app.ts';
-import { unused } from '../engine-fixture.ts';
-import {
-  account,
-  attachedMessage,
-  gmailFixture,
-  initialHistory,
-  message,
-  sentAt,
-} from './fixture.ts';
+import { account, attachedMessage, gmailFixture, message, sentAt } from './fixture.ts';
 
 const scope = { actorId: OWNER_USER_ID, ownerId: OWNER_USER_ID };
 test('Gmail records and assets survive recreated syncs; replies and removals replace the same owned conversation', async () => {
@@ -47,37 +37,9 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
       });
       const source = gmailFixture();
       source.thread = { ...source.thread, messages: [attachedMessage()] };
-      let updatedFormat = false;
-      const registration = {
-        ...gmailThreads,
-        load: () => ({
-          async step(context: SyncContext) {
-            const page = await gmailThreads.load().step(context);
-            return {
-              ...page,
-              records: page.records.map((record) => {
-                if (!updatedFormat || record.operation !== 'upsert') {
-                  return record;
-                }
-                return {
-                  ...record,
-                  data: {
-                    ...record.data,
-                    sourceRevision: (BigInt(String(record.data.sourceRevision)) + 1n).toString(),
-                  },
-                  content: {
-                    format: 'markdown' as const,
-                    body: `Updated conversation format\n\n${record.content!.body}`,
-                  },
-                };
-              }),
-            };
-          },
-        }),
-      };
       const options = {
         databasePath: join(input.dataFolder, 'sync.db'),
-        definitions: [registration],
+        definitions: [gmailThreads],
         connector: { bind: () => Promise.resolve(source.provider) },
         destinationTypes: { local: destination },
       };
@@ -144,12 +106,19 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
         await runtime.api.resync({ ...scope, id: sync.id });
         await finish();
         expect(await history()).toEqual(initialChanges);
-        updatedFormat = true;
+        source.thread = {
+          ...source.thread,
+          messages: [attachedMessage(), message({ id: 'reply', text: 'Invoice received.' })],
+        };
         await runtime.api.resync({ ...scope, id: sync.id });
         await finish();
-        expect((await read())!.body).toStartWith('Updated conversation format');
-        const formattedChanges = await history();
-        expect(formattedChanges.items).toHaveLength(2);
+        expect((await read())!.body).toContain('Invoice received.');
+        // Recreating the sync restarts its delivery counter. Its first snapshot must still replace
+        // this conversation even when the latest message timestamp is unchanged.
+        source.thread = {
+          ...source.thread,
+          messages: [attachedMessage(), message({ id: 'reply', text: 'Invoice approved.' })],
+        };
         await runtime.api.removeSync({ ...scope, id: sync.id });
         await runtime.close();
         runtime = createSyncRuntime(options);
@@ -162,7 +131,8 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
             .map((asset) => asset.readableId)
             .sort(),
         ).toEqual(imported.items.map((asset) => asset.readableId).sort());
-        expect(await history()).toEqual(formattedChanges);
+        expect((await read())!.body).toContain('Invoice approved.');
+        expect((await read())!.body).not.toContain('Invoice received.');
         source.thread = {
           ...source.thread,
           historyId: '9007199254740993020',
@@ -215,45 +185,6 @@ test('Gmail records and assets survive recreated syncs; replies and removals rep
             (await assets.detail({ ownerId: OWNER_USER_ID, readableId: asset.readableId }))!.usages,
           ).toHaveLength(0);
         }
-        const beforeStale = await read();
-        const stale: Deliverable = {
-          id: 'old-page',
-          syncId: 'old-sync',
-          ownerId: OWNER_USER_ID,
-          definition: gmailThreads.definition.id,
-          assets: [],
-          openAsset: unused,
-          records: [
-            {
-              operation: 'upsert',
-              kind: 'thread',
-              id: saved.source.id,
-              revision: 999,
-              preview: saved.title,
-              createdAt: sentAt,
-              updatedAt: sentAt,
-              content: { format: 'markdown', body: 'Stale content' },
-              data: { sourceRevision: initialHistory, sourceOccurredAt: sentAt },
-            },
-          ],
-        };
-        expect(
-          await destination.deliver({
-            scope,
-            config: {},
-            deliverable: stale,
-            signal: new AbortController().signal,
-          }),
-        ).toEqual({ status: 'accepted' });
-        expect(await read()).toEqual(beforeStale);
-        expect(
-          await destination.deliver({
-            scope: { actorId: 'other', ownerId: 'other' },
-            config: {},
-            deliverable: stale,
-            signal: new AbortController().signal,
-          }),
-        ).toEqual({ status: 'rejected', code: 'invalid_source' });
         source.account = 'second@example.com';
         await runtime.api.removeSync({ ...scope, id: sync.id });
         sync = await create();
