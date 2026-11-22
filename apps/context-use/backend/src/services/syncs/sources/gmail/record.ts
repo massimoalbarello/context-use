@@ -4,7 +4,7 @@ import type { SyncRecord } from '@context-use/open-sync/record';
 import type { z } from 'zod';
 import { markdownText } from './content.ts';
 import { messageContent } from './mime.ts';
-import { header, type threadSchema } from './models.ts';
+import { header, type MessagePart, type threadSchema } from './models.ts';
 
 const sentTime = new Intl.DateTimeFormat('en-GB', {
   dateStyle: 'medium',
@@ -12,14 +12,12 @@ const sentTime = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC',
 });
 
-function senderName(from: string) {
-  const mailbox = /^(.*?)\s*<([^<>]+)>$/.exec(from.trim());
-  return (
-    mailbox?.[1]?.trim().replace(/^"(.*)"$/, '$1') ||
-    mailbox?.[2] ||
-    from.trim() ||
-    'Unknown sender'
-  );
+function addressHeader(input: { part: MessagePart; name: 'from' | 'to' }) {
+  const addresses = input.part.headers
+    .filter((field) => field.name.toLowerCase() === input.name)
+    .map((field) => field.value.replace(/\s*[\r\n]+\s*/g, ' ').trim())
+    .filter(Boolean);
+  return addresses.length ? markdownText(addresses.join(', ')) : 'Not listed';
 }
 
 export async function threadRecord(input: {
@@ -46,12 +44,14 @@ export async function threadRecord(input: {
     previous.push(content.original);
     Object.assign(assetRefs, content.refs);
     const currentSubject = header({ part: message.payload, name: 'subject' }).trim();
-    const sender = senderName(header({ part: message.payload, name: 'from' }));
+    const from = addressHeader({ part: message.payload, name: 'from' });
+    const to = addressHeader({ part: message.payload, name: 'to' });
     const files = content.attachments.map(
       (asset) => `[${markdownText(asset.name)}](${asset.file})`,
     );
     const metadata = [
-      `${sentTime.format(Number(message.internalDate))} UTC`,
+      `**To** · ${to}`,
+      `**At** · ${sentTime.format(Number(message.internalDate))} UTC`,
       files.length && `**Attachments** · ${files.join(' · ')}`,
       currentSubject &&
         subjectText(currentSubject) !== previousSubject &&
@@ -60,7 +60,7 @@ export async function threadRecord(input: {
       .filter(Boolean)
       .join('  \n> ');
     previousSubject = currentSubject ? subjectText(currentSubject) : previousSubject;
-    const heading = `> ### ${markdownText(sender)}\n>\n> ${metadata}`;
+    const heading = `> ### From · ${from}\n>\n> ${metadata}`;
     sections.push([heading, content.body].filter(Boolean).join('\n\n'));
   }
   const first = new Date(Number(messages[0]!.internalDate)).toISOString();
@@ -81,7 +81,7 @@ export async function threadRecord(input: {
     },
     content: {
       format: 'markdown',
-      body: [...sections, `[Open conversation in Gmail](${url})`].join('\n\n---\n\n'),
+      body: `${sections.join('\n\n---\n\n---\n\n')}\n\n---\n\n[Open conversation in Gmail](${url})`,
     },
     ...(Object.keys(assetRefs).length ? { assetRefs } : {}),
   };

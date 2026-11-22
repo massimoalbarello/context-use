@@ -59,6 +59,9 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
               <span className="text-muted-foreground text-sm">Image: {alt}</span>
             ) : null;
           },
+          hr: () => (
+            <hr className="has-[+hr]:hidden [hr+&]:my-8 [hr+&]:border-foreground/40 [hr+&]:border-t-4 [hr+&]:border-double" />
+          ),
           h1: ({ children, node }) =>
             node?.position?.start.line === 1 && children === label ? null : (
               <h2 className="mb-7 font-semibold text-2xl tracking-tight">{children}</h2>
@@ -80,7 +83,7 @@ export function ContextRecordMarkdown({ markdown, label }: { markdown: string; l
             <ol className="my-5 list-decimal pl-6 text-[1.05rem] leading-8">{children}</ol>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
+            <blockquote className="wrap-anywhere my-5 border-border border-l-4 pl-5 text-[1.05rem] text-muted-foreground leading-8">
               {children}
             </blockquote>
           ),

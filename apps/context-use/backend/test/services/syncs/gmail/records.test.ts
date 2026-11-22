@@ -97,8 +97,10 @@ test('Gmail updates one conversation per sync and keeps earlier imports when a s
         );
         expect((await read())!.body).toContain('### Invoice');
         expect((await read())!.body).toMatch(/\| Services\s*\| £120\.50/);
-        expect((await read())!.body).toStartWith('> ### Alex\n>\n> 1 Nov 2026');
-        expect((await read())!.body).not.toMatch(/## Message|^To:|^Cc:|^Sent:/m);
+        expect((await read())!.body).toMatch(
+          /^> ### From · Alex .*alex@example\.com.*\n>\n> \*\*To\*\* · owner@example\.com, "Smith, Pat" .*pat@example\.com.*\n> \*\*At\*\* · 1 Nov 2026/,
+        );
+        expect((await read())!.body).not.toMatch(/finance@example|hidden@example|## Message/);
         const [metadata, body] = (await read())!.body.split('\n\n### Invoice');
         expect(metadata).toContain('> **Attachments** · [Revenue]');
         expect(metadata).toContain('[invoice.pdf]');
@@ -149,7 +151,8 @@ test('Gmail updates one conversation per sync and keeps earlier imports when a s
         ];
         runtime.api.runNow({ ...scope, id: sync.id });
         await finish();
-        expect((await read())!.body).toContain('***\n\n> ### Alex\n>\n> 2 Nov 2026');
+        expect((await read())!.body).toContain('***\n\n***\n\n> ### From · Alex');
+        expect((await read())!.body).toContain('> **At** · 2 Nov 2026');
         expect((await read())!.body).toContain('Paid in full.');
         expect((await read())!.sourceUpdatedAt).toBe('2026-11-02T10:00:00.000Z');
         const afterReply = await read();

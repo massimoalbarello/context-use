@@ -292,7 +292,11 @@ test('single-part attachments and empty text messages import together', async ()
     await f.finish();
     expect(f.records).toHaveLength(1);
     expect(f.records[0]).toMatchObject({
-      content: { body: expect.stringContaining('**Attachments** · [invoice.pdf]') },
+      content: {
+        body: expect.stringMatching(
+          /> ### From · Not listed\n>\n> \*\*To\*\* · Not listed[^\n]*\n> \*\*At\*\*[^\n]*\n> \*\*Attachments\*\* · \[invoice\.pdf\]/,
+        ),
+      },
     });
     expect(f.deliveries[0]!.assets).toEqual([
       expect.objectContaining({ name: 'invoice.pdf', size: 'Attachment bytes'.length }),
