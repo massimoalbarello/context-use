@@ -151,7 +151,8 @@ async function backfill(input: { context: SyncContext; checkpoint: Position }) {
         context,
         path: '/users/me/threads',
         query: {
-          maxResults: PAGE_SIZE,
+          // Commit each backfilled thread before fetching the next thread and its attachments.
+          maxResults: 1,
           // A recent reply and the label can be on different messages. Check dates on the thread.
           labelIds: checkpoint.labelId!,
           includeSpamTrash: false,

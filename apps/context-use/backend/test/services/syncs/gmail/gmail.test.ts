@@ -37,9 +37,9 @@ test('Gmail commits its boundary before backfill, resumes native pages, then pol
     expect(
       source.requests.filter(({ path }) => path === '/users/me/threads').map(({ query }) => query),
     ).toEqual([
-      { maxResults: 10, includeSpamTrash: false, labelIds: 'Label_context' },
-      { maxResults: 10, includeSpamTrash: false, labelIds: 'Label_context', pageToken: '1' },
-      { maxResults: 10, includeSpamTrash: false, labelIds: 'Label_context', pageToken: '2' },
+      { maxResults: 1, includeSpamTrash: false, labelIds: 'Label_context' },
+      { maxResults: 1, includeSpamTrash: false, labelIds: 'Label_context', pageToken: '1' },
+      { maxResults: 1, includeSpamTrash: false, labelIds: 'Label_context', pageToken: '2' },
     ]);
     expect(
       source.requests.find(({ path }) => path === '/users/me/history')?.query.startHistoryId,
