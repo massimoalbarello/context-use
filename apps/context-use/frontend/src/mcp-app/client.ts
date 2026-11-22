@@ -43,7 +43,19 @@ const launchSchema = z.union([
   resourceReaders.asset.schema,
 ]);
 
+type ToolContent = Awaited<ReturnType<App['callServerTool']>>['content'];
+
+function assetResult({ asset, content }: { asset: Asset; content?: ToolContent }) {
+  const image = content?.find((block) => block.type === 'image');
+  const imageSrc =
+    image && (image.mimeType === 'image/webp' || image.mimeType === 'image/gif')
+      ? `data:${image.mimeType};base64,${image.data}`
+      : undefined;
+  return { kind: 'asset', value: asset, imageSrc } as const;
+}
+
 export function launchResource(result: {
+  content?: ToolContent;
   structuredContent?: unknown;
   _meta?: Record<string, unknown>;
 }) {
@@ -69,7 +81,10 @@ export function launchResource(result: {
       return page.data;
     }
   }
-  return launchSchema.safeParse(result.structuredContent).data;
+  const resource = launchSchema.safeParse(result.structuredContent).data;
+  return resource?.kind === 'asset'
+    ? assetResult({ asset: resource.value, content: result.content })
+    : resource;
 }
 
 const ToolErrorSchema = z.object({
@@ -123,17 +138,23 @@ export class PagesClient {
     if (!kind || kind === 'record') {
       throw new Error('This resource cannot be previewed.');
     }
+    if (kind === 'asset') {
+      return this.readAsset(address);
+    }
     const reader = resourceReaders[kind];
     const result = await this.call({ name: reader.tool, args: { address } });
     return reader.schema.parse(result.structuredContent);
   }
 
-  async image(address: string) {
-    const result = await this.call({ name: 'read_asset_image_preview', args: { address } });
-    const { data, mimeType } = z
-      .object({ mimeType: z.enum(['image/webp', 'image/gif']), data: z.string().min(1) })
-      .parse(result._meta);
-    return `data:${mimeType};base64,${data}`;
+  async readAsset(address: string) {
+    const result = await this.call({
+      name: resourceReaders.asset.tool,
+      args: { address, includePreview: true },
+    });
+    return assetResult({
+      asset: McpAssetSchema.parse(result.structuredContent),
+      content: result.content,
+    });
   }
 
   private async guideVersion() {

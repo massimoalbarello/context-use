@@ -8,11 +8,13 @@ import { resourceCardVariants } from '../components/knowledge/resource-list';
 import { KnowledgePageCardContent } from '../components/pages/knowledge-page-link';
 import { isEmbeddableAsset } from '../lib/asset-presentation';
 import type { Asset, Entity, PagesClient } from './client';
+import { resourceQueryKey } from './queries';
 
 function previewQuery({ client, address }: { client: PagesClient; address: string }) {
   return {
-    queryKey: ['mcp-image', address],
-    queryFn: () => client.image(address),
+    queryKey: resourceQueryKey(address),
+    queryFn: () => client.readAsset(address),
+    select: (result: Awaited<ReturnType<PagesClient['readAsset']>>) => result.imageSrc,
     staleTime: Infinity,
   };
 }

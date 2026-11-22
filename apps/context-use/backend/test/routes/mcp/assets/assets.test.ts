@@ -364,13 +364,17 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       ).toBe(StatusMap['Not Found']);
 
       const previewRequest = {
-        name: 'read_asset_image_preview',
-        arguments: { address: created.address },
+        name: 'read_asset',
+        arguments: { address: created.address, includePreview: true },
       };
       const preview = await client.callTool(previewRequest);
-      expect(preview.content).toEqual([]);
-      expect(preview._meta?.mimeType).toBe('image/webp');
-      const pixels = new Bun.Image(Buffer.from(String(preview._meta?.data), 'base64'));
+      expect(preview.structuredContent).toMatchObject({ address: created.address, download: null });
+      const image = preview.content.find((block) => block.type === 'image');
+      expect(image?.mimeType).toBe('image/webp');
+      if (!image) {
+        throw new Error('Expected MCP image content');
+      }
+      const pixels = new Bun.Image(Buffer.from(image.data, 'base64'));
       expect(await pixels.metadata()).toMatchObject({ width: 1, height: 1 });
       const beforeArchive = successfulResult<AssetResult>(
         await client.callTool({
@@ -403,7 +407,7 @@ test('MCP asset uploads defer persistence, preserve AssetsService behavior, and 
       expect(archivedRead.isError).toBe(true);
       const archivedPreview = await client.callTool(previewRequest);
       expect(archivedPreview.isError).toBe(true);
-      expect(archivedPreview._meta?.data).toBeUndefined();
+      expect(archivedPreview.content.some((block) => block.type === 'image')).toBe(false);
       expect(archivedRead.structuredContent).toEqual({
         error: expect.objectContaining({ code: 'not_found' }),
       });

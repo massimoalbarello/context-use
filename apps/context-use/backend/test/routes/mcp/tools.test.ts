@@ -209,7 +209,6 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         'create_asset_upload',
         'list_assets',
         'read_asset',
-        'read_asset_image_preview',
         'update_asset',
         'archive_asset',
         'create_entity',
@@ -344,7 +343,10 @@ test('MCP publishes typed tools with accurate safety annotations and no private 
         },
       });
       expect(tools.find(({ name }) => name === 'read_asset')?.inputSchema).toMatchObject({
-        properties: { address: { pattern: expect.any(String) } },
+        properties: {
+          address: { pattern: expect.any(String) },
+          includePreview: { type: 'boolean' },
+        },
       });
       expect(
         tools.find(({ name }) => name === 'create_asset_upload')?.inputSchema,
@@ -387,9 +389,6 @@ test('page tools expose a self-contained MCP app without owner data in the resou
       expect(await client.callTool({ name: 'search_hypermedia', arguments: {} })).toMatchObject({
         structuredContent: { results: [], truncated: false },
         _meta: { search: {} },
-      });
-      expect(tools.find((t) => t.name === 'read_asset_image_preview')?._meta).toMatchObject({
-        ui: { visibility: ['app'] },
       });
       for (const name of [
         'read_entity',
