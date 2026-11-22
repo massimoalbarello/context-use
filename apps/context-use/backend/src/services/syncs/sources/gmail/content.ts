@@ -1,8 +1,10 @@
 import { tables } from '@truto/turndown-plugin-gfm';
-import EmailReplyParser from 'email-reply-parser';
 import { parseHTML } from 'linkedom';
+import { fromMarkdown } from 'mdast-util-from-markdown';
 import TurndownService from 'turndown';
+import { markdownLinks } from '#backend/models/markdown/links.ts';
 import { cidReference, cleanEmailHtml, withoutSignature } from './cleanup.ts';
+import { quoteKey, withoutThreadHistory } from './quotes.ts';
 
 export type Attachment = { name: string; file: string; contentId: string };
 
@@ -11,21 +13,6 @@ export function markdownText(value: string) {
   return textConverter
     .escape(value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'))
     .replaceAll('\n', ' ');
-}
-const quotedText = (value: string) =>
-  value
-    .replace(/^\s*(?:>\s*)+/gm, '')
-    .replace(/^\s*\|?[\s|:-]+\|?\s*$/gm, '')
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&amp;', '&')
-    .replace(/[*_`#|\\]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-function alreadyQuoted(input: { previous: string[]; text: string }) {
-  return (
-    input.text.length > 0 && input.previous.some((body) => ` ${body} `.includes(` ${input.text} `))
-  );
 }
 type EmailDocument = ReturnType<typeof parseHTML>['document'];
 const MAX_HEADING_LEVEL = 6;
@@ -55,10 +42,12 @@ function flattenLayoutTables(document: EmailDocument) {
   }
 }
 function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[] }) {
+  const linked = new Set<Attachment>();
   for (const image of input.document.querySelectorAll('img')) {
     const cid = cidReference(image.getAttribute('src'));
     const asset = input.attachments.find((item) => item.contentId && item.contentId === cid);
     if (asset) {
+      linked.add(asset);
       image.setAttribute('src', asset.file);
     } else {
       // External images often track opens; retain meaningful alternative text without fetching.
@@ -70,11 +59,13 @@ function rewriteMedia(input: { document: EmailDocument; attachments: Attachment[
     const cid = cidReference(href);
     const asset = cid && input.attachments.find((item) => item.contentId === cid);
     if (asset) {
+      linked.add(asset);
       link.setAttribute('href', asset.file);
     } else if (!/^(?:https?:|mailto:)/i.test(href ?? '')) {
       link.replaceWith(...link.childNodes);
     }
   }
+  return linked;
 }
 function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
   const { document } = parseHTML(`<html><body>${input.html}</body></html>`);
@@ -85,7 +76,7 @@ function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
     block.append(...quote.childNodes);
     quote.replaceWith(block);
   }
-  rewriteMedia({ document, attachments: input.attachments });
+  const linked = rewriteMedia({ document, attachments: input.attachments });
   const converter = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
   converter.use(tables);
   converter.addRule('messageHeadings', {
@@ -98,6 +89,7 @@ function htmlMarkdown(input: { html: string; attachments: Attachment[] }) {
     markdown: converter.turndown(document.body.innerHTML),
     discardedContentIds,
     signatureText,
+    linked,
   };
 }
 // Outlook embeds these envelope fields as prose in forwarded messages.
@@ -108,7 +100,7 @@ const forwardedEnvelope = new RegExp(
   '^' +
     [
       forwardedField('From|Da'),
-      forwardedField('Sent|Inviato'),
+      forwardedField('Sent|Date|Inviato|Data'),
       forwardedField('To|A'),
       `(?:${forwardedField('Cc')}\\n+)?${forwardedField('Subject|Oggetto')}`,
     ].join('\\n+'),
@@ -125,7 +117,7 @@ export function readableBody(input: {
   const discardedContentIds = html?.discardedContentIds ?? new Set<string>();
   const plain = withoutSignature(input.plain);
   const fallback =
-    html?.signatureText && quotedText(html.signatureText) === quotedText(plain) ? '' : plain;
+    html?.signatureText && quoteKey(html.signatureText) === quoteKey(plain) ? '' : plain;
   const converted =
     (html && withoutSignature(html.markdown)) ||
     fallback
@@ -136,30 +128,14 @@ export function readableBody(input: {
       })
       .join('\n');
   const markdown = converted.replace(forwardedEnvelope, 'Forwarded from $1 · $5');
-  if (!input.previous.length || !/^\s*>/m.test(markdown)) {
-    return { body: markdown.trim(), original: input.plain || markdown, discardedContentIds };
+  const body = withoutThreadHistory({ markdown, previous: input.previous });
+  if (html?.linked.size && body !== markdown.trim()) {
+    const kept = new Set(markdownLinks(fromMarkdown(body)).map(({ target }) => target.url));
+    for (const asset of html.linked) {
+      if (!kept.has(asset.file)) {
+        discardedContentIds.add(asset.contentId);
+      }
+    }
   }
-  const previous = input.previous.map(quotedText);
-  // Only remove quoted content already present in this conversation. Forwarded material and
-  // fresh quotations and inline answers still belong to their message.
-  const body = new EmailReplyParser()
-    .read(markdown)
-    .getFragments()
-    .map((fragment) => {
-      const content = fragment.getContent();
-      if (!fragment.isQuoted()) {
-        return content;
-      }
-      const lines = content.split('\n');
-      const kept = lines.filter((line) => !alreadyQuoted({ previous, text: quotedText(line) }));
-      if (kept.length === lines.length) {
-        return content;
-      }
-      // The parser groups the attribution with the quoted lines it introduces.
-      const quote = kept.filter((line) => /^\s*>/.test(line) || !line.trimEnd().endsWith(':'));
-      return quote.some((line) => quotedText(line)) ? quote.join('\n') : '';
-    })
-    .join('\n')
-    .trim();
-  return { body, original: input.plain || markdown, discardedContentIds };
+  return { body, original: markdown, discardedContentIds };
 }

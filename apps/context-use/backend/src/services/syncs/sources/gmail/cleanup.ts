@@ -110,7 +110,7 @@ function removeDecorativeImages(document: EmailDocument) {
 
 function removeHidden(document: EmailDocument) {
   for (const element of document.querySelectorAll(
-    'script,style,head,meta,link,title,iframe,object,form,svg,.gmail_attr,#divRplyFwdMsg',
+    'script,style,head,meta,link,title,iframe,object,form,svg,.gmail_attr',
   )) {
     element.remove();
   }

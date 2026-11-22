@@ -17,12 +17,13 @@ test('email HTML retains amounts, data tables and useful links while stripping d
 
 test('HTML quote removal preserves new answers inside and outside quoted containers', () => {
   const result = readableBody({
-    html: '<p>Answers below.</p><div class="gmail_quote"><div class="gmail_attr">On Nov 1 Alex wrote:</div><blockquote><p>Amount due: £120.50</p><p>I paid it today.</p><p>When can we meet?</p><p>Tuesday works.</p></blockquote></div><p>Regards, Sam</p>',
+    html: '<p>Answers below.</p><div class="gmail_quote"><div class="gmail_attr">On Nov 1 Alex wrote:</div><blockquote><p>Amount due: £120.50</p><p>I paid it today.</p><p>Subject: Payment confirmation</p><p>When can we meet?</p><p>Tuesday works.</p></blockquote></div><p>Regards, Sam</p>',
     plain: '',
     attachments: [],
     previous: ['Amount due: £120.50\nWhen can we meet?'],
   });
   expect(result.body).toContain('I paid it today.');
+  expect(result.body).toContain('Subject: Payment confirmation');
   expect(result.body).toContain('Tuesday works.');
   expect(result.body).not.toContain('Regards, Sam');
   expect(result.body).not.toContain('Amount due');
@@ -185,4 +186,79 @@ test('the plain alternative supplies missing content without bringing back an HT
   expect(readableBody({ ...input, plain: 'Account balance: £42.' }).body).toBe(
     'Account balance: £42.',
   );
+});
+
+test('nested Gmail replies drop earlier HTML, localized envelopes and copied inline images', () => {
+  const chart = { name: 'chart.png', contentId: 'chart', file: 'open-sync-asset:first' };
+  const original = readableBody({
+    html: '<p>Meet at Elm Street.</p><img src="cid:chart" alt="Seating plan">',
+    plain: 'See the attached plan below.',
+    previous: [],
+    attachments: [chart],
+  });
+  const copy =
+    '<p>Meet at <a href="https://example.com/map">Elm Street</a>.</p><img src="cid:copy" alt="Seating plan">';
+  const copiedChart = { ...chart, contentId: 'copy', file: 'open-sync-asset:reply' };
+  const quote = `<div class="gmail_quote"><blockquote>${copy}</blockquote></div>`;
+  const reply = readableBody({
+    html: `<p>Can we meet Friday?</p>${quote}`,
+    plain: '',
+    attachments: [copiedChart],
+    previous: [original.original],
+  });
+  expect(reply.body).toBe('Can we meet Friday?');
+  expect(reply.discardedContentIds).toContain('copy');
+
+  const last = readableBody({
+    html: `<p>Friday works.</p><img src="cid:copy" alt="Seating plan"><div class="gmail_quote"><blockquote><p>Can we meet Friday?</p><p><b>Da:</b> Alex<br><b>A:</b> Pat<br><b>Cc:</b> Finance</p><p>Il giorno lunedì Alex ha scritto:</p>${quote}</blockquote></div>`,
+    plain: '',
+    attachments: [copiedChart],
+    previous: [original.original, reply.original],
+  });
+  expect(last.body).toBe('Friday works.\n\n![Seating plan](open-sync-asset:reply)');
+  expect(last.discardedContentIds).not.toContain('copy');
+});
+
+test('unprefixed Outlook history is removed while standalone replies and new forwarded details survive', () => {
+  const previous = ['Our appointment is Friday.'];
+  const envelope =
+    '<div id="divRplyFwdMsg"><b>From:</b> Office<br><b>Sent:</b> Monday<br><b>To:</b> Alex<br><b>Subject:</b> Appointment</div>';
+  const render = (html: string) =>
+    readableBody({ html, plain: '', attachments: [], previous }).body;
+  expect(render(`<p>Confirmed.</p>${envelope}<p>Our appointment is Friday.</p>`)).toBe(
+    'Confirmed.',
+  );
+  expect(render('<p>Our appointment is Friday.</p>')).toBe(previous[0]!);
+  expect(render(`<p>Confirmed.</p>${envelope}<p>The door code is 456.</p>`)).toContain(
+    'The door code is 456.',
+  );
+});
+
+test('a quoted link to a different document survives even when its label is reused', () => {
+  const input = { plain: '', attachments: [] };
+  const original = readableBody({
+    ...input,
+    previous: [],
+    html: '<a href="https://example.com/one">Invoice</a>',
+  });
+  const result = readableBody({
+    ...input,
+    previous: [original.original],
+    html: '<p>Correction:</p><blockquote><a href="https://example.com/two">Invoice</a></blockquote>',
+  });
+  expect(result.body).toContain('[Invoice](https://example.com/two)');
+});
+
+test('an image-only quotation with an ambiguous label keeps its own image', () => {
+  const input = {
+    html: '<blockquote><img src="cid:photo"></blockquote>',
+    plain: '',
+    previous: ['![](open-sync-asset:first)'],
+  };
+  const result = readableBody({
+    ...input,
+    attachments: [{ name: 'photo.png', contentId: 'photo', file: 'open-sync-asset:second' }],
+  });
+  expect(result.body).toContain('![](open-sync-asset:second)');
+  expect(result.discardedContentIds).not.toContain('photo');
 });
